@@ -1,78 +1,89 @@
-// Главный экран. Ось интерфейса — время, а не площадка.
-// Композиция по вертикали: верх информация, низ управление — туда достаёт палец.
-// Все блоки с фиксированной высотой, тянется только фотография.
-import { useState, useEffect, useMemo } from 'react';
-import {
-  View, Text, Pressable, ScrollView, StyleSheet, Image,
-  Modal, Platform, useWindowDimensions,
-} from 'react-native';
+// Главный экран — сетка «часы × площадки». Вся картина дня сразу,
+// нажатие на клетку и есть выбор. Отдельная вкладка расписания не нужна.
+import { useState, useMemo } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT } from '../../src/theme';
 import {
-  CLUB, VISIBLE_COURTS, dayHours, freeCourtsAt, firstFreeHour,
-  priceAt, fmt, hh, type Court,
+  CLUB, COURTS, VISIBLE_COURTS, slotsFor, maxRun, priceRange,
+  courtById, fmt, hh, type Court,
 } from '../../src/data';
-import { IMG, HERO } from '../../src/images';
-import { IconCalendar, IconChevron, IconCheck } from '../../src/components/icons';
+import { IMG } from '../../src/images';
+import { IconCalendar, IconBall, IconChevron } from '../../src/components/icons';
 
-const NOW = 18;          // ЗАГЛУШКА: «текущий час»
-const OFFLINE = false;
-const STRIP_H = 78;      // высота ленты часов — фиксированная, иначе растягивается
+const NOW = 18;              // ЗАГЛУШКА: «текущий час»
+const DAYS = [
+  { key: 0, w: 'Сегодня', d: '2' }, { key: 1, w: 'Ср', d: '3' }, { key: 2, w: 'Чт', d: '4' },
+  { key: 3, w: 'Пт', d: '5' }, { key: 4, w: 'Сб', d: '6' },
+];
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
-  const [loading, setLoading] = useState(true);
-  const [hour, setHour] = useState<number | null>(null);
-  const [court, setCourt] = useState<Court | null>(null);
-  const [picker, setPicker] = useState(false);
+  const [day, setDay] = useState(0);
+  const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
+  const [hours, setHours] = useState(1);
 
-  const hours = useMemo(() => dayHours(NOW), []);
-  const open = hours.filter(h => !h.past);
-  const anyFree = open.some(h => h.free > 0);
+  // Сегодня прошедшие часы не показываем, для других дней — весь день
+  const from = day === 0 ? NOW : CLUB.openHour;
+  const rows = useMemo(() => {
+    const out: number[] = [];
+    for (let h = from; h < CLUB.closeHour; h++) out.push(h);
+    return out;
+  }, [from]);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setLoading(false);
-      const f = firstFreeHour(NOW);
-      if (f != null) setHour(f);
-    }, 520);
-    return () => clearTimeout(t);
-  }, []);
+  const gap = 4, padH = 14, timeW = 40;
 
-  const free = hour != null ? freeCourtsAt(hour, NOW) : [];
-  const assigned = court && free.some(c => c.id === court.id) ? court : free[0] ?? null;
-  const price = hour != null && assigned ? priceAt(assigned, hour) : 0;
+  const statuses = useMemo(() => {
+    const m: Record<string, Record<number, string>> = {};
+    for (const c of COURTS) {
+      m[c.id] = {};
+      for (const s of slotsFor(c.id, from)) m[c.id][s.hour] = s.status;
+    }
+    return m;
+  }, [from]);
 
-  // На коротких экранах жертвуем воздухом вокруг заголовка, фото тянется само
-  const tight = height < 760;
+  const court = sel ? courtById(sel.courtId) : null;
+  const run = sel ? maxRun(sel.courtId, sel.hour) : 0;
+  const total = sel && court ? priceRange(court, sel.hour, hours) : 0;
+  const freeNow = VISIBLE_COURTS.filter(c => statuses[c.id]?.[from] === 'free').length;
 
-  const pick = (h: number, ok: boolean) => {
-    if (!ok) return;
+  const tap = (c: Court, h: number) => {
+    if (c.off || statuses[c.id]?.[h] !== 'free') return;
     Haptics.selectionAsync();
-    setHour(h);
-    setCourt(null);
+    setSel({ courtId: c.id, hour: h });
+    setHours(prev => Math.min(prev, maxRun(c.id, h)) || 1);
+  };
+
+  const pickHours = (n: number) => {
+    if (!sel || n > run) return;
+    Haptics.selectionAsync();
+    setHours(n);
   };
 
   const book = () => {
-    if (hour == null || !assigned) return;
+    if (!sel || !court) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/court', params: { id: assigned.id, hour: String(hour) } });
+    router.push({ pathname: '/book', params: { courtId: court.id, name: court.name,
+      hour: String(sel.hour), hours: String(hours), price: String(total) } });
   };
 
-  if (loading) return <Skeleton top={insets.top} tight={tight} />;
+  // Клетка входит в выбранный отрезок?
+  const inRange = (cId: string, h: number) =>
+    !!sel && sel.courtId === cId && h >= sel.hour && h < sel.hour + hours;
 
   return (
     <View style={[st.root, { paddingTop: insets.top + 4 }]}>
 
-      {/* дата */}
       <View style={st.header}>
         <View style={{ flex: 1 }}>
-          <Text style={st.hDate}>Сегодня, 2 сентября</Text>
-          <Text style={st.hSub}>вторник · {CLUB.name}</Text>
+          <Text style={st.hDate}>
+            {day === 0 ? 'Сегодня, 2 сентября' : `${DAYS[day].w}, ${DAYS[day].d} сентября`}
+          </Text>
+          <Text style={st.hSub}>
+            {day === 0 ? 'вторник · ' : ''}свободно {freeNow} из {VISIBLE_COURTS.length} площадок
+          </Text>
         </View>
         <Pressable hitSlop={6} onPress={() => Haptics.selectionAsync()}
           style={({ pressed }) => [st.calBtn, pressed && { opacity: 0.7 }]}>
@@ -80,171 +91,140 @@ export default function Home() {
         </Pressable>
       </View>
 
-      {OFFLINE && (
-        <View style={st.offline}>
-          <Text style={st.offlineT}>
-            Нет связи. Расписание на <Text style={{ fontWeight: '700' }}>18:12</Text>.
-          </Text>
-        </View>
-      )}
+      <View style={st.days}>
+        {DAYS.map(d => {
+          const on = day === d.key;
+          return (
+            <Pressable key={d.key}
+              onPress={() => { Haptics.selectionAsync(); setDay(d.key); setSel(null); setHours(1) }}
+              style={[st.day, on && st.dayOn]}>
+              <Text style={[st.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{d.w}</Text>
+              <Text style={[st.dayD, on && { color: C.onLime }]}>{d.d}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
-      {!anyFree ? <AllBusy /> : (
-        <>
-          {/* главная цифра */}
-          <View style={[st.headline, tight && { paddingTop: 12, paddingBottom: 10 }]}>
-            <Text style={st.time} allowFontScaling maxFontSizeMultiplier={1.3}>
-              <Text style={{ color: C.lime }}>{hour != null ? hh(hour) : '—'}</Text>
-              <Text style={{ color: C.dim }}>{hour != null ? ` – ${hh(hour + 1)}` : ''}</Text>
-            </Text>
-            <View style={st.meta}>
-              <View style={st.dot} />
-              <Text style={st.metaT}>
-                <Text style={{ color: C.text, fontWeight: '700' }}>{free.length}</Text>
-                <Text> из {VISIBLE_COURTS.length} свободно</Text>
-              </Text>
-              <Text style={st.metaSep}>·</Text>
-              <Text style={st.metaT}>{fmt(price)} за час</Text>
+      <View style={{ paddingHorizontal: padH }}>
+        <View style={[st.headRow, { gap }]}>
+          <View style={{ width: timeW }} />
+          {COURTS.map(c => (
+            <View key={c.id} style={st.headCell}>
+              {c.football
+                ? <IconBall size={15} color={c.off ? C.busy : C.dim} />
+                : <Text style={[st.headT, c.off && { color: C.busy }]}>
+                    К{c.name.replace(/\D/g, '')}
+                  </Text>}
             </View>
-          </View>
+          ))}
+        </View>
+      </View>
 
-          {/* фотография — фиксированный кадр 4:3, вокруг гибкий воздух */}
-          <View style={st.air} />
-          <View style={st.photoBox}>
-            <Image source={assigned ? IMG[assigned.id] : HERO}
-              style={st.photo} resizeMode="cover" />
-            <View style={st.photoScrim} />
+      <ScrollView style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: padH, paddingBottom: 10 }}
+        showsVerticalScrollIndicator={false}>
+        {rows.map(h => (
+          <View key={h} style={[st.row, { gap }]}>
+            <Text style={[st.time, { width: timeW }]}>{hh(h)}</Text>
+            {COURTS.map(c => {
+              const stt = statuses[c.id]?.[h];
+              const free = !c.off && stt === 'free';
+              const on = inRange(c.id, h);
+              const start = !!sel && sel.courtId === c.id && sel.hour === h;
+              return (
+                <Pressable key={c.id} disabled={!free} onPress={() => tap(c, h)}
+                  accessibilityRole="button"
+                  accessibilityLabel={c.off ? `${c.name}, закрыт`
+                    : free ? `${c.name}, ${hh(h)}, свободно` : `${c.name}, ${hh(h)}, занято`}
+                  accessibilityState={{ selected: on, disabled: !free }}
+                  style={({ pressed }) => [st.cell,
+                    c.off ? st.cellOff : free ? st.cellFree : st.cellBusy,
+                    on && st.cellOn,
+                    pressed && free && !on && { backgroundColor: C.surface3 }]}>
+                  {c.off ? null
+                    : on ? (start ? <View style={st.dotOn} /> : <View style={st.barOn} />)
+                    : free ? <View style={st.dotFree} />
+                    : <View style={st.dashBusy} />}
+                </Pressable>
+              );
+            })}
           </View>
-          <View style={st.air} />
+        ))}
 
-          {/* лента часов — фиксированная высота */}
-          <Text style={[st.label, tight && { marginBottom: 8 }]}>Во сколько играть</Text>
-          <View style={{ height: STRIP_H }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={st.strip}>
-              {open.map(h => {
-                const on = hour === h.hour;
-                const ok = h.free > 0;
+        <View style={st.legend}>
+          <Leg label="свободно" free />
+          <Leg label="занято" />
+          <Leg label="закрыт" dashed />
+        </View>
+        <Text style={st.note}>Корт 6 закрыт до 5 сентября — ремонт покрытия</Text>
+      </ScrollView>
+
+      <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
+        {sel && court ? (
+          <>
+            <Pressable
+              onPress={() => router.push({ pathname: '/court',
+                params: { id: court.id, hour: String(sel.hour) } })}
+              style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
+              <Image source={IMG[court.id]} style={st.pickPh} resizeMode="cover" />
+              <View style={{ flex: 1 }}>
+                <Text style={st.pickN}>{court.name}</Text>
+                <Text style={st.pickS}>
+                  {hh(sel.hour)} – {hh(sel.hour + hours)} · {fmt(total)}
+                </Text>
+              </View>
+              <IconChevron size={15} color={C.dim2} />
+            </Pressable>
+
+            <View style={st.durRow}>
+              {[1, 2, 3].map(n => {
+                const ok = n <= run;
+                const on = hours === n;
                 return (
-                  <Pressable key={h.hour} disabled={!ok} onPress={() => pick(h.hour, ok)}
-                    accessibilityRole="button"
-                    accessibilityLabel={ok
-                      ? `${hh(h.hour)}, свободно ${h.free}`
-                      : `${hh(h.hour)}, занято`}
+                  <Pressable key={n} disabled={!ok} onPress={() => pickHours(n)}
                     accessibilityState={{ selected: on, disabled: !ok }}
-                    style={({ pressed }) => [st.chip, on && st.chipOn, !ok && st.chipOff,
-                      pressed && ok && !on && { backgroundColor: C.surface2 }]}>
-                    <Text style={[st.chipH, on && { color: C.onLime }, !ok && { color: C.busy }]}>
-                      {String(h.hour).padStart(2, '0')}
-                    </Text>
-                    <Text style={[st.chipN, on && { color: 'rgba(11,15,12,.7)' }, !ok && { color: C.busy }]}>
-                      {ok ? `${h.free} своб.` : 'занято'}
+                    style={[st.dur, on && st.durOn, !ok && st.durOff]}>
+                    <Text style={[st.durT, on && { color: C.onLime }, !ok && { color: C.busy }]}>
+                      {n} {n === 1 ? 'час' : 'часа'}
                     </Text>
                   </Pressable>
                 );
               })}
-            </ScrollView>
-          </View>
+            </View>
 
-          {/* нижняя панель: стекло там, где под ней проезжает лента */}
-          <BlurView intensity={Platform.OS === 'ios' ? 34 : 0} tint="dark"
-            style={[st.bottom, { paddingBottom: insets.bottom + 14 }]}>
-            {assigned && (
-              <Pressable onPress={() => { if (free.length > 1) { Haptics.selectionAsync(); setPicker(true) } }}
-                disabled={free.length < 2}
-                style={({ pressed }) => [st.courtRow, pressed && { opacity: 0.65 }]}>
-                <View style={st.courtDot} />
-                <Text style={st.courtT}>{assigned.name}</Text>
-                {free.length > 1 && (
-                  <>
-                    <Text style={st.courtHint}>заменить</Text>
-                    <IconChevron size={15} color={C.dim2} />
-                  </>
-                )}
-              </Pressable>
-            )}
-            <Pressable onPress={book} disabled={!assigned} accessibilityRole="button"
-              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}>
-              <Text style={st.ctaT}>
-                {hour != null ? `Записаться на ${hh(hour)}` : 'Выберите время'}
+            {run < 3 && (
+              <Text style={st.warn}>
+                {run === 1
+                  ? `В ${hh(sel.hour + 1)} площадка занята — свободен только один час.`
+                  : `В ${hh(sel.hour + run)} площадка занята — подряд можно взять ${run} часа.`}
               </Text>
+            )}
+
+            <Pressable onPress={book} accessibilityRole="button"
+              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
+              <Text style={st.ctaT}>Записаться · {fmt(total)}</Text>
             </Pressable>
-          </BlurView>
-        </>
-      )}
-
-      {/* выбор площадки */}
-      <Modal visible={picker} transparent animationType="slide"
-        onRequestClose={() => setPicker(false)}>
-        <Pressable style={st.scrim} onPress={() => setPicker(false)} />
-        <View style={[st.sheet, { paddingBottom: insets.bottom + 18 }]}>
-          <View style={st.grab} />
-          <Text style={st.sheetT}>Свободно в {hour != null ? hh(hour) : ''}</Text>
-          <Text style={st.sheetS}>Площадки одинаковые — можно любую</Text>
-          {free.map(c => {
-            const on = assigned?.id === c.id;
-            return (
-              <Pressable key={c.id}
-                onPress={() => { Haptics.selectionAsync(); setCourt(c); setPicker(false) }}
-                style={({ pressed }) => [st.row, on && st.rowOn, pressed && { opacity: 0.8 }]}>
-                <Image source={IMG[c.id]} style={st.rowPh} resizeMode="cover" />
-                <Text style={st.rowN}>{c.name}</Text>
-                {on && <View style={st.check}><IconCheck size={13} /></View>}
-                <Text style={st.rowP}>{fmt(priceAt(c, hour ?? 19))}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Modal>
-    </View>
-  );
-}
-
-/* загрузка — скелет, а не крутилка */
-function Skeleton({ top, tight }: { top: number; tight: boolean }) {
-  return (
-    <View style={[st.root, { paddingTop: top + 4 }]}>
-      <View style={st.header}>
-        <View style={{ flex: 1 }}>
-          <View style={[st.sk, { width: 168, height: 15 }]} />
-          <View style={[st.sk, { width: 118, height: 11, marginTop: 7 }]} />
-        </View>
-        <View style={[st.sk, { width: HIT, height: HIT, borderRadius: R.md }]} />
-      </View>
-      <View style={[st.headline, tight && { paddingTop: 12, paddingBottom: 10 }]}>
-        <View style={[st.sk, { width: 226, height: 42 }]} />
-        <View style={[st.sk, { width: 190, height: 13, marginTop: 12 }]} />
-      </View>
-      <View style={st.air} />
-      <View style={st.photoBox}>
-        <View style={[st.sk, { flex: 1, borderRadius: R.xl }]} />
-      </View>
-      <View style={st.air} />
-      <View style={[st.sk, { width: 128, height: 13, marginHorizontal: S.xl, marginTop: 22 }]} />
-      <View style={{ height: STRIP_H, flexDirection: 'row', gap: 9, paddingHorizontal: S.xl, marginTop: 10 }}>
-        {[0, 1, 2, 3, 4].map(i => <View key={i} style={[st.sk, { width: 66, height: STRIP_H - 8 }]} />)}
-      </View>
-      <View style={st.bottom}>
-        <View style={[st.sk, { width: 130, height: 13, marginBottom: 12 }]} />
-        <View style={[st.sk, { height: 54, borderRadius: R.lg }]} />
+          </>
+        ) : (
+          <>
+            <Text style={st.empty}>Нажмите свободное время на нужной площадке</Text>
+            <View style={[st.cta, st.ctaOff]}>
+              <Text style={[st.ctaT, { color: C.dim2 }]}>Записаться</Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
 }
 
-/* всё занято */
-function AllBusy() {
+function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: boolean }) {
   return (
-    <View style={st.busy}>
-      <Text style={st.busyT}>Сегодня всё занято</Text>
-      <Text style={st.busyS}>Вечер вторника — самое загруженное время недели.</Text>
-      <View style={st.busyCard}>
-        <Text style={st.busyK}>ЗАВТРА С УТРА</Text>
-        <Text style={st.busyV}>08:00 · 2 500 ₽</Text>
-        <Text style={st.busySub}>дешевле на 2 000 ₽</Text>
-      </View>
-      <Pressable style={st.busyBtn} onPress={() => router.push('/grid')}>
-        <Text style={st.busyBtnT}>Посмотреть другие дни</Text>
-      </Pressable>
+    <View style={st.leg}>
+      <View style={[st.legBox,
+        free && { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
+        dashed && { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line }]} />
+      <Text style={st.legT}>{label}</Text>
     </View>
   );
 }
@@ -252,81 +232,62 @@ function AllBusy() {
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
 
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: S.xl, paddingBottom: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: S.xl },
   hDate: { color: C.text, fontSize: 15.5, fontWeight: '700', letterSpacing: -0.1 },
   hSub: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
-  calBtn: { width: HIT, height: HIT, borderRadius: R.md, borderWidth: 1,
-    borderColor: C.line, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  calBtn: { width: HIT, height: HIT, borderRadius: R.md, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
 
-  offline: { marginHorizontal: S.xl, marginTop: 10, paddingVertical: 10, paddingHorizontal: 13,
-    borderRadius: R.md, backgroundColor: 'rgba(240,169,59,.1)',
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.3)' },
-  offlineT: { color: '#DFCCA8', fontSize: 12.5, lineHeight: 18 },
+  days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginTop: 14, marginBottom: 16 },
+  day: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
+    borderRadius: R.md, paddingVertical: 8, alignItems: 'center', minHeight: 46 },
+  dayOn: { backgroundColor: C.lime, borderColor: C.lime },
+  dayW: { color: C.dim2, fontSize: 9.5, fontWeight: '700', letterSpacing: 0.4 },
+  dayD: { color: C.text, fontSize: 17, fontWeight: '700', marginTop: 1 },
 
-  headline: { paddingHorizontal: S.xl, paddingTop: 22, paddingBottom: 18 },
-  time: { fontSize: 42, fontWeight: '800', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 9, flexWrap: 'wrap' },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.lime },
-  metaT: { color: C.dim, fontSize: 13.5 },
-  metaSep: { color: C.line, fontSize: 13.5 },
+  headRow: { flexDirection: 'row', paddingBottom: 8 },
+  headCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
 
-  air: { flex: 1, minHeight: 0 },
-  photoBox: { marginHorizontal: S.xl, aspectRatio: 1, flexShrink: 1, minHeight: 130,
-    borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface },
-  photo: { width: '100%', height: '100%' },
-  photoScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(11,15,12,.10)' },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  time: { color: C.dim2, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  cell: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'transparent' },
+  cellFree: { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
+  cellBusy: { backgroundColor: C.surface, opacity: 0.55 },
+  cellOff: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line },
+  cellOn: { backgroundColor: C.lime, borderColor: C.lime, opacity: 1 },
+  dotFree: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.lime },
+  dotOn: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.onLime },
+  barOn: { width: 12, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(11,15,12,.5)' },
+  dashBusy: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.busy },
 
-  label: { color: C.dim, fontSize: 13, fontWeight: '600',
-    paddingHorizontal: S.xl, marginTop: 0, marginBottom: 11 },
-  strip: { paddingHorizontal: S.xl, gap: 9 },
-  chip: { width: 66, height: STRIP_H - 8, borderRadius: R.lg, alignItems: 'center',
-    justifyContent: 'center', borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  chipOn: { backgroundColor: C.lime, borderColor: C.lime },
-  chipOff: { opacity: 0.4, backgroundColor: 'transparent' },
-  chipH: { color: C.text, fontSize: 21, fontWeight: '700', fontVariant: ['tabular-nums'],
-    letterSpacing: -0.5 },
-  chipN: { color: C.dim2, fontSize: 11, marginTop: 3 },
+  legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 2 },
+  leg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legBox: { width: 14, height: 14, borderRadius: 5, borderWidth: 1,
+    borderColor: C.line, backgroundColor: C.surface },
+  legT: { color: C.dim2, fontSize: 11.5 },
+  note: { color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 2 },
 
-  bottom: { paddingHorizontal: S.xl, paddingTop: 14, paddingBottom: 6,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(14,19,13,.72)' : C.ink2 },
-  courtRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 11, minHeight: 22 },
-  courtDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.greenMid },
-  courtT: { color: C.text, fontSize: 13.5, fontWeight: '600', flex: 1 },
-  courtHint: { color: C.dim2, fontSize: 12.5 },
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17, alignItems: 'center' },
-  ctaT: { color: C.onLime, fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
+  bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: C.ink2,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+  empty: { color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
 
-  scrim: { flex: 1, backgroundColor: 'rgba(4,7,5,.68)' },
-  sheet: { backgroundColor: C.ink2, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    borderTopWidth: 1, borderColor: C.line, paddingHorizontal: S.xl, paddingTop: 12 },
-  grab: { width: 38, height: 4, borderRadius: 2, backgroundColor: C.lineStrong,
-    alignSelf: 'center', marginBottom: 18, opacity: 0.6 },
-  sheetT: { color: C.text, fontSize: 20, fontWeight: '700' },
-  sheetS: { color: C.dim2, fontSize: 13, marginTop: 3, marginBottom: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 9,
-    paddingHorizontal: 10, marginBottom: 7, borderRadius: R.lg, borderWidth: 1,
-    borderColor: C.lineSoft, backgroundColor: C.surface, minHeight: 62 },
-  rowOn: { borderColor: C.lime, backgroundColor: 'rgba(198,240,51,.06)' },
-  rowPh: { width: 42, height: 42, borderRadius: 11, overflow: 'hidden' },
-  rowN: { color: C.text, fontSize: 15.5, fontWeight: '600', flex: 1 },
-  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.lime,
-    alignItems: 'center', justifyContent: 'center' },
-  rowP: { color: C.dim2, fontSize: 13, fontVariant: ['tabular-nums'] },
+  pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
+  pickPh: { width: 38, height: 38, borderRadius: 12 },
+  pickN: { color: C.text, fontSize: 15, fontWeight: '700' },
+  pickS: { color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
 
-  sk: { backgroundColor: C.surface2, borderRadius: R.md },
+  durRow: { flexDirection: 'row', gap: 7, marginBottom: 11 },
+  dur: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
+    borderRadius: R.md, paddingVertical: 10, alignItems: 'center', minHeight: 42 },
+  durOn: { backgroundColor: C.lime, borderColor: C.lime },
+  durOff: { opacity: 0.4, borderStyle: 'dashed' },
+  durT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
 
-  busy: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  busyT: { color: C.text, fontSize: 25, fontWeight: '800' },
-  busyS: { color: C.dim, fontSize: 14.5, textAlign: 'center', marginTop: 9, lineHeight: 21 },
-  busyCard: { alignSelf: 'stretch', marginTop: 24, padding: 16, borderRadius: R.lg,
-    borderWidth: 1, borderColor: 'rgba(198,240,51,.3)', backgroundColor: 'rgba(198,240,51,.06)' },
-  busyK: { color: C.limeDim, fontSize: 11, fontWeight: '700', letterSpacing: 0.9 },
-  busyV: { color: C.text, fontSize: 18, fontWeight: '700', marginTop: 5 },
-  busySub: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
-  busyBtn: { alignSelf: 'stretch', marginTop: 12, paddingVertical: 16, borderRadius: R.lg,
-    borderWidth: 1, borderColor: C.lineStrong, alignItems: 'center' },
-  busyBtnT: { color: C.text, fontSize: 15.5, fontWeight: '600' },
+  warn: { color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
+
+  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 16, alignItems: 'center' },
+  ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
+  ctaT: { color: C.onLime, fontSize: 16.5, fontWeight: '700', letterSpacing: -0.2 },
 });

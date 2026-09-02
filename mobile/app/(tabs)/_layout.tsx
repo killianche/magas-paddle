@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { C } from '../../src/theme';
-import { IconHome, IconGrid, IconTrophy, IconRacket } from '../../src/components/icons';
+import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
 export default function TabsLayout() {
   return (
@@ -22,12 +22,10 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 3 },
         sceneStyle: { backgroundColor: C.ink },
       }}>
+      {/* Расписание больше не отдельная вкладка: сетка стоит на главной */}
       <Tabs.Screen name="index" options={{
-        title: 'Главная', headerShown: false,
+        title: 'Запись', headerShown: false,
         tabBarIcon: ({ color, focused }) => <IconHome color={color as string} active={focused} /> }} />
-      <Tabs.Screen name="grid" options={{
-        title: 'Расписание',
-        tabBarIcon: ({ color, focused }) => <IconGrid color={color as string} active={focused} /> }} />
       <Tabs.Screen name="tournaments" options={{
         title: 'Турниры',
         tabBarIcon: ({ color, focused }) => <IconTrophy color={color as string} active={focused} /> }} />
