@@ -36,3 +36,35 @@ export function cancelBooking(id: string) {
   bookings = bookings.filter(b => b.id !== id);
   emit();
 }
+
+/* ── Записи на турнир ──────────────────────────────────────────────────────
+   Заказчику нужен минимум: записался, видит что записан и когда играть.
+   Всё остальное — сетка, результаты — происходит вживую.                    */
+
+export type Entry = { tournamentId: string; createdAt: number };
+
+let entries: Entry[] = [];
+const eListeners = new Set<() => void>();
+const eEmit = () => eListeners.forEach(l => l());
+
+function eSubscribe(l: () => void) { eListeners.add(l); return () => { eListeners.delete(l) } }
+function getEntries() { return entries }
+
+export function useEntries() {
+  return useSyncExternalStore(eSubscribe, getEntries, getEntries);
+}
+
+export function isEntered(tournamentId: string) {
+  return entries.some(e => e.tournamentId === tournamentId);
+}
+
+export function enterTournament(tournamentId: string) {
+  if (isEntered(tournamentId)) return;
+  entries = [{ tournamentId, createdAt: Date.now() }, ...entries];
+  eEmit();
+}
+
+export function leaveTournament(tournamentId: string) {
+  entries = entries.filter(e => e.tournamentId !== tournamentId);
+  eEmit();
+}

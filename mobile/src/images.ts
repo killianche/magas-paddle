@@ -11,3 +11,11 @@ export const IMG: Record<string, any> = {
 };
 export const HERO = require('../assets/img/hero.webp');
 export const TOURN = require('../assets/img/tourn.webp');
+
+// Обложки турниров. Менеджер меняет их из админки — здесь это просто ключ в данных.
+export const TOURN_IMG: Record<string, any> = {
+  t1: require('../assets/img/t1.webp'),
+  t2: require('../assets/img/t2.webp'),
+  t3: require('../assets/img/t3.webp'),
+  t4: require('../assets/img/t4.webp'),
+};
