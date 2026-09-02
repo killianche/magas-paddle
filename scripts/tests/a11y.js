@@ -11,11 +11,11 @@ let fails=0; const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fail
     const btns = [...document.querySelectorAll('[role="button"]')];
     return { total: btns.length,
       noName: btns.filter(e => !(e.getAttribute('aria-label')||e.innerText||'').trim()).length,
-      cta: !!btns.find(e => (e.innerText||'').includes('Выбрать время')),
+      cta: !!btns.find(e => (e.innerText||'').trim() === 'Записаться'),
       courts: btns.filter(e => /Корт \d/.test(e.getAttribute('aria-label')||'')).length };
   });
   ok(h.noName === 0, `все ${h.total} кнопок главной озвучены`);
-  ok(h.cta, 'есть большая кнопка «Выбрать время»');
+  ok(h.cta, 'есть большая кнопка «Записаться»');
   ok(h.courts >= 5, `карточки площадок подписаны: ${h.courts}`);
 
   await p.goto(`${B}/schedule`,{waitUntil:'networkidle'}); await p.waitForTimeout(1600);

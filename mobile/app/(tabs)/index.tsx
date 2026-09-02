@@ -1,7 +1,7 @@
-// Главная — витрина клуба, а не таблица. Задача экрана: за секунду показать,
-// есть ли сегодня место, и увести в выбор времени одной большой кнопкой.
-// Сама сетка живёт на отдельном экране /schedule.
-import { ScrollView, Text, View, Pressable, StyleSheet, Image } from 'react-native';
+// Главная — витрина клуба. Открывается большим приветственным блоком во всю ширину,
+// как первый экран сайта: фотография, обращение и кнопка действия прямо на ней.
+// Сетка часов живёт отдельно, на /schedule.
+import { ScrollView, Text, View, Pressable, StyleSheet, Image, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -27,6 +27,7 @@ function plural(n: number, one: string, few: string, many: string) {
 
 export default function Home() {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const bookings = useBookings();
   const entries = useEntries();
 
@@ -41,6 +42,7 @@ export default function Home() {
 
   const tourn = TOURNAMENTS.find(t => t.state === 'open');
   const active = bookings.filter(b => b.status !== 'cancelled');
+  const heroH = Math.max(430, Math.min(height * 0.62, 560));
 
   const go = (path: string, params?: Record<string, string>) => {
     Haptics.selectionAsync();
@@ -51,45 +53,59 @@ export default function Home() {
     <ScrollView style={st.root} contentContainerStyle={{ paddingBottom: 34 }}
       showsVerticalScrollIndicator={false}>
 
-      <View style={[st.top, { paddingTop: insets.top + 10 }]}>
-        <Mark size={26} />
-        <View style={{ flex: 1 }}>
-          <Text style={st.brand}>{CLUB.name}</Text>
-          <Text style={st.city}>{CLUB.city}</Text>
-        </View>
-        <Text style={st.today}>Вт, 2 сен</Text>
-      </View>
-
-      {/* Главное: есть ли место сегодня */}
-      <View style={st.hero}>
+      {/* Приветственный блок во всю ширину */}
+      <View style={[st.hero, { height: heroH }]}>
         <Image source={HERO} style={st.heroImg} resizeMode="cover" />
         <LinearGradient
-          colors={['rgba(9,13,10,.30)', 'rgba(9,13,10,.72)', 'rgba(9,13,10,.96)']}
-          locations={[0, 0.48, 1]} style={st.heroScrim} />
+          colors={['rgba(9,13,10,.78)', 'rgba(9,13,10,.30)', 'rgba(9,13,10,.80)', 'rgba(9,13,10,.97)']}
+          locations={[0, 0.34, 0.72, 1]} style={st.heroScrim} />
+
+        <View style={[st.brandRow, { paddingTop: insets.top + 10 }]}>
+          <Mark size={26} />
+          <Text style={st.brand}>{CLUB.name}</Text>
+          <Text style={st.date}>Вт, 2 сен</Text>
+        </View>
+
         <View style={st.heroIn}>
+          <Text style={st.eyebrow}>ДОБРО ПОЖАЛОВАТЬ</Text>
+          <Text style={st.title}>Приходите{'\n'}играть в падел</Text>
+          <Text style={st.lede}>
+            Шесть кортов и мини-футбольное поле в Магасе.
+            Открыты с {hh(CLUB.openHour)} до полуночи.
+          </Text>
+
+          <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
+            style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
+            <Text style={st.ctaT}>Записаться</Text>
+          </Pressable>
+
           <View style={st.live}>
             <View style={st.liveDot} />
-            <Text style={st.liveT}>СЕЙЧАС СВОБОДНО {freeNow} ИЗ {VISIBLE_COURTS.length}</Text>
+            <Text style={st.liveT}>
+              {soonest != null
+                ? `Сейчас свободно ${freeNow} из ${VISIBLE_COURTS.length} · ближайшее в ${hh(soonest)}`
+                : 'На сегодня всё занято — посмотрите другие дни'}
+            </Text>
           </View>
-          <Text style={st.heroBig}>
-            {freeHours} {plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}
-          </Text>
-          <Text style={st.heroSub}>
-            {soonest != null
-              ? `Ближайшее время — ${hh(soonest)}. Корт на час, с ${hh(CLUB.openHour)} до полуночи.`
-              : 'На сегодня всё занято. Посмотрите следующие дни.'}
-          </Text>
         </View>
       </View>
 
-      {/* Главное действие */}
-      <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
-        style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
-        <Text style={st.ctaT}>Выбрать время</Text>
-        <Text style={st.ctaS}>Все площадки и часы на одном экране</Text>
+      {/* Сколько всего осталось сегодня */}
+      <Pressable onPress={() => go('/schedule')}
+        style={({ pressed }) => [st.bandWrap, pressed && { opacity: 0.85 }]}>
+        <View style={st.band}>
+          <Text style={st.bandBig}>{freeHours}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={st.bandT}>
+              {plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')} сегодня
+            </Text>
+            <Text style={st.bandS}>смотреть свободные слоты</Text>
+          </View>
+          <IconChevron size={16} color={C.dim} />
+        </View>
       </Pressable>
 
-      {/* Активные записи — если они есть, это важнее витрины */}
+      {/* Активные записи важнее витрины */}
       {(active.length > 0 || entries.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
           style={({ pressed }) => [st.mine, pressed && { opacity: 0.8 }]}>
@@ -117,8 +133,7 @@ export default function Home() {
         <Text style={st.secT}>Площадки</Text>
         <Text style={st.secS}>{VISIBLE_COURTS.length} штук</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={st.strip}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.strip}>
         {VISIBLE_COURTS.map(c => {
           const free = nextFree(c.id, NOW);
           return (
@@ -128,7 +143,7 @@ export default function Home() {
               style={({ pressed }) => [st.card, pressed && { opacity: 0.85 }]}>
               <Image source={IMG[c.id]} style={st.cardImg} resizeMode="cover" />
               <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.9)']}
-                locations={[0.35, 1]} style={st.cardScrim} />
+                locations={[0.35, 1]} style={st.fill} />
               <View style={st.cardIn}>
                 <Text style={st.cardN}>{c.name}</Text>
                 <Text style={st.cardS}>
@@ -155,9 +170,9 @@ export default function Home() {
           </View>
           <Pressable onPress={() => go('/tournament', { id: tourn.id })}
             style={({ pressed }) => [st.tourn, pressed && { opacity: 0.88 }]}>
-            <Image source={TOURN_IMG[tourn.cover]} style={st.tournImg} resizeMode="cover" />
+            <Image source={TOURN_IMG[tourn.cover]} style={st.cardImg} resizeMode="cover" />
             <LinearGradient colors={['rgba(9,13,10,.15)', 'rgba(9,13,10,.9)']}
-              locations={[0.3, 1]} style={st.cardScrim} />
+              locations={[0.3, 1]} style={st.fill} />
             <View style={st.tournIn}>
               <Text style={st.tournN}>{tourn.name}</Text>
               <Text style={st.tournS}>
@@ -195,32 +210,40 @@ function InfoRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
+  fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
-  top: { flexDirection: 'row', alignItems: 'center', gap: 11,
-    paddingHorizontal: S.xl, paddingBottom: 16 },
-  brand: { color: C.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
-  city: { color: C.dim2, fontSize: 12, marginTop: 1 },
-  today: { color: C.dim, fontSize: 13, fontWeight: '600' },
-
-  hero: { marginHorizontal: S.xl, height: 300, borderRadius: 26, overflow: 'hidden',
-    justifyContent: 'flex-end', backgroundColor: C.surface },
+  hero: { justifyContent: 'space-between', overflow: 'hidden',
+    borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: C.surface },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  heroIn: { padding: 20 },
-  live: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    borderWidth: 1, borderColor: 'rgba(198,240,51,.45)', backgroundColor: 'rgba(198,240,51,.12)',
-    borderRadius: 8, paddingVertical: 4, paddingHorizontal: 9, marginBottom: 12 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
-  liveT: { color: C.lime, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.7 },
-  heroBig: { color: C.text, fontSize: 31, fontWeight: '800', letterSpacing: -0.8, lineHeight: 35,
-    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 12 },
-  heroSub: { color: '#CBD5C2', fontSize: 13.5, lineHeight: 19, marginTop: 7,
-    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 8 },
 
-  cta: { marginHorizontal: S.xl, marginTop: 14, backgroundColor: C.lime,
-    borderRadius: R.xl, paddingVertical: 17, alignItems: 'center', minHeight: HIT },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
+  brand: { color: C.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.2, flex: 1 },
+  date: { color: '#C3CDBB', fontSize: 13, fontWeight: '600' },
+
+  heroIn: { paddingHorizontal: S.xl, paddingBottom: 24 },
+  eyebrow: { color: C.lime, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.4, marginBottom: 10 },
+  title: { color: C.text, fontSize: 36, fontWeight: '800', letterSpacing: -1, lineHeight: 40,
+    textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 14 },
+  lede: { color: '#CBD5C2', fontSize: 14, lineHeight: 20, marginTop: 10,
+    textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 8 },
+
+  cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 18,
+    alignItems: 'center', marginTop: 20, minHeight: HIT },
   ctaT: { color: C.onLime, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
-  ctaS: { color: 'rgba(11,15,12,.62)', fontSize: 12, marginTop: 3, fontWeight: '600' },
+
+  live: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, justifyContent: 'center' },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
+  liveT: { color: '#C3CDBB', fontSize: 12.5, fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 6 },
+
+  bandWrap: { paddingHorizontal: S.xl, marginTop: 18 },
+  band: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 15,
+    borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, minHeight: 74 },
+  bandBig: { color: C.lime, fontSize: 30, fontWeight: '800', fontVariant: ['tabular-nums'],
+    letterSpacing: -1 },
+  bandT: { color: C.text, fontSize: 15, fontWeight: '700' },
+  bandS: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 11, marginHorizontal: S.xl, marginTop: 10,
     padding: 12, borderRadius: R.lg, borderWidth: 1, borderColor: 'rgba(198,240,51,.28)',
@@ -242,7 +265,6 @@ const st = StyleSheet.create({
   card: { width: 154, height: 190, borderRadius: R.xl, overflow: 'hidden',
     backgroundColor: C.surface, justifyContent: 'flex-end' },
   cardImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  cardScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   cardIn: { padding: 12 },
   cardN: { color: C.text, fontSize: 15, fontWeight: '700' },
   cardS: { color: C.lime, fontSize: 12, marginTop: 2, fontWeight: '600' },
@@ -252,7 +274,6 @@ const st = StyleSheet.create({
 
   tourn: { marginHorizontal: S.xl, height: 148, borderRadius: R.xl, overflow: 'hidden',
     justifyContent: 'flex-end', backgroundColor: C.surface },
-  tournImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   tournIn: { padding: 15 },
   tournN: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.2 },
   tournS: { color: '#CBD5C2', fontSize: 12.5, marginTop: 3, fontWeight: '600' },

@@ -53,8 +53,8 @@ const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
 
   console.log('\n5. ВРЕМЯ УВЕЛИ');
   await p.getByText('Запись').last().click(); await p.waitForTimeout(1100);
-  ok((await txt()).includes('Выбрать время'), 'на главной есть кнопка «Выбрать время»');
-  await p.getByRole('button',{name:/^Выбрать время/}).click(); await p.waitForTimeout(1300);
+  ok((await txt()).includes('Приходите'), 'на главной приветственный блок');
+  await p.getByRole('button',{name:'Записаться'}).click(); await p.waitForTimeout(1300);
   ok((await txt()).includes('свободно'), 'кнопка открыла сетку');
   await p.getByRole('button',{name:/Корт 5, 21:00, свободно/}).click(); await p.waitForTimeout(500);
   await p.getByText(/Записаться ·/).locator("visible=true").last().click(); await p.waitForTimeout(1200);
