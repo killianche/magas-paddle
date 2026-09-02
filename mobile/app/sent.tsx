@@ -4,10 +4,19 @@ import { IconCheck } from '../src/components/icons';
 import { C, R, S } from '../src/theme';
 import { fmt, hh, CLUB } from '../src/data';
 import { Card, Row, Btn } from '../src/components/ui';
+import { ScreenSkeleton, NotFound } from '../src/components/state';
+import { useHydrated } from '../src/hydrated';
 
 export default function Sent() {
   const p = useLocalSearchParams<{ name: string; hour: string; hours: string; price: string }>();
+  const hydrated = useHydrated();
   const hour = Number(p.hour ?? 19), hours = Number(p.hours ?? 1);
+
+  if (!hydrated) return <ScreenSkeleton />;
+  if (!p.name || !p.hour) return (
+    <NotFound title="Заявки здесь нет"
+      note="Похоже, вы открыли ссылку напрямую. Отправленные заявки лежат в «Моих записях»." />
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: C.ink, paddingTop: 70 }}>

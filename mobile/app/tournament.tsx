@@ -11,14 +11,21 @@ import { tournamentById, fmt, CLUB } from '../src/data';
 import { TOURN_IMG } from '../src/images';
 import { IconCheck } from '../src/components/icons';
 import { useEntries, isEntered, enterTournament, leaveTournament } from '../src/store';
+import { ScreenSkeleton, NotFound } from '../src/components/state';
+import { useHydrated } from '../src/hydrated';
 
 export default function TournamentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = tournamentById(String(id));
+  const hydrated = useHydrated();
   useEntries();                        // перерисовка при записи и отмене
   const [justEntered, setJustEntered] = useState(false);
 
-  if (!t) return null;
+  if (!hydrated) return <ScreenSkeleton />;
+  if (!t) return (
+    <NotFound title="Турнир не найден"
+      note="Возможно, он уже прошёл и его убрали. Все турниры — во вкладке «Турниры»." />
+  );
 
   const entered = isEntered(t.id);
   const left = t.total - t.taken - (entered ? 1 : 0);

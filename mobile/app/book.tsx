@@ -11,9 +11,12 @@ import { Card, Row, Btn } from '../src/components/ui';
 import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
 import { addBooking } from '../src/store';
+import { ScreenSkeleton, NotFound } from '../src/components/state';
+import { useHydrated } from '../src/hydrated';
 
 export default function Book() {
   const p = useLocalSearchParams<{ courtId: string; name: string; hour: string; hours: string; price: string }>();
+  const hydrated = useHydrated();
   const courtId = String(p.courtId ?? 'c1');
   const hour = Number(p.hour ?? 19);
   const hours = Number(p.hours ?? 1);
@@ -21,6 +24,7 @@ export default function Book() {
 
   // Слот могли занять, пока человек заполнял заявку. Экран должен это пережить.
   const [taken, setTaken] = useState(false);
+  const missing = !p.courtId || !p.name || !p.hour;
 
   const go = (cId: string, cName: string, h: number, sum: number) => {
     addBooking({ courtId: cId, courtName: cName, hour: h, hours, price: sum });
@@ -37,6 +41,12 @@ export default function Book() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     go(courtId, String(p.name), hour, total);
   };
+
+  if (!hydrated) return <ScreenSkeleton />;
+  if (missing) return (
+    <NotFound title="Заявка не собрана"
+      note="Похоже, вы открыли ссылку напрямую. Выберите время и площадку на главной." />
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: C.ink }}>

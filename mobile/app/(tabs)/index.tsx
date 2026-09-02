@@ -14,6 +14,15 @@ import { IMG } from '../../src/images';
 import { IconCalendar, IconBall, IconChevron } from '../../src/components/icons';
 
 const NOW = 18;              // ЗАГЛУШКА: «текущий час»
+
+/** Русские окончания: 1 час, 2 часа, 5 часов. */
+function plural(n: number, one: string, few: string, many: string) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
 const DAYS = [
   { key: 0, w: 'Сегодня', d: '2' }, { key: 1, w: 'Ср', d: '3' }, { key: 2, w: 'Чт', d: '4' },
   { key: 3, w: 'Пт', d: '5' }, { key: 4, w: 'Сб', d: '6' },
@@ -33,7 +42,7 @@ export default function Home() {
     return out;
   }, [from]);
 
-  const gap = 4, padH = 14, timeW = 40;
+  const gap = 3, padH = 10, timeW = 32;
 
   const statuses = useMemo(() => {
     const m: Record<string, Record<number, string>> = {};
@@ -47,7 +56,10 @@ export default function Home() {
   const court = sel ? courtById(sel.courtId) : null;
   const run = sel ? maxRun(sel.courtId, sel.hour) : 0;
   const total = sel && court ? priceRange(court, sel.hour, hours) : 0;
+  // Сегодня важно «что свободно прямо сейчас», в другой день — сколько всего часов
   const freeNow = VISIBLE_COURTS.filter(c => statuses[c.id]?.[from] === 'free').length;
+  const freeHours = VISIBLE_COURTS.reduce(
+    (n, c) => n + rows.filter(h => statuses[c.id]?.[h] === 'free').length, 0);
 
   const tap = (c: Court, h: number) => {
     if (c.off || statuses[c.id]?.[h] !== 'free') return;
@@ -82,7 +94,9 @@ export default function Home() {
             {day === 0 ? 'Сегодня, 2 сентября' : `${DAYS[day].w}, ${DAYS[day].d} сентября`}
           </Text>
           <Text style={st.hSub}>
-            {day === 0 ? 'вторник · ' : ''}свободно {freeNow} из {VISIBLE_COURTS.length} площадок
+            {day === 0
+              ? `вторник · сейчас свободно ${freeNow} из ${VISIBLE_COURTS.length}`
+              : `свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
           </Text>
         </View>
         <Pressable hitSlop={6} onPress={() => Haptics.selectionAsync()}
@@ -135,6 +149,7 @@ export default function Home() {
                 <Pressable key={c.id} disabled={!free} onPress={() => tap(c, h)}
                   accessibilityRole="button"
                   accessibilityLabel={c.off ? `${c.name}, закрыт`
+                    : on ? `${c.name}, ${hh(h)}, выбрано`
                     : free ? `${c.name}, ${hh(h)}, свободно` : `${c.name}, ${hh(h)}, занято`}
                   accessibilityState={{ selected: on, disabled: !free }}
                   style={({ pressed }) => [st.cell,
@@ -250,7 +265,7 @@ const st = StyleSheet.create({
   headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
 
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  time: { color: C.dim2, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  time: { color: C.dim2, fontSize: 10.5, fontVariant: ['tabular-nums'] },
   cell: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'transparent' },
   cellFree: { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
@@ -262,12 +277,12 @@ const st = StyleSheet.create({
   barOn: { width: 12, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(11,15,12,.5)' },
   dashBusy: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.busy },
 
-  legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 2 },
+  legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 6 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legBox: { width: 14, height: 14, borderRadius: 5, borderWidth: 1,
     borderColor: C.line, backgroundColor: C.surface },
   legT: { color: C.dim2, fontSize: 11.5 },
-  note: { color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 2 },
+  note: { color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 6 },
 
   bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: C.ink2,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },

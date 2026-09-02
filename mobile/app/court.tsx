@@ -6,6 +6,8 @@ import { C, R, S, HIT } from '../src/theme';
 import { courtById, slotsFor, maxRun, priceRange, priceAt, fmt, hh, CLUB } from '../src/data';
 import { IMG } from '../src/images';
 import { Btn } from '../src/components/ui';
+import { ScreenSkeleton, NotFound } from '../src/components/state';
+import { useHydrated } from '../src/hydrated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const NOW = 18;
@@ -16,6 +18,7 @@ const DAYS = [
 
 export default function CourtScreen() {
   const { id, hour: preset } = useLocalSearchParams<{ id: string; hour?: string }>();
+  const hydrated = useHydrated();
   const court = courtById(String(id));
   const [day, setDay] = useState(0);
   const [start, setStart] = useState<number | null>(preset ? Number(preset) : null);
@@ -29,7 +32,11 @@ export default function CourtScreen() {
   // Сколько часов подряд доступно от выбранного начала
   const run = start != null ? maxRun(String(id), start) : 0;
 
-  if (!court) return null;
+  if (!hydrated) return <ScreenSkeleton />;
+  if (!court) return (
+    <NotFound title="Площадка не найдена"
+      note="Возможно, её убрали из расписания. Свободное время всех площадок — на главной." />
+  );
 
   const pickStart = (h: number) => {
     Haptics.selectionAsync();
