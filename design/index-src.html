@@ -1,0 +1,273 @@
+<title>Padel Magas</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{
+  --ink:#0B0F0C;--ink-2:#12180F;--surface:#171E16;--surface-2:#212A1F;
+  --line:#2C3729;--line-soft:#222B20;--line-strong:#576D51;
+  --lime:#C6F033;--lime-dim:#9BC020;--green-deep:#1B5E20;--green-mid:#3DA84A;
+  --text:#EDF2E9;--dim:#9AA795;--dim-2:#889085;--amber:#F0A93B;
+  --disp:'Oswald','Arial Narrow',sans-serif;
+  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 90px}
+
+/* ---------- герой ---------- */
+.hero{padding:74px 0 0;position:relative}
+.mark{width:58px;height:67px;margin-bottom:24px;display:block}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--lime);margin:0 0 16px}
+h1{font-family:var(--disp);font-weight:600;font-size:clamp(40px,7vw,68px);line-height:1;margin:0 0 18px;letter-spacing:.005em;text-wrap:balance}
+h1 span{display:block;color:var(--dim);font-weight:400;font-size:.46em;margin-top:12px;letter-spacing:.01em}
+.lede{font-size:17px;color:var(--dim);margin:0;max-width:56ch}
+
+/* ---------- главный вход ---------- */
+.primary{
+  display:grid;grid-template-columns:1fr 260px;gap:0;margin:46px 0 0;
+  border:1px solid rgba(198,240,51,.4);border-radius:24px;overflow:hidden;text-decoration:none;color:inherit;
+  background:linear-gradient(103deg,rgba(198,240,51,.11),rgba(198,240,51,.03) 62%,transparent);
+  transition:border-color .2s,transform .2s,box-shadow .2s;
+}
+.primary:hover,.primary:focus-visible{border-color:var(--lime);transform:translateY(-3px);box-shadow:0 26px 60px -30px rgba(198,240,51,.4)}
+.primary:focus-visible{outline:2px solid var(--lime);outline-offset:4px}
+.p-b{padding:30px 32px 32px}
+.p-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;background:var(--lime);color:#0B0F0C;border-radius:7px;padding:5px 11px;font-weight:600;margin-bottom:18px}
+.p-t{font-family:var(--disp);font-size:34px;font-weight:600;letter-spacing:.005em;line-height:1.08;margin-bottom:12px}
+.p-d{font-size:15px;color:var(--dim);max-width:44ch;margin-bottom:20px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:820px){.duo{grid-template-columns:1fr}}
+.p-go{display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:var(--lime)}
+.p-vis{position:relative;background:linear-gradient(160deg,#22532C,#0C1A10 78%);overflow:hidden;display:grid;place-items:center}
+.p-vis .mini{width:132px;height:250px;border-radius:22px;border:1px solid rgba(198,240,51,.34);background:var(--ink);
+  padding:8px 7px;box-shadow:0 18px 40px -14px rgba(0,0,0,.85);transform:rotate(-4deg) translateY(14px)}
+.p-vis .mrow{height:24px;border-radius:6px;background:var(--surface);margin-bottom:5px;display:flex;align-items:center;padding:0 5px;gap:4px}
+.p-vis .mrow i{width:14px;height:14px;border-radius:4px;background:#2A5F35;flex:none}
+.p-vis .mrow b{flex:1;height:5px;border-radius:3px;background:var(--line)}
+.p-vis .mrow s{width:26px;height:12px;border-radius:4px;background:var(--lime);flex:none}
+.p-vis .mrow.d s{background:var(--line-strong)}
+.p-vis .mhero{height:58px;border-radius:9px;background:linear-gradient(150deg,#2F6B3A,#14301B);margin-bottom:7px}
+
+/* ---------- вторичные ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.sec-card{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:18px;
+  padding:22px 24px;background:var(--surface);transition:border-color .18s,transform .18s}
+.sec-card:hover,.sec-card:focus-visible{border-color:var(--line-strong);transform:translateY(-2px)}
+.sec-card:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.sec-card .n{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lime-dim);margin-bottom:10px}
+.sec-card .t{font-family:var(--disp);font-size:21px;font-weight:600;letter-spacing:.005em;margin-bottom:7px}
+.sec-card .d{font-size:13.5px;color:var(--dim);line-height:1.55}
+.sec-card .g{font-size:13px;color:var(--lime);margin-top:14px;display:inline-block}
+
+/* ---------- доказательства ---------- */
+h2{font-family:var(--disp);font-weight:600;font-size:26px;letter-spacing:.005em;margin:72px 0 8px}
+.sub{color:var(--dim);margin:0 0 26px;max-width:62ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px}
+.fact{border:1px solid var(--line);border-radius:16px;padding:19px 20px;background:var(--surface)}
+.fact .v{font-family:var(--disp);font-size:33px;font-weight:600;line-height:1;color:var(--lime);margin-bottom:9px}
+.fact .k{font-size:13.5px;font-weight:600;margin-bottom:5px}
+.fact .x{font-size:12.5px;color:var(--dim-2);line-height:1.5}
+
+.finds{border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-top:16px;background:var(--surface)}
+.find{display:flex;gap:16px;padding:17px 21px;align-items:flex-start}
+.find+.find{border-top:1px solid var(--line-soft)}
+.find .i{width:30px;height:30px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:14px;flex:none;margin-top:1px}
+.find .c b{display:block;font-size:14.5px;font-weight:600;margin-bottom:4px}
+.find .c p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.55}
+.find .c em{font-style:normal;color:#B9C7B2}
+
+/* ---------- статус ---------- */
+.steps{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.steps li{display:flex;gap:15px;align-items:center;padding:13px 19px;font-size:14px}
+.steps li+li{border-top:1px solid var(--line-soft)}
+.steps .n{font-family:var(--mono);font-size:11px;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;
+  flex:none;border:1px solid var(--line);color:var(--dim-2)}
+.steps .tx{flex:1;color:var(--dim)}
+.steps .st{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:7px;flex:none;white-space:nowrap}
+.steps li.done .n{background:var(--lime);color:#0B0F0C;border-color:var(--lime);font-weight:600}
+.steps li.done .tx{color:var(--text)}
+.steps li.done .st{background:rgba(198,240,51,.12);color:var(--lime);border:1px solid rgba(198,240,51,.3)}
+.steps li.now .n{border-color:var(--amber);color:var(--amber)}
+.steps li.now .tx{color:var(--text)}
+.steps li.now .st{background:rgba(240,169,59,.13);color:var(--amber);border:1px solid rgba(240,169,59,.32)}
+.steps li.todo .st{background:var(--surface-2);color:var(--dim-2);border:1px solid var(--line)}
+
+.note{margin:26px 0 0;padding:17px 21px;border-radius:15px;background:rgba(240,169,59,.08);
+  border:1px solid rgba(240,169,59,.28);display:flex;gap:15px;align-items:flex-start}
+.note .tg{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--amber);border:1px solid rgba(240,169,59,.45);
+  border-radius:6px;padding:3px 8px;flex:none;margin-top:2px}
+.note p{margin:0;font-size:14px;color:#E4D6BC;line-height:1.6}
+
+.foot{margin-top:58px;padding-top:22px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:18px;
+  justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--dim-2)}
+.foot b{color:var(--dim);font-weight:400}
+
+@media(max-width:820px){
+  .primary{grid-template-columns:1fr}
+  .p-vis{height:170px;order:-1}
+  .p-vis .mini{transform:rotate(-4deg) translateY(34px) scale(.9)}
+  .two{grid-template-columns:1fr}
+  .hero{padding:48px 0 0}
+  .wrap{padding:0 18px 60px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <svg class="mark" viewBox="0 0 26 30" fill="none" aria-hidden="true">
+    <path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z" fill="#1B5E20" stroke="#C6F033" stroke-width="1.3"/>
+    <path d="M8.4 19.6 17 9.6M17.6 19.6 9 9.6" stroke="#EDF2E9" stroke-width="1.9" stroke-linecap="round"/>
+    <circle cx="13" cy="7.4" r="1.9" fill="#C6F033"/>
+  </svg>
+  <p class="eyebrow">Падел-центр · Магас · 6 кортов и мини-футбольное поле</p>
+  <h1>Padel Magas<span>Мобильное приложение и админка</span></h1>
+  <p class="lede">Приложение для игроков — записаться на корт в два нажатия. Веб-админка для менеджера — расписание, заявки, турниры, клиенты.</p>
+</header>
+
+<a class="primary" href="/demo.html">
+  <div class="p-b">
+    <span class="p-tag">● Работает — нажимается</span>
+    <div class="p-t">Открыть прототип</div>
+    <p class="p-d">Не картинки, а рабочее приложение. Запишитесь на корт, отмените бронь, посмотрите, что происходит, когда слот увели или пропал интернет.</p>
+    <span class="p-go">Попробовать →</span>
+  </div>
+  <div class="p-vis">
+    <div class="mini">
+      <div class="mhero"></div>
+      <div class="mrow"><i></i><b></b><s></s></div>
+      <div class="mrow"><i></i><b></b><s></s></div>
+      <div class="mrow d"><i></i><b></b><s></s></div>
+      <div class="mrow"><i></i><b></b><s></s></div>
+      <div class="mrow d"><i></i><b></b><s></s></div>
+      <div class="mrow"><i></i><b></b><s></s></div>
+    </div>
+  </div>
+</a>
+
+<div class="duo">
+  <a class="primary" style="grid-template-columns:1fr;margin:0" href="/admin-demo.html">
+    <div class="p-b" style="padding:26px 26px 28px">
+      <span class="p-tag">● Работает — связана с приложением</span>
+      <div class="p-t" style="font-size:27px">Админка менеджера</div>
+      <p class="p-d" style="font-size:14px;margin-bottom:16px">Отправьте заявку в прототипе — она появится здесь за секунду. Подтвердите, и в приложении статус сменится на «Подтверждено». Петля замкнута.</p>
+      <span class="p-go" style="font-size:14px">Открыть →</span>
+    </div>
+  </a>
+  <div style="border:1px solid var(--line);border-radius:24px;padding:26px;background:var(--surface);display:flex;flex-direction:column;gap:14px">
+    <div style="font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim-2)">Статичные макеты с обоснованием</div>
+    <a href="/app.html" style="text-decoration:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-soft)">
+      <span><b style="display:block;font-family:var(--disp);font-size:18px;font-weight:600">Приложение</b>
+      <i style="font-style:normal;font-size:12.5px;color:var(--dim-2)">15 экранов, каждый с объяснением</i></span>
+      <span style="color:var(--lime);font-size:16px">→</span></a>
+    <a href="/admin.html" style="text-decoration:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 0 4px">
+      <span><b style="display:block;font-family:var(--disp);font-size:18px;font-weight:600">Админка</b>
+      <i style="font-style:normal;font-size:12.5px;color:var(--dim-2)">7 экранов, включая турниры и цены</i></span>
+      <span style="color:var(--lime);font-size:16px">→</span></a>
+  </div>
+</div>
+
+<div class="two" style="display:none">
+  <a class="sec-card" href="/app.html">
+    <div class="n">15 экранов · с обоснованием</div>
+    <div class="t">Макеты приложения</div>
+    <p class="d">Каждый экран с объяснением, почему сделан именно так, со ссылками на исследование. Включая все состояния ошибок.</p>
+    <span class="g">Смотреть →</span>
+  </a>
+  <a class="sec-card" href="/admin.html">
+    <div class="n">7 экранов · десктоп</div>
+    <div class="t">Админка менеджера</div>
+    <p class="d">Расписание дня, подтверждение заявок, отмена с освобождением времени, карточка клиента с историей, турниры, цены.</p>
+    <span class="g">Смотреть →</span>
+  </a>
+</div>
+
+<h2>Что уже проработано</h2>
+<p class="sub">Продукт спроектирован не на глаз. Ниже — то, что стоит за каждым решением.</p>
+
+<div class="facts">
+  <div class="fact">
+    <div class="v">1 470</div>
+    <div class="k">отзывов конкурентов разобрано</div>
+    <div class="x">Playtomic, MATCHi, Padel Mates, ClubSpark, CourtReserve. Из них выделены 14 антипаттернов — того, что мы точно не повторяем</div>
+  </div>
+  <div class="fact">
+    <div class="v">2</div>
+    <div class="k">нажатия до записи</div>
+    <div class="x">Британская теннисная ассоциация считает эталоном четыре нажатия. У нас два, потому что нет ни входа, ни оплаты в приложении</div>
+  </div>
+  <div class="fact">
+    <div class="v">11</div>
+    <div class="k">решений зафиксировано</div>
+    <div class="x">Каждое с обоснованием и следствиями. Плюс реестр из 33 вопросов со статусами — ничего не реализуется поверх открытого вопроса</div>
+  </div>
+  <div class="fact">
+    <div class="v">6</div>
+    <div class="k">исследований с источниками</div>
+    <div class="x">Конкуренты, публикация в сторах, инфраструктура, мессенджеры, отмены и неявки, правила платформы iOS</div>
+  </div>
+</div>
+
+<h2>Находки, которые изменили продукт</h2>
+<p class="sub">То, что нашлось при проверке и без чего приложение получилось бы хуже или вовсе не запустилось.</p>
+
+<div class="finds">
+  <div class="find">
+    <span class="i">⛔</span>
+    <div class="c"><b>WhatsApp заблокирован в России с 11 февраля 2026</b>
+    <p>Исключён из Национальной системы доменных имён, Роскомнадзор 15 июля подтвердил, что снимать ограничения не планирует. <em>Поэтому заявка создаётся в системе и попадает в админку до того, как открывается мессенджер — работа клуба не зависит от того, дошло ли сообщение.</em></p></div>
+  </div>
+  <div class="find">
+    <span class="i">📱</span>
+    <div class="c"><b>Правило Apple 4.2.3(i) отклонило бы первую версию</b>
+    <p>Дословно: «приложение должно работать самостоятельно, не требуя установки другого приложения». Если бы записью занимался только WhatsApp, приложение не прошло бы ревью. <em>Обнаружено на этапе проектирования, а не после отказа.</em></p></div>
+  </div>
+  <div class="find">
+    <span class="i">🔒</span>
+    <div class="c"><b>Защита от двойной брони — в самой базе данных</b>
+    <p>Проверка «свободен ли слот» в коде под одновременными запросами не работает — отсюда отзывы «деньги списали, а корт показан свободным» у Playtomic. <em>У нас ограничение целостности PostgreSQL физически не даст создать две пересекающиеся брони.</em></p></div>
+  </div>
+  <div class="find">
+    <span class="i">📡</span>
+    <div class="c"><b>Отключения мобильного интернета в Ингушетии</b>
+    <p>Во время отключения не работают ни приложение, ни мессенджеры — в «белом списке» Минцифры их нет. <em>Поэтому расписание кэшируется с честной отметкой времени, а телефон клуба вынесен на ключевые экраны.</em></p></div>
+  </div>
+  <div class="find">
+    <span class="i">📊</span>
+    <div class="c"><b>Два напоминания вместо одного — минус четверть неявок</b>
+    <p>Рандомизированное исследование на 54 066 участниках: напоминания за сутки и за 2 часа дают 4,4% неявок против 5,8% при одном. Отдельно проверено — второе не раздражает. <em>Значение по умолчанию у YCLIENTS — за час до визита — по этим данным сильно поздно.</em></p></div>
+  </div>
+  <div class="find">
+    <span class="i">👤</span>
+    <div class="c"><b>История клиента вместо штрафов за отмену</b>
+    <p>Систематический обзор 105 исследований называет прошлые неявки человека главным предсказателем будущей. <em>Менеджер видит «играл 6 раз, 4 отмены, 2 неявки» прямо на карточке заявки — тот же сигнал, ради которого другие клубы вводят предоплату, но без трения для честного большинства.</em></p></div>
+  </div>
+</div>
+
+<h2>Где мы сейчас</h2>
+<ol class="steps">
+  <li class="done"><span class="n">1</span><span class="tx">Исследование: конкуренты, публикация, инфраструктура, платформа iOS</span><span class="st">Готово</span></li>
+  <li class="done"><span class="n">2</span><span class="tx">Дизайн, рабочий прототип приложения и админки со сквозным сценарием</span><span class="st">Готово</span></li>
+  <li class="now"><span class="n">3</span><span class="tx">Данные клуба: часы работы, цены, номер WhatsApp, фотографии кортов</span><span class="st">Ждём</span></li>
+  <li class="todo"><span class="n">4</span><span class="tx">Бэкенд: модель данных, сетка слотов, API</span><span class="st">Дальше</span></li>
+  <li class="todo"><span class="n">5</span><span class="tx">Админка — раньше приложения, менеджер должен уметь работать</span><span class="st">Дальше</span></li>
+  <li class="todo"><span class="n">6</span><span class="tx">Приложение iOS и Android</span><span class="st">Дальше</span></li>
+  <li class="todo"><span class="n">7</span><span class="tx">Публикация в App Store и RuStore</span><span class="st">Дальше</span></li>
+</ol>
+
+<div class="note">
+  <span class="tg">Данные</span>
+  <p><b>Цифры и имена в прототипе — заглушки.</b> Названия кортов, цены, часы работы, клиенты, даты турниров подставлены для демонстрации. Фотографии — свободные лицензии Pexels и Unsplash, чужие корты. Как появятся настоящие данные и снимки ваших площадок, подставляются за час.</p>
+</div>
+
+<div class="foot">
+  <span>Версия <b>0.5</b> · 31 августа 2026</span>
+  <span>Страница закрыта от поисковых систем</span>
+</div>
+
+</div>

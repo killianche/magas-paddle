@@ -1,0 +1,911 @@
+<title>Макеты Padel Magas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#0B0F0C; --ink-2:#12180F; --surface:#171E16; --surface-2:#212A1F;
+  --line:#2C3729; --line-soft:#222B20; --line-strong:#576D51;
+  --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A;
+  --text:#EDF2E9; --dim:#9AA795; --dim-2:#889085;
+  --amber:#F0A93B; --busy:#869182; --red:#E5644B;
+  --disp:'Oswald','Arial Narrow',sans-serif;
+  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+.wrap{max-width:1320px;margin:0 auto;padding:0 24px 100px}
+
+/* ---------- page chrome ---------- */
+.masthead{padding:60px 0 38px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:32px;align-items:flex-end;justify-content:space-between}
+.mast-l{max-width:640px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--lime);margin:0 0 14px}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(38px,6vw,62px);line-height:1.02;margin:0 0 18px;text-transform:uppercase;text-wrap:balance}
+h1 .thin{color:var(--dim);font-weight:400}
+.lede{font-size:16px;color:var(--dim);margin:0;max-width:58ch}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);line-height:2;text-align:right;white-space:nowrap}
+.meta b{color:var(--text);font-weight:500}
+.warn{margin:34px 0 0;padding:18px 22px;border-radius:14px;background:rgba(240,169,59,.09);border:1px solid rgba(240,169,59,.32);display:flex;gap:16px;align-items:flex-start}
+.warn-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--amber);border:1px solid rgba(240,169,59,.5);border-radius:5px;padding:3px 8px;flex:none;margin-top:2px}
+.warn p{margin:0;font-size:14.5px;color:#E7D9BE}
+.warn p+p{margin-top:8px}
+.warn.ok{background:rgba(198,240,51,.07);border-color:rgba(198,240,51,.28)}
+.warn.ok .warn-tag{color:var(--lime);border-color:rgba(198,240,51,.45)}
+.warn.ok p{color:#CBDDBE}
+
+h2{font-family:var(--disp);font-weight:600;font-size:30px;text-transform:uppercase;letter-spacing:.02em;margin:0 0 6px}
+.sec{padding:64px 0 0}
+.sec-note{color:var(--dim);margin:0 0 32px;max-width:74ch;font-size:15px}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.band{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--lime);margin:0 0 12px}
+
+/* ---------- screen grid ---------- */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:50px 38px}
+.item{display:flex;flex-direction:column;gap:19px}
+.item-h{display:flex;gap:12px;align-items:baseline}
+.item-n{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--lime);border-radius:5px;padding:3px 7px;font-weight:600;flex:none;line-height:1.2}
+.item-n.warn-n{background:var(--amber)}
+.item-t{font-family:var(--disp);font-size:20px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;margin:0}
+.why{border-left:2px solid var(--green-mid);padding:2px 0 2px 15px;font-size:13.5px;color:var(--dim);line-height:1.62}
+.why b{color:var(--text);font-weight:600}
+.why .q{color:#B9C7B2;font-style:italic}
+.why.alert{border-left-color:var(--amber)}
+
+/* ---------- phone ---------- */
+.phone{width:340px;max-width:100%;background:var(--ink-2);border:1px solid var(--line);border-radius:36px;padding:9px;box-shadow:0 24px 60px -24px rgba(0,0,0,.9)}
+.scr{background:var(--ink);border-radius:28px;overflow:hidden;height:668px;display:flex;flex-direction:column;position:relative}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:11px 20px 5px;font-family:var(--mono);font-size:11px;color:var(--text);flex:none}
+.sbar .ic{display:flex;gap:4px;align-items:center;opacity:.85}
+.sbar .bat{width:19px;height:10px;border:1px solid var(--text);border-radius:3px;position:relative}
+.sbar .bat::after{content:"";position:absolute;inset:1.5px;background:var(--text);border-radius:1px}
+.body-s{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.mock{position:absolute;top:9px;right:9px;z-index:6;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;background:rgba(240,169,59,.16);color:var(--amber);border:1px solid rgba(240,169,59,.4);border-radius:5px;padding:3px 7px}
+
+/* app header */
+.ahead{display:flex;align-items:center;gap:10px;padding:6px 16px 12px;flex:none}
+.mark{width:26px;height:30px;flex:none}
+.brandtxt{font-family:var(--disp);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;line-height:1;flex:1}
+.brandtxt em{display:block;font-style:normal;font-size:9px;color:var(--green-mid);letter-spacing:.3em;font-weight:500;margin-top:2px}
+.ibtn{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:14px;flex:none;position:relative;color:var(--text)}
+.dot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink)}
+
+/* photo hero */
+.hero{margin:0 16px;border-radius:18px;overflow:hidden;position:relative;height:140px;flex:none;background:#16321C center/cover no-repeat}
+.hero.h-court{background-image:linear-gradient(178deg,rgba(11,15,12,.05) 26%,rgba(11,15,12,.93) 100%),url('/img/hero-court.webp')}
+.hero.h-racket{background-image:linear-gradient(178deg,rgba(11,15,12,.05) 26%,rgba(11,15,12,.93) 100%),url('/img/hero-racket.webp')}
+.hero-in{position:absolute;left:0;right:0;bottom:0;padding:12px 15px}
+.hero-k{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;color:var(--lime);text-transform:uppercase}
+.hero-big{font-family:var(--disp);font-size:28px;font-weight:700;text-transform:uppercase;line-height:1;margin-top:4px;text-shadow:0 2px 14px rgba(0,0,0,.6)}
+.hero-big span{color:var(--lime)}
+.hero-sub{font-size:11.5px;color:#C5CFBE;margin-top:3px}
+
+/* QUICK BOOK — 2 taps */
+.qb{margin:12px 16px 0;border-radius:14px;padding:11px 13px;flex:none;display:flex;align-items:center;gap:12px;
+  background:linear-gradient(97deg,rgba(198,240,51,.16),rgba(198,240,51,.05) 70%);border:1px solid rgba(198,240,51,.42)}
+.qb-i{width:34px;height:34px;border-radius:10px;background:var(--lime);color:#0B0F0C;display:grid;place-items:center;font-size:16px;flex:none}
+.qb-t{flex:1;min-width:0}
+.qb-k{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--lime-dim)}
+.qb-v{font-size:13px;font-weight:600;line-height:1.25;margin-top:1px}
+.qb-v em{font-style:normal;font-family:var(--mono);color:var(--lime)}
+.qb-go{font-size:17px;color:var(--lime);flex:none}
+
+/* section label */
+.slab{display:flex;align-items:baseline;justify-content:space-between;padding:18px 16px 9px;flex:none}
+.slab-t{font-family:var(--disp);font-size:14px;font-weight:600;letter-spacing:.01em}
+.slab-a{font-family:var(--mono);font-size:10.5px;color:var(--lime)}
+
+/* court rows with photo */
+.rows{display:flex;flex-direction:column;gap:7px;padding:0 16px;overflow:hidden}
+.crow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-soft);border-radius:13px;padding:8px 9px 8px 8px}
+.crow.free{border-color:rgba(198,240,51,.3)}
+.cthumb{width:44px;height:44px;border-radius:9px;flex:none;background:#1B3D22 center/cover no-repeat;position:relative;overflow:hidden}
+.cthumb.t-court{background-image:url('/img/card-court.webp')}
+.cthumb.t-racket{background-image:url('/img/card-racket.webp')}
+.cthumb.t-ball{background:linear-gradient(140deg,#2F7A38,#123018)}
+.cthumb i{position:absolute;left:0;bottom:0;width:100%;height:3px;background:var(--busy)}
+.crow.free .cthumb i{background:var(--lime)}
+.crow.soon .cthumb i{background:var(--amber)}
+.cinfo{flex:1;min-width:0}
+.cname{font-family:var(--disp);font-size:14.5px;font-weight:600;letter-spacing:.005em;line-height:1.15}
+.ctype{font-size:10px;color:var(--dim-2);margin-top:1px}
+/* TAPPABLE time chip */
+.tchip{flex:none;border-radius:10px;padding:6px 10px;text-align:center;border:1px solid var(--line);background:var(--surface-2)}
+.tchip .k{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim-2);display:block}
+.tchip .v{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--busy);line-height:1.2;display:block;margin-top:1px}
+.tchip.free{background:var(--lime);border-color:var(--lime)}
+.tchip.free .k{color:rgba(11,15,12,.6)}
+.tchip.free .v{color:#0B0F0C}
+.tchip.soon{border-color:rgba(240,169,59,.45)}
+.tchip.soon .v{color:var(--amber)}
+
+/* tabbar */
+.tabs{display:flex;justify-content:space-around;align-items:center;padding:9px 8px 13px;border-top:1px solid var(--line-soft);background:var(--ink-2);flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--dim-2);font-size:9px}
+.tab .g{font-size:16px;line-height:1;filter:grayscale(1) opacity(.6)}
+.tab.on{color:var(--lime)}
+.tab.on .g{filter:none}
+
+/* headers */
+.shead{display:flex;align-items:center;gap:12px;padding:6px 16px 14px;flex:none}
+.back{width:30px;height:30px;border-radius:9px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:14px;flex:none}
+.shead-t{font-family:var(--disp);font-size:17px;font-weight:600;letter-spacing:.005em}
+
+/* grid screen */
+.gnav{display:flex;align-items:center;justify-content:space-between;padding:0 16px 12px;flex:none}
+.gnav-d{font-family:var(--disp);font-size:17px;font-weight:600;letter-spacing:.005em;text-align:center}
+.gnav-d em{font-style:normal;color:var(--dim-2);font-size:11px;display:block;letter-spacing:.02em;font-family:var(--body);text-transform:none;font-weight:400}
+.arw{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:12px;color:var(--dim)}
+.gwrap{padding:0 12px;overflow:hidden}
+.gtab{width:100%;border-collapse:separate;border-spacing:2px}
+.gtab th{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--dim);padding:0 0 5px;text-align:center}
+.gtab th.tcol{width:40px;text-align:left;padding-left:2px}
+.gtab td{padding:0}
+.gtab td.tcell{font-family:var(--mono);font-size:10px;color:var(--dim-2);width:40px;vertical-align:middle}
+.cell{height:26px;border-radius:5px;background:var(--surface-2);border:1px solid transparent;
+  display:grid;place-items:center;font-family:var(--mono);font-size:8px;font-weight:600}
+.cell.f::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--lime)}
+.cell.b::after{content:"";width:9px;height:1.5px;border-radius:1px;background:var(--busy)}
+.cell.x::after{content:"\2715";color:var(--dim-2);font-size:7.5px}
+.cell.sel::after{content:"";width:6px;height:6px;border-radius:50%;background:#0B0F0C}
+.cell.f{background:rgba(198,240,51,.17);border-color:rgba(198,240,51,.36)}
+.cell.b{background:var(--surface);opacity:.55}
+.cell.x{background:repeating-linear-gradient(45deg,var(--surface) 0 3px,var(--line) 3px 5px)}
+.cell.sel{background:var(--lime);border-color:var(--lime)}
+.leg{display:flex;flex-wrap:wrap;gap:11px;padding:13px 16px 0;flex:none}
+.leg span{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim)}
+.lg{width:13px;height:13px;border-radius:4px;flex:none}
+
+/* chips / days / slots */
+.chips{display:flex;gap:7px;padding:0 16px 14px;flex:none;overflow:hidden}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;font-family:var(--mono);font-size:11.5px;color:var(--dim);flex:none}
+.chip.on{background:var(--lime);border-color:var(--lime);color:#0B0F0C;font-weight:600}
+.days{display:flex;gap:6px;padding:0 16px 16px;flex:none}
+.day{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:8px 0;text-align:center}
+.day.on{background:var(--lime);border-color:var(--lime)}
+.day .dw{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;color:var(--dim-2);text-transform:uppercase}
+.day .dd{font-family:var(--disp);font-size:16px;font-weight:600;line-height:1.1;margin-top:1px}
+.day.on .dw{color:rgba(11,15,12,.62)}
+.day.on .dd{color:#0B0F0C}
+.flab{font-family:var(--body);font-size:12.5px;font-weight:600;letter-spacing:.005em;color:var(--dim);padding:0 16px 8px;flex:none}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 16px;flex:none}
+.slot{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:9px 0;text-align:center}
+.slot .st{font-family:var(--mono);font-size:13px;font-weight:600;line-height:1.2}
+.slot .sp{font-size:9.5px;color:var(--dim-2);margin-top:2px}
+.slot.free{border-color:rgba(198,240,51,.32)}
+.slot.free .st{color:var(--lime)}
+.slot.busy{opacity:.42}
+.slot.busy .st{color:var(--busy);text-decoration:line-through}
+.slot.on{background:var(--lime);border-color:var(--lime)}
+.slot.on .st{color:#0B0F0C}
+.slot.on .sp{color:rgba(11,15,12,.66)}
+
+/* bottom bar */
+.bbar{margin-top:auto;padding:13px 16px 16px;border-top:1px solid var(--line-soft);background:var(--ink-2);display:flex;align-items:center;gap:12px;flex:none}
+.bprice{flex:1;min-width:0}
+.bprice .k{font-family:var(--body);font-size:11px;color:var(--dim-2);line-height:1.3}
+.bprice .v{font-family:var(--mono);font-size:19px;font-weight:600;line-height:1.15}
+.bprice .per{font-size:10.5px;color:var(--dim-2);font-family:var(--body);margin-top:1px}
+.btn{background:var(--lime);color:#0B0F0C;border:0;border-radius:12px;padding:13px 20px;font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.005em;flex:none}
+.btn.wide{width:100%;text-align:center}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.wa{background:#25D366;color:#04240F}
+.btn.danger{background:transparent;border:1px solid rgba(229,100,75,.5);color:var(--red)}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(5,8,6,.74);border-radius:28px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--ink-2);border-radius:22px 22px 28px 28px;border-top:1px solid var(--line);padding:14px 16px 18px}
+.grab{width:34px;height:3.5px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+.busybox{background:rgba(90,99,87,.16);border:1px solid var(--line);border-radius:13px;padding:11px 13px;display:flex;gap:11px;align-items:center;margin-bottom:15px}
+.busybox.hot{background:rgba(229,100,75,.12);border-color:rgba(229,100,75,.4)}
+.busybox .bi{font-size:17px;flex:none;opacity:.8}
+.busybox .bt{font-size:13px;font-weight:600;line-height:1.3}
+.busybox .bs{font-size:11px;color:var(--dim-2);margin-top:2px;line-height:1.4}
+.alt{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid rgba(198,240,51,.28);border-radius:13px;background:linear-gradient(90deg,rgba(198,240,51,.07),var(--surface) 70%);margin-bottom:7px}
+.alt-t{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--lime);flex:none;width:46px}
+.alt-i{flex:1;min-width:0}
+.alt-n{font-size:12.5px;font-weight:600}
+.alt-m{font-size:10.5px;color:var(--dim-2);margin-top:1px}
+.alt-p{font-family:var(--mono);font-size:12px;color:var(--dim);flex:none}
+
+/* cards / fields */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:13px 14px;margin:0 16px 11px;flex:none}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:13px}
+.kv+.kv{border-top:1px solid var(--line-soft)}
+.kv .k{color:var(--dim-2)}
+.kv .v{font-weight:600;text-align:right}
+.kv .v.mono{font-family:var(--mono)}
+.kv.total{border-top:1px solid var(--line);margin-top:4px;padding-top:10px}
+.kv.total .v{font-family:var(--mono);font-size:18px;color:var(--lime)}
+.field{margin:0 16px 9px;flex:none}
+.field .fl{font-family:var(--body);font-size:12.5px;font-weight:600;color:var(--dim);margin-bottom:5px}
+.inp{background:var(--surface);border:1px solid var(--line-strong);border-radius:11px;padding:10px 12px;font-size:13.5px;color:var(--text);display:flex;justify-content:space-between;align-items:center}
+.inp.ph{color:var(--dim-2)}
+.inp .saved{font-family:var(--mono);font-size:9px;color:var(--lime-dim);letter-spacing:.06em}
+.note-b{margin:2px 16px 0;padding:10px 12px;border-radius:11px;flex:none;background:rgba(240,169,59,.08);border:1px solid rgba(240,169,59,.24);font-size:11.5px;color:#DFCCA8;line-height:1.5}
+.note-b.g{background:rgba(198,240,51,.07);border-color:rgba(198,240,51,.24);color:#C4D6B4}
+
+/* stepper */
+.step{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin:0 16px 10px;flex:none}
+.step-l{flex:1}
+.step-l .n{font-size:13px;font-weight:600}
+.step-l .s{font-size:10.5px;color:var(--dim-2)}
+.step-c{display:flex;align-items:center;gap:11px;flex:none}
+.sbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);display:grid;place-items:center;font-size:15px;color:var(--text)}
+.sbtn.on{background:var(--lime);border-color:var(--lime);color:#0B0F0C}
+.snum{font-family:var(--mono);font-size:17px;font-weight:600;min-width:20px;text-align:center}
+
+/* done / empty */
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center}
+.tick{width:64px;height:64px;border-radius:50%;border:2px solid var(--lime);display:grid;place-items:center;font-size:28px;color:var(--lime);margin-bottom:18px;background:rgba(198,240,51,.08)}
+.tick.warn{border-color:var(--amber);color:var(--amber);background:rgba(240,169,59,.08)}
+.tick.off{border-color:var(--dim-2);color:var(--dim-2);background:var(--surface)}
+.done h3{font-family:var(--disp);font-size:22px;font-weight:600;text-transform:uppercase;margin:0 0 8px;letter-spacing:.03em}
+.done p{font-size:13px;color:var(--dim);margin:0;line-height:1.6}
+.pill{display:inline-flex;align-items:center;gap:6px;margin-top:15px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(240,169,59,.4);background:rgba(240,169,59,.1);color:var(--amber);border-radius:20px;padding:6px 13px}
+.pill.ok{border-color:rgba(198,240,51,.4);background:rgba(198,240,51,.1);color:var(--lime)}
+.pulse{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* my bookings */
+.seg{display:flex;gap:4px;margin:0 16px 13px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;flex:none}
+.seg div{flex:1;text-align:center;padding:7px 0;font-size:12px;border-radius:8px;color:var(--dim)}
+.seg div.on{background:var(--surface-2);color:var(--text);font-weight:600}
+.bk{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin:0 16px 9px;flex:none}
+.bk-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.bk-c{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.005em}
+.bk-d{font-size:11px;color:var(--dim-2);margin-top:1px}
+.st-pill{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:4px 8px;border-radius:6px;flex:none;white-space:nowrap}
+.st-wait{background:rgba(240,169,59,.14);color:var(--amber);border:1px solid rgba(240,169,59,.3)}
+.st-ok{background:rgba(198,240,51,.13);color:var(--lime);border:1px solid rgba(198,240,51,.3)}
+.st-past{background:var(--surface-2);color:var(--dim-2);border:1px solid var(--line)}
+.st-no{background:rgba(229,100,75,.12);color:var(--red);border:1px solid rgba(229,100,75,.3)}
+.bk-f{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line-soft);padding-top:8px}
+.bk-t{font-family:var(--mono);font-size:14px;font-weight:600}
+.bk-p{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.bk-act{display:flex;gap:6px;margin-top:9px}
+.mini{flex:1;border-radius:8px;padding:7px 0;font-size:11.5px;text-align:center;border:1px solid var(--line);background:var(--surface-2);color:var(--dim)}
+.mini.dang{border-color:rgba(229,100,75,.4);color:var(--red)}
+
+/* tournaments */
+.tcard{margin:0 16px 11px;border-radius:17px;overflow:hidden;position:relative;height:148px;flex:none;background:#1D4526 center/cover no-repeat;
+  background-image:linear-gradient(172deg,rgba(11,15,12,.1) 22%,rgba(11,15,12,.94) 94%),url('/img/tourn-cover.webp')}
+.tcard-in{position:absolute;inset:auto 0 0 0;padding:12px 14px}
+.tflag{position:absolute;top:11px;left:14px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;background:var(--lime);color:#0B0F0C;border-radius:5px;padding:4px 8px;font-weight:600}
+.tname{font-family:var(--disp);font-size:21px;font-weight:700;text-transform:uppercase;line-height:1.05;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.tmeta{font-family:var(--mono);font-size:10.5px;color:var(--lime);margin-top:5px}
+.trow{display:flex;gap:11px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px 12px;margin:0 16px 8px;flex:none}
+.tdate{width:40px;flex:none;text-align:center;border-right:1px solid var(--line);padding-right:10px}
+.tdate .dd{font-family:var(--disp);font-size:18px;font-weight:600;line-height:1}
+.tdate .mm{font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim-2);margin-top:2px}
+.tinfo{flex:1;min-width:0}
+.tinfo .n{font-size:12.5px;font-weight:600;line-height:1.25}
+.tinfo .m{font-size:10.5px;color:var(--dim-2);margin-top:2px}
+.trow.past{opacity:.5}
+.tcover{height:170px;flex:none;position:relative;margin:0 0 13px;background:#1D4526 center/cover no-repeat;
+  background-image:linear-gradient(178deg,rgba(11,15,12,.06) 26%,rgba(11,15,12,.96) 100%),url('/img/tourn-cover-2.webp')}
+.tcover-in{position:absolute;inset:auto 0 0 0;padding:0 16px 12px}
+.progress{margin:0 16px 11px;flex:none}
+.pbar{height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.pfill{height:100%;width:70%;background:var(--lime);border-radius:3px}
+.plbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim-2);margin-top:6px}
+.plbl b{color:var(--lime);font-weight:600}
+
+/* push notification */
+.pushwrap{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:60px 12px 0;
+  background:linear-gradient(170deg,rgba(27,94,32,.35),transparent 60%)}
+.push{background:rgba(28,36,26,.94);border:1px solid var(--line);border-radius:17px;padding:11px 13px;margin-bottom:9px;backdrop-filter:blur(8px)}
+.push-h{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.push-ic{width:17px;height:17px;border-radius:4px;background:var(--green-deep);border:1px solid var(--lime);flex:none}
+.push-app{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim-2);flex:1}
+.push-t{font-size:12.5px;font-weight:600;margin-bottom:2px;line-height:1.3}
+.push-b{font-size:11.5px;color:var(--dim);line-height:1.45}
+.lockt{text-align:center;padding:0 0 26px}
+.lockt .h{font-family:var(--disp);font-size:52px;font-weight:300;line-height:1}
+.lockt .d{font-size:12px;color:var(--dim);margin-top:2px}
+
+/* empty state list */
+.empt{padding:0 16px;flex:none}
+.empt-i{font-size:34px;text-align:center;margin-bottom:12px;opacity:.55}
+
+@media (max-width:520px){.masthead{padding:40px 0 26px}.meta{text-align:left}.wrap{padding:0 16px 60px}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="mast-l">
+    <p class="eyebrow">Падел-центр · Магас · 6 кортов и мини-футбольное поле</p>
+    <h1>Padel Magas<br><span class="thin">Макеты · версия 0.2</span></h1>
+    <p class="lede">Пятнадцать экранов. В этой версии добавлены фотографии, запись в два нажатия, отдельный сценарий мини-футбольного поля и все экраны ошибок и краевых ситуаций.</p>
+  </div>
+  <div class="meta">
+    Версия <b>0.2</b><br>
+    31 августа 2026<br>
+    Статус: <b>на утверждение</b><br>
+    15 экранов
+  </div>
+</header>
+
+<div class="warn ok">
+  <span class="warn-tag">Новое в 0.2</span>
+  <div>
+    <p><b>Фотографии</b> — настоящие падел-корты вместо рисованной графики. <b>Запись в два нажатия</b> — строка быстрой записи и нажимаемые чипы времени. <b>Мини-футбол</b> — своя цена и свой экран. <b>Шесть новых экранов</b> ошибок и краевых ситуаций: слот увели, отмена, всё занято, нет интернета, напоминание.</p>
+  </div>
+</div>
+
+<div class="warn">
+  <span class="warn-tag">Моки</span>
+  <div>
+    <p><b>Данные — заглушки.</b> Названия кортов, часы, цены, имена, даты турниров выдуманы и помечены.</p>
+    <p><b>Фотографии — чужие корты, свободные лицензии Pexels и Unsplash.</b> Проверял каждую вручную: открывал страницу, сверял лицензию, скачивал и смотрел. Четыре снимка отсеял как платные Unsplash+, четыре — потому что подписаны паделом, а на деле сквош, пиклбол, хоккей на траве и стадион Парк-де-Пренс. Подробно в <code>docs/PHOTO-CREDITS.md</code>. <b>Снимите свои корты — заменю за час.</b></p>
+  </div>
+</div>
+
+<!-- ============ ОСНОВНОЙ ПОТОК ============ -->
+<section class="sec">
+  <h2>Основной поток</h2>
+  <p class="sec-note">От «хочу поиграть» до отправленной заявки. Цель — два нажатия для повторного клиента.</p>
+
+<div class="screens">
+
+<!-- 01 HOME -->
+<div class="item">
+  <div class="item-h"><span class="item-n">01</span><h3 class="item-t">Главный экран</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="ahead">
+        <svg class="mark" viewBox="0 0 26 30" fill="none" aria-hidden="true"><path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z" fill="#1B5E20" stroke="#C6F033" stroke-width="1.3"/><path d="M8.4 19.6 17 9.6M17.6 19.6 9 9.6" stroke="#EDF2E9" stroke-width="1.9" stroke-linecap="round"/><circle cx="13" cy="7.4" r="1.9" fill="#C6F033"/></svg>
+        <div class="brandtxt">Padel Magas<em>Магас</em></div>
+        <div class="ibtn">🔔<span class="dot"></span></div>
+      </div>
+      <div class="hero h-court">
+        <div class="hero-in">
+          <div class="hero-k">Сегодня, 18:24</div>
+          <div class="hero-big"><span>4</span> из 7 свободно</div>
+          <div class="hero-sub">Ближайший свободный час — 19:00</div>
+        </div>
+      </div>
+      <div class="qb">
+        <span class="qb-i">⚡</span>
+        <div class="qb-t"><div class="qb-k">Записаться быстро</div><div class="qb-v">Корт 1 · сегодня в <em>19:00</em></div><div style="font-size:10.5px;color:var(--lime-dim);margin-top:1px">3 000 ₽ за час</div></div>
+        <span class="qb-go">›</span>
+      </div>
+      <div class="slab"><span class="slab-t">Площадки</span><span class="slab-a">Вся сетка →</span></div>
+      <div class="rows">
+        <div class="crow free"><span class="cthumb t-court"><i></i></span><div class="cinfo"><div class="cname">Корт 1</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip free"><span class="k">Свободен</span><span class="v">19:00</span></span></div>
+        <div class="crow free"><span class="cthumb t-court"><i></i></span><div class="cinfo"><div class="cname">Корт 2</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip free"><span class="k">Свободен</span><span class="v">19:00</span></span></div>
+        <div class="crow soon"><span class="cthumb t-racket"><i></i></span><div class="cinfo"><div class="cname">Корт 3</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip soon"><span class="k">Освободится</span><span class="v">20:00</span></span></div>
+        <div class="crow"><span class="cthumb t-court"><i></i></span><div class="cinfo"><div class="cname">Корт 4</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip"><span class="k">Освободится</span><span class="v">21:00</span></span></div>
+        <div class="crow free"><span class="cthumb t-racket"><i></i></span><div class="cinfo"><div class="cname">Корт 5</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip free"><span class="k">Свободен</span><span class="v">19:00</span></span></div>
+        <div class="crow free"><span class="cthumb t-ball"><i></i></span><div class="cinfo"><div class="cname">Мини-футбол</div><div class="ctype">5 000 ₽ в час</div></div><span class="tchip free"><span class="k">Свободно</span><span class="v">19:00</span></span></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab on"><span class="g">🏠</span>Главная</div><div class="tab"><span class="g">📅</span>Сетка</div><div class="tab"><span class="g">🏆</span>Турниры</div><div class="tab"><span class="g">🎾</span>Мои записи</div>
+    </div>
+  </div></div>
+  <div class="why"><b>Каждый чип времени — кнопка.</b> Это первое из четырёх изменений, сокращающих запись до двух нажатий: тап по «19:00» сразу открывает подтверждение с выбранным слотом.<br><br><b>Строка «Записаться быстро»</b> ведёт на ближайший свободный слот вообще по клубу. Для человека, который хочет просто поиграть сейчас, это один тап.<br><br>Фотография корта на месте рисованной графики. Вместо типа корта в строке стоит цена за час — это то, что человек действительно хочет знать.</div>
+</div>
+
+<!-- 02 GRID -->
+<div class="item">
+  <div class="item-h"><span class="item-n">02</span><h3 class="item-t">Сетка расписания</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><span class="shead-t">Сетка</span></div>
+      <div class="gnav"><div class="arw">‹</div><div class="gnav-d">Сегодня<em>вторник, 2 сентября</em></div><div class="arw">›</div></div>
+      <div class="gwrap">
+        <table class="gtab">
+          <thead><tr><th class="tcol"></th><th>К1</th><th>К2</th><th>К3</th><th>К4</th><th>К5</th><th>К6</th><th>⚽</th></tr></thead>
+          <tbody>
+            <tr><td class="tcell">14:00</td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+            <tr><td class="tcell">15:00</td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+            <tr><td class="tcell">16:00</td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+            <tr><td class="tcell">17:00</td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell x"></div></td><td><div class="cell b"></div></td></tr>
+            <tr><td class="tcell">18:00</td><td><div class="cell sel"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+            <tr><td class="tcell">19:00</td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell x"></div></td><td><div class="cell b"></div></td></tr>
+            <tr><td class="tcell">20:00</td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell b"></div></td><td><div class="cell x"></div></td><td><div class="cell b"></div></td></tr>
+            <tr><td class="tcell">21:00</td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell b"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+            <tr><td class="tcell">22:00</td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell f"></div></td><td><div class="cell x"></div></td><td><div class="cell f"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="leg">
+        <span><i class="lg" style="background:rgba(198,240,51,.17);border:1px solid rgba(198,240,51,.36)"></i>Свободно</span>
+        <span><i class="lg" style="background:#171E16;border:1px solid #2C3729"></i>Занято</span>
+        <span><i class="lg" style="background:repeating-linear-gradient(45deg,#171E16 0 3px,#2C3729 3px 5px)"></i>Закрыто</span>
+      </div>
+      <div class="note-b" style="margin-top:12px">Корт 6 закрыт до 5 сентября — ремонт покрытия.</div>
+    </div>
+    <div class="bbar">
+      <div class="bprice"><div class="k">Корт 1 · 18:00–19:00</div><div class="v">3 000 ₽</div></div>
+      <button class="btn">Записаться</button>
+    </div>
+  </div></div>
+  <div class="why"><b>Все семь площадок в одном взгляде.</b> Закрывает жалобу номер один всего рынка: <span class="q">«приходится прокликивать каждый час всей недели, чтобы найти свободное время»</span> (MATCHi).<br><br>Прототип — go2sport.ru, единственный найденный российский сервис с честной таблицей «корты × время». Семь колонок влезают без горизонтальной прокрутки: у CourtReserve на её отсутствие жалуются прямо.<br><br><b>Причина закрытия корта написана внизу</b>, а не спрятана — человек не будет гадать, почему колонка заштрихована.</div>
+</div>
+
+<!-- 03 PICK TIME -->
+<div class="item">
+  <div class="item-h"><span class="item-n">03</span><h3 class="item-t">Выбор времени</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Запись</span></div>
+      <div class="flab">Площадка</div>
+      <div class="chips"><span class="chip on">Корт 1</span><span class="chip">Корт 2</span><span class="chip">Корт 3</span><span class="chip">К4</span></div>
+      <div class="flab">Дата</div>
+      <div class="days">
+        <div class="day on"><div class="dw">Сегодня</div><div class="dd">2</div></div>
+        <div class="day"><div class="dw">Ср</div><div class="dd">3</div></div>
+        <div class="day"><div class="dw">Чт</div><div class="dd">4</div></div>
+        <div class="day"><div class="dw">Пт</div><div class="dd">5</div></div>
+        <div class="day"><div class="dw">Сб</div><div class="dd">6</div></div>
+      </div>
+      <div class="flab">Длительность</div>
+      <div class="chips"><span class="chip on">1 час</span><span class="chip">2 часа</span><span class="chip">3 часа</span></div>
+      <div class="flab">Свободное время</div>
+      <div class="slots">
+        <div class="slot free"><div class="st">14:00</div><div class="sp">3 000 ₽</div></div>
+        <div class="slot free"><div class="st">15:00</div><div class="sp">3 000 ₽</div></div>
+        <div class="slot busy"><div class="st">17:00</div><div class="sp">занято</div></div>
+        <div class="slot on"><div class="st">19:00</div><div class="sp">4 500 ₽</div></div>
+        <div class="slot busy"><div class="st">20:00</div><div class="sp">занято</div></div>
+        <div class="slot free"><div class="st">21:00</div><div class="sp">4 500 ₽</div></div>
+      </div>
+    </div>
+    <div class="bbar">
+      <div class="bprice"><div class="k">Корт 1 · 2 сен · 19:00–20:00</div><div class="v">4 500 ₽</div></div>
+      <button class="btn">Далее</button>
+    </div>
+  </div></div>
+  <div class="why"><b>Цена на каждом слоте, до выбора.</b> Самая денежная жалоба на Playtomic и MATCHi — цена всплывает только на оплате: <span class="q">«показывает более высокие цены в приложении, чем на сайте, и потом навязывает сервисный сбор на кассе»</span>.<br><br><b>Сетка строго часовая, по круглому времени.</b> Это ваше правило: занятие — ровно час, 13:00–14:00, 14:00–15:00. Можно взять два или три часа подряд, поэтому чипы «1 час / 2 часа / 3 часа», по умолчанию час.<br><br>Это заметно упрощает продукт. Отпадает целое правило, которое пришлось строить CourtReserve, — запрет оставлять непродаваемые получасовые щели между бронями. У вас всё кратно часу, щелей не бывает по построению.<br><br>Занятые слоты видны зачёркнутыми, а не спрятаны: человек должен видеть картину дня.</div>
+</div>
+
+<!-- 04 ALTERNATIVES -->
+<div class="item">
+  <div class="item-h"><span class="item-n">04</span><h3 class="item-t">Занято → ближайшее</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Запись</span></div>
+      <div class="flab">Площадка</div>
+      <div class="chips"><span class="chip on">Корт 1</span><span class="chip">Корт 2</span><span class="chip">Корт 3</span><span class="chip">К4</span></div>
+      <div class="flab">Дата</div>
+      <div class="days">
+        <div class="day on"><div class="dw">Сегодня</div><div class="dd">2</div></div>
+        <div class="day"><div class="dw">Ср</div><div class="dd">3</div></div>
+        <div class="day"><div class="dw">Чт</div><div class="dd">4</div></div>
+        <div class="day"><div class="dw">Пт</div><div class="dd">5</div></div>
+        <div class="day"><div class="dw">Сб</div><div class="dd">6</div></div>
+      </div>
+      <div class="flab">Свободное время</div>
+      <div class="slots"><div class="slot free"><div class="st">14:00</div><div class="sp">3 000 ₽</div></div><div class="slot busy"><div class="st">17:00</div><div class="sp">занято</div></div><div class="slot busy"><div class="st">20:00</div><div class="sp">занято</div></div></div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="busybox"><span class="bi">⛔</span><div><div class="bt">20:00 на Корте 1 занято</div><div class="bs">Забронировано до 21:00</div></div></div>
+      <div class="flab" style="padding-left:2px">Ближайшее свободное</div>
+      <div class="alt"><span class="alt-t">20:00</span><div class="alt-i"><div class="alt-n">Корт 3</div><div class="alt-m">То же время, соседний корт</div></div><span class="alt-p">4 500 ₽</span></div>
+      <div class="alt"><span class="alt-t">21:00</span><div class="alt-i"><div class="alt-n">Корт 1</div><div class="alt-m">Тот же корт · позже</div></div><span class="alt-p">4 500 ₽</span></div>
+      <div class="alt"><span class="alt-t">20:00</span><div class="alt-i"><div class="alt-n">Корт 5</div><div class="alt-m">Свободен в это же время</div></div><span class="alt-p">3 000 ₽</span></div>
+      <button class="btn ghost wide" style="margin-top:9px">Встать в очередь на 20:00</button>
+    </div>
+  </div></div>
+  <div class="why"><b>Альтернативы приходят сами, без единого «назад».</b> У ClubSpark на это ругаются прямо: <span class="q">«Если нужного корта нет, нужно несколько шагов назад, чтобы забронировать следующий»</span>.<br><br>Три варианта отсортированы осмысленно: <b>то же время на другом корте</b> → <b>тот же корт позже</b> → <b>дешевле</b>.<br><br><b>Очередь — реальное преимущество.</b> У Playtomic листа ожидания нет вообще. У YCLIENTS он есть, но дословно: <span class="q">«Онлайн-запись в лист ожидания недоступна… В мобильном приложении лист ожидания также недоступен»</span>, и уведомлений нет — <span class="q">«администратору необходимо регулярно просматривать лист ожидания»</span>. У нас — самообслуживание и автоуведомление.</div>
+</div>
+
+<!-- 05 CONFIRM -->
+<div class="item">
+  <div class="item-h"><span class="item-n">05</span><h3 class="item-t">Подтверждение</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Проверьте заявку</span></div>
+      <div class="card">
+        <div class="kv"><span class="k">Площадка</span><span class="v">Корт 1</span></div>
+        <div class="kv"><span class="k">Дата</span><span class="v">Вторник, 2 сентября</span></div>
+        <div class="kv"><span class="k">Время</span><span class="v mono">19:00 – 20:00</span></div>
+        <div class="kv"><span class="k">Тариф</span><span class="v">Вечерний, после 18:00</span></div>
+        <div class="kv total"><span class="k">К оплате на месте</span><span class="v">4 500 ₽</span></div>
+      </div>
+      <div class="field"><div class="fl">Ваше имя</div><div class="inp">Ислам <span class="saved">сохранено</span></div></div>
+      <div class="field"><div class="fl">Телефон</div><div class="inp"><span style="font-family:var(--mono)">+7 928 ••• 12-34</span><span class="saved">сохранено</span></div></div>
+      <div class="field"><div class="fl">Комментарий · необязательно</div><div class="inp ph">Нужны ракетки на двоих</div></div>
+      <div class="note-b">Если планы изменятся — отмените в приложении, и слот освободится для других. Опоздание больше чем на <b>15 минут</b> — корт может быть отдан.</div>
+    </div>
+    <div class="bbar" style="flex-direction:column;align-items:stretch;gap:8px">
+      <button class="btn wide">Отправить заявку</button>
+      <div style="font-size:10.5px;color:var(--dim-2);text-align:center;line-height:1.45">Заявка сохранится в приложении и откроется WhatsApp</div>
+    </div>
+  </div></div>
+  <div class="why"><b>Второе нажатие — здесь.</b> Имя и телефон подставлены с прошлой записи, подпись «сохранено» это объясняет. Повторному клиенту остаётся только «Отправить».<br><br><b>Этот экран нельзя убирать ради экономии клика.</b> У Playtomic зафиксирован тёмный паттерн: <span class="q">«случайно нажал на матч и был немедленно записан без какого-либо подтверждения и даже без информации о стоимости»</span>.<br><br><b>Про отмену сказано без денег.</b> По вашему решению штрафов и предоплаты нет: отмена просто освобождает время. Поэтому строка говорит, что делать, а не чем это грозит.<br><br><b>15 минут — не выдуманное число.</b> Это льготный период перед признанием неявки у Xcel Padel: <span class="q">«если вы не пришли в течение 15 минут от начала, бронь считается неявкой… корт может быть освобождён»</span>. <b>Ваше значение подставим, когда скажете.</b></div>
+</div>
+
+<!-- 06 SENT -->
+<div class="item">
+  <div class="item-h"><span class="item-n">06</span><h3 class="item-t">Заявка отправлена</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:25</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="done">
+        <div class="tick">✓</div>
+        <h3>Заявка принята</h3>
+        <p>Слот <b style="color:var(--text)">19:00–20:00</b> на Корте 1 закреплён за вами.<br>Менеджер подтвердит в течение 15 минут.</p>
+        <div class="pill"><span class="pulse"></span> Ожидает подтверждения</div>
+      </div>
+      <div class="card">
+        <div class="kv"><span class="k">Номер заявки</span><span class="v mono">#1043</span></div>
+        <div class="kv"><span class="k">К оплате на месте</span><span class="v mono">4 500 ₽</span></div>
+      </div>
+    </div>
+    <div class="bbar" style="flex-direction:column;align-items:stretch;gap:8px">
+      <button class="btn wa wide">Написать в WhatsApp</button>
+      <button class="btn ghost wide">Позвонить в клуб · +7 928 000-00-00</button>
+    </div>
+  </div></div>
+  <div class="why"><b>Слот занимается сразу, до открытия WhatsApp.</b> Это принципиально: заявка живёт в системе и в админке, а мессенджер только ускоряет подтверждение.<br><br>Так решаются две вещи разом. Первая — двойные брони: у SportGate люди прямо жалуются, что не понимают, синхронизированы ли записи из приложения и напрямую в клубе. Вторая — <b>требование Apple 4.2.3(i)</b>: <span class="q">«приложение должно работать самостоятельно, не требуя установки другого приложения»</span>.<br><br><b>Номер телефона написан прямо на кнопке.</b> В Ингушетии бывают отключения мобильного интернета, и во время них не работают ни приложение, ни мессенджеры — только звонок.</div>
+</div>
+
+</div>
+</section>
+
+<hr class="rule" style="margin-top:70px">
+
+<!-- ============ МИНИ-ФУТБОЛ ============ -->
+<section class="sec">
+  <h2>Мини-футбольное поле</h2>
+  <p class="sec-note">Поле живёт в том же списке, что и корты, но записывается иначе: другая длительность, другое количество людей, другой инвентарь.</p>
+
+<div class="screens">
+
+<!-- 07 FOOTBALL -->
+<div class="item">
+  <div class="item-h"><span class="item-n">07</span><h3 class="item-t">Запись на поле</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Мини-футбол</span></div>
+      <div class="hero h-racket" style="height:104px;background-image:linear-gradient(178deg,rgba(11,15,12,.1) 20%,rgba(11,15,12,.9) 100%),linear-gradient(140deg,#2F7A38,#123018)">
+        <div class="hero-in"><div class="hero-k">5 000 ₽ в час</div><div class="hero-big" style="font-size:20px">Мини-футбол</div></div>
+      </div>
+      <div class="flab" style="padding-top:14px">Дата</div>
+      <div class="days">
+        <div class="day on"><div class="dw">Сегодня</div><div class="dd">2</div></div>
+        <div class="day"><div class="dw">Ср</div><div class="dd">3</div></div>
+        <div class="day"><div class="dw">Чт</div><div class="dd">4</div></div>
+        <div class="day"><div class="dw">Пт</div><div class="dd">5</div></div>
+        <div class="day"><div class="dw">Сб</div><div class="dd">6</div></div>
+      </div>
+      <div class="flab">Длительность</div>
+      <div class="chips"><span class="chip on">1 час</span><span class="chip">2 часа</span><span class="chip">3 часа</span></div>
+      <div class="flab">Свободное время</div>
+      <div class="slots">
+        <div class="slot free"><div class="st">19:00</div><div class="sp">5 000 ₽</div></div>
+        <div class="slot busy"><div class="st">20:00</div><div class="sp">занято</div></div>
+        <div class="slot free"><div class="st">21:00</div><div class="sp">5 000 ₽</div></div>
+      </div>
+    </div>
+    <div class="bbar">
+      <div class="bprice"><div class="k">Поле · 2 сен · 19:00–20:00</div><div class="v">5 000 ₽</div></div>
+      <button class="btn">Далее</button>
+    </div>
+  </div></div>
+  <div class="why"><b>Поле живёт по тем же правилам, что и корты.</b> Час по круглому времени, можно взять два или три. Отличается только ценой и размером площадки.<br><br><b>Что осознанно убрано:</b> счётчик игроков и выбор манишек. Вы сказали — оплачивается просто занятие площадкой, без привязки к числу людей. Это правильно и упрощает форму: одним полем меньше на самом важном экране.<br><br>Если для подготовки манишек и мячей всё-таки нужно знать, сколько человек придёт, — верну одной строкой, скажите.</div>
+</div>
+
+</div>
+</section>
+
+<hr class="rule" style="margin-top:70px">
+
+<!-- ============ ОШИБКИ ============ -->
+<section class="sec">
+  <h2>Ошибки и краевые ситуации</h2>
+  <p class="sec-note">То, что реально происходит в бизнесе с записью. Каждый экран основан на исследовании — подробности с источниками в <code>docs/RESEARCH-EDGE-CASES.md</code>.</p>
+
+<div class="screens">
+
+<!-- 08 RACE -->
+<div class="item">
+  <div class="item-h"><span class="item-n warn-n">08</span><h3 class="item-t">Слот увели</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:26</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Проверьте заявку</span></div>
+      <div class="card" style="opacity:.45">
+        <div class="kv"><span class="k">Площадка</span><span class="v">Корт 1</span></div>
+        <div class="kv"><span class="k">Время</span><span class="v mono">19:00 – 20:00</span></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="busybox hot">
+        <span class="bi">⚡</span>
+        <div><div class="bt">Этот слот только что заняли</div><div class="bs">Пока вы заполняли заявку, Корт 1 на 19:00 забронировал другой игрок. С вас ничего не списано.</div></div>
+      </div>
+      <div class="flab" style="padding-left:2px">Свободно прямо сейчас</div>
+      <div class="alt"><span class="alt-t">19:00</span><div class="alt-i"><div class="alt-n">Корт 2</div><div class="alt-m">То же время, соседний корт</div></div><span class="alt-p">4 500 ₽</span></div>
+      <div class="alt"><span class="alt-t">19:00</span><div class="alt-i"><div class="alt-n">Корт 5</div><div class="alt-m">Свободен в это же время</div></div><span class="alt-p">3 000 ₽</span></div>
+      <button class="btn wide" style="margin-top:9px">Записаться на Корт 2</button>
+      <button class="btn ghost wide" style="margin-top:7px">Выбрать другое время</button>
+    </div>
+  </div></div>
+  <div class="why alert"><b>Два человека нажали на один слот. Это будет происходить в вечерний пик регулярно.</b><br><br>Защита стоит <b>в самой базе данных</b>, а не в коде приложения: ограничение целостности PostgreSQL физически не даёт создать две пересекающиеся брони на одном корте, сколько бы одновременных запросов ни пришло. Проверка «свободно ли» в коде под гонкой не работает — отсюда отзывы вроде <span class="q">«оба раза деньги списали, а корт показан свободным»</span> у Playtomic и <span class="q">«доступность кортов неточная»</span> у CourtReserve.<br><br><b>Проигравший не остаётся ни с чем.</b> Экран сразу даёт альтернативы на то же время и главную кнопку «Записаться на Корт 2». Фраза «с вас ничего не списано» снимает главную тревогу.</div>
+</div>
+
+<!-- 09 CANCEL -->
+<div class="item">
+  <div class="item-h"><span class="item-n warn-n">09</span><h3 class="item-t">Отмена брони</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>9:41</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><span class="shead-t">Мои записи</span></div>
+      <div class="seg"><div class="on">Активные</div><div>История</div></div>
+      <div class="bk">
+        <div class="bk-h"><div><div class="bk-c">Корт 1</div><div class="bk-d">Вторник, 2 сентября</div></div><span class="st-pill st-ok">Подтверждено</span></div>
+        <div class="bk-f"><span class="bk-t">19:00 – 20:00</span><span class="bk-p">4 500 ₽</span></div>
+        <div class="bk-act"><span class="mini">Показать в клубе</span><span class="mini dang">Отменить</span></div>
+      </div>
+      <div class="bk">
+        <div class="bk-h"><div><div class="bk-c">Мини-футбол</div><div class="bk-d">Суббота, 6 сентября</div></div><span class="st-pill st-wait">Ожидает</span></div>
+        <div class="bk-f"><span class="bk-t">12:00 – 13:00</span><span class="bk-p">5 000 ₽</span></div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="busybox"><span class="bi">🕐</span><div><div class="bt">Отменить бронь на Корт 1?</div><div class="bs">Вторник, 2 сентября, 19:00–20:00</div></div></div>
+      <div class="note-b g" style="margin:0 0 12px">Ничего платить не нужно. Слот <b>сразу освободится</b> и станет доступен другим игрокам.</div>
+      <button class="btn danger wide">Да, отменить бронь</button>
+      <button class="btn ghost wide" style="margin-top:7px">Оставить</button>
+    </div>
+  </div></div>
+  <div class="why alert"><b>Отмена — не финансовая процедура, а освобождение времени.</b> Ваше решение, и оно правильное: никаких штрафов, возвратов и предоплат. Экран говорит прямо — платить нечего, слот сразу станет свободен для других.<br><br>Это заодно убирает целый класс проблем. У Playtomic зафиксирован реальный кейс: <span class="q">«в одной строке написано, что отмена действует 60 минут после брони, в другой — что до 24 часов до слота»</span> — противоречие на одном экране. У нас противоречить нечему.<br><br>Фраза «станет доступен другим игрокам» работает и как мягкий социальный аргумент: отменить вовремя — это не наказание, а помощь клубу.<br><br><b>Кнопки «Перенести» нет — намеренно.</b> Xcel Padel формулирует это прямо: <span class="q">«перенос = отмена плюс новая запись. Отдельной кнопки переноса нет, чтобы всё было честно и прозрачно»</span>. У Playtomic брони вообще нельзя изменить из приложения. Отдельный перенос становится лазейкой в обход правила отмены.</div>
+</div>
+
+<!-- 10 EMPTY -->
+<div class="item">
+  <div class="item-h"><span class="item-n warn-n">10</span><h3 class="item-t">Всё занято</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>19:40</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><div class="back">‹</div><span class="shead-t">Запись</span></div>
+      <div class="days">
+        <div class="day on"><div class="dw">Сегодня</div><div class="dd">2</div></div>
+        <div class="day"><div class="dw">Ср</div><div class="dd">3</div></div>
+        <div class="day"><div class="dw">Чт</div><div class="dd">4</div></div>
+        <div class="day"><div class="dw">Пт</div><div class="dd">5</div></div>
+        <div class="day"><div class="dw">Сб</div><div class="dd">6</div></div>
+      </div>
+      <div class="empt" style="padding-top:12px">
+        <div class="empt-i">🌙</div>
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="font-family:var(--disp);font-size:17px;font-weight:600;text-transform:uppercase;letter-spacing:.03em">На сегодня всё занято</div>
+          <div style="font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.5">Вечер вторника — самое загруженное время недели</div>
+        </div>
+      </div>
+      <div class="flab">Ближайшее свободное</div>
+      <div class="alt" style="margin:0 16px 7px"><span class="alt-t">08:00</span><div class="alt-i"><div class="alt-n">Корт 1 · завтра</div><div class="alt-m">Утренний тариф, дешевле на 2 000 ₽</div></div><span class="alt-p">2 500 ₽</span></div>
+      <div class="alt" style="margin:0 16px 7px"><span class="alt-t">14:00</span><div class="alt-i"><div class="alt-n">Корт 3 · завтра</div><div class="alt-m">Дневной тариф</div></div><span class="alt-p">3 000 ₽</span></div>
+      <div style="padding:6px 16px 0"><button class="btn ghost wide">Сообщить, если сегодня освободится</button></div>
+    </div>
+  </div></div>
+  <div class="why alert"><b>Точка входа не должна исчезать.</b> Худшее поведение, найденное у YCLIENTS: если на ближайшие две недели свободного времени нет, онлайн-запись просто не работает и кнопка не отображается. Человек упирается в пустоту.<br><br>Здесь наоборот: сказали, что занято, объяснили почему, сразу дали ближайшее свободное <b>с указанием выгоды</b> — «дешевле на 2 000 ₽». Это разворачивает часть вечернего спроса на утро, что клубу выгодно.<br><br>Внизу — подписка на освобождение. По исследованию это самое частое «чего не хватает» в отзывах на все падел-приложения.</div>
+</div>
+
+<!-- 11 OFFLINE -->
+<div class="item">
+  <div class="item-h"><span class="item-n warn-n">11</span><h3 class="item-t">Нет интернета</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>18:24</span><span class="ic">✕ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="ahead">
+        <svg class="mark" viewBox="0 0 26 30" fill="none" aria-hidden="true"><path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z" fill="#1B5E20" stroke="#C6F033" stroke-width="1.3"/><path d="M8.4 19.6 17 9.6M17.6 19.6 9 9.6" stroke="#EDF2E9" stroke-width="1.9" stroke-linecap="round"/><circle cx="13" cy="7.4" r="1.9" fill="#C6F033"/></svg>
+        <div class="brandtxt">Padel Magas<em>Магас</em></div>
+      </div>
+      <div class="note-b" style="margin:0 16px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:15px">📡</span>
+        <div>Нет связи. Показываем расписание, каким оно было в <b>18:12</b>. Слоты могли занять.</div>
+      </div>
+      <div class="rows" style="opacity:.6">
+        <div class="crow"><span class="cthumb t-court"><i></i></span><div class="cinfo"><div class="cname">Корт 1</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip"><span class="k">Было свободно</span><span class="v">19:00</span></span></div>
+        <div class="crow"><span class="cthumb t-court"><i></i></span><div class="cinfo"><div class="cname">Корт 2</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip"><span class="k">Было свободно</span><span class="v">19:00</span></span></div>
+        <div class="crow"><span class="cthumb t-racket"><i></i></span><div class="cinfo"><div class="cname">Корт 5</div><div class="ctype">3 000 ₽ в час</div></div><span class="tchip"><span class="k">Было свободно</span><span class="v">19:00</span></span></div>
+      </div>
+      <div style="padding:16px 16px 0">
+        <button class="btn wide">Позвонить в клуб</button>
+        <div style="font-size:11px;color:var(--dim-2);text-align:center;margin-top:9px;line-height:1.5">Звонок работает, даже когда мобильный интернет отключён</div>
+        <button class="btn ghost wide" style="margin-top:12px">Обновить</button>
+      </div>
+    </div>
+  </div></div>
+  <div class="why alert"><b>Для Магаса это не редкий случай.</b> Власти Ингушетии подтверждали отключения мобильного интернета по соображениям безопасности. Действует «белый список» Минцифры — сервисы, работающие при отключении. Приложения падел-клуба в нём не будет никогда: формальной процедуры подачи не существует.<br><br>Во время отключения не работают ни наше приложение, ни Telegram, ни WhatsApp. <b>Работают только звонок и СМС</b> — они идут по сотовой сети, а не по мобильному интернету. Поэтому кнопка звонка здесь главная, а не запасная.<br><br><b>Расписание показывается из кэша с честной отметкой времени.</b> «Было свободно» вместо «свободно» — приложение не врёт о том, чего не знает.</div>
+</div>
+
+<!-- 12 REMINDER -->
+<div class="item">
+  <div class="item-h"><span class="item-n warn-n">12</span><h3 class="item-t">Напоминание</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>17:00</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s" style="background:linear-gradient(165deg,#16321C,#0B0F0C 62%)">
+      <div class="lockt" style="padding-top:34px"><div class="h">17:00</div><div class="d">вторник, 2 сентября</div></div>
+      <div class="pushwrap" style="padding-top:0">
+        <div class="push">
+          <div class="push-h"><span class="push-ic"></span><span class="push-app">Padel Magas</span><span style="font-family:var(--mono);font-size:9px;color:var(--dim-2)">сейчас</span></div>
+          <div class="push-t">Сегодня в 19:00 — Корт 1</div>
+          <div class="push-b">Через 2 часа. Корт стоит 4 500 ₽ — если не сможете прийти, отмените, и слот достанется другим.</div>
+        </div>
+        <div class="push" style="opacity:.62">
+          <div class="push-h"><span class="push-ic"></span><span class="push-app">Padel Magas</span><span style="font-family:var(--mono);font-size:9px;color:var(--dim-2)">вчера</span></div>
+          <div class="push-t">Завтра в 19:00 — Корт 1</div>
+          <div class="push-b">Ваша запись подтверждена. 4 500 ₽ на месте.</div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="why alert"><b>Два напоминания, а не одно. И текст с суммой — не случайно.</b><br><br><b>Почему два:</b> рандомизированное исследование на 54 066 участниках (Steiner, 2018) — напоминания за 3 дня и за 1 день дали <b>4,4% неявок против 5,8% и 5,3%</b> при одном напоминании. И отдельно проверено: второе напоминание <b>не раздражает</b>, удовлетворённость не изменилась. Дефолт YCLIENTS — за 1 час до визита — по этим данным сильно поздно.<br><br><b>Почему в тексте сумма:</b> два РКИ примерно на 20 000 участников (PLOS One) — формулировка с <b>конкретной стоимостью</b> дала 8,4% неявок против 11,1% у обычной. Конкретная сумма обошла общую фразу, а обе обошли призыв к сочувствию. Это бесплатный рычаг: те же деньги, другой текст, меньше пустых кортов.<br><br><b>Кнопки «подтвердите запись» намеренно нет.</b> Единственное найденное прямое сравнение (Resos) показывает, что запрос подтверждения почти не работает — RR 0,983 против 0,836 у обычного напоминания.</div>
+</div>
+
+</div>
+</section>
+
+<hr class="rule" style="margin-top:70px">
+
+<!-- ============ ТУРНИРЫ ============ -->
+<section class="sec">
+  <h2>Турниры и записи</h2>
+
+<div class="screens">
+
+<!-- 13 MY BOOKINGS -->
+<div class="item">
+  <div class="item-h"><span class="item-n">13</span><h3 class="item-t">Мои записи</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>9:41</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><span class="shead-t">Мои записи</span></div>
+      <div class="seg"><div class="on">Активные</div><div>История</div></div>
+      <div class="bk">
+        <div class="bk-h"><div><div class="bk-c">Корт 1</div><div class="bk-d">Сегодня</div></div><span class="st-pill st-ok">Подтверждено</span></div>
+        <div class="bk-f"><span class="bk-t">19:00 – 20:00</span><span class="bk-p">4 500 ₽</span></div>
+        <div class="bk-act"><span class="mini">Показать в клубе</span><span class="mini dang">Отменить</span></div>
+      </div>
+      <div class="bk">
+        <div class="bk-h"><div><div class="bk-c">Мини-футбол</div><div class="bk-d">Суббота, 6 сентября</div></div><span class="st-pill st-wait">Ожидает</span></div>
+        <div class="bk-f"><span class="bk-t">12:00 – 13:00</span><span class="bk-p">5 000 ₽</span></div>
+      </div>
+      <div class="bk"><div class="bk-h"><div><div class="bk-c">Корт 3</div><div class="bk-d">Воскресенье, 7 сентября</div></div><span class="st-pill st-ok">Подтверждено</span></div>
+        <div class="bk-f"><span class="bk-t">10:00 – 11:00</span><span class="bk-p">3 000 ₽</span></div></div>
+      <div class="slab" style="padding-top:12px"><span class="slab-t">Прошедшие</span></div>
+      <div class="bk" style="opacity:.5">
+        <div class="bk-h"><div><div class="bk-c">Корт 2</div><div class="bk-d">Пятница, 29 августа</div></div><span class="st-pill st-past">Сыграно</span></div>
+        <div class="bk-f"><span class="bk-t">18:00 – 19:00</span><span class="bk-p">4 500 ₽</span></div>
+      </div>
+      <div class="bk" style="opacity:.5">
+        <div class="bk-h"><div><div class="bk-c">Корт 4</div><div class="bk-d">Среда, 27 августа</div></div><span class="st-pill st-no">Отменена</span></div>
+        <div class="bk-f"><span class="bk-t">20:00 – 21:00</span><span class="bk-p">отменена вами</span></div>
+      </div>
+    </div>
+    <div class="tabs"><div class="tab"><span class="g">🏠</span>Главная</div><div class="tab"><span class="g">📅</span>Сетка</div><div class="tab"><span class="g">🏆</span>Турниры</div><div class="tab on"><span class="g">🎾</span>Мои записи</div></div>
+  </div></div>
+  <div class="why"><b>Этот экран — условие попадания в App Store.</b> Правило 4.2 отклоняет приложения, которые <span class="q">«не выходят за рамки переупакованного сайта»</span> и не дают повода вернуться завтра.<br><br>Все записи видны сразу, без листания. У CourtReserve после редизайна написали: <span class="q">«Разочарован, что больше не вижу все свои брони на экране одновременно»</span>.<br><br><b>Отменённые не удаляются, а помечаются.</b> Это важно и для клиента, и для клуба: отмены и неявки нужно считать раздельно. У YCLIENTS они смешаны в одну метрику «Отменённые», из-за чего клуб никогда не узнаёт свою реальную долю неявок.</div>
+</div>
+
+<!-- 14 TOURNAMENTS -->
+<div class="item">
+  <div class="item-h"><span class="item-n">14</span><h3 class="item-t">Турниры</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>9:41</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="shead"><span class="shead-t">Турниры</span></div>
+      <div class="tcard">
+        <span class="tflag">Регистрация открыта</span>
+        <div class="tcard-in"><div class="tname">Осенний кубок<br>Магаса</div><div class="tmeta">14 сентября · Americano · осталось 6 мест</div></div>
+      </div>
+      <div class="slab"><span class="slab-t">Ближайшие</span></div>
+      <div class="trow"><div class="tdate"><div class="dd">21</div><div class="mm">сен</div></div><div class="tinfo"><div class="n">Ночной Mexicano</div><div class="m">Уровень: любой · взнос 2 000 ₽</div></div><span class="st-pill st-ok">Открыт</span></div>
+      <div class="trow"><div class="tdate"><div class="dd">05</div><div class="mm">окт</div></div><div class="tinfo"><div class="n">Парный турнир Padel Magas</div><div class="m">Групповой этап + плей-офф</div></div><span class="st-pill st-wait">Скоро</span></div>
+      <div class="slab" style="padding-top:14px"><span class="slab-t">Завершённые</span></div>
+      <div class="trow past"><div class="tdate"><div class="dd">17</div><div class="mm">авг</div></div><div class="tinfo"><div class="n">Летний Americano</div><div class="m">Победители: Ахмед и Тимур</div></div><span class="st-pill st-past">Итоги</span></div>
+    </div>
+    <div class="tabs"><div class="tab"><span class="g">🏠</span>Главная</div><div class="tab"><span class="g">📅</span>Сетка</div><div class="tab on"><span class="g">🏆</span>Турниры</div><div class="tab"><span class="g">🎾</span>Мои записи</div></div>
+  </div></div>
+  <div class="why"><b>Три состояния, которые вы называли:</b> идёт регистрация, скоро, завершён. Ближайший турнир поднят в обложку с фотографией — он единственный, по которому нужно действовать сегодня.<br><br>Форматы Americano, Mexicano, групповой этап плюс плей-офф — то, что реально проводят в России, проверено на сетке LUNDA Padel. <b>Какие проводите вы — вопрос Q16.</b><br><br>Обложки меняются из админки, как вы просили. Завершённые не удаляются, а показывают победителей — это то, ради чего люди открывают приложение между играми.</div>
+</div>
+
+<!-- 15 TOURNAMENT DETAIL -->
+<div class="item">
+  <div class="item-h"><span class="item-n">15</span><h3 class="item-t">Карточка турнира</h3></div>
+  <div class="phone"><div class="scr">
+    <div class="mock">МОК</div>
+    <div class="sbar"><span>9:41</span><span class="ic">▮▮▮ <span class="bat"></span></span></div>
+    <div class="body-s">
+      <div class="tcover">
+        <div class="back" style="position:absolute;top:12px;left:16px">‹</div>
+        <div class="tcover-in">
+          <span class="tflag" style="position:static;display:inline-block;margin-bottom:8px">Регистрация открыта</span>
+          <div class="tname" style="font-size:25px">Осенний кубок Магаса</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="kv"><span class="k">Дата</span><span class="v">14 сентября, суббота</span></div>
+        <div class="kv"><span class="k">Начало</span><span class="v mono">10:00</span></div>
+        <div class="kv"><span class="k">Формат</span><span class="v">Americano</span></div>
+        <div class="kv"><span class="k">Уровень</span><span class="v">Любой</span></div>
+        <div class="kv"><span class="k">Взнос с игрока</span><span class="v mono">2 500 ₽</span></div>
+      </div>
+      <div class="progress">
+        <div class="pbar"><div class="pfill"></div></div>
+        <div class="plbl"><span>Занято 14 из 20 мест</span><span><b>6 мест</b> свободно</span></div>
+      </div>
+      <div class="note-b">Регистрация закрывается <b>12 сентября в 20:00</b> или когда закончатся места.</div>
+    </div>
+    <div class="bbar" style="flex-direction:column;align-items:stretch;gap:8px">
+      <button class="btn wide">Записаться на турнир</button>
+      <div style="font-size:10.5px;color:var(--dim-2);text-align:center">Заявка уйдёт менеджеру, как и при записи на корт</div>
+    </div>
+  </div></div>
+  <div class="why"><b>Полоса заполненности двигает решение сильнее любой кнопки.</b> «Занято 14 из 20» показывает, что мест мало, без давящих таймеров и красных надписей.<br><br>Взнос, формат и уровень стоят выше кнопки. Дата закрытия регистрации — отдельной строкой, потому что это второй по частоте вопрос менеджеру после «сколько стоит».<br><br><b>Осознанно не сделано: рейтинг игроков.</b> Системы уровней — источник самой едкой критики Playtomic: люди накручивают рейтинг, алгоритм наказывает за игру с сильными соперниками, а «переоценка уровня» продаётся за £30. Для одного клуба это чистый риск без выгоды.</div>
+</div>
+
+</div>
+</section>
+
+<hr class="rule" style="margin-top:70px">
+
+<section class="sec">
+  <h2>Что дальше</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:32px">
+    <div>
+      <h3 style="font-family:var(--disp);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin:0 0 14px;color:var(--lime)">Нужно от вас</h3>
+      <ul style="margin:0;padding-left:19px;color:var(--dim);font-size:14px;line-height:1.75">
+        <li><b>Названия и типы 6 кортов</b></li>
+        <li><b>Часы работы</b> и длительность слота</li>
+        <li><b>Цены</b> по времени суток и дням</li>
+        <li><b>Правило отмены</b> — за сколько часов бесплатно</li>
+        <li><b>Номер WhatsApp</b> и телефон клуба</li>
+        <li><b>Файл логотипа</b> для точных цветов и иконки</li>
+        <li><b>Фотографии ваших кортов</b> — заменю чужие за час</li>
+        <li><b>Сколько человек</b> помещается на поле, делится ли пополам</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="font-family:var(--disp);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin:0 0 14px;color:var(--lime)">Ещё не нарисовано</h3>
+      <ul style="margin:0;padding-left:19px;color:var(--dim);font-size:14px;line-height:1.75">
+        <li>Карточка одной площадки с фотографиями</li>
+        <li>Настройки уведомлений</li>
+        <li>Экран клуба: адрес, карта, контакты</li>
+        <li>Первый запуск и пустые состояния</li>
+        <li>Повторяющиеся брони «каждый вторник»</li>
+        <li>Дождь на открытых кортах</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="font-family:var(--disp);font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin:0 0 14px;color:var(--lime)">Решено: отмена без денег</h3>
+      <p style="color:var(--dim);font-size:14px;line-height:1.7;margin:0">
+      <b style="color:var(--text)">Никаких штрафов, возвратов и предоплаты.</b> Отмена — операция с расписанием: менеджер нажимает «клиент отменил», время сразу освобождается и снова видно в приложении.<br><br>
+      Взамен ведётся <b style="color:var(--text)">история по каждому клиенту</b>: сколько раз играл, отменял и не приходил. Видна прямо на карточке заявки, до принятия решения.<br><br>
+      Это не компромисс. Систематический обзор 105 исследований называет прошлые неявки человека одним из двух главных предсказателей будущей — то есть видимость истории даёт тот же сигнал, ради которого другие клубы вводят предоплату, но без трения для честного большинства. <b style="color:var(--text)">См. админку, экраны 03 и 04.</b></p>
+    </div>
+  </div>
+</section>
+
+</div>

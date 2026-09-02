@@ -1,0 +1,634 @@
+<title>Редизайн Padel Magas</title>
+<link rel="stylesheet" href="/fonts.css">
+<style>
+:root{
+  --ink:#0B0F0C;--ink2:#12180F;--surface:#171E16;--surface2:#212A1F;
+  --line:#2C3729;--lineSoft:#222B20;--lineStrong:#576D51;
+  --lime:#C6F033;--limeDim:#9BC020;--greenMid:#3DA84A;
+  --text:#EDF2E9;--dim:#9AA795;--dim2:#889085;--amber:#F0A93B;--red:#E5644B;
+  --disp:'Oswald','Arial Narrow',sans-serif;
+  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 100px}
+
+.mast{padding:66px 0 34px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--lime);margin:0 0 14px}
+h1{font-family:var(--disp);font-weight:600;font-size:clamp(36px,6vw,58px);line-height:1.02;margin:0 0 16px;letter-spacing:.005em}
+h1 span{display:block;color:var(--dim);font-weight:400;font-size:.48em;margin-top:10px}
+.lede{font-size:16.5px;color:var(--dim);margin:0;max-width:62ch}
+
+h2{font-family:var(--disp);font-weight:600;font-size:30px;margin:70px 0 8px;letter-spacing:.005em}
+h3{font-family:var(--disp);font-weight:600;font-size:21px;margin:40px 0 10px;letter-spacing:.005em}
+.sub{color:var(--dim);margin:0 0 26px;max-width:70ch}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+
+/* находка */
+.key{margin:30px 0 0;border:1px solid rgba(198,240,51,.42);border-radius:20px;overflow:hidden;
+  background:linear-gradient(103deg,rgba(198,240,51,.1),rgba(198,240,51,.02) 66%,transparent)}
+.key-b{padding:26px 30px 28px}
+.key-t{font-family:var(--disp);font-size:26px;font-weight:600;margin-bottom:12px;letter-spacing:.005em}
+.key p{margin:0 0 10px;font-size:15.5px;color:#CFDCC6}
+.key p:last-child{margin:0}
+.key b{color:var(--text)}
+
+/* проблемы */
+.probs{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);margin-top:18px}
+.prob{display:flex;gap:16px;padding:16px 20px;align-items:flex-start}
+.prob+.prob{border-top:1px solid var(--lineSoft)}
+.sev{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:4px 8px;border-radius:6px;flex:none;margin-top:2px;white-space:nowrap}
+.sev.hi{background:rgba(229,100,75,.14);color:var(--red);border:1px solid rgba(229,100,75,.34)}
+.sev.md{background:rgba(240,169,59,.13);color:var(--amber);border:1px solid rgba(240,169,59,.32)}
+.sev.lo{background:var(--surface2);color:var(--dim2);border:1px solid var(--line)}
+.prob .c b{display:block;font-size:14.5px;font-weight:600;margin-bottom:3px}
+.prob .c p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.55}
+.prob .c em{font-style:normal;color:#B9C7B2}
+
+/* сценарии */
+.scen{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:18px}
+.sc{border:1px solid var(--line);border-radius:14px;padding:15px 17px;background:var(--surface)}
+.sc .n{font-family:var(--mono);font-size:10px;color:var(--limeDim);letter-spacing:.1em}
+.sc b{display:block;font-size:14px;font-weight:600;margin:5px 0 4px}
+.sc p{margin:0;font-size:12.5px;color:var(--dim2);line-height:1.5}
+.sc.gap{border-color:rgba(229,100,75,.32);background:rgba(229,100,75,.05)}
+.sc.gap .n{color:var(--red)}
+
+/* концепции */
+.con{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--surface);margin-top:22px}
+.con.pick{border-color:var(--lime);box-shadow:0 0 0 3px rgba(198,240,51,.11)}
+.con-h{padding:24px 28px 20px;border-bottom:1px solid var(--lineSoft);display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.con-n{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--dim2)}
+.con-t{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:.005em;line-height:1.1;margin:4px 0 8px}
+.con-mood{font-size:14.5px;color:var(--dim);max-width:56ch}
+.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;background:var(--lime);color:var(--ink);
+  border-radius:7px;padding:5px 10px;font-weight:600;align-self:flex-start;white-space:nowrap}
+.con-body{display:grid;grid-template-columns:1fr 300px;gap:0}
+.con-l{padding:24px 28px 28px}
+.con-r{border-left:1px solid var(--lineSoft);padding:24px;display:flex;flex-direction:column;align-items:center;background:var(--ink2)}
+.spec{margin-bottom:20px}
+.spec h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--limeDim);margin:0 0 8px;font-weight:500}
+.spec p{margin:0;font-size:13.8px;color:var(--dim);line-height:1.6}
+.spec p b{color:var(--text);font-weight:600}
+.sw{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+.sw i{width:38px;height:38px;border-radius:9px;display:block;border:1px solid rgba(255,255,255,.08)}
+.diff{border-left:2px solid var(--greenMid);padding:2px 0 2px 14px;margin-top:18px;font-size:13.8px;color:#BECBB6;line-height:1.6}
+.diff b{color:var(--text)}
+
+/* мини-макет */
+.mini{width:236px;height:472px;border-radius:30px;border:1px solid var(--line);background:var(--ink);
+  padding:8px;overflow:hidden;box-shadow:0 18px 44px -18px rgba(0,0,0,.9)}
+.mscr{width:100%;height:100%;border-radius:23px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.mcap{font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:12px;text-align:center;line-height:1.5}
+
+/* А — табло */
+.a-top{padding:14px 12px 10px;border-bottom:1px solid var(--line)}
+.a-ttl{font-family:var(--mono);font-size:8px;letter-spacing:.2em;color:var(--dim2)}
+.a-big{font-family:var(--mono);font-size:34px;font-weight:600;line-height:1;margin-top:4px;letter-spacing:-.02em}
+.a-big em{font-style:normal;color:var(--lime)}
+.a-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--lineSoft)}
+.a-h{font-family:var(--mono);font-size:15px;font-weight:600;width:44px;letter-spacing:-.01em}
+.a-bars{flex:1;display:flex;gap:2px}
+.a-bars i{flex:1;height:14px;border-radius:2px;background:var(--surface2)}
+.a-bars i.f{background:var(--lime)}
+.a-n{font-family:var(--mono);font-size:11px;color:var(--dim2);width:26px;text-align:right}
+
+/* Б — корт */
+.b-hero{height:132px;position:relative;background:center/cover no-repeat,linear-gradient(150deg,#1E5AA8,#0E2A4E)}
+.b-hero .ov{position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(11,15,12,.94))}
+.b-hero .tx{position:absolute;left:12px;right:12px;bottom:10px}
+.b-glass{margin:-22px 10px 0;position:relative;z-index:2;border-radius:16px;padding:11px 12px;
+  background:rgba(30,38,28,.72);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(14px)}
+.b-tile{height:66px;border-radius:12px;position:relative;overflow:hidden;background:center/cover no-repeat}
+.b-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 10px}
+.b-tile .lb{position:absolute;left:7px;bottom:6px;font-size:10px;font-weight:700;text-shadow:0 1px 6px #000}
+.b-tile .ch{position:absolute;right:6px;top:6px;background:var(--lime);color:var(--ink);border-radius:6px;
+  font-family:var(--mono);font-size:8.5px;font-weight:700;padding:2px 5px}
+
+/* В — час */
+.c-strip{display:flex;gap:6px;padding:12px 10px 10px;overflow:hidden}
+.c-hr{flex:none;width:46px;border-radius:12px;padding:8px 0;text-align:center;border:1px solid var(--line);background:var(--surface)}
+.c-hr.on{background:var(--lime);border-color:var(--lime)}
+.c-hr .t{font-family:var(--mono);font-size:13px;font-weight:600}
+.c-hr.on .t{color:var(--ink)}
+.c-hr .n{font-size:8px;color:var(--dim2);margin-top:2px}
+.c-hr.on .n{color:rgba(11,15,12,.62)}
+.c-hr.off{opacity:.35}
+.c-head{padding:8px 12px 10px}
+.c-h1{font-family:var(--disp);font-size:30px;font-weight:600;line-height:1}
+.c-h1 em{font-style:normal;color:var(--lime)}
+.c-h2{font-size:10.5px;color:var(--dim2);margin-top:3px}
+.c-item{display:flex;align-items:center;gap:9px;margin:0 10px 7px;padding:8px 9px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--lineSoft)}
+.c-item .ph{width:34px;height:34px;border-radius:9px;background:center/cover no-repeat,#1B3D22;flex:none}
+.c-item .nm{flex:1;font-size:12px;font-weight:600}
+.c-item .pr{font-family:var(--mono);font-size:10.5px;color:var(--dim2)}
+.c-cta{position:absolute;left:10px;right:10px;bottom:10px;background:var(--lime);color:var(--ink);
+  border-radius:14px;padding:11px;text-align:center;font-weight:700;font-size:13px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:16px;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tbl th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim2);
+  text-align:left;padding:11px 14px;background:var(--ink2);border-bottom:1px solid var(--line);font-weight:500}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--lineSoft);color:var(--dim);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td b{color:var(--text)}
+
+.crit{border:1px solid rgba(229,100,75,.4);border-radius:20px;overflow:hidden;background:rgba(229,100,75,.05);margin-top:22px}
+.crit-h{padding:22px 26px 18px;border-bottom:1px solid rgba(229,100,75,.22)}
+.crit-t{font-family:var(--disp);font-size:24px;font-weight:600;letter-spacing:.005em}
+.crit-s{color:#E7C4BC;font-size:14.5px;margin:8px 0 0;max-width:70ch}
+.fix{display:flex;gap:16px;padding:17px 26px;align-items:flex-start}
+.fix+.fix{border-top:1px solid rgba(229,100,75,.16)}
+.fix .num{font-family:var(--mono);font-size:12px;color:var(--red);flex:none;width:22px;margin-top:2px;font-weight:600}
+.fix .c b{display:block;font-size:14.5px;font-weight:600;margin-bottom:4px}
+.fix .c p{margin:0 0 6px;font-size:13.5px;color:var(--dim);line-height:1.55}
+.fix .c .was{color:#D8B0A6}
+.fix .c .now{color:#C4DDB4}
+.fix .c .now b{display:inline;color:var(--lime);font-weight:600}
+
+/* В2 — переработанная */
+.d-top{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 8px}
+.d-date{font-size:12px;font-weight:600}
+.d-date i{font-style:normal;color:var(--dim2);font-weight:400}
+.d-cal{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;font-size:11px}
+.d-big{padding:6px 12px 2px}
+.d-big .t{font-family:var(--disp);font-size:34px;font-weight:600;line-height:1}
+.d-big .t em{font-style:normal;color:var(--lime)}
+.d-big .s{font-size:12px;color:var(--dim);margin-top:4px}
+.d-big .s b{color:var(--lime);font-weight:600}
+.d-mid{flex:1;display:flex;align-items:center;justify-content:center;padding:0 14px}
+.d-photo{width:100%;height:112px;border-radius:14px;background:center/cover no-repeat;position:relative;overflow:hidden}
+.d-photo .sc2{position:absolute;inset:0;background:rgba(11,15,12,.34)}
+.d-strip{display:flex;gap:6px;padding:10px 12px}
+.d-hr{flex:1;border-radius:11px;padding:9px 0;text-align:center;border:1px solid var(--line);background:var(--surface)}
+.d-hr.on{background:var(--lime);border-color:var(--lime)}
+.d-hr .t{font-family:var(--mono);font-size:14px;font-weight:600}
+.d-hr.on .t{color:var(--ink)}
+.d-hr .n{font-size:11px;color:var(--dim2);margin-top:2px}
+.d-hr.on .n{color:rgba(11,15,12,.66)}
+.d-hr.off{opacity:.32}
+.d-glass{margin:0 10px 10px;border-radius:16px;padding:11px 12px;
+  background:rgba(30,38,28,.8);border:1px solid rgba(87,109,81,.5)}
+.d-court{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);margin-bottom:9px}
+.d-court u{color:var(--lime);cursor:pointer}
+.d-cta{background:var(--lime);color:var(--ink);border-radius:13px;padding:12px;text-align:center;font-weight:700;font-size:13.5px}
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:20px}
+.st-card{background:var(--ink2);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;
+  flex-direction:column;align-items:center}
+.st-mini{width:170px;height:300px;border-radius:22px;border:1px solid var(--line);background:var(--ink);padding:6px}
+.st-scr{width:100%;height:100%;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;padding:12px 10px}
+.st-lbl{font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:11px;text-align:center}
+.sk{height:11px;border-radius:5px;background:var(--surface2);margin-bottom:7px}
+.foot{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;color:var(--dim2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+
+@media(max-width:900px){
+  .con-body{grid-template-columns:1fr}
+  .con-r{border-left:0;border-top:1px solid var(--lineSoft)}
+  .wrap{padding:0 17px 70px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Этап 1 и 2 · аудит и концепции · кода пока нет</p>
+  <h1>Редизайн<span>Padel Magas</span></h1>
+  <p class="lede">Аудит текущего приложения и три визуальные концепции на выбор. Задание адаптировано под наш продукт — часть пунктов исходного шаблона описывала другое приложение, это отмечено отдельно.</p>
+</header>
+
+<!-- ============ АУДИТ ============ -->
+<h2>Аудит</h2>
+<p class="sub">Что уже работает, где пользователь спотыкается и что не продумано.</p>
+
+<div class="key">
+  <div class="key-b">
+    <div class="key-t">Главная находка: мы заставляем выбирать корт, а выбирать надо время</div>
+    <p>Вы сказали: <b>«у нас стандартные 6 кортов»</b>, все одинаковые, одна цена. Значит выбор корта — <b>не решение</b>. Человеку всё равно, Корт 2 или Корт 4. Ему важно одно: <b>во сколько он сможет играть</b>.</p>
+    <p>А приложение сейчас построено наоборот: главный экран — список кортов, тап по корту открывает его расписание. Мы просим сделать выбор, который человеку безразличен, и только потом даём тот, который его волнует.</p>
+    <p>Это не косметика. Это <b>перевёрнутая информационная архитектура</b>, и она определяет, какую концепцию выбирать.</p>
+  </div>
+</div>
+
+<h3>Что работает и остаётся</h3>
+<div class="probs">
+  <div class="prob"><span class="sev lo">ОСТАВИТЬ</span><div class="c"><b>Видно свободное сразу, без нажатий</b>
+    <p>Закрывает жалобу номер один всего рынка. Ни у одного российского падел-приложения этого нет.</p></div></div>
+  <div class="prob"><span class="sev lo">ОСТАВИТЬ</span><div class="c"><b>Проверка длительности на занятость</b>
+    <p>Нельзя выбрать два часа, если свободен только один. Вариант выключен и объяснён словами.</p></div></div>
+  <div class="prob"><span class="sev lo">ОСТАВИТЬ</span><div class="c"><b>Цена складывается по часам</b>
+    <p>Бронь с 17:00 на два часа: первый час дневной, второй вечерний. Умножение дало бы неверную сумму.</p></div></div>
+  <div class="prob"><span class="sev lo">ОСТАВИТЬ</span><div class="c"><b>Экран подтверждения перед отправкой</b>
+    <p>У Playtomic зафиксирован тёмный паттерн: тап сразу записывает без подтверждения и без цены.</p></div></div>
+</div>
+
+<h3>Проблемы</h3>
+<div class="probs">
+  <div class="prob"><span class="sev hi">КРИТИЧНО</span><div class="c"><b>Два экрана решают одну задачу</b>
+    <p>Вкладка «Сетка» и экран корта — разные представления одного и того же расписания. Пользователь не поймёт, зачем оба, и будет метаться. <em>Одна из них лишняя.</em></p></div></div>
+  <div class="prob"><span class="sev hi">КРИТИЧНО</span><div class="c"><b>Шапка занимает 152 точки ради одного числа</b>
+    <p>Фото плюс «5 из 6 свободно» съедают треть первого экрана. На эту площадь можно поместить выбор времени целиком. <em>Дорогая недвижимость под малую информацию.</em></p></div></div>
+  <div class="prob"><span class="sev hi">КРИТИЧНО</span><div class="c"><b>Строка быстрой записи дублирует первую строку списка</b>
+    <p>«Корт 1 в 18:00» стоит и в жёлтой плашке, и первой строкой ниже. Два элемента, одно действие.</p></div></div>
+  <div class="prob"><span class="sev md">ВАЖНО</span><div class="c"><b>Шесть одинаковых строк без иерархии</b>
+    <p>Корт 1 и Корт 5 поданы равнозначно, хотя один свободен сейчас, а другой через три часа. Глазу не за что зацепиться.</p></div></div>
+  <div class="prob"><span class="sev md">ВАЖНО</span><div class="c"><b>Турниры — тупик</b>
+    <p>Список без действия. Нажать не на что, записаться нельзя, деталей нет. Целая вкладка ни к чему не ведёт.</p></div></div>
+  <div class="prob"><span class="sev md">ВАЖНО</span><div class="c"><b>Имя и телефон не редактируются</b>
+    <p>На экране подтверждения они подписаны «сохранено», но исправить их нельзя. При первой записи вводить негде.</p></div></div>
+  <div class="prob"><span class="sev md">ВАЖНО</span><div class="c"><b>Нет профиля и настроек уведомлений</b>
+    <p>Некуда положить телефон, историю, переключатель напоминаний. А напоминания — самый доказанный рычаг против неявок.</p></div></div>
+  <div class="prob"><span class="sev md">ВАЖНО</span><div class="c"><b>Состояний ошибок нет в коде</b>
+    <p>«Слот увели», «всё занято», «нет интернета» существуют только в прототипе на сайте. В приложении их нет. <em>Без них Apple может отклонить по правилу 2.1 — неполнота.</em></p></div></div>
+  <div class="prob"><span class="sev lo">ЗАМЕТКА</span><div class="c"><b>Время в приложении зафиксировано на 18:00</b>
+    <p>Заглушка для показа. С реальными часами работы заменяется на настоящее время.</p></div></div>
+  <div class="prob"><span class="sev lo">ЗАМЕТКА</span><div class="c"><b>Предупреждение React о несовпадении разметки</b>
+    <p>Появляется при серверной отрисовке веб-версии. На работу не влияет, но со временем даёт мигание при загрузке.</p></div></div>
+</div>
+
+<h3>Сценарии</h3>
+<p class="sub">Двенадцать путей, адаптированных под наш продукт. Красным — то, чего сейчас нет.</p>
+<div class="scen">
+  <div class="sc"><div class="n">01</div><b>Поиграть сегодня вечером</b><p>Самый частый. Открыл — увидел, во сколько можно — записался.</p></div>
+  <div class="sc"><div class="n">02</div><b>Нужно конкретное время</b><p>«Хочу в 20:00». Ищет не ближайшее, а своё.</p></div>
+  <div class="sc"><div class="n">03</div><b>Посмотреть неделю</b><p>Планирует заранее, смотрит, где вообще есть места.</p></div>
+  <div class="sc"><div class="n">04</div><b>Подтвердил ли менеджер</b><p>Отправил заявку и ждёт. Должен видеть статус без звонка.</p></div>
+  <div class="sc"><div class="n">05</div><b>Отменить бронь</b><p>Планы изменились. Без штрафов, слот освобождается.</p></div>
+  <div class="sc gap"><div class="n">06</div><b>Посмотреть историю</b><p>Сколько играл, когда. <em>Экрана нет.</em></p></div>
+  <div class="sc"><div class="n">07</div><b>Первый запуск</b><p>Записей нет, приложение должно вести к первой.</p></div>
+  <div class="sc gap"><div class="n">08</div><b>Слот увели</b><p>Двое нажали одновременно. <em>В коде нет.</em></p></div>
+  <div class="sc gap"><div class="n">09</div><b>Всё занято</b><p>Пятница, свободного нет. <em>В коде нет.</em></p></div>
+  <div class="sc gap"><div class="n">10</div><b>Нет интернета</b><p>Отключение мобильной сети. <em>В коде нет.</em></p></div>
+  <div class="sc gap"><div class="n">11</div><b>Записаться на турнир</b><p>Увидел анонс, хочет участвовать. <em>Действия нет.</em></p></div>
+  <div class="sc"><div class="n">12</div><b>Мини-футбольное поле</b><p>Та же логика, своя цена.</p></div>
+</div>
+
+<hr class="rule" style="margin-top:56px">
+
+<!-- ============ КОНЦЕПЦИИ ============ -->
+<h2>Три концепции</h2>
+<p class="sub">Все три — тёмные, все три опираются на бренд: щит, зелень, лайм. Отличаются тем, <b>что стоит в центре внимания</b> и как подана информация. Мини-макеты — главный экран каждой.</p>
+
+<!-- А -->
+<div class="con">
+  <div class="con-h">
+    <div style="flex:1;min-width:280px">
+      <div class="con-n">КОНЦЕПЦИЯ А</div>
+      <div class="con-t">Табло</div>
+      <p class="con-mood">Клуб как расписание. Плотно, точно, без украшений — как табло вылетов или счёт на стадионе. Для того, кто ходит регулярно и хочет увидеть всё за секунду.</p>
+    </div>
+  </div>
+  <div class="con-body">
+    <div class="con-l">
+      <div class="spec"><h4>Палитра</h4>
+        <p>Почти чёрный фон, лайм — единственный акцент, янтарь для «скоро освободится». Больше никаких цветов.</p>
+        <div class="sw"><i style="background:#0B0F0C"></i><i style="background:#171E16"></i><i style="background:#C6F033"></i><i style="background:#F0A93B"></i><i style="background:#889085"></i></div>
+      </div>
+      <div class="spec"><h4>Типографика</h4>
+        <p><b>Моноширинный шрифт для всех чисел</b> — время, цены, счётчики. Цифры выстраиваются колонкой и не пляшут при смене часа. Текст — системный SF Pro. Крупный час 34 пункта.</p></div>
+      <div class="spec"><h4>Списки и карточки</h4>
+        <p>Строки таблицы с тонкими разделителями, <b>без пузырей и крупных скруглений</b>. Плотность выше обычной: за экран помещается весь вечер.</p></div>
+      <div class="spec"><h4>Как подана загрузка</h4>
+        <p>Полоски по числу площадок в каждой строке часа: зажглась — свободно. <b>Видно не только «сколько», но и «какие»</b>, без открытия сетки.</p></div>
+      <div class="spec"><h4>Фото</h4>
+        <p>Один кадр в самом верху и всё. В списках фотографий нет — они мешают читать числа.</p></div>
+      <div class="spec"><h4>Анимация</h4>
+        <p>Перекат цифр при смене значения, как на механическом табло. Больше ничего.</p></div>
+      <div class="diff"><b>Чем отличается от обычного спортивного приложения:</b> там всё строится на крупных фото и карточках-пузырях. Здесь наоборот — данные в чистом виде. Приложение выглядит как инструмент, а не как витрина. <b>Риск:</b> новичку, который ни разу не был в клубе, оно покажется сухим.</div>
+    </div>
+    <div class="con-r">
+      <div class="mini"><div class="mscr">
+        <div class="a-top">
+          <div class="a-ttl">ВТОРНИК · СЕЙЧАС 18:24</div>
+          <div class="a-big"><em>5</em> / 6 СВОБОДНО</div>
+        </div>
+        <div style="flex:1;overflow:hidden">
+          <div class="a-row"><span class="a-h">19:00</span><span class="a-bars"><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span><span class="a-n">5</span></div>
+          <div class="a-row"><span class="a-h">20:00</span><span class="a-bars"><i class="f"></i><i></i><i></i><i class="f"></i><i class="f"></i><i></i></span><span class="a-n">3</span></div>
+          <div class="a-row"><span class="a-h">21:00</span><span class="a-bars"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i><i class="f"></i></span><span class="a-n">5</span></div>
+          <div class="a-row"><span class="a-h">22:00</span><span class="a-bars"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i></span><span class="a-n">5</span></div>
+          <div class="a-row"><span class="a-h">23:00</span><span class="a-bars"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span><span class="a-n">6</span></div>
+          <div class="a-row" style="opacity:.4"><span class="a-h">00:00</span><span class="a-bars"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="a-n">—</span></div>
+        </div>
+      </div></div>
+      <p class="mcap">Час — строка. Полоски — площадки.<br>Весь вечер на одном экране.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Б -->
+<div class="con">
+  <div class="con-h">
+    <div style="flex:1;min-width:280px">
+      <div class="con-n">КОНЦЕПЦИЯ Б</div>
+      <div class="con-t">Стекло и корт</div>
+      <p class="con-mood">Клуб как место. Крупные фотографии, синий цвет настоящего кортового покрытия рядом с лаймом, стеклянные панели в духе iOS 26. Продаёт атмосферу тому, кто ещё не был.</p>
+    </div>
+  </div>
+  <div class="con-body">
+    <div class="con-l">
+      <div class="spec"><h4>Палитра</h4>
+        <p>К чёрному и лайму добавляется <b>кортовый синий</b> — не выдуманный, а взятый с покрытия на фотографии. Он несёт статус «занято» и работает фоном карточек.</p>
+        <div class="sw"><i style="background:#0B0F0C"></i><i style="background:#1E5AA8"></i><i style="background:#C6F033"></i><i style="background:#3DA84A"></i><i style="background:#EDF2E9"></i></div>
+      </div>
+      <div class="spec"><h4>Типографика</h4>
+        <p>Системный SF Pro целиком, крупные заголовки 28–34 пункта. Моноширинный только в ценах. <b>Меньше цифр, больше слов.</b></p></div>
+      <div class="spec"><h4>Списки и карточки</h4>
+        <p>Плитки два в ряд с фотографией площадки, скругление 16–20. <b>Стеклянная панель</b> с ближайшим свободным временем наезжает на фото — приём iOS 26.</p></div>
+      <div class="spec"><h4>Liquid Glass</h4>
+        <p>Строго в функциональном слое: таб-бар, верхняя панель, шторки, плавающий блок записи. <b>На контент стекло не кладём</b> — прямой запрет в документации Apple.</p></div>
+      <div class="spec"><h4>Фото</h4>
+        <p>Главный носитель. Каждая площадка со своим кадром, шапка во всю ширину. Требует <b>ваших настоящих снимков</b> — на чужих концепция теряет смысл.</p></div>
+      <div class="spec"><h4>Анимация</h4>
+        <p>Лёгкий параллакс фото при прокрутке, мягкое раскрытие карточки площадки в полный экран.</p></div>
+      <div class="diff"><b>Чем отличается:</b> обычные спортивные приложения ставят фото как декорацию поверх шаблонной сетки. Здесь фотография — носитель информации: по кадру видно, крытый корт или открытый, светло или вечер. <b>Риск:</b> без ваших снимков выглядит как красивый шаблон, и площадь под данные заметно меньше.</div>
+    </div>
+    <div class="con-r">
+      <div class="mini"><div class="mscr">
+        <div class="b-hero" style="background-image:url('/img/hero-court.webp')">
+          <div class="ov"></div>
+          <div class="tx"><div style="font-family:var(--mono);font-size:8px;letter-spacing:.16em;color:#C6F033">СЕГОДНЯ · 18:24</div>
+          <div style="font-family:var(--disp);font-size:21px;font-weight:600;line-height:1.1;margin-top:2px">Свободно<br>пять площадок</div></div>
+        </div>
+        <div class="b-glass">
+          <div style="font-family:var(--mono);font-size:7.5px;letter-spacing:.15em;color:#9BC020">БЛИЖАЙШЕЕ СВОБОДНОЕ</div>
+          <div style="font-size:12.5px;font-weight:700;margin-top:2px">Корт 1 · сегодня в 19:00</div>
+          <div style="font-size:10px;color:#889085">4 500 ₽ за час</div>
+        </div>
+        <div class="b-tiles">
+          <div class="b-tile" style="background-image:url('/img/card-court.webp')"><span class="ch">19:00</span><span class="lb">Корт 1</span></div>
+          <div class="b-tile" style="background-image:url('/img/card-racket.webp')"><span class="ch">19:00</span><span class="lb">Корт 2</span></div>
+          <div class="b-tile" style="background-image:url('/img/card-court.webp')"><span class="ch" style="background:#F0A93B">21:00</span><span class="lb">Корт 3</span></div>
+          <div class="b-tile" style="background-image:url('/img/card-racket.webp')"><span class="ch">19:00</span><span class="lb">Корт 4</span></div>
+        </div>
+      </div></div>
+      <p class="mcap">Фото ведёт, стеклянная панель<br>несёт ближайшее время.</p>
+    </div>
+  </div>
+</div>
+
+<!-- В -->
+<div class="con pick">
+  <div class="con-h">
+    <div style="flex:1;min-width:280px">
+      <div class="con-n">КОНЦЕПЦИЯ В</div>
+      <div class="con-t">Час</div>
+      <p class="con-mood">Клуб как время. Ось интерфейса — не площадки, а часы. Человек выбирает «во сколько», и только потом видит, что свободно. Прямой ответ на главную находку аудита.</p>
+    </div>
+    <span class="tag">● РЕКОМЕНДУЮ</span>
+  </div>
+  <div class="con-body">
+    <div class="con-l">
+      <div class="spec"><h4>Палитра</h4>
+        <p>Чёрный и лайм как основа. <b>Янтарный получает смысл</b>: это «вечер», пиковое время и повышенный тариф. Цвет несёт информацию, а не украшает.</p>
+        <div class="sw"><i style="background:#0B0F0C"></i><i style="background:#171E16"></i><i style="background:#C6F033"></i><i style="background:#F0A93B"></i><i style="background:#3DA84A"></i></div>
+      </div>
+      <div class="spec"><h4>Типографика</h4>
+        <p>Выбранный час — <b>самый крупный элемент экрана</b>, 30–34 пункта. Всё остальное мельче и спокойнее. Моно для времени и цен, SF Pro для текста.</p></div>
+      <div class="spec"><h4>Главный элемент</h4>
+        <p><b>Горизонтальная лента часов</b> вверху, под ней — что свободно в выбранный час. Тап по часу перестраивает список. Один жест вместо двух экранов.</p></div>
+      <div class="spec"><h4>Списки и карточки</h4>
+        <p>Компактные строки с небольшой фотографией и ценой. Фото есть, но <b>не диктует композицию</b> — площадки одинаковые, различать их незачем.</p></div>
+      <div class="spec"><h4>Liquid Glass</h4>
+        <p>Лента часов остаётся закреплённой сверху на стекле при прокрутке. Внизу — стеклянная плашка с итогом и кнопкой. Контент чистый.</p></div>
+      <div class="spec"><h4>Анимация</h4>
+        <p>Список под лентой мягко перестраивается при смене часа, 250 мс. Счётчик свободных площадок меняется числом. Ничего лишнего.</p></div>
+      <div class="diff"><b>Чем отличается:</b> все падел-приложения, которые я разбирал — Playtomic, MATCHi, ClubSpark — строятся от площадки. Это наследие теннисных клубов, где корты действительно разные: грунт, трава, крытый. <b>У вас шесть одинаковых кортов, и выбор площадки — фиктивное решение.</b> Концепция убирает его из пути пользователя и оставляет один вопрос: во сколько играть. <b>Риск:</b> непривычно для тех, кто пользовался Playtomic.</div>
+    </div>
+    <div class="con-r">
+      <div class="mini"><div class="mscr">
+        <div style="padding:12px 12px 0">
+          <div style="font-family:var(--mono);font-size:8px;letter-spacing:.18em;color:#889085">ВТОРНИК, 2 СЕНТЯБРЯ</div>
+        </div>
+        <div class="c-strip">
+          <div class="c-hr off"><div class="t">18</div><div class="n">—</div></div>
+          <div class="c-hr on"><div class="t">19</div><div class="n">5 мест</div></div>
+          <div class="c-hr"><div class="t">20</div><div class="n">3</div></div>
+          <div class="c-hr"><div class="t">21</div><div class="n">5</div></div>
+          <div class="c-hr"><div class="t">22</div><div class="n">5</div></div>
+        </div>
+        <div class="c-head">
+          <div class="c-h1"><em>19:00</em> — 20:00</div>
+          <div class="c-h2">Свободно пять площадок · 4 500 ₽ за час</div>
+        </div>
+        <div style="flex:1;overflow:hidden">
+          <div class="c-item"><span class="ph" style="background-image:url('/img/card-court.webp')"></span><span class="nm">Корт 1</span><span class="pr">4 500 ₽</span></div>
+          <div class="c-item"><span class="ph" style="background-image:url('/img/card-racket.webp')"></span><span class="nm">Корт 2</span><span class="pr">4 500 ₽</span></div>
+          <div class="c-item"><span class="ph" style="background-image:url('/img/card-court.webp')"></span><span class="nm">Корт 4</span><span class="pr">4 500 ₽</span></div>
+          <div class="c-item"><span class="ph" style="background-image:url('/img/card-racket.webp')"></span><span class="nm">Корт 5</span><span class="pr">4 500 ₽</span></div>
+          <div class="c-item"><span class="ph" style="background:#2F7A38"></span><span class="nm">Мини-футбол</span><span class="pr">5 000 ₽</span></div>
+        </div>
+        <div class="c-cta">Записаться на 19:00</div>
+      </div></div>
+      <p class="mcap">Лента часов сверху — ось интерфейса.<br>Ниже то, что свободно в этот час.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ РЕКОМЕНДАЦИЯ ============ -->
+
+<hr class="rule" style="margin-top:56px">
+
+<h2>Критический разбор</h2>
+<p class="sub">Взгляд на предложенное как на чужую работу. Десять проблем и что с каждой сделано.</p>
+
+<div class="crit">
+  <div class="crit-h">
+    <div class="crit-t">Что не выдержало проверки</div>
+    <p class="crit-s">Три пункта из десяти — фактические ошибки в моём же тексте, а не вкусовые претензии. Ниже исправлено.</p>
+  </div>
+
+  <div class="fix"><span class="num">01</span><div class="c"><b>Заявленных двух нажатий нет</b>
+    <p class="was">В таблице стояло «2». Реальный путь: тап по часу → тап по площадке → подтверждение → отправить. Это три-четыре. Цифра определяла выбор концепции — и была неверна.</p>
+    <p class="now"><b>Исправлено:</b> убран промежуточный выбор площадки, цифра в таблице заменена на честную.</p></div></div>
+
+  <div class="fix"><span class="num">02</span><div class="c"><b>Концепция противоречила собственной посылке</b>
+    <p class="was">Тезис: «корты одинаковые, выбор фиктивный». А макет показывал пять одинаковых строк с одинаковой ценой. Выбор без критериев — не свобода, а ступор.</p>
+    <p class="now"><b>Исправлено:</b> список площадок убран. Показывается «свободно 5 площадок», корт назначает система. Это то, что CourtReserve называет Consolidated Scheduler — я нашёл это в исследовании и не применил.</p></div></div>
+
+  <div class="fix"><span class="num">03</span><div class="c"><b>Главное действие в самой недоступной зоне</b>
+    <p class="was">Лента часов вверху. На большом iPhone это край, до которого одной рукой не дотянуться. Я сам цитировал Apple: «легче дотянуться до элементов в средней или нижней части экрана».</p>
+    <p class="now"><b>Исправлено:</b> лента часов опущена в нижнюю треть, кнопка записи закреплена под ней. Верх отдан информации, низ — управлению.</p></div></div>
+
+  <div class="fix"><span class="num">04</span><div class="c"><b>Дыра в сценарии планирования</b>
+    <p class="was">«Час» работал для «сегодня вечером». Для «субботы в 12» понадобилась бы вторая лента — дат. Две ленты подряд это и есть двухосевая сетка, которую я обещал убрать.</p>
+    <p class="now"><b>Исправлено:</b> дата — компактный переключатель в шапке с календарём, а не лента. Ось остаётся одна.</p></div></div>
+
+  <div class="fix"><span class="num">05</span><div class="c"><b>Liquid Glass был декоративным</b>
+    <p class="was">«Лента на стекле», «стеклянная плашка» — без обоснования, зачем там стекло. Ровно то, от чего предостерегает Apple и о чём спрашивало задание.</p>
+    <p class="now"><b>Исправлено:</b> стекло осталось только на нижней панели и таб-баре — там, где контент реально проезжает под элементом. Лента часов при прокрутке становится непрозрачной.</p></div></div>
+
+  <div class="fix"><span class="num">06</span><div class="c"><b>Ни одной концепции без состояний отказа</b>
+    <p class="was">Все три показывали только счастливый путь. Концепция без состояний ошибок — картинка, а не концепция. Apple отклоняет по правилу 2.1 именно за неполноту.</p>
+    <p class="now"><b>Исправлено:</b> дорисованы четыре состояния — загрузка, всё занято, слот увели, нет связи. Ниже.</p></div></div>
+
+  <div class="fix"><span class="num">07</span><div class="c"><b>Текст 8 пунктов в макетах</b>
+    <p class="was">Подписи набраны мельче минимума iOS в 11 пунктов, который я сам задокументировал. На устройстве нечитаемо, при увеличении шрифта макет ломается.</p>
+    <p class="now"><b>Исправлено:</b> в переработанном макете минимум 11, вторичные подписи 12.</p></div></div>
+
+  <div class="fix"><span class="num">08</span><div class="c"><b>Отказ от светлой темы подан как решённый</b>
+    <p class="was">Записан как решение, но Apple разрешает единственную тёмную тему только для медийных приложений. Половина ваших кортов открытые, читаемость на солнце я поднимал сам и потом уронил.</p>
+    <p class="now"><b>Что сделано:</b> риск вынесен обратно на ваше решение. Минимальная мера без светлой темы — поддержка системного «Увеличить контраст»: фон темнее, границы ярче. Это дешевле полной второй темы и снимает часть проблемы.</p></div></div>
+
+  <div class="fix"><span class="num">09</span><div class="c"><b>Обзор недели не спроектирован</b>
+    <p class="was">Одна фраза «плотная подача из А». А это самое сложное: семь площадок на пятнадцать часов на экране шириной 390 точек.</p>
+    <p class="now"><b>Что сделано:</b> признано как незакрытая задача и вынесено отдельным пунктом на следующий этап. Не притворяюсь, что решено.</p></div></div>
+
+  <div class="fix"><span class="num">10</span><div class="c"><b>Сравнительная таблица подогнана</b>
+    <p class="was">Критерии написаны после выбора победителя. «Похоже на конкурентов» подано как минус, хотя непохожесть равно означает, что человек не поймёт интерфейс.</p>
+    <p class="now"><b>Исправлено:</b> строка переписана — непохожесть названа и плюсом, и риском.</p></div></div>
+</div>
+
+<h2>Концепция В2 — после правок</h2>
+<p class="sub">Та же идея «ось — время», но без трёх ошибок: без фиктивного выбора площадки, с управлением в нижней трети экрана и с датой как переключателем, а не второй лентой.</p>
+
+<div class="con pick">
+  <div class="con-body">
+    <div class="con-l">
+      <div class="spec"><h4>Что изменилось в композиции</h4>
+        <p>Экран разделён по вертикали: <b>верх — информация, низ — управление.</b> Вверху дата и главная цифра, в середине фотография площадки, в нижней трети лента часов и кнопка. Всё, к чему нужно тянуться пальцем, находится там, куда палец достаёт.</p></div>
+      <div class="spec"><h4>Площадки больше не выбираются</h4>
+        <p>Вместо списка одинаковых кортов — <b>«свободно 5 из 6»</b> и назначенный корт мелкой строкой с возможностью поменять. Кто хочет конкретный — нажмёт «выбрать другой». Остальные, а это большинство, не делают лишнего выбора.</p></div>
+      <div class="spec"><h4>Дата</h4>
+        <p>Компактная строка в шапке с иконкой календаря. Тап открывает системный выбор даты — стандартный элемент iOS, а не самодельная лента.</p></div>
+      <div class="spec"><h4>Liquid Glass — только по делу</h4>
+        <p>Нижняя панель с итогом и кнопкой: под неё <b>реально проезжает контент</b> при прокрутке — это и есть случай, для которого стекло придумано. Таб-бар системный. Больше стекла нигде.</p></div>
+      <div class="spec"><h4>Размеры текста</h4>
+        <p>Час — 34 пункта. Подписи под часами — 11, вторичный текст — 12. <b>Ничего мельче минимума iOS.</b></p></div>
+      <div class="diff"><b>Путь до записи:</b> тап по часу → «Записаться». Два нажатия, теперь по-настоящему. Экран подтверждения остаётся третьим шагом только когда человек записывается впервые и вводит имя.</div>
+    </div>
+    <div class="con-r">
+      <div class="mini"><div class="mscr">
+        <div class="d-top">
+          <div class="d-date">Сегодня, 2 сентября <i>· вторник</i></div>
+          <div class="d-cal">📅</div>
+        </div>
+        <div class="d-big">
+          <div class="t"><em>19:00</em>–20:00</div>
+          <div class="s">Свободно <b>5 из 6</b> площадок · 4 500 ₽</div>
+        </div>
+        <div class="d-mid">
+          <div class="d-photo" style="background-image:url('/img/hero-court.webp')"><div class="sc2"></div></div>
+        </div>
+        <div class="d-strip">
+          <div class="d-hr off"><div class="t">18</div><div class="n">—</div></div>
+          <div class="d-hr on"><div class="t">19</div><div class="n">5</div></div>
+          <div class="d-hr"><div class="t">20</div><div class="n">3</div></div>
+          <div class="d-hr"><div class="t">21</div><div class="n">5</div></div>
+        </div>
+        <div class="d-glass">
+          <div class="d-court">Назначен Корт 1 · <u>выбрать другой</u></div>
+          <div class="d-cta">Записаться на 19:00</div>
+        </div>
+      </div></div>
+      <p class="mcap">Верх — информация.<br>Низ — то, до чего дотягивается палец.</p>
+    </div>
+  </div>
+</div>
+
+<h3>Состояния, которых не было</h3>
+<p class="sub">Концепция без них неполна. Четыре обязательных.</p>
+<div class="states">
+  <div class="st-card">
+    <div class="st-mini"><div class="st-scr">
+      <div class="sk" style="width:52%;height:9px"></div>
+      <div class="sk" style="width:78%;height:22px;margin-bottom:14px"></div>
+      <div class="sk" style="height:70px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:5px;margin-bottom:12px"><div class="sk" style="flex:1;height:38px;margin:0"></div><div class="sk" style="flex:1;height:38px;margin:0"></div><div class="sk" style="flex:1;height:38px;margin:0"></div><div class="sk" style="flex:1;height:38px;margin:0"></div></div>
+      <div class="sk" style="height:40px;background:#1E2A1C"></div>
+    </div></div>
+    <div class="st-lbl">ЗАГРУЗКА<br>Скелет, а не крутилка</div>
+  </div>
+
+  <div class="st-card">
+    <div class="st-mini"><div class="st-scr">
+      <div style="font-size:11px;color:#889085">Сегодня, 2 сентября</div>
+      <div style="font-family:var(--disp);font-size:22px;font-weight:600;margin-top:6px;line-height:1.15">Сегодня всё занято</div>
+      <div style="font-size:12px;color:#9AA795;margin-top:6px;line-height:1.5">Вечер вторника — самое загруженное время недели.</div>
+      <div style="margin-top:14px;padding:10px;border-radius:11px;border:1px solid rgba(198,240,51,.3);background:rgba(198,240,51,.06)">
+        <div style="font-size:11px;color:#9BC020">ЗАВТРА С УТРА</div>
+        <div style="font-size:13px;font-weight:600;margin-top:3px">08:00 · 2 500 ₽</div>
+        <div style="font-size:11px;color:#889085">дешевле на 2 000 ₽</div>
+      </div>
+      <div style="margin-top:auto;background:transparent;border:1px solid #576D51;border-radius:12px;padding:10px;text-align:center;font-size:12px;font-weight:600">Сообщить, если освободится</div>
+    </div></div>
+    <div class="st-lbl">ВСЁ ЗАНЯТО<br>Не тупик, а альтернатива</div>
+  </div>
+
+  <div class="st-card">
+    <div class="st-mini"><div class="st-scr">
+      <div style="margin-top:auto;margin-bottom:auto">
+        <div style="width:38px;height:38px;border-radius:11px;background:rgba(229,100,75,.14);border:1px solid rgba(229,100,75,.4);display:grid;place-items:center;font-size:17px;margin-bottom:11px">⚡</div>
+        <div style="font-size:14px;font-weight:700;line-height:1.3">Этот слот только что заняли</div>
+        <div style="font-size:12px;color:#9AA795;margin-top:5px;line-height:1.5">С вас ничего не списано.</div>
+        <div style="margin-top:12px;padding:9px 10px;border-radius:11px;border:1px solid rgba(198,240,51,.3);background:rgba(198,240,51,.06);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:13px;color:#C6F033;font-weight:600">20:00</span>
+          <span style="font-size:11px;color:#889085">свободно 3</span>
+        </div>
+        <div style="margin-top:12px;background:#C6F033;color:#0B0F0C;border-radius:12px;padding:10px;text-align:center;font-size:12.5px;font-weight:700">Записаться на 20:00</div>
+      </div>
+    </div></div>
+    <div class="st-lbl">СЛОТ УВЕЛИ<br>Сразу альтернатива, не ошибка</div>
+  </div>
+
+  <div class="st-card">
+    <div class="st-mini"><div class="st-scr">
+      <div style="padding:9px 10px;border-radius:11px;background:rgba(240,169,59,.1);border:1px solid rgba(240,169,59,.3);margin-bottom:12px">
+        <div style="font-size:11.5px;color:#DFCCA8;line-height:1.45">Нет связи. Показываем расписание на <b>18:12</b>.</div>
+      </div>
+      <div style="opacity:.55">
+        <div style="font-family:var(--disp);font-size:22px;font-weight:600;line-height:1">19:00–20:00</div>
+        <div style="font-size:12px;color:#9AA795;margin-top:4px">Было свободно 5 площадок</div>
+      </div>
+      <div style="margin-top:auto;background:#C6F033;color:#0B0F0C;border-radius:12px;padding:11px;text-align:center;font-size:12.5px;font-weight:700">Позвонить в клуб</div>
+      <div style="font-size:11px;color:#889085;text-align:center;margin-top:7px;line-height:1.4">Звонок работает без интернета</div>
+    </div></div>
+    <div class="st-lbl">НЕТ СВЯЗИ<br>Кэш с отметкой времени и телефон</div>
+  </div>
+</div>
+
+<h2>Что рекомендую и почему</h2>
+<p class="sub">Коротко: <b>концепция В «Час»</b>, с фотографиями площадок из концепции Б и плотностью подачи из А там, где нужен обзор недели.</p>
+
+<table class="tbl">
+  <thead><tr><th>Критерий</th><th>А · Табло</th><th>Б · Стекло и корт</th><th>В · Час</th></tr></thead>
+  <tbody>
+    <tr><td><b>Совпадает с тем, как человек решает</b></td><td>Частично: время видно, но списком часов</td><td>Нет: заставляет выбирать площадку</td><td><b>Да: вопрос один — во сколько</b></td></tr>
+    <tr><td><b>Нажатий до записи</b></td><td>2</td><td>3</td><td>было заявлено 2, <b>на деле 3–4</b> — исправлено ниже</td></tr>
+    <tr><td><b>Понятно новичку, который не был в клубе</b></td><td>Слабо</td><td><b>Сильно</b></td><td>Средне, фото помогают</td></tr>
+    <tr><td><b>Зависит от ваших фотографий</b></td><td>Почти нет</td><td><b>Полностью</b></td><td>Умеренно</td></tr>
+    <tr><td><b>Похожесть на конкурентов</b></td><td>Низкая</td><td>Высокая: MATCHi, Playtomic</td><td>Низкая — <b>это и плюс, и риск</b>: непохожее приходится объяснять</td></tr>
+    <tr><td><b>Место под данные на экране</b></td><td><b>Максимум</b></td><td>Минимум</td><td>Достаточно</td></tr>
+  </tbody>
+</table>
+
+<div class="key" style="margin-top:26px">
+  <div class="key-b">
+    <div class="key-t">Почему В</div>
+    <p><b>Она построена на факте о вашем клубе, а не на моде.</b> Шесть одинаковых кортов означают, что выбор площадки — фиктивное решение, которое мы сейчас навязываем. Убрав его, мы сокращаем путь и убираем целый экран.</p>
+    <p><b>Она снимает главную проблему аудита разом.</b> Вкладка «Сетка» и экран корта перестают дублировать друг друга: лента часов и есть сетка, только развёрнутая по одной оси вместо двух. Освобождается вкладка — туда встанет профиль с историей и настройками напоминаний.</p>
+    <p><b>Она не похожа ни на одно приложение из тех, что я разбирал.</b> Playtomic, MATCHi, ClubSpark строятся от площадки, потому что выросли из тенниса, где корты разные: грунт, трава, крытый. Мы не обязаны наследовать чужое ограничение.</p>
+    <p>Что беру из других: <b>фотографии площадок из Б</b> — они дают тепло и снимают «сухость», и <b>плотную табличную подачу из А</b> для экрана недели, где нужен обзор, а не выбор.</p>
+  </div>
+</div>
+
+<h3>Что нужно решить вам</h3>
+<div class="probs">
+  <div class="prob"><span class="sev hi">РЕШЕНИЕ</span><div class="c"><b>Какая концепция</b>
+    <p>А, Б, В или сочетание. От этого зависит вся дальнейшая работа.</p></div></div>
+  <div class="prob"><span class="sev md">ВОПРОС</span><div class="c"><b>Нужна ли турнирная сетка с раундами и счётом</b>
+    <p>В шаблоне она есть, но это функция для проведения турнира в приложении. Сейчас у нас турниры — анонс и запись. Полная сетка — отдельный большой кусок работы.</p></div></div>
+  <div class="prob"><span class="sev md">ВОПРОС</span><div class="c"><b>Профиль: нужен ли он без регистрации</b>
+    <p>Вы решили пока без входа. Профиль может хранить имя, телефон и историю локально на телефоне — тогда он полезен и без аккаунта.</p></div></div>
+</div>
+
+<div class="foot">
+  <span>Этап 1 и 2 · 1 сентября 2026</span>
+  <span>Код не пишется до утверждения концепции</span>
+</div>
+
+</div>
