@@ -1,19 +1,20 @@
-// Главный экран — сетка «часы × площадки». Вся картина дня сразу,
-// нажатие на клетку и есть выбор. Отдельная вкладка расписания не нужна.
-import { useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
+// Главная — витрина клуба, а не таблица. Задача экрана: за секунду показать,
+// есть ли сегодня место, и увести в выбор времени одной большой кнопкой.
+// Сама сетка живёт на отдельном экране /schedule.
+import { ScrollView, Text, View, Pressable, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT } from '../../src/theme';
 import {
-  CLUB, COURTS, VISIBLE_COURTS, slotsFor, maxRun, priceRange,
-  courtById, fmt, hh, type Court,
+  CLUB, VISIBLE_COURTS, TOURNAMENTS, slotsFor, nextFree, priceAt, fmt, hh,
 } from '../../src/data';
-import { IMG } from '../../src/images';
-import { IconCalendar, IconBall, IconChevron } from '../../src/components/icons';
+import { IMG, HERO, TOURN_IMG } from '../../src/images';
+import { Mark, IconChevron, IconCheck } from '../../src/components/icons';
+import { useBookings, useEntries } from '../../src/store';
 
-const NOW = 18;              // ЗАГЛУШКА: «текущий час»
+const NOW = 18;   // ЗАГЛУШКА: «текущий час»
 
 /** Русские окончания: 1 час, 2 часа, 5 часов. */
 function plural(n: number, one: string, few: string, many: string) {
@@ -23,223 +24,171 @@ function plural(n: number, one: string, few: string, many: string) {
   if (b === 1) return one;
   return many;
 }
-const DAYS = [
-  { key: 0, w: 'Сегодня', d: '2' }, { key: 1, w: 'Ср', d: '3' }, { key: 2, w: 'Чт', d: '4' },
-  { key: 3, w: 'Пт', d: '5' }, { key: 4, w: 'Сб', d: '6' },
-];
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const [day, setDay] = useState(0);
-  const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
-  const [hours, setHours] = useState(1);
+  const bookings = useBookings();
+  const entries = useEntries();
 
-  // Сегодня прошедшие часы не показываем, для других дней — весь день
-  const from = day === 0 ? NOW : CLUB.openHour;
-  const rows = useMemo(() => {
-    const out: number[] = [];
-    for (let h = from; h < CLUB.closeHour; h++) out.push(h);
-    return out;
-  }, [from]);
-
-  const gap = 3, padH = 10, timeW = 32;
-
-  const statuses = useMemo(() => {
-    const m: Record<string, Record<number, string>> = {};
-    for (const c of COURTS) {
-      m[c.id] = {};
-      for (const s of slotsFor(c.id, from)) m[c.id][s.hour] = s.status;
-    }
-    return m;
-  }, [from]);
-
-  const court = sel ? courtById(sel.courtId) : null;
-  const run = sel ? maxRun(sel.courtId, sel.hour) : 0;
-  const total = sel && court ? priceRange(court, sel.hour, hours) : 0;
-  // Сегодня важно «что свободно прямо сейчас», в другой день — сколько всего часов
-  const freeNow = VISIBLE_COURTS.filter(c => statuses[c.id]?.[from] === 'free').length;
   const freeHours = VISIBLE_COURTS.reduce(
-    (n, c) => n + rows.filter(h => statuses[c.id]?.[h] === 'free').length, 0);
+    (n, c) => n + slotsFor(c.id, NOW).filter(s => s.status === 'free').length, 0);
+  const freeNow = VISIBLE_COURTS.filter(
+    c => slotsFor(c.id, NOW).find(s => s.hour === NOW)?.status === 'free').length;
+  const soonest = VISIBLE_COURTS
+    .map(c => nextFree(c.id, NOW))
+    .filter((h): h is number => h != null)
+    .sort((a, b) => a - b)[0] ?? null;
 
-  const tap = (c: Court, h: number) => {
-    if (c.off || statuses[c.id]?.[h] !== 'free') return;
+  const tourn = TOURNAMENTS.find(t => t.state === 'open');
+  const active = bookings.filter(b => b.status !== 'cancelled');
+
+  const go = (path: string, params?: Record<string, string>) => {
     Haptics.selectionAsync();
-    setSel({ courtId: c.id, hour: h });
-    setHours(prev => Math.min(prev, maxRun(c.id, h)) || 1);
+    router.push(params ? { pathname: path as never, params } : (path as never));
   };
-
-  const pickHours = (n: number) => {
-    if (!sel || n > run) return;
-    Haptics.selectionAsync();
-    setHours(n);
-  };
-
-  const book = () => {
-    if (!sel || !court) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/book', params: { courtId: court.id, name: court.name,
-      hour: String(sel.hour), hours: String(hours), price: String(total) } });
-  };
-
-  // Клетка входит в выбранный отрезок?
-  const inRange = (cId: string, h: number) =>
-    !!sel && sel.courtId === cId && h >= sel.hour && h < sel.hour + hours;
 
   return (
-    <View style={[st.root, { paddingTop: insets.top + 4 }]}>
+    <ScrollView style={st.root} contentContainerStyle={{ paddingBottom: 34 }}
+      showsVerticalScrollIndicator={false}>
 
-      <View style={st.header}>
+      <View style={[st.top, { paddingTop: insets.top + 10 }]}>
+        <Mark size={26} />
         <View style={{ flex: 1 }}>
-          <Text style={st.hDate}>
-            {day === 0 ? 'Сегодня, 2 сентября' : `${DAYS[day].w}, ${DAYS[day].d} сентября`}
-          </Text>
-          <Text style={st.hSub}>
-            {day === 0
-              ? `вторник · сейчас свободно ${freeNow} из ${VISIBLE_COURTS.length}`
-              : `свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
-          </Text>
+          <Text style={st.brand}>{CLUB.name}</Text>
+          <Text style={st.city}>{CLUB.city}</Text>
         </View>
-        <Pressable hitSlop={6} onPress={() => Haptics.selectionAsync()}
-          style={({ pressed }) => [st.calBtn, pressed && { opacity: 0.7 }]}>
-          <IconCalendar />
-        </Pressable>
+        <Text style={st.today}>Вт, 2 сен</Text>
       </View>
 
-      <View style={st.days}>
-        {DAYS.map(d => {
-          const on = day === d.key;
+      {/* Главное: есть ли место сегодня */}
+      <View style={st.hero}>
+        <Image source={HERO} style={st.heroImg} resizeMode="cover" />
+        <LinearGradient
+          colors={['rgba(9,13,10,.30)', 'rgba(9,13,10,.72)', 'rgba(9,13,10,.96)']}
+          locations={[0, 0.48, 1]} style={st.heroScrim} />
+        <View style={st.heroIn}>
+          <View style={st.live}>
+            <View style={st.liveDot} />
+            <Text style={st.liveT}>СЕЙЧАС СВОБОДНО {freeNow} ИЗ {VISIBLE_COURTS.length}</Text>
+          </View>
+          <Text style={st.heroBig}>
+            {freeHours} {plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}
+          </Text>
+          <Text style={st.heroSub}>
+            {soonest != null
+              ? `Ближайшее время — ${hh(soonest)}. Корт на час, с ${hh(CLUB.openHour)} до полуночи.`
+              : 'На сегодня всё занято. Посмотрите следующие дни.'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Главное действие */}
+      <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
+        style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
+        <Text style={st.ctaT}>Выбрать время</Text>
+        <Text style={st.ctaS}>Все площадки и часы на одном экране</Text>
+      </Pressable>
+
+      {/* Активные записи — если они есть, это важнее витрины */}
+      {(active.length > 0 || entries.length > 0) && (
+        <Pressable onPress={() => go('/bookings')}
+          style={({ pressed }) => [st.mine, pressed && { opacity: 0.8 }]}>
+          <View style={st.mineIcon}><IconCheck size={14} color={C.onLime} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.mineT}>
+              {active.length > 0
+                ? `${active[0].courtName}, ${hh(active[0].hour)} – ${hh(active[0].hour + active[0].hours)}`
+                : 'Вы записаны на турнир'}
+            </Text>
+            <Text style={st.mineS}>
+              {active.length + entries.length > 1
+                ? `и ещё ${active.length + entries.length - 1}`
+                : active.length > 0
+                  ? (active[0].status === 'confirmed' ? 'подтверждено' : 'ждёт подтверждения')
+                  : 'смотреть в моих записях'}
+            </Text>
+          </View>
+          <IconChevron size={15} color={C.dim2} />
+        </Pressable>
+      )}
+
+      {/* Площадки */}
+      <View style={st.secHead}>
+        <Text style={st.secT}>Площадки</Text>
+        <Text style={st.secS}>{VISIBLE_COURTS.length} штук</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={st.strip}>
+        {VISIBLE_COURTS.map(c => {
+          const free = nextFree(c.id, NOW);
           return (
-            <Pressable key={d.key}
-              onPress={() => { Haptics.selectionAsync(); setDay(d.key); setSel(null); setHours(1) }}
-              style={[st.day, on && st.dayOn]}>
-              <Text style={[st.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{d.w}</Text>
-              <Text style={[st.dayD, on && { color: C.onLime }]}>{d.d}</Text>
+            <Pressable key={c.id} onPress={() => go('/court', { id: c.id, hour: String(free ?? NOW) })}
+              accessibilityRole="button"
+              accessibilityLabel={`${c.name}, ${free != null ? 'ближайшее время ' + hh(free) : 'сегодня занят'}`}
+              style={({ pressed }) => [st.card, pressed && { opacity: 0.85 }]}>
+              <Image source={IMG[c.id]} style={st.cardImg} resizeMode="cover" />
+              <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.9)']}
+                locations={[0.35, 1]} style={st.cardScrim} />
+              <View style={st.cardIn}>
+                <Text style={st.cardN}>{c.name}</Text>
+                <Text style={st.cardS}>
+                  {free != null ? `свободно с ${hh(free)}` : 'сегодня занят'}
+                </Text>
+              </View>
+              <View style={st.cardPrice}>
+                <Text style={st.cardPriceT}>{fmt(priceAt(c, NOW))}</Text>
+              </View>
             </Pressable>
           );
         })}
-      </View>
-
-      <View style={{ paddingHorizontal: padH }}>
-        <View style={[st.headRow, { gap }]}>
-          <View style={{ width: timeW }} />
-          {COURTS.map(c => (
-            <View key={c.id} style={st.headCell}>
-              {c.football
-                ? <IconBall size={15} color={c.off ? C.busy : C.dim} />
-                : <Text style={[st.headT, c.off && { color: C.busy }]}>
-                    К{c.name.replace(/\D/g, '')}
-                  </Text>}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: padH, paddingBottom: 10 }}
-        showsVerticalScrollIndicator={false}>
-        {rows.map(h => (
-          <View key={h} style={[st.row, { gap }]}>
-            <Text style={[st.time, { width: timeW }]}>{hh(h)}</Text>
-            {COURTS.map(c => {
-              const stt = statuses[c.id]?.[h];
-              const free = !c.off && stt === 'free';
-              const on = inRange(c.id, h);
-              const start = !!sel && sel.courtId === c.id && sel.hour === h;
-              return (
-                <Pressable key={c.id} disabled={!free} onPress={() => tap(c, h)}
-                  accessibilityRole="button"
-                  accessibilityLabel={c.off ? `${c.name}, закрыт`
-                    : on ? `${c.name}, ${hh(h)}, выбрано`
-                    : free ? `${c.name}, ${hh(h)}, свободно` : `${c.name}, ${hh(h)}, занято`}
-                  accessibilityState={{ selected: on, disabled: !free }}
-                  style={({ pressed }) => [st.cell,
-                    c.off ? st.cellOff : free ? st.cellFree : st.cellBusy,
-                    on && st.cellOn,
-                    pressed && free && !on && { backgroundColor: C.surface3 }]}>
-                  {c.off ? null
-                    : on ? (start ? <View style={st.dotOn} /> : <View style={st.barOn} />)
-                    : free ? <View style={st.dotFree} />
-                    : <View style={st.dashBusy} />}
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
-
-        <View style={st.legend}>
-          <Leg label="свободно" free />
-          <Leg label="занято" />
-          <Leg label="закрыт" dashed />
-        </View>
-        <Text style={st.note}>Корт 6 закрыт до 5 сентября — ремонт покрытия</Text>
       </ScrollView>
 
-      <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
-        {sel && court ? (
-          <>
-            <Pressable
-              onPress={() => router.push({ pathname: '/court',
-                params: { id: court.id, hour: String(sel.hour) } })}
-              style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
-              <Image source={IMG[court.id]} style={st.pickPh} resizeMode="cover" />
-              <View style={{ flex: 1 }}>
-                <Text style={st.pickN}>{court.name}</Text>
-                <Text style={st.pickS}>
-                  {hh(sel.hour)} – {hh(sel.hour + hours)} · {fmt(total)}
-                </Text>
-              </View>
-              <IconChevron size={15} color={C.dim2} />
+      {/* Турнир */}
+      {tourn && (
+        <>
+          <View style={st.secHead}>
+            <Text style={st.secT}>Ближайший турнир</Text>
+            <Pressable onPress={() => go('/tournaments')} accessibilityRole="button"
+              style={({ pressed }) => [st.secLinkHit, pressed && { opacity: 0.7 }]}>
+              <Text style={st.secLink}>все турниры</Text>
             </Pressable>
-
-            <View style={st.durRow}>
-              {[1, 2, 3].map(n => {
-                const ok = n <= run;
-                const on = hours === n;
-                return (
-                  <Pressable key={n} disabled={!ok} onPress={() => pickHours(n)}
-                    accessibilityState={{ selected: on, disabled: !ok }}
-                    style={[st.dur, on && st.durOn, !ok && st.durOff]}>
-                    <Text style={[st.durT, on && { color: C.onLime }, !ok && { color: C.busy }]}>
-                      {n} {n === 1 ? 'час' : 'часа'}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {run < 3 && (
-              <Text style={st.warn}>
-                {run === 1
-                  ? `В ${hh(sel.hour + 1)} площадка занята — свободен только один час.`
-                  : `В ${hh(sel.hour + run)} площадка занята — подряд можно взять ${run} часа.`}
+          </View>
+          <Pressable onPress={() => go('/tournament', { id: tourn.id })}
+            style={({ pressed }) => [st.tourn, pressed && { opacity: 0.88 }]}>
+            <Image source={TOURN_IMG[tourn.cover]} style={st.tournImg} resizeMode="cover" />
+            <LinearGradient colors={['rgba(9,13,10,.15)', 'rgba(9,13,10,.9)']}
+              locations={[0.3, 1]} style={st.cardScrim} />
+            <View style={st.tournIn}>
+              <Text style={st.tournN}>{tourn.name}</Text>
+              <Text style={st.tournS}>
+                {tourn.date}, {tourn.time} · осталось {tourn.total - tourn.taken} мест
               </Text>
-            )}
-
-            <Pressable onPress={book} accessibilityRole="button"
-              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Записаться · {fmt(total)}</Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <Text style={st.empty}>Нажмите свободное время на нужной площадке</Text>
-            <View style={[st.cta, st.ctaOff]}>
-              <Text style={[st.ctaT, { color: C.dim2 }]}>Записаться</Text>
             </View>
-          </>
-        )}
+          </Pressable>
+        </>
+      )}
+
+      {/* Клуб */}
+      <View style={st.secHead}><Text style={st.secT}>Клуб</Text></View>
+      <View style={st.info}>
+        <InfoRow k="Работаем" v={`с ${hh(CLUB.openHour)} до полуночи`} />
+        <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />
+        <InfoRow k="Оплата" v="на месте, в клубе" />
+        <InfoRow k="Отмена" v={`бесплатно за ${CLUB.cancelHours} часа`} last />
       </View>
-    </View>
+
+      <Text style={st.foot}>
+        Данные в приложении пока учебные. Настоящие цены, часы и фотографии — от клуба.
+      </Text>
+    </ScrollView>
   );
 }
 
-function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: boolean }) {
+function InfoRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
   return (
-    <View style={st.leg}>
-      <View style={[st.legBox,
-        free && { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
-        dashed && { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line }]} />
-      <Text style={st.legT}>{label}</Text>
+    <View style={[st.infoRow, last && { borderBottomWidth: 0 }]}>
+      <Text style={st.infoK}>{k}</Text>
+      <Text style={st.infoV}>{v}</Text>
     </View>
   );
 }
@@ -247,62 +196,74 @@ function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
 
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: S.xl },
-  hDate: { color: C.text, fontSize: 15.5, fontWeight: '700', letterSpacing: -0.1 },
-  hSub: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
-  calBtn: { width: HIT, height: HIT, borderRadius: R.md, borderWidth: 1, borderColor: C.line,
-    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 11,
+    paddingHorizontal: S.xl, paddingBottom: 16 },
+  brand: { color: C.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+  city: { color: C.dim2, fontSize: 12, marginTop: 1 },
+  today: { color: C.dim, fontSize: 13, fontWeight: '600' },
 
-  days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginTop: 14, marginBottom: 16 },
-  day: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderRadius: R.md, paddingVertical: 8, alignItems: 'center', minHeight: 46 },
-  dayOn: { backgroundColor: C.lime, borderColor: C.lime },
-  dayW: { color: C.dim2, fontSize: 9.5, fontWeight: '700', letterSpacing: 0.4 },
-  dayD: { color: C.text, fontSize: 17, fontWeight: '700', marginTop: 1 },
+  hero: { marginHorizontal: S.xl, height: 300, borderRadius: 26, overflow: 'hidden',
+    justifyContent: 'flex-end', backgroundColor: C.surface },
+  heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  heroScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  heroIn: { padding: 20 },
+  live: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    borderWidth: 1, borderColor: 'rgba(198,240,51,.45)', backgroundColor: 'rgba(198,240,51,.12)',
+    borderRadius: 8, paddingVertical: 4, paddingHorizontal: 9, marginBottom: 12 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
+  liveT: { color: C.lime, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.7 },
+  heroBig: { color: C.text, fontSize: 31, fontWeight: '800', letterSpacing: -0.8, lineHeight: 35,
+    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 12 },
+  heroSub: { color: '#CBD5C2', fontSize: 13.5, lineHeight: 19, marginTop: 7,
+    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 8 },
 
-  headRow: { flexDirection: 'row', paddingBottom: 8 },
-  headCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
+  cta: { marginHorizontal: S.xl, marginTop: 14, backgroundColor: C.lime,
+    borderRadius: R.xl, paddingVertical: 17, alignItems: 'center', minHeight: HIT },
+  ctaT: { color: C.onLime, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  ctaS: { color: 'rgba(11,15,12,.62)', fontSize: 12, marginTop: 3, fontWeight: '600' },
 
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  time: { color: C.dim2, fontSize: 10.5, fontVariant: ['tabular-nums'] },
-  cell: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'transparent' },
-  cellFree: { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
-  cellBusy: { backgroundColor: C.surface, opacity: 0.55 },
-  cellOff: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line },
-  cellOn: { backgroundColor: C.lime, borderColor: C.lime, opacity: 1 },
-  dotFree: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.lime },
-  dotOn: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.onLime },
-  barOn: { width: 12, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(11,15,12,.5)' },
-  dashBusy: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.busy },
+  mine: { flexDirection: 'row', alignItems: 'center', gap: 11, marginHorizontal: S.xl, marginTop: 10,
+    padding: 12, borderRadius: R.lg, borderWidth: 1, borderColor: 'rgba(198,240,51,.28)',
+    backgroundColor: 'rgba(198,240,51,.06)', minHeight: 62 },
+  mineIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.lime,
+    alignItems: 'center', justifyContent: 'center' },
+  mineT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
+  mineS: { color: C.dim2, fontSize: 12, marginTop: 1 },
 
-  legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 6 },
-  leg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legBox: { width: 14, height: 14, borderRadius: 5, borderWidth: 1,
-    borderColor: C.line, backgroundColor: C.surface },
-  legT: { color: C.dim2, fontSize: 11.5 },
-  note: { color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 6 },
+  secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    paddingHorizontal: S.xl, marginTop: 28, marginBottom: 12 },
+  secT: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.3 },
+  secS: { color: C.dim2, fontSize: 12.5 },
+  secLink: { color: C.lime, fontSize: 13, fontWeight: '600' },
+  secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
+    minHeight: HIT, justifyContent: 'center' },
 
-  bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: C.ink2,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
-  empty: { color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
+  strip: { paddingHorizontal: S.xl, gap: 10 },
+  card: { width: 154, height: 190, borderRadius: R.xl, overflow: 'hidden',
+    backgroundColor: C.surface, justifyContent: 'flex-end' },
+  cardImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  cardScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  cardIn: { padding: 12 },
+  cardN: { color: C.text, fontSize: 15, fontWeight: '700' },
+  cardS: { color: C.lime, fontSize: 12, marginTop: 2, fontWeight: '600' },
+  cardPrice: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(9,13,10,.72)',
+    borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
+  cardPriceT: { color: C.text, fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
-  pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
-  pickPh: { width: 38, height: 38, borderRadius: 12 },
-  pickN: { color: C.text, fontSize: 15, fontWeight: '700' },
-  pickS: { color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
+  tourn: { marginHorizontal: S.xl, height: 148, borderRadius: R.xl, overflow: 'hidden',
+    justifyContent: 'flex-end', backgroundColor: C.surface },
+  tournImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  tournIn: { padding: 15 },
+  tournN: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.2 },
+  tournS: { color: '#CBD5C2', fontSize: 12.5, marginTop: 3, fontWeight: '600' },
 
-  durRow: { flexDirection: 'row', gap: 7, marginBottom: 11 },
-  dur: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderRadius: R.md, paddingVertical: 10, alignItems: 'center', minHeight: 42 },
-  durOn: { backgroundColor: C.lime, borderColor: C.lime },
-  durOff: { opacity: 0.4, borderStyle: 'dashed' },
-  durT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
+  info: { marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface, paddingHorizontal: 15 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  infoK: { color: C.dim, fontSize: 14, flex: 1 },
+  infoV: { color: C.text, fontSize: 14, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
 
-  warn: { color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
-
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 16, alignItems: 'center' },
-  ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
-  ctaT: { color: C.onLime, fontSize: 16.5, fontWeight: '700', letterSpacing: -0.2 },
+  foot: { color: C.dim2, fontSize: 11.5, lineHeight: 17, textAlign: 'center',
+    marginTop: 22, paddingHorizontal: 30 },
 });

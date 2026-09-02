@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const B = process.env.APP_URL || 'https://padel.217-114-8-196.sslip.io/v1';
 const V={viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true};
 
-const routes = ['/', '/tournaments', '/bookings', '/court?id=c1&hour=18', '/court',
+const routes = ['/', '/schedule', '/tournaments', '/bookings', '/court?id=c1&hour=18', '/court',
   '/court?id=zzz', '/tournament?id=t1', '/tournament', '/tournament?id=zzz',
   '/book?courtId=c1&name=%D0%9A%D0%BE%D1%80%D1%82%201&hour=18&hours=1&price=4500',
   '/book', '/sent?name=X&hour=18&hours=1&price=4500', '/sent', '/grid', '/nope'];

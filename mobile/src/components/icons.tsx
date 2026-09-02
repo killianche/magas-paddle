@@ -86,15 +86,21 @@ export function IconChevron({ size = 18, color = C.dim2 }: P) {
   );
 }
 
-/** Щит с ракетками — знак клуба */
+/** Знак клуба: щит, скрещённые падел-лопатки, мяч.
+    Раньше ручки рисовались двумя линиями и читались просто как крестик —
+    добавлены головки лопаток, иначе ракеток в знаке не видно. */
 export function Mark({ size = 30 }: { size?: number }) {
   return (
     <Svg width={size} height={size * 1.15} viewBox="0 0 26 30" fill="none">
       <Path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z"
-        fill={C.greenDeep} stroke={C.lime} strokeWidth={1.3} />
-      <Path d="M8.4 19.6 17 9.6M17.6 19.6 9 9.6"
-        stroke={C.text} strokeWidth={1.9} strokeLinecap="round" />
-      <Circle cx="13" cy="7.4" r="1.9" fill={C.lime} />
+        fill={C.greenDeep} stroke={C.lime} strokeWidth={1.3} strokeLinejoin="round" />
+      <Ellipse cx="9.3" cy="13" rx="3" ry="4" transform="rotate(-30 9.3 13)"
+        stroke={C.text} strokeWidth={1.5} />
+      <Ellipse cx="16.7" cy="13" rx="3" ry="4" transform="rotate(30 16.7 13)"
+        stroke={C.text} strokeWidth={1.5} />
+      <Path d="M11.5 16.6 14.6 22M14.5 16.6 11.4 22"
+        stroke={C.text} strokeWidth={1.5} strokeLinecap="round" />
+      <Circle cx="13" cy="7" r="1.7" fill={C.lime} />
     </Svg>
   );
 }

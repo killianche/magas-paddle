@@ -4,9 +4,23 @@ let fails=0; const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fail
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1600);
+  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1700);
 
   console.log('\nДОСТУПНОСТЬ: ГЛАВНАЯ');
+  const h = await p.evaluate(() => {
+    const btns = [...document.querySelectorAll('[role="button"]')];
+    return { total: btns.length,
+      noName: btns.filter(e => !(e.getAttribute('aria-label')||e.innerText||'').trim()).length,
+      cta: !!btns.find(e => (e.innerText||'').includes('Выбрать время')),
+      courts: btns.filter(e => /Корт \d/.test(e.getAttribute('aria-label')||'')).length };
+  });
+  ok(h.noName === 0, `все ${h.total} кнопок главной озвучены`);
+  ok(h.cta, 'есть большая кнопка «Выбрать время»');
+  ok(h.courts >= 5, `карточки площадок подписаны: ${h.courts}`);
+
+  await p.goto(`${B}/schedule`,{waitUntil:'networkidle'}); await p.waitForTimeout(1600);
+
+  console.log('\nДОСТУПНОСТЬ: ЭКРАН ВЫБОРА ВРЕМЕНИ');
   const r = await p.evaluate(() => {
     const btns = [...document.querySelectorAll('[role="button"]')];
     const noName = btns.filter(e => !(e.getAttribute('aria-label')||e.innerText||'').trim()).length;

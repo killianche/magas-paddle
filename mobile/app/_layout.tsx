@@ -18,6 +18,7 @@ export default function RootLayout() {
           fullScreenGestureEnabled: true,
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="schedule" options={{ title: 'Выберите время' }} />
         <Stack.Screen name="court" options={{ title: 'Площадка' }} />
         <Stack.Screen name="tournament" options={{ title: 'Турнир' }} />
         <Stack.Screen name="book" options={{ title: 'Проверьте заявку', presentation: 'card' }} />

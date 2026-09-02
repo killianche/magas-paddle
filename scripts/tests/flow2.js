@@ -11,7 +11,7 @@ const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
   const txt = async () => (await p.evaluate(()=>document.body.innerText)).replace(/\s+/g,' ');
 
   console.log('\n1. ЗАПИСЬ НА КОРТ, ДВА ЧАСА');
-  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1600);
+  await p.goto(`${B}/schedule`,{waitUntil:'networkidle'}); await p.waitForTimeout(1600);
   await p.getByRole('button',{name:/Корт 1, 18:00, свободно/}).click(); await p.waitForTimeout(500);
   ok((await txt()).includes('18:00 – 19:00 · 4 500 ₽'), 'один час — 4 500 ₽');
   await p.getByText('2 часа').first().click(); await p.waitForTimeout(500);
@@ -53,6 +53,9 @@ const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
 
   console.log('\n5. ВРЕМЯ УВЕЛИ');
   await p.getByText('Запись').last().click(); await p.waitForTimeout(1100);
+  ok((await txt()).includes('Выбрать время'), 'на главной есть кнопка «Выбрать время»');
+  await p.getByRole('button',{name:/^Выбрать время/}).click(); await p.waitForTimeout(1300);
+  ok((await txt()).includes('свободно'), 'кнопка открыла сетку');
   await p.getByRole('button',{name:/Корт 5, 21:00, свободно/}).click(); await p.waitForTimeout(500);
   await p.getByText(/Записаться ·/).locator("visible=true").last().click(); await p.waitForTimeout(1200);
   await p.getByText('Отправить заявку').click(); await p.waitForTimeout(1200);
@@ -64,7 +67,7 @@ const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
   ok((await txt()).includes('Заявка принята'), 'замена довела до заявки');
 
   console.log('\n6. ДРУГОЙ ДЕНЬ И ДНЕВНОЙ ТАРИФ');
-  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1500);
+  await p.goto(`${B}/schedule`,{waitUntil:'networkidle'}); await p.waitForTimeout(1500);
   await p.getByText('Ср').click(); await p.waitForTimeout(700);
   // У корта 2 занято в 12:00 — два часа подряд с 11:00 взять нельзя
   await p.getByRole('button',{name:/Корт 2, 11:00, свободно/}).click(); await p.waitForTimeout(500);
