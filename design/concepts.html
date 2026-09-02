@@ -1,0 +1,255 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<title>Главный экран — три варианта</title>
+<style>
+:root{
+  --ink:#0B0F0C; --ink-2:#12180F; --surface:#171E16; --surface-2:#212A1F; --surface-3:#2A3427;
+  --line:#2C3729; --line-soft:#222B20; --line-strong:#576D51;
+  --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A;
+  --text:#EDF2E9; --dim:#9AA795; --dim-2:#889085;
+  --amber:#F0A93B; --busy:#869182; --red:#E5644B;
+  --disp:'Oswald','Arial Narrow',sans-serif;
+  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:1360px;margin:0 auto;padding:40px 24px 80px}
+h1{font-family:var(--disp);font-size:38px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+.lede{color:var(--dim);max-width:760px;margin:0 0 8px}
+.warn{margin:18px 0 34px;padding:14px 16px;border-radius:12px;max-width:760px;
+  background:rgba(240,169,59,.08);border:1px solid rgba(240,169,59,.26);color:#DFCCA8;font-size:13.5px}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;align-items:start}
+@media(max-width:1200px){.grid{grid-template-columns:1fr;justify-items:center}}
+.col{max-width:430px;width:100%}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim-2)}
+.name{font-family:var(--disp);font-size:25px;font-weight:600;margin:6px 0 8px}
+.why{color:var(--dim);font-size:13.5px;margin:0 0 6px}
+.pm{font-size:13px;margin:10px 0 0;padding:0;list-style:none}
+.pm li{padding-left:20px;position:relative;margin-bottom:5px;color:var(--dim)}
+.pm li::before{position:absolute;left:0;font-weight:700}
+.pm li.p::before{content:'+';color:var(--lime)}
+.pm li.m::before{content:'−';color:var(--amber)}
+
+/* телефон */
+.ph{width:390px;height:844px;background:var(--ink);border:1px solid var(--line);
+  border-radius:34px;overflow:hidden;position:relative;margin:16px auto 0;
+  font-size:15px;display:flex;flex-direction:column}
+.st{height:44px;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 26px 4px;font-size:12.5px;font-weight:700;color:var(--text);flex:none}
+.tb{height:78px;border-top:1px solid var(--line);background:var(--ink-2);display:flex;flex:none}
+.tb div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  font-size:10.5px;color:var(--dim-2);font-weight:600}
+.tb div.on{color:var(--lime)}
+.tb i{display:block;width:21px;height:21px;border:1.7px solid currentColor;border-radius:5px}
+.tb div:nth-child(1) i{border-radius:3px 3px 0 0;border-bottom-width:0;height:18px}
+.tb div:nth-child(3) i{border-radius:50% 50% 4px 4px}
+.tb div:nth-child(4) i{border-radius:4px;border-style:dashed}
+.body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+.hd{padding:2px 20px 0;display:flex;align-items:center;gap:12px;flex:none}
+.hd b{display:block;font-size:15.5px;font-weight:700}
+.hd i{display:block;font-style:normal;font-size:12.5px;color:var(--dim-2);margin-top:2px}
+.cal{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--surface);flex:none;
+  display:flex;align-items:center;justify-content:center}
+.cal::before{content:'';width:19px;height:17px;border:1.6px solid var(--text);border-radius:4px;border-top-width:4px}
+
+.lbl{color:var(--dim);font-size:13px;font-weight:600;padding:0 20px;margin:16px 0 9px;flex:none}
+.cta{margin:0 20px;background:var(--lime);color:#0B0F0C;border-radius:16px;padding:17px;
+  text-align:center;font-size:17px;font-weight:700}
+.bar{border-top:1px solid var(--line);padding:13px 0 14px;flex:none;background:var(--ink)}
+
+/* — вариант A: список площадок — */
+.crd{margin:0 20px 9px;border:1px solid var(--line);border-radius:18px;background:var(--surface);
+  display:flex;align-items:center;gap:13px;padding:10px;height:82px}
+.crd img{width:62px;height:62px;border-radius:13px;object-fit:cover;flex:none}
+.crd .n{font-size:15.5px;font-weight:700}
+.crd .s{font-size:12px;color:var(--dim-2);margin-top:2px}
+.crd .t{margin-left:auto;text-align:right;flex:none}
+.crd .t b{display:block;font-size:19px;font-weight:800;color:var(--lime);font-variant-numeric:tabular-nums}
+.crd .t i{display:block;font-style:normal;font-size:11px;color:var(--dim-2);margin-top:1px}
+.crd.off{opacity:.45}
+.crd.off .t b{color:var(--busy);font-size:14px}
+
+/* — вариант B: время сверху, площадки снизу — */
+.hs{display:flex;gap:8px;padding:0 20px;overflow:hidden;flex:none}
+.hs div{width:60px;height:66px;border:1px solid var(--line);border-radius:15px;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}
+.hs div b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.hs div i{font-style:normal;font-size:10.5px;color:var(--dim-2);margin-top:2px}
+.hs div.on{background:var(--lime);border-color:var(--lime);color:#0B0F0C}
+.hs div.on i{color:rgba(11,15,12,.7)}
+.hs div.no{opacity:.38}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 20px;flex:none}
+.tile{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);height:104px;position:relative}
+.tile img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.tile .sc{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,13,10,.12),rgba(9,13,10,.86))}
+.tile .tx{position:absolute;left:11px;right:11px;bottom:9px}
+.tile .tx b{display:block;font-size:14px;font-weight:700}
+.tile .tx i{display:block;font-style:normal;font-size:11px;color:#CBD5C2;margin-top:1px}
+.tile.on{border-color:var(--lime);border-width:2px}
+.tile .pick{position:absolute;top:8px;right:8px;width:21px;height:21px;border-radius:50%;
+  background:var(--lime);display:flex;align-items:center;justify-content:center;color:#0B0F0C;font-size:12px;font-weight:800}
+
+/* — вариант C: сетка — */
+.mx{padding:0 14px;flex:none}
+.mxh{display:flex;gap:4px;padding-bottom:7px}
+.mxh span{flex:1;text-align:center;font-size:10.5px;font-weight:700;color:var(--dim)}
+.mxh span:first-child{flex:0 0 44px}
+.mxr{display:flex;gap:4px;margin-bottom:4px;align-items:center}
+.mxr>u{flex:0 0 44px;text-decoration:none;font-size:11.5px;color:var(--dim-2);font-variant-numeric:tabular-nums}
+.cell{flex:1;height:42px;border-radius:10px;border:1px solid transparent;background:var(--surface);opacity:.6;
+  display:flex;align-items:center;justify-content:center}
+.cell.f{background:rgba(198,240,51,.09);border-color:rgba(198,240,51,.46);opacity:1}
+.cell.f::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--lime)}
+.cell.b::after{content:'';width:10px;height:2px;background:var(--busy);border-radius:1px}
+.cell.x{background:transparent;border:1px dashed var(--line);opacity:1}
+.cell.sel{background:var(--lime);border-color:var(--lime);opacity:1}
+.cell.sel::after{background:#0B0F0C;width:6px;height:6px}
+.hint{padding:12px 20px 0;font-size:12.5px;color:var(--dim-2);flex:none}
+
+.spacer{flex:1;min-height:0}
+.pick-note{margin:0 20px 11px;display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600}
+.pick-note s{text-decoration:none;width:6px;height:6px;border-radius:50%;background:var(--green-mid)}
+.pick-note em{font-style:normal;margin-left:auto;color:var(--dim-2);font-size:12.5px;font-weight:400}
+</style>
+
+<div class="wrap">
+<h1>Главный экран: три варианта</h1>
+<p class="lede">Задача одна — выбрать время и площадку. Варианты отличаются тем, что человек выбирает первым
+и насколько выбор виден. Все три нарисованы на одних данных: вторник, 18:00, корт 6 закрыт на ремонт.</p>
+
+<div class="warn">
+<b>Что не так с текущим экраном.</b> Площадка назначается сама, а поменять её можно только через
+неприметную ссылку «заменить» внизу. Список кортов, который вы просили с самого начала, исчез совсем.
+Ниже — три способа это исправить. Скажите номер, реализую в приложении.
+</div>
+
+<div class="grid">
+
+  <!-- ── A ── -->
+  <div class="col">
+    <div class="tag">Вариант A</div>
+    <div class="name">Список площадок</div>
+    <p class="why">Ровно то, что вы описывали в самом начале: видно все площадки и ближайшее свободное
+    время каждой. Нажал на корт — попал в его расписание.</p>
+    <ul class="pm">
+      <li class="p">Все площадки видно сразу, ничего не спрятано</li>
+      <li class="p">Одно нажатие от главной до нужного корта</li>
+      <li class="m">Корты одинаковые — шесть похожих карточек подряд</li>
+      <li class="m">Чтобы выбрать конкретный час, нужен второй экран</li>
+    </ul>
+
+    <div class="ph">
+      <div class="st"><span>18:41</span><span>▮▮▮</span></div>
+      <div class="body">
+        <div class="hd"><div style="flex:1"><b>Сегодня, 2 сентября</b><i>вторник · свободно 5 площадок</i></div><div class="cal"></div></div>
+        <div class="lbl">Ближайшее свободное время</div>
+        <div class="crd"><img src="/img/c1.webp" alt=""><div><div class="n">Корт 1</div><div class="s">4 500 ₽ за час</div></div>
+          <div class="t"><b>18:00</b><i>сейчас</i></div></div>
+        <div class="crd"><img src="/img/c2.webp" alt=""><div><div class="n">Корт 2</div><div class="s">4 500 ₽ за час</div></div>
+          <div class="t"><b>21:00</b><i>через 3 часа</i></div></div>
+        <div class="crd"><img src="/img/c3.webp" alt=""><div><div class="n">Корт 3</div><div class="s">4 500 ₽ за час</div></div>
+          <div class="t"><b>18:00</b><i>сейчас</i></div></div>
+        <div class="crd"><img src="/img/c4.webp" alt=""><div><div class="n">Корт 4</div><div class="s">4 500 ₽ за час</div></div>
+          <div class="t"><b>18:00</b><i>сейчас</i></div></div>
+        <div class="crd"><img src="/img/c5.webp" alt=""><div><div class="n">Корт 5</div><div class="s">4 500 ₽ за час</div></div>
+          <div class="t"><b>18:00</b><i>сейчас</i></div></div>
+        <div class="crd"><img src="/img/f1.webp" alt=""><div><div class="n">Мини-футбол</div><div class="s">5 000 ₽ за час</div></div>
+          <div class="t"><b>18:00</b><i>сейчас</i></div></div>
+        <div class="crd off"><img src="/img/c1.webp" alt=""><div><div class="n">Корт 6</div><div class="s">ремонт покрытия</div></div>
+          <div class="t"><b>до 5 сен</b><i>закрыт</i></div></div>
+        <div class="spacer"></div>
+      </div>
+      <div class="tb"><div class="on"><i></i>Главная</div><div><i></i>Расписание</div><div><i></i>Турниры</div><div><i></i>Мои записи</div></div>
+    </div>
+  </div>
+
+  <!-- ── B ── -->
+  <div class="col">
+    <div class="tag">Вариант B</div>
+    <div class="name">Сначала час, потом площадка</div>
+    <p class="why">Оба выбора на одном экране и оба видно. Сверху лента часов, под ней — площадки,
+    свободные именно в этот час, с фотографиями. Ничего не назначается само.</p>
+    <ul class="pm">
+      <li class="p">Время и площадка выбираются на одном экране</li>
+      <li class="p">Показаны только те площадки, что реально свободны</li>
+      <li class="p">Запись без единого перехода</li>
+      <li class="m">Плотнее остальных — на экране два блока выбора</li>
+    </ul>
+
+    <div class="ph">
+      <div class="st"><span>18:41</span><span>▮▮▮</span></div>
+      <div class="body">
+        <div class="hd"><div style="flex:1"><b>Сегодня, 2 сентября</b><i>вторник · Padel Magas</i></div><div class="cal"></div></div>
+        <div class="lbl">Во сколько играть</div>
+        <div class="hs">
+          <div class="on"><b>18</b><i>5 своб.</i></div>
+          <div><b>19</b><i>3 своб.</i></div>
+          <div><b>20</b><i>2 своб.</i></div>
+          <div><b>21</b><i>4 своб.</i></div>
+          <div class="no"><b>22</b><i>занято</i></div>
+        </div>
+        <div class="lbl">Свободно в 18:00 — выберите площадку</div>
+        <div class="tiles">
+          <div class="tile"><img src="/img/c1.webp" alt=""><div class="sc"></div>
+            <div class="pick">✓</div><div class="tx"><b>Корт 1</b><i>4 500 ₽ · 1 час</i></div></div>
+          <div class="tile"><img src="/img/c3.webp" alt=""><div class="sc"></div>
+            <div class="tx"><b>Корт 3</b><i>4 500 ₽ · 1 час</i></div></div>
+          <div class="tile"><img src="/img/c4.webp" alt=""><div class="sc"></div>
+            <div class="tx"><b>Корт 4</b><i>4 500 ₽ · 1 час</i></div></div>
+          <div class="tile"><img src="/img/c5.webp" alt=""><div class="sc"></div>
+            <div class="tx"><b>Корт 5</b><i>4 500 ₽ · 1 час</i></div></div>
+          <div class="tile"><img src="/img/f1.webp" alt=""><div class="sc"></div>
+            <div class="tx"><b>Мини-футбол</b><i>5 000 ₽ · 1 час</i></div></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="bar">
+          <div class="pick-note"><s></s>Корт 1, 18:00 – 19:00<em>4 500 ₽</em></div>
+          <div class="cta">Записаться</div>
+        </div>
+      </div>
+      <div class="tb"><div class="on"><i></i>Главная</div><div><i></i>Расписание</div><div><i></i>Турниры</div><div><i></i>Мои записи</div></div>
+    </div>
+  </div>
+
+  <!-- ── C ── -->
+  <div class="col">
+    <div class="tag">Вариант C</div>
+    <div class="name">Сетка прямо на главной</div>
+    <p class="why">Весь день на одном экране: строки — часы, столбцы — площадки. Нажатие на клетку
+    и есть запись. Вкладка «Расписание» тогда не нужна, её место освобождается.</p>
+    <ul class="pm">
+      <li class="p">Вся картина дня сразу, без переходов</li>
+      <li class="p">Одно нажатие на любую комбинацию часа и площадки</li>
+      <li class="m">Плотно: клетки мелкие, промахнуться легче</li>
+      <li class="m">Похоже на таблицу, а не на приложение — эмоции ноль</li>
+    </ul>
+
+    <div class="ph">
+      <div class="st"><span>18:41</span><span>▮▮▮</span></div>
+      <div class="body">
+        <div class="hd"><div style="flex:1"><b>Сегодня, 2 сентября</b><i>вторник · свободно 5 площадок</i></div><div class="cal"></div></div>
+        <div class="lbl">Выберите время и площадку</div>
+        <div class="mx">
+          <div class="mxh"><span></span><span>К1</span><span>К2</span><span>К3</span><span>К4</span><span>К5</span><span>К6</span><span>⬤</span></div>
+          <div class="mxr"><u>18:00</u><i class="cell sel"></i><i class="cell b"></i><i class="cell f"></i><i class="cell f"></i><i class="cell f"></i><i class="cell x"></i><i class="cell f"></i></div>
+          <div class="mxr"><u>19:00</u><i class="cell f"></i><i class="cell b"></i><i class="cell b"></i><i class="cell f"></i><i class="cell f"></i><i class="cell x"></i><i class="cell b"></i></div>
+          <div class="mxr"><u>20:00</u><i class="cell b"></i><i class="cell b"></i><i class="cell b"></i><i class="cell f"></i><i class="cell f"></i><i class="cell x"></i><i class="cell b"></i></div>
+          <div class="mxr"><u>21:00</u><i class="cell f"></i><i class="cell f"></i><i class="cell b"></i><i class="cell b"></i><i class="cell f"></i><i class="cell x"></i><i class="cell f"></i></div>
+          <div class="mxr"><u>22:00</u><i class="cell f"></i><i class="cell f"></i><i class="cell f"></i><i class="cell b"></i><i class="cell b"></i><i class="cell x"></i><i class="cell f"></i></div>
+          <div class="mxr"><u>23:00</u><i class="cell f"></i><i class="cell f"></i><i class="cell f"></i><i class="cell b"></i><i class="cell f"></i><i class="cell x"></i><i class="cell f"></i></div>
+        </div>
+        <div class="hint">Корт 6 закрыт до 5 сентября — ремонт покрытия</div>
+        <div class="spacer"></div>
+        <div class="bar">
+          <div class="pick-note"><s></s>Корт 1, 18:00 – 19:00<em>4 500 ₽</em></div>
+          <div class="cta">Записаться</div>
+        </div>
+      </div>
+      <div class="tb"><div class="on"><i></i>Главная</div><div><i></i>Расписание</div><div><i></i>Турниры</div><div><i></i>Мои записи</div></div>
+    </div>
+  </div>
+
+</div>
+</div>
