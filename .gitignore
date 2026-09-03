@@ -1,4 +1,9 @@
 # Секреты Apple — в репозиторий не попадают
 secrets/*.p8
 secrets/*.p12
+secrets/*.pem
+secrets/*.key
+secrets/*.cer
+secrets/*.csr
+secrets/*.pass
 secrets/*.mobileprovision
