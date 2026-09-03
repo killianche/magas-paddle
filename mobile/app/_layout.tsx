@@ -1,9 +1,19 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import { View } from 'react-native';
 import { C } from '../src/theme';
 
 export default function RootLayout() {
+  // Oswald — узкий гротеск для плакатных заголовков. Лицензия OFL, кириллица полная.
+  const [ready] = useFonts({
+    'Oswald-Bold': require('../assets/fonts/Oswald-Bold.ttf'),
+    'Oswald-Medium': require('../assets/fonts/Oswald-Medium.ttf'),
+  });
+
+  if (!ready) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />

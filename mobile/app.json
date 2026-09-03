@@ -8,11 +8,17 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "ru.padelmagas.app"
+      "bundleIdentifier": "ru.padelmagas.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "Padel Magas",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "ru.padelmagas.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0B0F0C"
       }
     },
@@ -22,7 +28,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ],
     "scheme": "padelmagas",
     "backgroundColor": "#0B0F0C",

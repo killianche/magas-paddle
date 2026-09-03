@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED } from '../../src/theme';
 import {
   CLUB, VISIBLE_COURTS, TOURNAMENTS, slotsFor, nextFree, priceAt, fmt, hh,
 } from '../../src/data';
@@ -68,7 +68,9 @@ export default function Home() {
 
         <View style={st.heroIn}>
           <Text style={st.eyebrow}>ДОБРО ПОЖАЛОВАТЬ</Text>
-          <Text style={st.title}>Приходите{'\n'}играть в падел</Text>
+          <Text style={st.title} allowFontScaling maxFontSizeMultiplier={1.15}>
+            ПРИХОДИТЕ{'\n'}ИГРАТЬ
+          </Text>
           <Text style={st.lede}>
             Шесть кортов и мини-футбольное поле в Магасе.
             Открыты с {hh(CLUB.openHour)} до полуночи.
@@ -218,19 +220,20 @@ const st = StyleSheet.create({
   heroScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
-  brand: { color: C.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.2, flex: 1 },
+  brand: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 1, flex: 1 },
   date: { color: '#C3CDBB', fontSize: 13, fontWeight: '600' },
 
   heroIn: { paddingHorizontal: S.xl, paddingBottom: 24 },
-  eyebrow: { color: C.lime, fontSize: 10.5, fontWeight: '800', letterSpacing: 1.4, marginBottom: 10 },
-  title: { color: C.text, fontSize: 36, fontWeight: '800', letterSpacing: -1, lineHeight: 40,
-    textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 14 },
+  eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 2.2, marginBottom: 8 },
+  // Плакатная типографика: узкий гротеск, плотная выключка, буквы почти вплотную
+  title: { color: C.text, fontFamily: DISP, fontSize: 62, lineHeight: 60,
+    letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 16 },
   lede: { color: '#CBD5C2', fontSize: 14, lineHeight: 20, marginTop: 10,
     textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 8 },
 
   cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 18,
     alignItems: 'center', marginTop: 20, minHeight: HIT },
-  ctaT: { color: C.onLime, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 20, letterSpacing: 0.8 },
 
   live: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, justifyContent: 'center' },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
@@ -240,8 +243,8 @@ const st = StyleSheet.create({
   bandWrap: { paddingHorizontal: S.xl, marginTop: 18 },
   band: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 15,
     borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, minHeight: 74 },
-  bandBig: { color: C.lime, fontSize: 30, fontWeight: '800', fontVariant: ['tabular-nums'],
-    letterSpacing: -1 },
+  bandBig: { color: C.lime, fontFamily: DISP, fontSize: 34, fontVariant: ['tabular-nums'],
+    letterSpacing: 0 },
   bandT: { color: C.text, fontSize: 15, fontWeight: '700' },
   bandS: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
 
@@ -255,7 +258,7 @@ const st = StyleSheet.create({
 
   secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
     paddingHorizontal: S.xl, marginTop: 28, marginBottom: 12 },
-  secT: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.3 },
+  secT: { color: C.text, fontFamily: DISP, fontSize: 21, letterSpacing: 0.6 },
   secS: { color: C.dim2, fontSize: 12.5 },
   secLink: { color: C.lime, fontSize: 13, fontWeight: '600' },
   secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
@@ -275,7 +278,7 @@ const st = StyleSheet.create({
   tourn: { marginHorizontal: S.xl, height: 148, borderRadius: R.xl, overflow: 'hidden',
     justifyContent: 'flex-end', backgroundColor: C.surface },
   tournIn: { padding: 15 },
-  tournN: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.2 },
+  tournN: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: 0.4 },
   tournS: { color: '#CBD5C2', fontSize: 12.5, marginTop: 3, fontWeight: '600' },
 
   info: { marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,

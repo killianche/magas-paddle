@@ -33,3 +33,7 @@ export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 } as const;
 
 // Минимальная зона нажатия по требованию Apple
 export const HIT = 44;
+
+/** Плакатный гротеск для крупных заголовков. Подключается в app/_layout.tsx. */
+export const DISP = 'Oswald-Bold';
+export const DISP_MED = 'Oswald-Medium';

@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Секреты Apple
+secrets/*.p8
+secrets/*.p12
+secrets/*.mobileprovision
