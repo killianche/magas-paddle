@@ -43,12 +43,35 @@ git push origin main:build-ios
 ([TN3147](https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool)),
 для загрузки в App Store Connect остаётся штатным.
 
+## Первая сборка: что пришлось починить
+
+Пять заходов, каждая ошибка настоящая:
+
+1. **`MAC verification failed during PKCS12 import`** — keychain macOS не принимает
+   контейнеры, которые OpenSSL 3 делает по умолчанию (MAC sha256, AES-256).
+   Пересобрали с `-legacy`, MAC sha1 и 3DES.
+2. **Схема определилась как `contentsdata`** — `ls` без `-d` показывал содержимое
+   каталога `.xcworkspace`, а не его имя. Заодно добавили `set -o pipefail`:
+   статус `xcodebuild` терялся в конвейере с `xcpretty`, и провал считался успехом.
+3. **`RuntimeScheduler cannot be annotated with SWIFT_RETURNS_RETAINED`** —
+   раннер по умолчанию даёт Xcode 16.4, он слишком старый для SDK 57.
+   Явно выбираем новейший установленный.
+4. **Xcode 26.3 тоже не подошёл** — та же ошибка Swift/C++. Перешли на образ `macos-26`,
+   там Xcode 26.6.
+5. **`no member named 'executeSync' in worklets::WorkletRuntime`** — `expo-modules-core`
+   ждал API, которого нет в установленной версии worklets. `expo install --fix`
+   поднял expo до 57.0.19, core до 57.0.15.
+
+Сборка №6 прошла целиком: архив, `.ipa` 17 МБ, загрузка без ошибок,
+`UPLOAD SUCCEEDED`. В App Store Connect состояние **VALID**.
+
+Создана внутренняя группа тестирования «Команда клуба» с доступом ко всем сборкам,
+владелец аккаунта добавлен тестировщиком.
+
 ## Не проверено
 
-- **Первая сборка ещё не проходила.** Нативный проект генерируется впервые:
-  возможны правки по именам схем, подам и новой архитектуре RN.
-- Требуется ли Beta App Review для внутренних тестировщиков TestFlight.
-- Поведение приложения на настоящем устройстве.
+- Поведение приложения на настоящем устройстве — **НЕ ПРОВЕРЕНО**.
+- Пуш-уведомления в Магасе на мобильном интернете.
 
 ## После публикации
 
