@@ -18,7 +18,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # На macos-15 максимум Xcode 26.3, а Expo SDK 57 на нём не собирается:
+    # «RuntimeScheduler cannot be annotated with SWIFT_RETURNS_RETAINED».
+    # Для SDK 56 Expo требовал Xcode 26.4, берём образ поновее.
+    runs-on: macos-26
     timeout-minutes: 60
     defaults:
       run:
