@@ -1,0 +1,56 @@
+# База и кэш для Magas Padel.
+# Стоят на том же сервере, что и чужой Supabase, но полностью отдельно:
+# своя сеть, свои тома, порты слушают только localhost и не пересекаются с занятыми.
+name: magas-padel
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: magas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: magas
+      POSTGRES_USER: magas
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?нужен DB_PASSWORD в .env}
+      # Локаль для правильной сортировки русских названий
+      LANG: ru_RU.UTF-8
+      TZ: Europe/Moscow
+    ports:
+      # Только localhost: снаружи база недоступна, ходим через SSH-туннель
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - magas-db-data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U magas -d magas"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          # Сервер общий: ограничиваем аппетит, чтобы не задеть соседний проект
+          memory: 640M
+
+  cache:
+    image: redis:7-alpine
+    container_name: magas-cache
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - magas-cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+
+volumes:
+  magas-db-data:
+  magas-cache-data:

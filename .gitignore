@@ -7,3 +7,4 @@ secrets/*.cer
 secrets/*.csr
 secrets/*.pass
 secrets/*.mobileprovision
+secrets/*.env
