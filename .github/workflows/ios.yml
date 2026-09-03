@@ -76,11 +76,15 @@ jobs:
 
       - name: Архив
         run: |
-          SCHEME=$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')
-          echo "Схема: $SCHEME"
+          set -o pipefail
+          # ls без -d показывает содержимое каталога .xcworkspace, а не его имя
+          WS=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WS" .xcworkspace)
+          echo "Рабочее пространство: $WS"
+          xcodebuild -workspace "$WS" -list
           echo "SCHEME=$SCHEME" >> $GITHUB_ENV
           xcodebuild archive \
-            -workspace "ios/$SCHEME.xcworkspace" \
+            -workspace "$WS" \
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/MagasPadel.xcarchive" \
