@@ -72,6 +72,7 @@ jobs:
             | plutil -extract UUID raw -o - -)
           echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
           echo "Профиль установлен: $UUID"
+          security find-identity -v -p codesigning "$KEYCHAIN"
 
       - name: Архив
         run: |
