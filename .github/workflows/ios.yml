@@ -33,6 +33,12 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
+      - name: Окружение
+        run: |
+          echo "Доступные Xcode:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+          xcodebuild -version
+          echo "node $(node -v) · npm $(npm -v) · pod $(pod --version)"
+
       - name: Зависимости
         run: npm ci
 
@@ -93,7 +99,13 @@ jobs:
             DEVELOPMENT_TEAM=SGS6KFDCD4 \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            | xcpretty || exit 1
+            2>&1 | tee "$RUNNER_TEMP/build.log" | xcpretty || {
+              echo "─── последние 250 строк полного лога ───"
+              tail -250 "$RUNNER_TEMP/build.log"
+              echo "─── строки с ошибками ───"
+              grep -nE "error:|fatal|FAILED|No such file" "$RUNNER_TEMP/build.log" | tail -40
+              exit 1
+            }
 
       - name: Сборка .ipa
         run: |
@@ -136,4 +148,12 @@ jobs:
         with:
           name: ipa
           path: ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: warn
+
+      - name: Сохранить полный лог сборки
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: ${{ runner.temp }}/build.log
           if-no-files-found: warn
