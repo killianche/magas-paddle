@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Padel Magas",
-    "slug": "padel-magas",
+    "name": "Magas Padel",
+    "slug": "magas-padel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
       "bundleIdentifier": "ru.padelmagas.app",
       "buildNumber": "1",
       "infoPlist": {
-        "CFBundleDisplayName": "Padel Magas",
+        "CFBundleDisplayName": "Magas Padel",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -31,7 +31,7 @@
       "expo-router",
       "expo-font"
     ],
-    "scheme": "padelmagas",
+    "scheme": "magaspadel",
     "backgroundColor": "#0B0F0C",
     "newArchEnabled": true,
     "splash": {

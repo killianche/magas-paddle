@@ -1,5 +1,8 @@
 {
-  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -7,12 +10,16 @@
     },
     "preview": {
       "distribution": "internal",
-      "ios": { "simulator": true }
+      "ios": {
+        "simulator": true
+      }
     },
     "testflight": {
       "distribution": "store",
       "autoIncrement": true,
-      "ios": { "resourceClass": "m-medium" }
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {
@@ -20,8 +27,9 @@
       "ios": {
         "appleTeamId": "SGS6KFDCD4",
         "ascApiKeyPath": "../secrets/AuthKey.p8",
-        "ascApiKeyIssuerId": "ЗАПОЛНИТЬ_ISSUER_ID_НОВОГО_КЛЮЧА",
-        "ascApiKeyId": "ЗАПОЛНИТЬ_KEY_ID_НОВОГО_КЛЮЧА"
+        "ascApiKeyIssuerId": "cdd3af45-fbd3-4d29-a8c4-d5b622e90054",
+        "ascApiKeyId": "QCSQ66NC4Y",
+        "ascAppId": "6808335944"
       }
     }
   }

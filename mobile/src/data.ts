@@ -7,7 +7,7 @@ export type Court = { id: string; name: string; price: number; off?: boolean;
 export type Slot = { hour: number; status: Status };
 
 export const CLUB = {
-  name: 'Padel Magas',
+  name: 'Magas Padel',
   city: 'Магас',
   phone: '+7 928 000-00-00',
   whatsapp: '79280000000',
@@ -126,7 +126,7 @@ export const TOURNAMENTS: Tournament[] = [
   { id: 't2', name: 'Ночной Mexicano', date: '21 сентября', weekday: 'воскресенье',
     time: '21:00', format: 'Mexicano', fee: 2000, taken: 6, total: 16,
     state: 'open', cover: 't2' },
-  { id: 't3', name: 'Парный турнир Padel Magas', date: '5 октября', weekday: 'воскресенье',
+  { id: 't3', name: 'Парный турнир Magas Padel', date: '5 октября', weekday: 'воскресенье',
     time: '11:00', format: 'Группы и плей-офф', fee: 3000, taken: 0, total: 24,
     state: 'soon', cover: 't3' },
   { id: 't0', name: 'Летний кубок Магаса', date: '24 августа', weekday: 'воскресенье',
