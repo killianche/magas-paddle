@@ -4,7 +4,7 @@ let fails=0;
 const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
 
 const pages = [['/', 'главная'], ['/schedule','расписание'], ['/tournaments','турниры'], ['/bookings','мои записи'],
-  ['/court?id=c1&hour=18','корт'], ['/tournament?id=t1','турнир'],
+  ['/court?id=c1&hour=18','корт'], ['/tournament?id=t1','турнир'], ['/club','клуб'],
   ['/book?courtId=c1&name=A&hour=18&hours=1&price=4500','заявка']];
 
 (async () => {

@@ -186,7 +186,13 @@ export default function Home() {
       )}
 
       {/* Клуб */}
-      <View style={st.secHead}><Text style={st.secT}>Клуб</Text></View>
+      <View style={st.secHead}>
+        <Text style={st.secT}>Клуб</Text>
+        <Pressable onPress={() => go('/club')} accessibilityRole="button"
+          style={({ pressed }) => [st.secLinkHit, pressed && { opacity: 0.7 }]}>
+          <Text style={st.secLink}>контакты и правила</Text>
+        </Pressable>
+      </View>
       <View style={st.info}>
         <InfoRow k="Работаем" v={`с ${hh(CLUB.openHour)} до полуночи`} />
         <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />

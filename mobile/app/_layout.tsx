@@ -30,6 +30,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="schedule" options={{ title: 'Выберите время' }} />
         <Stack.Screen name="court" options={{ title: 'Площадка' }} />
+        <Stack.Screen name="club" options={{ title: 'Клуб' }} />
         <Stack.Screen name="tournament" options={{ title: 'Турнир' }} />
         <Stack.Screen name="book" options={{ title: 'Проверьте заявку', presentation: 'card' }} />
         <Stack.Screen name="sent" options={{ headerShown: false, gestureEnabled: false }} />
