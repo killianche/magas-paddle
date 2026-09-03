@@ -5,12 +5,16 @@
 name: iOS TestFlight
 
 on:
+  # Кнопкой из интерфейса
   workflow_dispatch:
     inputs:
       notes:
         description: Что нового в этой сборке
         required: false
         default: Тестовая сборка
+  # Или пушем в отдельную ветку — так сборку можно запустить без прав на Actions
+  push:
+    branches: [build-ios]
 
 jobs:
   build:
