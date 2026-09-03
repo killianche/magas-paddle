@@ -36,6 +36,11 @@ jobs:
       - name: Окружение
         run: |
           echo "Доступные Xcode:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+          # По умолчанию раннер даёт Xcode 16.4 — он старше, чем нужно
+          # для Expo SDK 57 и React Native 0.86. Берём новейший установленный.
+          NEWEST=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$NEWEST/Contents/Developer"
+          echo "Выбран: $NEWEST"
           xcodebuild -version
           echo "node $(node -v) · npm $(npm -v) · pod $(pod --version)"
 
