@@ -51,6 +51,32 @@ services:
         limits:
           memory: 192M
 
+  api:
+    build: ./api
+    container_name: magas-api
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      cache: { condition: service_healthy }
+    environment:
+      # Внутри сети Compose база доступна по имени службы
+      DATABASE_URL: postgresql://magas:${DB_PASSWORD}@db:5432/magas?schema=public
+      REDIS_URL: redis://cache:6379
+      PORT: 3001
+      TZ: Europe/Moscow
+    ports:
+      # Наружу не публикуем: доступ только через nginx
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
 volumes:
   magas-db-data:
   magas-cache-data:

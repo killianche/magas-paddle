@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+model bookings {
+  id         BigInt         @id @default(autoincrement())
+  court_id   String
+  client_id  BigInt?
+  starts_at  DateTime       @db.Timestamptz(6)
+  ends_at    DateTime       @db.Timestamptz(6)
+  status     booking_status @default(pending)
+  price      Int
+  source     String         @default("app")
+  comment    String?
+  created_at DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at DateTime       @default(now()) @db.Timestamptz(6)
+  clients    clients?       @relation(fields: [client_id], references: [id], onUpdate: NoAction)
+  courts     courts         @relation(fields: [court_id], references: [id], onUpdate: NoAction)
+
+  @@index([client_id], map: "bookings_client")
+  @@index([court_id, starts_at], map: "bookings_court_time")
+}
+
+model clients {
+  id                 BigInt               @id @default(autoincrement())
+  phone              String               @unique
+  name               String
+  no_shows           Int                  @default(0)
+  cancels            Int                  @default(0)
+  note               String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  bookings           bookings[]
+  tournament_entries tournament_entries[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model courts {
+  id            String     @id
+  name          String
+  is_football   Boolean    @default(false)
+  price_day     Int
+  price_evening Int
+  is_active     Boolean    @default(true)
+  closed_until  DateTime?  @db.Timestamptz(6)
+  closed_reason String?
+  sort_order    Int        @default(0)
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+  bookings      bookings[]
+}
+
+model tournament_entries {
+  id            BigInt      @id @default(autoincrement())
+  tournament_id BigInt
+  client_id     BigInt
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  clients       clients     @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tournaments   tournaments @relation(fields: [tournament_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tournament_id, client_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tournaments {
+  id                 BigInt               @id @default(autoincrement())
+  name               String
+  starts_at          DateTime             @db.Timestamptz(6)
+  format             String
+  fee                Int
+  seats              Int
+  state              tournament_state     @default(soon)
+  cover_url          String?
+  result_text        String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  tournament_entries tournament_entries[]
+}
+
+enum booking_status {
+  pending
+  confirmed
+  cancelled
+  no_show
+  done
+}
+
+enum tournament_state {
+  soon
+  open
+  done
+}

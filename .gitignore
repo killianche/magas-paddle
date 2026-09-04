@@ -8,3 +8,6 @@ secrets/*.csr
 secrets/*.pass
 secrets/*.mobileprovision
 secrets/*.env
+server/api/.env
+server/api/node_modules/
+server/api/dist/
