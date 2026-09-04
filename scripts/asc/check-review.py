@@ -25,7 +25,10 @@ print('проверка TestFlight:', state, '—', STATES.get(state, ''))
 try:
     with urllib.request.urlopen(LINK, timeout=20) as r:
         page = r.read().decode('utf-8', 'replace')
-    closed = "isn't accepting any new testers" in page
+    # В HTML апостроф приходит как &#39;, из-за чего прямой поиск не срабатывал
+    import html as _html, re as _re
+    plain = _re.sub(r'<[^>]+>', ' ', _html.unescape(page))
+    closed = 'accepting any new testers' in plain
     print('публичная ссылка:', 'пока закрыта' if closed else 'ОТКРЫТА, можно раздавать')
 except Exception as e:
     print('публичная ссылка: не удалось проверить —', e)
