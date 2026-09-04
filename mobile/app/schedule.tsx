@@ -1,73 +1,61 @@
-// Экран выбора времени: сетка «часы × площадки». Открывается с главной.
+// Экран выбора времени: сетка «часы × площадки», данные с сервера.
 // Подписи часов стоят на границах клеток — клетка читается как промежуток
 // от 18:00 до 19:00, а не как «момент 18:00».
-import { useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Image } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, Image, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S } from '../src/theme';
-import {
-  CLUB, COURTS, VISIBLE_COURTS, slotsFor, maxRun, priceRange,
-  courtById, fmt, hh, type Court,
-} from '../src/data';
+import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
+import { useApi } from '../src/useApi';
+import { Loading, Failed } from '../src/components/status';
 import { IMG } from '../src/images';
 import { IconBall, IconChevron } from '../src/components/icons';
+import { today, addDays, weekdayShort, dayNumber, hh, plural } from '../src/dates';
 
-const NOW = 18;              // ЗАГЛУШКА: «текущий час»
-
-/** Русские окончания: 1 час, 2 часа, 5 часов. */
-function plural(n: number, one: string, few: string, many: string) {
-  const a = Math.abs(n) % 100, b = a % 10;
-  if (a > 10 && a < 20) return many;
-  if (b > 1 && b < 5) return few;
-  if (b === 1) return one;
-  return many;
-}
-const DAYS = [
-  { key: 0, w: 'Сегодня', d: '2' }, { key: 1, w: 'Ср', d: '3' }, { key: 2, w: 'Чт', d: '4' },
-  { key: 3, w: 'Пт', d: '5' }, { key: 4, w: 'Сб', d: '6' },
-];
+const DAYS_AHEAD = 5;
+const MAX_HOURS = 3;
 
 export default function Schedule() {
   const insets = useSafeAreaInsets();
-  const { day: preset } = useLocalSearchParams<{ day?: string }>();
-  const [day, setDay] = useState(preset ? Number(preset) : 0);
+  const [date, setDate] = useState(today());
   const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [hours, setHours] = useState(1);
 
-  // Сегодня прошедшие часы не показываем, для других дней — весь день
-  const from = day === 0 ? NOW : CLUB.openHour;
-  const rows = useMemo(() => {
-    const out: number[] = [];
-    for (let h = from; h < CLUB.closeHour; h++) out.push(h);
-    return out;
-  }, [from]);
+  const q = useApi(() => api.grid(date), [date]);
+  const days = useMemo(
+    () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today(), i)), []);
 
   const gap = 3, padH = 10, timeW = 32;
 
-  const statuses = useMemo(() => {
-    const m: Record<string, Record<number, string>> = {};
-    for (const c of COURTS) {
-      m[c.id] = {};
-      for (const s of slotsFor(c.id, from)) m[c.id][s.hour] = s.status;
+  const grid = q.data;
+  const court = grid?.courts.find(c => c.courtId === sel?.courtId) ?? null;
+  const cell = court?.hours.find(h => h.hour === sel?.hour) ?? null;
+  const run = cell?.maxRun ?? 0;
+
+  // Цена складывается по часам: день и вечер стоят по-разному
+  const total = useMemo(() => {
+    if (!court || !sel) return 0;
+    let sum = 0;
+    for (let h = sel.hour; h < sel.hour + hours; h++) {
+      sum += court.hours.find(x => x.hour === h)?.price ?? 0;
     }
-    return m;
-  }, [from]);
+    return sum;
+  }, [court, sel, hours]);
 
-  const court = sel ? courtById(sel.courtId) : null;
-  const run = sel ? maxRun(sel.courtId, sel.hour) : 0;
-  const total = sel && court ? priceRange(court, sel.hour, hours) : 0;
-  // Сегодня важно «что свободно прямо сейчас», в другой день — сколько всего часов
-  const freeNow = VISIBLE_COURTS.filter(c => statuses[c.id]?.[from] === 'free').length;
-  const freeHours = VISIBLE_COURTS.reduce(
-    (n, c) => n + rows.filter(h => statuses[c.id]?.[h] === 'free').length, 0);
+  const freeNow = grid?.courts.filter(c => {
+    const h = c.hours.find(x => x.status === 'free');
+    return h != null;
+  }).length ?? 0;
+  const freeHours = grid?.courts.reduce(
+    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0) ?? 0;
 
-  const tap = (c: Court, h: number) => {
-    if (c.off || statuses[c.id]?.[h] !== 'free') return;
+  const pickCell = (courtId: string, h: ApiHour) => {
+    if (h.status !== 'free') return;
     Haptics.selectionAsync();
-    setSel({ courtId: c.id, hour: h });
-    setHours(prev => Math.min(prev, maxRun(c.id, h)) || 1);
+    setSel({ courtId, hour: h.hour });
+    setHours(prev => Math.min(prev, h.maxRun) || 1);
   };
 
   const pickHours = (n: number) => {
@@ -79,33 +67,40 @@ export default function Schedule() {
   const book = () => {
     if (!sel || !court) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/book', params: { courtId: court.id, name: court.name,
+    router.push({ pathname: '/book', params: {
+      courtId: sel.courtId, name: court.name, date,
       hour: String(sel.hour), hours: String(hours), price: String(total) } });
   };
 
-  // Клетка входит в выбранный отрезок?
   const inRange = (cId: string, h: number) =>
     !!sel && sel.courtId === cId && h >= sel.hour && h < sel.hour + hours;
+
+  if (q.loading) return (<><Stack.Screen options={{ title: 'Выберите время' }} /><Loading note="Смотрю, что свободно" /></>);
+  if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Выберите время' }} />
+    <Failed message={q.error ?? 'Пустой ответ сервера'} onRetry={q.reload} /></>);
+
+  const closedNote = grid.courts.find(c => c.closed);
 
   return (
     <View style={st.root}>
       <Stack.Screen options={{ title: 'Выберите время' }} />
 
       <Text style={st.sub}>
-        {day === 0
-          ? `Сегодня, 2 сентября · сейчас свободно ${freeNow} из ${VISIBLE_COURTS.length}`
-          : `${DAYS[day].w}, ${DAYS[day].d} сентября · свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
+        {date === today()
+          ? `Сегодня · свободно ${freeNow} из ${grid.courts.length} площадок`
+          : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
       </Text>
 
       <View style={st.days}>
-        {DAYS.map(d => {
-          const on = day === d.key;
+        {days.map(d => {
+          const on = date === d;
           return (
-            <Pressable key={d.key}
-              onPress={() => { Haptics.selectionAsync(); setDay(d.key); setSel(null); setHours(1) }}
+            <Pressable key={d}
+              onPress={() => { Haptics.selectionAsync(); setDate(d); setSel(null); setHours(1) }}
+              accessibilityRole="button" accessibilityState={{ selected: on }}
               style={[st.day, on && st.dayOn]}>
-              <Text style={[st.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{d.w}</Text>
-              <Text style={[st.dayD, on && { color: C.onLime }]}>{d.d}</Text>
+              <Text style={[st.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{weekdayShort(d)}</Text>
+              <Text style={[st.dayD, on && { color: C.onLime }]}>{dayNumber(d)}</Text>
             </Pressable>
           );
         })}
@@ -114,12 +109,12 @@ export default function Schedule() {
       <View style={{ paddingHorizontal: padH }}>
         <View style={[st.headRow, { gap }]}>
           <View style={{ width: timeW }} />
-          {COURTS.map(c => (
-            <View key={c.id} style={st.headCell}>
-              {c.football
-                ? <IconBall size={15} color={c.off ? C.busy : C.dim} />
-                : <Text style={[st.headT, c.off && { color: C.busy }]}>
-                    К{c.name.replace(/\D/g, '')}
+          {grid.courts.map(c => (
+            <View key={c.courtId} style={st.headCell}>
+              {c.isFootball
+                ? <IconBall size={15} color={c.closed ? C.busy : C.dim} />
+                : <Text style={[st.headT, c.closed && { color: C.busy }]}>
+                    К{c.name.replace(/\D/g, '') || '?'}
                   </Text>}
             </View>
           ))}
@@ -128,27 +123,31 @@ export default function Schedule() {
 
       <ScrollView style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: padH, paddingTop: 7, paddingBottom: 10 }}
-        showsVerticalScrollIndicator={false}>
-        {rows.map(h => (
-          <View key={h} style={[st.row, { gap }]}>
-            <Text style={[st.time, { width: timeW }]}>{hh(h)}</Text>
-            {COURTS.map(c => {
-              const stt = statuses[c.id]?.[h];
-              const free = !c.off && stt === 'free';
-              const on = inRange(c.id, h);
-              const start = !!sel && sel.courtId === c.id && sel.hour === h;
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
+
+        {grid.courts[0]?.hours.map(({ hour }) => (
+          <View key={hour} style={[st.row, { gap }]}>
+            <Text style={[st.time, { width: timeW }]}>{hh(hour)}</Text>
+            {grid.courts.map(c => {
+              const h = c.hours.find(x => x.hour === hour)!;
+              const free = h.status === 'free';
+              const on = inRange(c.courtId, hour);
+              const start = !!sel && sel.courtId === c.courtId && sel.hour === hour;
               return (
-                <Pressable key={c.id} disabled={!free} onPress={() => tap(c, h)}
+                <Pressable key={c.courtId} disabled={!free} onPress={() => pickCell(c.courtId, h)}
                   accessibilityRole="button"
-                  accessibilityLabel={c.off ? `${c.name}, закрыт`
-                    : on ? `${c.name}, ${hh(h)}, выбрано`
-                    : free ? `${c.name}, ${hh(h)}, свободно` : `${c.name}, ${hh(h)}, занято`}
+                  accessibilityLabel={
+                    h.status === 'closed' ? `${c.name}, закрыт`
+                    : on ? `${c.name}, ${hh(hour)}, выбрано`
+                    : free ? `${c.name}, ${hh(hour)}, свободно`
+                    : `${c.name}, ${hh(hour)}, занято`}
                   accessibilityState={{ selected: on, disabled: !free }}
                   style={({ pressed }) => [st.cell,
-                    c.off ? st.cellOff : free ? st.cellFree : st.cellBusy,
+                    h.status === 'closed' ? st.cellOff : free ? st.cellFree : st.cellBusy,
                     on && st.cellOn,
                     pressed && free && !on && { backgroundColor: C.surface3 }]}>
-                  {c.off ? null
+                  {h.status === 'closed' ? null
                     : on ? (start ? <View style={st.dotOn} /> : <View style={st.barOn} />)
                     : free ? <View style={st.dotFree} />
                     : <View style={st.dashBusy} />}
@@ -158,9 +157,8 @@ export default function Schedule() {
           </View>
         ))}
 
-        {/* закрывающая отметка: последняя клетка заканчивается здесь */}
         <View style={[st.row, { gap, marginBottom: 0 }]}>
-          <Text style={[st.time, st.timeLast, { width: timeW }]}>{hh(CLUB.closeHour)}</Text>
+          <Text style={[st.time, st.timeLast, { width: timeW }]}>{hh(grid.closeHour)}</Text>
         </View>
 
         <View style={st.legend}>
@@ -168,7 +166,11 @@ export default function Schedule() {
           <Leg label="занято" />
           <Leg label="закрыт" dashed />
         </View>
-        <Text style={st.note}>Корт 6 закрыт до 5 сентября — ремонт покрытия</Text>
+        {closedNote && (
+          <Text style={st.note}>
+            {closedNote.name} закрыт{closedNote.isFootball ? 'о' : ''} — ремонт покрытия
+          </Text>
+        )}
       </ScrollView>
 
       <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
@@ -176,14 +178,12 @@ export default function Schedule() {
           <>
             <Pressable
               onPress={() => router.push({ pathname: '/court',
-                params: { id: court.id, hour: String(sel.hour) } })}
+                params: { id: sel.courtId, date, hour: String(sel.hour) } })}
               style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
-              <Image source={IMG[court.id]} style={st.pickPh} resizeMode="cover" />
+              <Image source={IMG[sel.courtId] ?? IMG.c1} style={st.pickPh} resizeMode="cover" />
               <View style={{ flex: 1 }}>
                 <Text style={st.pickN}>{court.name}</Text>
-                <Text style={st.pickS}>
-                  {hh(sel.hour)} – {hh(sel.hour + hours)} · {fmt(total)}
-                </Text>
+                <Text style={st.pickS}>{hh(sel.hour)} – {hh(sel.hour + hours)} · {rub(total)}</Text>
               </View>
               <IconChevron size={15} color={C.dim2} />
             </Pressable>
@@ -194,6 +194,8 @@ export default function Schedule() {
                 const on = hours === n;
                 return (
                   <Pressable key={n} disabled={!ok} onPress={() => pickHours(n)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${n} ${n === 1 ? 'час' : 'часа'}, ${ok ? (on ? 'выбрано' : 'доступно') : 'занято'}`}
                     accessibilityState={{ selected: on, disabled: !ok }}
                     style={[st.dur, on && st.durOn, !ok && st.durOff]}>
                     <Text style={[st.durT, on && { color: C.onLime }, !ok && { color: C.busy }]}>
@@ -204,7 +206,7 @@ export default function Schedule() {
               })}
             </View>
 
-            {run < 3 && (
+            {run < MAX_HOURS && (
               <Text style={st.warn}>
                 {run === 1
                   ? `В ${hh(sel.hour + 1)} площадка занята — свободен только один час.`
@@ -214,7 +216,7 @@ export default function Schedule() {
 
             <Pressable onPress={book} accessibilityRole="button"
               style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Записаться · {fmt(total)}</Text>
+              <Text style={st.ctaT}>Записаться · {rub(total)}</Text>
             </Pressable>
           </>
         ) : (
@@ -243,7 +245,6 @@ function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: 
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
-
   sub: { color: C.dim2, fontSize: 12.5, paddingHorizontal: S.xl, paddingTop: 2 },
   days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginTop: 12, marginBottom: 16 },
   day: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
@@ -257,7 +258,6 @@ const st = StyleSheet.create({
   headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
 
   row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  // Подпись стоит у верхнего края клетки: слот идёт от этой отметки до следующей
   time: { color: C.dim2, fontSize: 10.5, fontVariant: ['tabular-nums'], marginTop: -5 },
   timeLast: { marginTop: -3 },
   cell: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
@@ -281,21 +281,17 @@ const st = StyleSheet.create({
   bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: C.ink2,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
   empty: { color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
-
   pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
   pickPh: { width: 38, height: 38, borderRadius: 12 },
   pickN: { color: C.text, fontSize: 15, fontWeight: '700' },
   pickS: { color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
-
   durRow: { flexDirection: 'row', gap: 7, marginBottom: 11 },
   dur: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
     borderRadius: R.md, paddingVertical: 10, alignItems: 'center', minHeight: 42 },
   durOn: { backgroundColor: C.lime, borderColor: C.lime },
   durOff: { opacity: 0.4, borderStyle: 'dashed' },
   durT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
-
   warn: { color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
-
   cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 16, alignItems: 'center' },
   ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
   ctaT: { color: C.onLime, fontSize: 16.5, fontWeight: '700', letterSpacing: -0.2 },

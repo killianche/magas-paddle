@@ -6,7 +6,12 @@ import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP } from '../src/theme';
-import { CLUB, COURTS, hh } from '../src/data';
+import { hh } from '../src/dates';
+
+/** ЗАГЛУШКИ: настоящие контакты и часы ждём от клуба (вопросы Q1–Q8, Q41, Q44). */
+const CLUB = { name: 'Magas Padel', city: 'Магас', phone: '+7 928 000-00-00',
+               whatsapp: '79280000000', openHour: 9, cancelHours: 4, lateMinutes: 15 };
+const PADEL_COURTS = 6;
 import { HERO } from '../src/images';
 import { Section, Line } from '../src/components/section';
 import { IconChevron } from '../src/components/icons';
@@ -44,9 +49,7 @@ export default function Club() {
           <View style={s.heroIn}>
             <Text style={s.name}>{CLUB.name}</Text>
             <Text style={s.sub}>
-              {/* Считаем все корты клуба, а не только открытые: закрытый на ремонт
-                  никуда не делся, и «5 кортов» вводило бы в заблуждение */}
-              {CLUB.city} · {COURTS.filter(c => !c.football).length} кортов и мини-футбольное поле
+              {CLUB.city} · {PADEL_COURTS} кортов и мини-футбольное поле
             </Text>
           </View>
         </View>

@@ -28,7 +28,9 @@ export class AvailabilityController {
       }),
     ]);
 
-    const nowHour = day === clubToday() ? hourOf(new Date()) : -1;
+    // Час считается прошедшим, как только он начался: в 12:05 записаться
+    // «с 12:00» уже нельзя, и сетка не должна это предлагать.
+    const now = new Date();
 
     const rows = courts.map(c => {
       const busy = new Set<number>();
@@ -42,8 +44,9 @@ export class AvailabilityController {
 
       const hours = [];
       for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
+        const started = day === clubToday() && clubHour(day, h) <= now;
         const status = closed ? 'closed'
-          : h < nowHour ? 'past'
+          : started ? 'past'
           : busy.has(h) ? 'busy'
           : 'free';
         hours.push({
@@ -51,7 +54,7 @@ export class AvailabilityController {
           status,
           price: h >= EVENING_FROM ? c.price_evening : c.price_day,
           // Сколько часов подряд можно взять начиная с этого
-          maxRun: status !== 'free' ? 0 : runFrom(h, busy, closed, nowHour),
+          maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now),
         });
       }
       return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours };
@@ -68,11 +71,10 @@ export class AvailabilityController {
 }
 
 /** Сколько часов подряд свободно, начиная с указанного, но не больше предела. */
-function runFrom(from: number, busy: Set<number>, closed: boolean, nowHour: number): number {
-  if (closed) return 0;
+function runFrom(day: string, from: number, busy: Set<number>, now: Date): number {
   let n = 0;
   for (let h = from; h < CLOSE_HOUR && n < MAX_HOURS; h++) {
-    if (busy.has(h) || h < nowHour) break;
+    if (busy.has(h) || clubHour(day, h) <= now) break;
     n++;
   }
   return n;

@@ -1,47 +1,78 @@
-// Карточка турнира. Ровно то, что нужно клубу: записаться, видеть что записан,
-// видеть когда играть. Сетка, счёт и жеребьёвка — вживую, в приложении их нет.
-// Когда турнир прошёл, менеджер меняет обложку и пишет итог — экран показывает их.
-import { useState } from 'react';
-import { ScrollView, Text, View, Pressable, StyleSheet, Image, Platform, Alert } from 'react-native';
-import { router, useLocalSearchParams, Stack } from 'expo-router';
+// Карточка турнира: записаться, видеть что записан, видеть когда играть.
+// Сетка и счёт — вживую, в приложении их нет.
+import { useCallback, useState } from 'react';
+import {
+  ScrollView, Text, View, Pressable, StyleSheet, Image, Platform, Alert, ActivityIndicator,
+} from 'react-native';
+import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT } from '../src/theme';
-import { tournamentById, fmt, CLUB } from '../src/data';
+import { C, R, S, HIT, DISP } from '../src/theme';
+import { api, rub, ApiError } from '../src/api';
+import { useApi } from '../src/useApi';
+import { useProfile } from '../src/profile';
 import { TOURN_IMG } from '../src/images';
 import { IconCheck } from '../src/components/icons';
-import { useEntries, isEntered, enterTournament, leaveTournament } from '../src/store';
-import { ScreenSkeleton, NotFound } from '../src/components/state';
-import { useHydrated } from '../src/hydrated';
+import { Loading, Failed } from '../src/components/status';
+import { NotFound } from '../src/components/state';
+import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const t = tournamentById(String(id));
-  const hydrated = useHydrated();
-  useEntries();                        // перерисовка при записи и отмене
-  const [justEntered, setJustEntered] = useState(false);
+  const { profile } = useProfile();
+  const phone = profile?.phone;
+  const [busy, setBusy] = useState(false);
 
-  if (!hydrated) return <ScreenSkeleton />;
+  const q = useApi(async () => {
+    const all = await api.tournaments(phone);
+    return all.find(t => String(t.id) === String(id)) ?? null;
+  }, [id, phone]);
+  useFocusEffect(useCallback(() => { q.refresh() }, [id, phone]));
+
+  if (q.loading) return (<><Stack.Screen options={{ title: 'Турнир' }} /><Loading /></>);
+  if (q.error) return (<><Stack.Screen options={{ title: 'Турнир' }} />
+    <Failed message={q.error} onRetry={q.reload} /></>);
+
+  const t = q.data;
   if (!t) return (
     <NotFound title="Турнир не найден"
       note="Возможно, он уже прошёл и его убрали. Все турниры — во вкладке «Турниры»." />
   );
 
-  const entered = isEntered(t.id);
-  const left = t.total - t.taken - (entered ? 1 : 0);
+  const date = dateOfIso(t.startsAt);
+  const left = Math.max(0, t.seats - t.taken);
   const done = t.state === 'done';
-  const canEnter = t.state === 'open' && left > 0;
+  const canEnter = t.state === 'open' && left > 0 && !t.entered;
 
-  const enter = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    enterTournament(t.id);
-    setJustEntered(true);
+  const enter = async () => {
+    if (!profile) {
+      const msg = 'Сначала запишитесь на корт — тогда мы будем знать, как вас зовут и как с вами связаться.';
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('Нужны имя и телефон', msg);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.enterTournament(t.id, profile.name, profile.phone);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      q.refresh();
+    } catch (e) {
+      const m = e instanceof ApiError ? e.message : 'Не получилось записаться.';
+      Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
+    } finally { setBusy(false) }
   };
 
   const leave = () => {
+    if (!phone) return;
+    const go = async () => {
+      setBusy(true);
+      try { await api.leaveTournament(t.id, phone); q.refresh() }
+      catch (e) {
+        const m = e instanceof ApiError ? e.message : 'Не получилось отменить.';
+        Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
+      } finally { setBusy(false) }
+    };
     const title = `Отменить запись на «${t.name}»?`;
-    const msg = 'Место освободится для других игроков. Записаться заново можно, пока есть места.';
-    const go = () => { leaveTournament(t.id); setJustEntered(false) };
+    const msg = 'Место освободится для других игроков.';
     if (Platform.OS === 'web') { if (confirm(title + '\n\n' + msg)) go(); return }
     Alert.alert(title, msg, [
       { text: 'Оставить', style: 'cancel' },
@@ -55,38 +86,34 @@ export default function TournamentScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: done ? 40 : 200 }}>
 
         <View style={s.cover}>
-          <Image source={TOURN_IMG[t.cover]} style={s.coverImg} resizeMode="cover" />
-          <LinearGradient
-            colors={['rgba(9,13,10,.12)', 'rgba(9,13,10,.58)', 'rgba(9,13,10,.94)']}
-            locations={[0, 0.5, 1]} style={s.coverScrim} />
+          <Image source={TOURN_IMG[t.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
+            style={s.coverImg} resizeMode="cover" />
+          <LinearGradient colors={['rgba(9,13,10,.12)', 'rgba(9,13,10,.58)', 'rgba(9,13,10,.94)']}
+            locations={[0, 0.5, 1]} style={s.fill} />
           <View style={s.coverIn}>
-            {done
-              ? <View style={s.doneFlag}><Text style={s.doneFlagT}>ЗАВЕРШЁН</Text></View>
-              : entered
-                ? <View style={s.okFlag}><IconCheck size={12} color={C.onLime} /><Text style={s.okFlagT}>ВЫ ЗАПИСАНЫ</Text></View>
-                : t.state === 'open'
-                  ? <View style={s.openFlag}><Text style={s.openFlagT}>РЕГИСТРАЦИЯ ОТКРЫТА</Text></View>
-                  : <View style={s.soonFlag}><Text style={s.soonFlagT}>СКОРО ОТКРОЕМ ЗАПИСЬ</Text></View>}
+            {done ? <Flag text="ЗАВЕРШЁН" muted />
+              : t.entered ? <Flag text="ВЫ ЗАПИСАНЫ" ok />
+              : t.state === 'open' ? <Flag text="РЕГИСТРАЦИЯ ОТКРЫТА" ok />
+              : <Flag text="СКОРО ОТКРОЕМ ЗАПИСЬ" warn />}
             <Text style={s.name}>{t.name}</Text>
           </View>
         </View>
 
-        {/* Когда играть — самое важное для записавшегося */}
         <View style={s.when}>
           <View style={s.whenBlock}>
             <Text style={s.whenK}>Дата</Text>
-            <Text style={s.whenV}>{t.date}</Text>
-            <Text style={s.whenS}>{t.weekday}</Text>
+            <Text style={s.whenV}>{dayMonth(date)}</Text>
+            <Text style={s.whenS}>{weekday(date)}</Text>
           </View>
           <View style={s.whenDiv} />
           <View style={s.whenBlock}>
             <Text style={s.whenK}>Начало</Text>
-            <Text style={s.whenV}>{t.time}</Text>
+            <Text style={s.whenV}>{hh(hourOfIso(t.startsAt))}</Text>
             <Text style={s.whenS}>{done ? 'турнир прошёл' : 'сбор за 20 минут'}</Text>
           </View>
         </View>
 
-        {done && t.result && (
+        {done && !!t.result && (
           <View style={s.resultCard}>
             <Text style={s.resultK}>ИТОГИ</Text>
             <Text style={s.resultT}>{t.result}</Text>
@@ -95,75 +122,65 @@ export default function TournamentScreen() {
 
         <View style={s.facts}>
           <Fact k="Формат" v={t.format} />
-          <Fact k="Взнос" v={fmt(t.fee)} />
-          <Fact k="Место" v={`${CLUB.name}, ${CLUB.city}`} />
+          <Fact k="Взнос" v={rub(t.fee)} />
           <Fact k={done ? 'Участников было' : 'Свободных мест'}
-            v={done ? String(t.total) : `${left} из ${t.total}`} last />
+            v={done ? String(t.seats) : `${left} из ${t.seats}`} last />
         </View>
 
-        {entered && !done && (
+        {t.entered && !done && (
           <View style={s.enteredNote}>
             <Text style={s.enteredT}>
               Пары составят на месте — партнёра искать заранее не нужно.
               Если передумаете, отмените запись, чтобы место досталось другому.
             </Text>
-            <Pressable onPress={leave} style={({ pressed }) => [s.leave, pressed && { opacity: 0.7 }]}>
+            <Pressable onPress={leave} disabled={busy}
+              style={({ pressed }) => [s.leave, pressed && { opacity: 0.7 }]}>
               <Text style={s.leaveT}>Отменить запись</Text>
             </Pressable>
-          </View>
-        )}
-
-        {!entered && !done && t.state === 'soon' && (
-          <View style={s.note}>
-            <Text style={s.noteT}>
-              Запись откроется ближе к дате. Мы пришлём уведомление, когда можно будет записаться.
-            </Text>
-          </View>
-        )}
-
-        {!entered && !done && t.state === 'open' && left === 0 && (
-          <View style={s.note}>
-            <Text style={s.noteT}>
-              Все места заняты. Если кто-то откажется, место освободится — мы сообщим.
-            </Text>
           </View>
         )}
       </ScrollView>
 
       {!done && (
         <View style={s.bar}>
-          {entered ? (
-            <>
-              <View style={s.barOk}>
-                <View style={s.barOkIcon}><IconCheck size={15} color={C.onLime} /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.barOkT}>Вы записаны</Text>
-                  <Text style={s.barOkS}>{t.date}, {t.time} · взнос {fmt(t.fee)} на месте</Text>
-                </View>
+          {t.entered ? (
+            <View style={s.barOk}>
+              <View style={s.barOkIcon}><IconCheck size={15} color={C.onLime} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.barOkT}>Вы записаны</Text>
+                <Text style={s.barOkS}>
+                  {dayMonth(date)}, {hh(hourOfIso(t.startsAt))} · взнос {rub(t.fee)} на месте
+                </Text>
               </View>
-              {justEntered && (
-                <Pressable onPress={() => router.replace('/bookings')}
-                  style={({ pressed }) => [s.ghost, pressed && { opacity: 0.7 }]}>
-                  <Text style={s.ghostT}>Открыть мои записи</Text>
-                </Pressable>
-              )}
-            </>
+            </View>
           ) : (
             <>
-              <Pressable onPress={enter} disabled={!canEnter}
+              <Pressable onPress={enter} disabled={!canEnter || busy}
                 style={({ pressed }) => [s.cta, !canEnter && s.ctaOff, pressed && canEnter && { opacity: 0.9 }]}>
-                <Text style={[s.ctaT, !canEnter && { color: C.dim2 }]}>
-                  {t.state === 'soon' ? 'Запись ещё не открыта'
-                    : left === 0 ? 'Мест нет' : 'Записаться на турнир'}
-                </Text>
+                {busy ? <ActivityIndicator color={C.onLime} />
+                  : <Text style={[s.ctaT, !canEnter && { color: C.dim2 }]}>
+                      {t.state === 'soon' ? 'Запись ещё не открыта'
+                        : left === 0 ? 'Мест нет' : 'Записаться на турнир'}
+                    </Text>}
               </Pressable>
-              {canEnter && (
-                <Text style={s.barSub}>Взнос {fmt(t.fee)} оплачивается в клубе</Text>
-              )}
+              {canEnter && <Text style={s.barSub}>Взнос {rub(t.fee)} оплачивается в клубе</Text>}
             </>
           )}
         </View>
       )}
+    </View>
+  );
+}
+
+function Flag({ text, ok, warn, muted }: { text: string; ok?: boolean; warn?: boolean; muted?: boolean }) {
+  return (
+    <View style={[s.flag,
+      ok && { backgroundColor: C.lime, borderColor: C.lime },
+      warn && { borderColor: 'rgba(240,169,59,.5)', backgroundColor: 'rgba(240,169,59,.14)' },
+      muted && { borderColor: C.lineStrong, backgroundColor: 'rgba(23,30,22,.8)' }]}>
+      <Text style={[s.flagT, ok && { color: C.onLime }, warn && { color: C.amber }, muted && { color: C.dim }]}>
+        {text}
+      </Text>
     </View>
   );
 }
@@ -178,27 +195,17 @@ function Fact({ k, v, last }: { k: string; v: string; last?: boolean }) {
 }
 
 const s = StyleSheet.create({
+  fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   cover: { height: 230, justifyContent: 'flex-end', overflow: 'hidden' },
   coverImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  coverScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   coverIn: { padding: S.xl },
-  name: { color: C.text, fontSize: 26, fontWeight: '800', lineHeight: 30, marginTop: 11,
-    textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
+  name: { color: C.text, fontFamily: DISP, fontSize: 28, lineHeight: 32, marginTop: 11,
+    letterSpacing: 0.3, textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
+  flag: { alignSelf: 'flex-start', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10,
+    borderWidth: 1, borderColor: 'transparent' },
+  flagT: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8, color: C.text },
 
-  openFlag: { alignSelf: 'flex-start', backgroundColor: C.lime, borderRadius: 8,
-    paddingVertical: 5, paddingHorizontal: 10 },
-  openFlagT: { color: C.onLime, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
-  soonFlag: { alignSelf: 'flex-start', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10,
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.5)', backgroundColor: 'rgba(240,169,59,.14)' },
-  soonFlagT: { color: C.amber, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
-  okFlag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: C.lime, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
-  okFlagT: { color: C.onLime, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
-  doneFlag: { alignSelf: 'flex-start', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10,
-    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: 'rgba(23,30,22,.8)' },
-  doneFlagT: { color: C.dim, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
-
-  when: { flexDirection: 'row', alignItems: 'stretch', marginHorizontal: S.xl, marginTop: 16,
+  when: { flexDirection: 'row', marginHorizontal: S.xl, marginTop: 16,
     borderWidth: 1, borderColor: C.line, borderRadius: R.xl, backgroundColor: C.surface },
   whenBlock: { flex: 1, padding: 15 },
   whenDiv: { width: 1, backgroundColor: C.line },
@@ -224,14 +231,11 @@ const s = StyleSheet.create({
   leave: { marginTop: 12, minHeight: HIT, justifyContent: 'center' },
   leaveT: { color: C.red, fontSize: 14.5, fontWeight: '600' },
 
-  note: { marginHorizontal: S.xl, marginTop: 12, padding: 13, borderRadius: R.md,
-    backgroundColor: 'rgba(240,169,59,.08)', borderWidth: 1, borderColor: 'rgba(240,169,59,.26)' },
-  noteT: { color: '#DFCCA8', fontSize: 13, lineHeight: 19 },
-
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.xl,
-    paddingTop: 14, paddingBottom: 34, backgroundColor: C.ink,
+    paddingTop: 14, paddingBottom: 34, backgroundColor: C.ink2,
     borderTopWidth: 1, borderTopColor: C.lineSoft },
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17, alignItems: 'center' },
+  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17,
+    alignItems: 'center', minHeight: HIT + 10, justifyContent: 'center' },
   ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
   ctaT: { color: C.onLime, fontSize: 17, fontWeight: '700' },
   barSub: { color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
@@ -240,7 +244,4 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center' },
   barOkT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
   barOkS: { color: C.dim2, fontSize: 12, marginTop: 1 },
-  ghost: { marginTop: 11, paddingVertical: 13, borderRadius: R.lg, alignItems: 'center',
-    borderWidth: 1, borderColor: C.lineStrong },
-  ghostT: { color: C.text, fontSize: 14.5, fontWeight: '600' },
 });

@@ -40,6 +40,9 @@
     },
     "experiments": {
       "baseUrl": "/v1"
+    },
+    "extra": {
+      "apiUrl": "https://padel.217-114-8-196.sslip.io/api"
     }
   }
 }

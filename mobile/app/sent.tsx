@@ -1,16 +1,20 @@
-import { Text, View, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+// Заявка отправлена. Экран должен успокоить: что записано, когда и что дальше.
+import { Text, View, StyleSheet, Pressable, Linking, Platform, Alert } from 'react-native';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import { C, R, S, HIT, DISP } from '../src/theme';
+import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
-import { C, R, S } from '../src/theme';
-import { fmt, hh, CLUB } from '../src/data';
-import { Card, Row, Btn } from '../src/components/ui';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
+import { hh, longDate, weekday, plural } from '../src/dates';
+
+const PHONE = '+7 928 000-00-00';       // ЗАГЛУШКА: настоящий номер ждём от клуба
+const WHATSAPP = '79280000000';
 
 export default function Sent() {
-  const p = useLocalSearchParams<{ name: string; hour: string; hours: string; price: string }>();
+  const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string; hours: string; price: string }>();
   const hydrated = useHydrated();
-  const hour = Number(p.hour ?? 19), hours = Number(p.hours ?? 1);
+  const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
 
   if (!hydrated) return <ScreenSkeleton />;
   if (!p.name || !p.hour) return (
@@ -18,47 +22,93 @@ export default function Sent() {
       note="Похоже, вы открыли ссылку напрямую. Отправленные заявки лежат в «Моих записях»." />
   );
 
+  const open = async (url: string, fallback: string) => {
+    try {
+      if (await Linking.canOpenURL(url)) return Linking.openURL(url);
+      throw new Error();
+    } catch {
+      Platform.OS === 'web' ? alert(fallback) : Alert.alert('Не получилось', fallback);
+    }
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: C.ink, paddingTop: 70 }}>
+    <View style={s.root}>
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+
       <View style={s.done}>
         <View style={s.tick}><IconCheck size={34} color={C.lime} active /></View>
-        <Text style={s.h}>Заявка принята</Text>
+        <Text style={s.h}>Записано</Text>
         <Text style={s.p}>
-          Слот <Text style={{ color: C.text, fontWeight: '700' }}>{hh(hour)} – {hh(hour + hours)}</Text>
-          {' '}на «{String(p.name)}» закреплён за вами.{'\n'}Менеджер подтвердит в течение 15 минут.
+          <Text style={{ color: C.text, fontWeight: '700' }}>{String(p.name)}</Text>
+          {'\n'}{longDate(String(p.date))}, {weekday(String(p.date))}
+          {'\n'}<Text style={{ color: C.text, fontWeight: '700' }}>{hh(hour)} – {hh(hour + hours)}</Text>
+          {' '}· {hours} {plural(hours, 'час', 'часа', 'часов')}
         </Text>
         <View style={s.pill}>
           <View style={s.dot} />
-          <Text style={s.pillT}>ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ</Text>
+          <Text style={s.pillT}>МЕНЕДЖЕР ПОДТВЕРДИТ</Text>
         </View>
       </View>
 
-      <Card style={{ marginTop: 26 }}>
-        <Row k="Номер заявки" v="#1043" mono />
-        <Row k="К оплате на месте" v={fmt(Number(p.price ?? 4500))} mono />
-      </Card>
+      <View style={s.card}>
+        <View style={s.row}>
+          <Text style={s.rowK}>Номер записи</Text>
+          <Text style={s.rowV}>№ {String(p.id ?? '—')}</Text>
+        </View>
+        <View style={[s.row, s.rowLast]}>
+          <Text style={s.rowK}>К оплате на месте</Text>
+          <Text style={[s.rowV, { color: C.lime, fontSize: 20 }]}>{rub(Number(p.price ?? 0))}</Text>
+        </View>
+      </View>
 
-      <View style={s.bar}>
-        <Btn title="Написать в WhatsApp" kind="wa" />
-        <Btn title={`Позвонить в клуб · ${CLUB.phone}`} kind="ghost" style={{ marginTop: 9 }} />
-        <Btn title="Открыть мои записи" kind="ghost"
-          onPress={() => router.replace('/bookings')} style={{ marginTop: 9, borderColor: 'transparent' }} />
+      <View style={{ flex: 1 }} />
+
+      <View style={s.bottom}>
+        <Pressable onPress={() => open(`https://wa.me/${WHATSAPP}`, 'Напишите менеджеру в WhatsApp вручную.')}
+          style={({ pressed }) => [s.wa, pressed && { opacity: 0.9 }]}>
+          <Text style={s.waT}>Написать в WhatsApp</Text>
+        </Pressable>
+        <Pressable onPress={() => open(`tel:${PHONE.replace(/[^\d+]/g, '')}`, `Телефон клуба: ${PHONE}`)}
+          style={({ pressed }) => [s.ghost, pressed && { opacity: 0.8 }]}>
+          <Text style={s.ghostT}>Позвонить в клуб</Text>
+        </Pressable>
+        <Pressable onPress={() => router.replace('/bookings')}
+          style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
+          <Text style={s.linkT}>Открыть мои записи</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  done: { alignItems: 'center', paddingHorizontal: 34 },
+  root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
+  done: { alignItems: 'center', paddingHorizontal: 30 },
   tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.lime,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(198,240,51,.09)', marginBottom: 20 },
-  h: { color: C.text, fontSize: 26, fontWeight: '800', marginBottom: 10 },
-  p: { color: C.dim, fontSize: 14.5, textAlign: 'center', lineHeight: 21 },
+    backgroundColor: 'rgba(198,240,51,.08)', alignItems: 'center', justifyContent: 'center' },
+  h: { color: C.text, fontFamily: DISP, fontSize: 32, letterSpacing: 0.5, marginTop: 18 },
+  p: { color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center', marginTop: 10 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 18,
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.42)', backgroundColor: 'rgba(240,169,59,.1)',
-    borderRadius: 22, paddingVertical: 7, paddingHorizontal: 14 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.amber },
-  pillT: { color: C.amber, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6 },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.xl,
-    paddingTop: 14, paddingBottom: 34 },
+    borderWidth: 1, borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.1)',
+    borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
+  pillT: { color: C.amber, fontSize: 10, fontWeight: '800', letterSpacing: 0.7 },
+
+  card: { marginTop: 26, marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1,
+    borderColor: C.line, backgroundColor: C.surface, paddingHorizontal: 15 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  rowLast: { borderBottomWidth: 0 },
+  rowK: { color: C.dim2, fontSize: 14 },
+  rowV: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+
+  bottom: { paddingHorizontal: S.xl, paddingBottom: 34, gap: 10 },
+  wa: { backgroundColor: '#25D366', borderRadius: R.lg, paddingVertical: 16,
+    alignItems: 'center', minHeight: HIT },
+  waT: { color: '#04240F', fontSize: 16.5, fontWeight: '700' },
+  ghost: { borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.lg,
+    paddingVertical: 15, alignItems: 'center', minHeight: HIT },
+  ghostT: { color: C.text, fontSize: 15.5, fontWeight: '600' },
+  link: { paddingVertical: 12, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
+  linkT: { color: C.dim, fontSize: 14.5, fontWeight: '600' },
 });
