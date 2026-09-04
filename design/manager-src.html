@@ -1,0 +1,347 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<title>Magas Padel — рабочее место менеджера</title>
+<style>
+:root{
+  --ink:#0B0F0C; --ink-2:#12180F; --surface:#171E16; --surface-2:#212A1F; --surface-3:#2A3427;
+  --line:#2C3729; --line-soft:#222B20; --line-strong:#576D51;
+  --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A;
+  --text:#EDF2E9; --dim:#9AA795; --dim-2:#889085; --amber:#F0A93B; --red:#E5644B;
+  --disp:'Oswald','Arial Narrow',sans-serif;
+  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:14px;line-height:1.5}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+input,select{font-family:inherit;font-size:inherit}
+
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+  padding:12px 20px;background:rgba(11,15,12,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-size:17px;letter-spacing:.08em;text-transform:uppercase}
+.brand b{color:var(--lime)}
+.spacer{flex:1}
+.day-nav{display:flex;align-items:center;gap:8px}
+.day-nav button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text)}
+.day-nav button:hover{border-color:var(--line-strong)}
+.day-cur{font-family:var(--disp);font-size:17px;min-width:190px;text-align:center}
+.day-cur small{display:block;font-family:var(--body);font-size:11.5px;color:var(--dim-2)}
+.btn{border-radius:10px;padding:9px 15px;border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--text)}
+.btn:hover{background:var(--surface-2)}
+.btn.acc{background:var(--lime);color:#0B0F0C;border-color:var(--lime);font-weight:700}
+.btn.acc:hover{opacity:.9}
+.btn.small{padding:6px 11px;font-size:12.5px}
+.btn.dg{border-color:rgba(229,100,75,.5);color:var(--red)}
+
+.wrap{padding:18px 20px 60px;max-width:1500px;margin:0 auto}
+.stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.stat{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 16px;min-width:130px}
+.stat b{display:block;font-family:var(--disp);font-size:26px;line-height:1.1}
+.stat span{font-size:12px;color:var(--dim-2)}
+.stat.warn{border-color:rgba(240,169,59,.4);background:rgba(240,169,59,.07)}
+.stat.warn b{color:var(--amber)}
+
+table{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+th{font-size:11.5px;color:var(--dim);font-weight:700;padding-bottom:4px;text-align:center}
+th:first-child{width:56px}
+td:first-child{width:56px}
+td{vertical-align:top}
+.hcell{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);padding-top:6px;text-align:right;padding-right:6px}
+.slot{min-height:46px;border-radius:10px;border:1px dashed var(--line-soft);background:transparent;
+  width:100%;color:var(--dim-2);font-size:11.5px}
+.slot:hover{border-color:var(--line-strong);background:var(--surface)}
+.slot.closed{border-style:solid;border-color:var(--line);background:repeating-linear-gradient(
+  45deg,transparent,transparent 6px,rgba(255,255,255,.03) 6px,rgba(255,255,255,.03) 12px);cursor:not-allowed}
+.bk{min-height:46px;border-radius:10px;padding:6px 8px;text-align:left;width:100%;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--text)}
+.bk:hover{border-color:var(--line-strong)}
+.bk .n{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk .m{font-size:11px;color:var(--dim-2);margin-top:2px}
+.bk.pending{border-color:rgba(240,169,59,.55);background:rgba(240,169,59,.1)}
+.bk.confirmed{border-color:rgba(198,240,51,.5);background:rgba(198,240,51,.09)}
+.bk.no_show{border-color:rgba(229,100,75,.5);background:rgba(229,100,75,.09)}
+.bk.cancelled{opacity:.4;text-decoration:line-through}
+
+.modal{position:fixed;inset:0;background:rgba(4,7,5,.72);display:none;align-items:center;
+  justify-content:center;z-index:50;padding:20px}
+.modal.on{display:flex}
+.sheet{background:var(--ink-2);border:1px solid var(--line);border-radius:20px;
+  padding:22px;width:100%;max-width:460px;max-height:86vh;overflow:auto}
+.sheet h3{font-family:var(--disp);font-size:23px;margin:0 0 4px}
+.sheet .sub{color:var(--dim-2);font-size:12.5px;margin-bottom:16px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.row:last-of-type{border-bottom:0}
+.row span{color:var(--dim)}
+.row b{font-weight:600}
+.acts{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.acts .btn{flex:1;min-width:120px;text-align:center}
+label{display:block;font-size:12.5px;color:var(--dim);margin:12px 0 6px}
+input,select{width:100%;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:10px;padding:11px 12px;color:var(--text)}
+.hint{color:var(--dim-2);font-size:12px;margin-top:8px}
+.err{color:#F0B6A8;background:rgba(229,100,75,.1);border:1px solid rgba(229,100,75,.35);
+  border-radius:10px;padding:10px 12px;margin-top:12px;font-size:12.5px;display:none}
+.err.on{display:block}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+  border-radius:7px;padding:3px 8px;border:1px solid}
+.tag.warn{color:var(--amber);border-color:rgba(240,169,59,.4);background:rgba(240,169,59,.1)}
+.tag.bad{color:var(--red);border-color:rgba(229,100,75,.4);background:rgba(229,100,75,.1)}
+.center{text-align:center;padding:80px 20px;color:var(--dim)}
+.hist{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.hist div{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--dim)}
+</style>
+
+<div class="top">
+  <div class="brand">Magas <b>Padel</b> · менеджер</div>
+  <div class="spacer"></div>
+  <div class="day-nav">
+    <button id="prev" title="Предыдущий день">‹</button>
+    <div class="day-cur"><span id="dayTitle">—</span><small id="daySub"></small></div>
+    <button id="next" title="Следующий день">›</button>
+  </div>
+  <button class="btn" id="todayBtn">Сегодня</button>
+  <button class="btn acc" id="addBtn">Занять время</button>
+</div>
+
+<div class="wrap">
+  <div class="stats" id="stats"></div>
+  <div id="board"><div class="center">Загружаю…</div></div>
+</div>
+
+<!-- ключ входа -->
+<div class="modal on" id="authModal">
+  <div class="sheet">
+    <h3>Вход для сотрудников</h3>
+    <p class="sub">Ключ выдаёт администратор. Он сохранится в этом браузере.</p>
+    <label for="keyInput">Ключ</label>
+    <input id="keyInput" type="password" autocomplete="current-password" placeholder="••••••••">
+    <div class="err" id="authErr"></div>
+    <div class="acts"><button class="btn acc" id="authOk">Войти</button></div>
+  </div>
+</div>
+
+<!-- карточка брони -->
+<div class="modal" id="bkModal">
+  <div class="sheet">
+    <h3 id="bkTitle">Запись</h3>
+    <p class="sub" id="bkSub"></p>
+    <div id="bkRows"></div>
+    <div class="hist" id="bkHist"></div>
+    <div class="err" id="bkErr"></div>
+    <div class="acts" id="bkActs"></div>
+  </div>
+</div>
+
+<!-- занять время вручную -->
+<div class="modal" id="addModal">
+  <div class="sheet">
+    <h3>Занять время</h3>
+    <p class="sub">Для тех, кто позвонил или пришёл без приложения.</p>
+    <label for="addCourt">Площадка</label><select id="addCourt"></select>
+    <label for="addHour">Час начала</label><select id="addHour"></select>
+    <label for="addHours">Длительность</label>
+    <select id="addHours"><option value="1">1 час</option><option value="2">2 часа</option><option value="3">3 часа</option></select>
+    <label for="addName">Имя</label><input id="addName" placeholder="Кто играет">
+    <label for="addPhone">Телефон</label><input id="addPhone" placeholder="+7 928 000-00-00">
+    <label for="addComment">Заметка</label><input id="addComment" placeholder="Необязательно">
+    <div class="err" id="addErr"></div>
+    <div class="acts">
+      <button class="btn" id="addCancel">Отмена</button>
+      <button class="btn acc" id="addOk">Занять</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const KEY_STORE = 'magas.admin.key';
+let key = localStorage.getItem(KEY_STORE) || '';
+let date = todayStr();
+let day = null;
+
+const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const WEEK = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+const STATUS = { pending:'Ждёт подтверждения', confirmed:'Подтверждена', cancelled:'Отменена', no_show:'Не пришёл', done:'Отыграна' };
+
+function todayStr(){ return new Date(Date.now()+3*3600e3).toISOString().slice(0,10) }
+function shift(d,n){ const x=new Date(d+'T00:00:00Z'); x.setUTCDate(x.getUTCDate()+n); return x.toISOString().slice(0,10) }
+function pretty(d){ const x=new Date(d+'T00:00:00Z'); return x.getUTCDate()+' '+MONTHS[x.getUTCMonth()] }
+function weekday(d){ return WEEK[new Date(d+'T00:00:00Z').getUTCDay()] }
+function rub(k){ return (k/100).toLocaleString('ru-RU')+' ₽' }
+function hh(h){ return String(h).padStart(2,'0')+':00' }
+const $ = s => document.querySelector(s);
+
+async function call(path, opts={}){
+  const res = await fetch(API+path, { ...opts,
+    headers:{ 'Content-Type':'application/json', 'X-Admin-Key':key, ...(opts.headers||{}) } });
+  const text = await res.text();
+  let body = null; try { body = text ? JSON.parse(text) : null } catch {}
+  if(!res.ok){ const m = body?.message; throw new Error(typeof m==='string'?m:(m?.message||'Ошибка '+res.status)) }
+  return body;
+}
+
+/* ── вход ─────────────────────────────────────────────── */
+$('#authOk').onclick = async () => {
+  key = $('#keyInput').value.trim();
+  if(!key) return;
+  try {
+    await call('/admin/day?date='+date);
+    localStorage.setItem(KEY_STORE, key);
+    $('#authModal').classList.remove('on');
+    load();
+  } catch(e){ $('#authErr').textContent = 'Ключ не подошёл'; $('#authErr').classList.add('on') }
+};
+$('#keyInput').addEventListener('keydown', e => { if(e.key==='Enter') $('#authOk').click() });
+
+/* ── день ─────────────────────────────────────────────── */
+$('#prev').onclick = () => { date = shift(date,-1); load() };
+$('#next').onclick = () => { date = shift(date, 1); load() };
+$('#todayBtn').onclick = () => { date = todayStr(); load() };
+
+async function load(){
+  $('#dayTitle').textContent = date===todayStr() ? 'Сегодня' : pretty(date);
+  $('#daySub').textContent = pretty(date)+', '+weekday(date);
+  try {
+    day = await call('/admin/day?date='+date);
+    render();
+  } catch(e){
+    $('#board').innerHTML = '<div class="center">'+e.message+'</div>';
+    if(/ключ/i.test(e.message)) $('#authModal').classList.add('on');
+  }
+}
+
+function render(){
+  const alive = day.bookings.filter(b => b.status!=='cancelled');
+  const pending = alive.filter(b => b.status==='pending');
+  const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+b.price,0);
+  const open = day.courts.filter(c => c.isActive).length;
+  const slots = open * (day.closeHour - day.openHour);
+
+  $('#stats').innerHTML = `
+    <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения</span></div>
+    <div class="stat"><b>${alive.length}</b><span>записей на день</span></div>
+    <div class="stat"><b>${Math.round(alive.reduce((s,b)=>s+b.hours,0)/slots*100)}%</b><span>занятость</span></div>
+    <div class="stat"><b>${rub(money)}</b><span>к оплате за день</span></div>`;
+
+  const courts = day.courts;
+  let html = '<table><thead><tr><th></th>';
+  for(const c of courts) html += `<th>${c.name}${c.closedUntil?' 🛠':''}</th>`;
+  html += '</tr></thead><tbody>';
+
+  for(let h=day.openHour; h<day.closeHour; h++){
+    html += `<tr><td class="hcell">${hh(h)}</td>`;
+    for(const c of courts){
+      const b = day.bookings.find(x => x.courtId===c.id && x.hour<=h && h<x.hour+x.hours && x.status!=='cancelled');
+      if(b){
+        if(b.hour===h){
+          const who = b.client ? b.client.name : 'Без имени';
+          const flags = b.client && (b.client.noShows>0||b.client.cancels>1) ? ' ⚠' : '';
+          html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}">
+            <div class="n">${who}${flags}</div>
+            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div></button></td>`;
+        }
+      } else if(c.closedUntil && new Date(c.closedUntil) > new Date()){
+        html += `<td><div class="slot closed" title="${c.closedReason||'Закрыт'}"></div></td>`;
+      } else {
+        html += `<td><button class="slot" data-court="${c.id}" data-hour="${h}">+</button></td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  $('#board').innerHTML = html;
+
+  document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBooking(+el.dataset.id));
+  document.querySelectorAll('.slot:not(.closed)').forEach(el => el.onclick = () => {
+    openAdd(el.dataset.court, +el.dataset.hour);
+  });
+}
+
+/* ── карточка записи ──────────────────────────────────── */
+async function openBooking(id){
+  const b = day.bookings.find(x => x.id===id);
+  if(!b) return;
+  const court = day.courts.find(c => c.id===b.courtId);
+  $('#bkTitle').textContent = b.client ? b.client.name : 'Без имени';
+  $('#bkSub').textContent = court.name+' · '+pretty(date);
+  $('#bkRows').innerHTML = `
+    <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
+    <div class="row"><span>К оплате</span><b>${rub(b.price)}</b></div>
+    <div class="row"><span>Состояние</span><b>${STATUS[b.status]||b.status}</b></div>
+    <div class="row"><span>Телефон</span><b>${b.client?`<a href="tel:${b.client.phone}" style="color:var(--lime)">${b.client.phone}</a>`:'—'}</b></div>
+    <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
+    ${b.comment?`<div class="row"><span>Заметка</span><b>${b.comment}</b></div>`:''}`;
+
+  $('#bkHist').innerHTML = '';
+  if(b.client){
+    const bad = [];
+    if(b.client.cancels>0) bad.push(`<span class="tag warn">отмен: ${b.client.cancels}</span>`);
+    if(b.client.noShows>0) bad.push(`<span class="tag bad">не пришёл: ${b.client.noShows}</span>`);
+    if(bad.length) $('#bkHist').innerHTML = bad.join(' ');
+    try {
+      const c = await call('/admin/clients/'+encodeURIComponent(b.client.phone));
+      const rows = c.history.slice(0,6).map(h =>
+        `<div><span>${new Date(h.startsAt).toLocaleDateString('ru-RU')} · ${h.courtName}</span>
+         <span>${STATUS[h.status]||h.status}</span></div>`).join('');
+      $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Последние записи</div>${rows}`;
+    } catch {}
+  }
+
+  const acts = [];
+  if(b.status!=='confirmed') acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
+  if(b.status!=='no_show')  acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
+  acts.push(`<button class="btn dg" data-s="cancelled">Освободить время</button>`);
+  $('#bkActs').innerHTML = acts.join('');
+  $('#bkErr').classList.remove('on');
+  $('#bkModal').classList.add('on');
+
+  $('#bkActs').querySelectorAll('button').forEach(el => el.onclick = async () => {
+    try {
+      await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: el.dataset.s }) });
+      $('#bkModal').classList.remove('on');
+      load();
+    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
+  });
+}
+
+/* ── занять время вручную ─────────────────────────────── */
+$('#addBtn').onclick = () => openAdd(day.courts[0]?.id, 18);
+$('#addCancel').onclick = () => $('#addModal').classList.remove('on');
+
+function openAdd(courtId, hour){
+  $('#addCourt').innerHTML = day.courts.filter(c=>c.isActive)
+    .map(c => `<option value="${c.id}"${c.id===courtId?' selected':''}>${c.name}</option>`).join('');
+  let hours = '';
+  for(let h=day.openHour; h<day.closeHour; h++) hours += `<option value="${h}"${h===hour?' selected':''}>${hh(h)}</option>`;
+  $('#addHour').innerHTML = hours;
+  $('#addErr').classList.remove('on');
+  $('#addModal').classList.add('on');
+}
+
+$('#addOk').onclick = async () => {
+  const body = {
+    courtId: $('#addCourt').value, date,
+    hour: +$('#addHour').value, hours: +$('#addHours').value,
+    name: $('#addName').value.trim() || undefined,
+    phone: $('#addPhone').value.replace(/\D/g,'').replace(/^8/,'7').replace(/^7/,'+7') || undefined,
+    comment: $('#addComment').value.trim() || undefined,
+  };
+  try {
+    await call('/admin/bookings', { method:'POST', body: JSON.stringify(body) });
+    $('#addModal').classList.remove('on');
+    $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
+    load();
+  } catch(e){ $('#addErr').textContent = e.message; $('#addErr').classList.add('on') }
+};
+
+document.querySelectorAll('.modal').forEach(m => m.onclick = e => {
+  if(e.target===m && m.id!=='authModal') m.classList.remove('on');
+});
+
+/* ── старт ────────────────────────────────────────────── */
+if(key){ $('#authModal').classList.remove('on'); load() }
+// Раз в минуту подтягиваем новые заявки: менеджер не должен обновлять вручную
+setInterval(() => { if(key && !document.hidden) load() }, 60000);
+</script>

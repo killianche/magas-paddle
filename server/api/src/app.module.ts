@@ -5,11 +5,12 @@ import { AvailabilityController } from './courts/availability.controller';
 import { BookingsController } from './bookings/bookings.controller';
 import { TournamentsController } from './tournaments/tournaments.controller';
 import { HealthController } from './health.controller';
+import { AdminController } from './admin/admin.controller';
 
 @Module({
   controllers: [
     HealthController, CourtsController, AvailabilityController,
-    BookingsController, TournamentsController,
+    BookingsController, TournamentsController, AdminController,
   ],
   providers: [PrismaService],
 })

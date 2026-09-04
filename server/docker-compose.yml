@@ -62,6 +62,8 @@ services:
       # Внутри сети Compose база доступна по имени службы
       DATABASE_URL: postgresql://magas:${DB_PASSWORD}@db:5432/magas?schema=public
       REDIS_URL: redis://cache:6379
+      # Ключ входа в админку: общий для персонала клуба
+      ADMIN_KEY: ${ADMIN_KEY:?нужен ADMIN_KEY в .env}
       PORT: 3001
       TZ: Europe/Moscow
     ports:
