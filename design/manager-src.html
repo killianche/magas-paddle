@@ -47,15 +47,18 @@ table{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
 th{font-size:11.5px;color:var(--dim);font-weight:700;padding-bottom:4px;text-align:center}
 th:first-child{width:56px}
 td:first-child{width:56px}
-td{vertical-align:top}
+td{vertical-align:top;height:52px}
+tbody tr{height:52px}
 .hcell{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);padding-top:6px;text-align:right;padding-right:6px}
-.slot{min-height:46px;border-radius:10px;border:1px dashed var(--line-soft);background:transparent;
-  width:100%;color:var(--dim-2);font-size:11.5px}
+.slot{height:100%;min-height:46px;border-radius:10px;border:1px dashed var(--line-soft);
+  background:transparent;width:100%;color:var(--dim-2);font-size:11.5px}
 .slot:hover{border-color:var(--line-strong);background:var(--surface)}
-.slot.closed{border-style:solid;border-color:var(--line);background:repeating-linear-gradient(
-  45deg,transparent,transparent 6px,rgba(255,255,255,.03) 6px,rgba(255,255,255,.03) 12px);cursor:not-allowed}
-.bk{min-height:46px;border-radius:10px;padding:6px 8px;text-align:left;width:100%;
-  border:1px solid var(--line);background:var(--surface-2);color:var(--text)}
+.slot.closed{height:100%;min-height:46px;border-style:solid;border-color:var(--line);
+  background:repeating-linear-gradient(45deg,transparent,transparent 6px,
+  rgba(255,255,255,.03) 6px,rgba(255,255,255,.03) 12px);cursor:not-allowed}
+.bk{height:100%;min-height:46px;border-radius:10px;padding:6px 8px;text-align:left;width:100%;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--text);
+  display:flex;flex-direction:column;justify-content:flex-start;gap:2px}
 .bk:hover{border-color:var(--line-strong)}
 .bk .n{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bk .m{font-size:11px;color:var(--dim-2);margin-top:2px}
@@ -240,7 +243,9 @@ function render(){
           const flags = b.client && (b.client.noShows>0||b.client.cancels>1) ? ' ⚠' : '';
           html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}">
             <div class="n">${who}${flags}</div>
-            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div></button></td>`;
+            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div>
+            ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} часа подряд</div>`:''}
+            </button></td>`;
         }
       } else if(c.closedUntil && new Date(c.closedUntil) > new Date()){
         html += `<td><div class="slot closed" title="${c.closedReason||'Закрыт'}"></div></td>`;
