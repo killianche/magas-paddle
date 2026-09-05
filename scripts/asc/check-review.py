@@ -1,10 +1,11 @@
-"""Состояние проверки TestFlight и работает ли публичная ссылка.
+"""Где сейчас обе проверки Apple: TestFlight и App Store.
 
     ASC_KEY_ID=... ASC_ISSUER_ID=... python3 scripts/asc/check-review.py
 """
 import importlib.util, pathlib, urllib.request
 
 BUILD = '58f1dd55-f041-4f3a-873e-ec8b0b43b153'
+VID   = 'd98f5a08-4d50-4543-b6f7-087427d3b640'
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'
 
 here = pathlib.Path(__file__).parent
@@ -33,3 +34,17 @@ try:
 except Exception as e:
     print('публичная ссылка: не удалось проверить —', e)
 print(LINK)
+
+STORE = {
+    'PREPARE_FOR_SUBMISSION': 'ещё не отправлено',
+    'WAITING_FOR_REVIEW':     'ждёт очереди на проверку',
+    'IN_REVIEW':              'Apple смотрит приложение',
+    'PENDING_DEVELOPER_RELEASE': 'одобрено, ждёт публикации с вашей стороны',
+    'READY_FOR_SALE':         'опубликовано в App Store',
+    'REJECTED':               'отклонено — смотрите письмо от Apple',
+    'METADATA_REJECTED':      'отклонены описание или скриншоты',
+}
+st, out = asc.call('GET', f'/v1/appStoreVersions/{VID}?fields[appStoreVersions]=appStoreState')
+state = (out.get('data') or {}).get('attributes', {}).get('appStoreState', '—')
+print()
+print('App Store:', state, '—', STORE.get(state, ''))
