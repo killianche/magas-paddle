@@ -138,6 +138,35 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .stale{margin:0 0 10px;padding:9px 13px;border-radius:10px;font-size:13px;
   background:rgba(240,169,59,.10);border:1px solid rgba(240,169,59,.3);color:#DFCCA8}
 @media(max-width:900px){.search{width:150px}.dpick{display:none}}
+
+/* ── управление клубом ─────────────────────────────────────────────── */
+.tabs{display:flex;gap:6px;margin:12px 0 4px;border-bottom:1px solid var(--line)}
+.tab{padding:8px 14px;border:0;background:none;color:var(--dim);border-bottom:2px solid transparent}
+.tab.on{color:var(--lime);border-bottom-color:var(--lime);font-weight:700}
+.pane{display:none}.pane.on{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.crow{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface)}
+.crow.off{opacity:.55}
+.crow .nm{flex:1 1 150px;min-width:0}
+.crow input[type=text]{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--text)}
+.crow .p{width:96px}
+.crow .p input{width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--text);text-align:right}
+.crow .p small{display:block;font-size:10.5px;color:var(--dim-2);margin-bottom:3px}
+.crow .shut{font-size:11.5px;color:var(--amber);white-space:nowrap}
+.trow{display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:8px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface)}
+.trow .tn{flex:1;min-width:0}
+.trow .tn b{display:block;font-size:14px}
+.trow .tn span{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-family:inherit;font-size:inherit;resize:vertical}
+.ent{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.ent .h{font-size:12px;color:var(--dim-2);margin-bottom:6px}
+.ent div.e{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.saved{color:var(--lime);font-size:12px;margin-left:8px}
 </style>
 
 <div class="top">
@@ -155,6 +184,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
   <input type="date" id="datePick" class="dpick" aria-label="Выбрать дату">
   <button class="btn" id="todayBtn">Сегодня</button>
   <button class="btn acc" id="addBtn">Записать клиента</button>
+  <button class="btn" id="setupBtn" title="Цены, площадки, часы, турниры">Управление</button>
   <button class="btn" id="logout" title="Выйти">Выйти</button>
 </div>
 
@@ -243,6 +273,96 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
     <div class="acts">
       <button class="btn" data-close>Отмена</button>
       <button class="btn acc" id="moveOk">Перенести</button>
+    </div>
+  </div>
+</div>
+
+<!-- управление клубом: площадки, цены, часы, турниры -->
+<div class="modal" id="setupModal">
+  <div class="sheet wide">
+    <h3>Управление клубом</h3>
+    <div class="tabs">
+      <button class="tab on" data-tab="courts">Площадки и цены</button>
+      <button class="tab" data-tab="club">Часы и правила</button>
+      <button class="tab" data-tab="tourn">Турниры</button>
+    </div>
+
+    <div class="pane on" id="paneCourts">
+      <p class="sub">Цены в рублях за час. Выключенная площадка пропадает из приложения совсем,
+        закрытая на ремонт остаётся видимой, но занять её нельзя.</p>
+      <div id="courtRows"></div>
+    </div>
+
+    <div class="pane" id="paneClub">
+      <p class="sub">Меняется сразу и в приложении, и в этой сетке.</p>
+      <div class="grid2">
+        <div><label for="setOpen">Открытие</label><input id="setOpen" type="number" min="0" max="23"></div>
+        <div><label for="setClose">Закрытие</label><input id="setClose" type="number" min="1" max="24"></div>
+        <div><label for="setMorning">Утренний тариф до</label><input id="setMorning" type="number" min="0" max="24"></div>
+        <div><label for="setMax">Часов подряд, не больше</label><input id="setMax" type="number" min="1" max="12"></div>
+        <div><label for="setCancel">Бесплатная отмена, часов</label><input id="setCancel" type="number" min="0" max="48"></div>
+      </div>
+      <div class="err" id="setErr"></div>
+      <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
+    </div>
+
+    <div class="pane" id="paneTourn">
+      <p class="sub">Записавшихся видно с телефонами. Итоги появляются в приложении сразу после сохранения.</p>
+      <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
+        <button class="btn acc" id="tnNew">Новый турнир</button>
+      </div>
+      <div id="tournRows"></div>
+    </div>
+
+    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- карточка турнира -->
+<div class="modal" id="tnModal">
+  <div class="sheet">
+    <h3 id="tnTitle">Турнир</h3>
+    <label for="tnName">Название</label><input id="tnName" placeholder="Осенний кубок Магаса">
+    <label for="tnStart">Начало</label><input id="tnStart" type="datetime-local">
+    <label for="tnFormat">Формат</label><input id="tnFormat" placeholder="Americano">
+    <div class="grid2">
+      <div><label for="tnFee">Взнос, ₽</label><input id="tnFee" type="number" min="0"></div>
+      <div><label for="tnSeats">Мест</label><input id="tnSeats" type="number" min="2" max="200"></div>
+    </div>
+    <label for="tnState">Состояние</label>
+    <select id="tnState">
+      <option value="soon">Скоро откроем запись</option>
+      <option value="open">Запись открыта</option>
+      <option value="closed">Запись закрыта</option>
+      <option value="done">Завершён</option>
+    </select>
+    <label for="tnCover">Обложка</label>
+    <select id="tnCover">
+      <option value="t1">Картинка 1</option><option value="t2">Картинка 2</option>
+      <option value="t3">Картинка 3</option><option value="t4">Картинка 4</option>
+    </select>
+    <label for="tnResult">Итоги</label>
+    <textarea id="tnResult" rows="3" placeholder="Кто победил. Появится в приложении у завершённого турнира"></textarea>
+    <div id="tnEntries"></div>
+    <div class="err" id="tnErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="tnSave">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- закрыть площадку на ремонт -->
+<div class="modal" id="shutModal">
+  <div class="sheet">
+    <h3 id="shutTitle">Закрыть площадку</h3>
+    <p class="sub">Площадка останется видимой в приложении, но занять её будет нельзя.</p>
+    <label for="shutUntil">Закрыта до</label><input id="shutUntil" type="date">
+    <label for="shutReason">Причина</label><input id="shutReason" placeholder="Ремонт покрытия">
+    <div class="err" id="shutErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="shutOk">Закрыть площадку</button>
     </div>
   </div>
 </div>
@@ -702,6 +822,172 @@ async function loadPending(){
   } catch {}
 }
 $('#pendBtn').onclick = () => $('#pendModal').classList.add('on');
+
+/* ── управление клубом ────────────────────────────────── */
+let setup = null;
+
+$('#setupBtn').onclick = () => openSetup();
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x===t));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('on'));
+  $('#pane'+t.dataset.tab[0].toUpperCase()+t.dataset.tab.slice(1)).classList.add('on');
+  if(t.dataset.tab==='tourn') loadTournaments();
+});
+
+async function openSetup(){
+  $('#setupModal').classList.add('on');
+  try {
+    setup = await call('/admin/setup');
+  } catch(e){ alert(e.message); return }
+  const st = setup.settings;
+  $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
+  $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
+  $('#setCancel').value = st.cancelHours;
+
+  $('#courtRows').innerHTML = setup.courts.map(c => {
+    const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
+    return `<div class="crow${c.isActive?'':' off'}" data-id="${c.id}">
+      <div class="nm"><input type="text" class="c-name" value="${c.name.replace(/"/g,'&quot;')}"></div>
+      <div class="p"><small>утро, ₽</small><input type="number" class="c-m" min="0" step="100" value="${c.priceMorning/100}"></div>
+      <div class="p"><small>дальше, ₽</small><input type="number" class="c-s" min="0" step="100" value="${c.priceStandard/100}"></div>
+      <button class="btn small c-save">Сохранить</button>
+      <button class="btn small c-act">${c.isActive?'Выключить':'Включить'}</button>
+      <button class="btn small c-shut">${shut?'Открыть':'На ремонт'}</button>
+      ${shut?`<span class="shut">до ${new Date(c.closedUntil).toLocaleDateString('ru-RU')}</span>`:''}
+      <span class="saved" hidden>сохранено</span>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.crow').forEach(row => {
+    const id = row.dataset.id;
+    const mark = () => { const s=row.querySelector('.saved'); s.hidden=false; setTimeout(()=>s.hidden=true,1800) };
+    row.querySelector('.c-save').onclick = async () => {
+      try {
+        await call('/admin/courts/'+id, { method:'POST', body: JSON.stringify({
+          name: row.querySelector('.c-name').value,
+          priceMorning: +row.querySelector('.c-m').value,
+          priceStandard: +row.querySelector('.c-s').value,
+        })});
+        mark(); tariffs = {}; load();
+      } catch(e){ alert(e.message) }
+    };
+    row.querySelector('.c-act').onclick = async () => {
+      const c = setup.courts.find(x => x.id===id);
+      if(c.isActive && !await ask('Выключить площадку?',
+        `${c.name} пропадёт из приложения совсем. Записанные брони останутся.`)) return;
+      try {
+        await call('/admin/courts/'+id, { method:'POST', body: JSON.stringify({ isActive: !c.isActive })});
+        openSetup(); load();
+      } catch(e){ alert(e.message) }
+    };
+    row.querySelector('.c-shut').onclick = async () => {
+      const c = setup.courts.find(x => x.id===id);
+      const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
+      if(shut){
+        try { await call('/admin/courts/'+id+'/close', { method:'POST', body: JSON.stringify({}) });
+              openSetup(); load(); } catch(e){ alert(e.message) }
+      } else openShut(c);
+    };
+  });
+}
+
+$('#setSave').onclick = async () => {
+  try {
+    await call('/admin/settings', { method:'POST', body: JSON.stringify({
+      openHour: +$('#setOpen').value, closeHour: +$('#setClose').value,
+      morningUntil: +$('#setMorning').value, maxHours: +$('#setMax').value,
+      cancelHours: +$('#setCancel').value,
+    })});
+    $('#setErr').classList.remove('on');
+    tariffs = {}; load();
+  } catch(e){ $('#setErr').textContent = e.message; $('#setErr').classList.add('on') }
+};
+
+/* закрытие площадки на ремонт */
+let shutting = null;
+function openShut(c){
+  shutting = c;
+  $('#shutTitle').textContent = 'Закрыть: ' + c.name;
+  const d = new Date(Date.now()+7*864e5);
+  $('#shutUntil').value = d.toISOString().slice(0,10);
+  $('#shutReason').value = c.closedReason || 'Ремонт покрытия';
+  $('#shutErr').classList.remove('on');
+  $('#shutModal').classList.add('on');
+}
+$('#shutOk').onclick = async () => {
+  try {
+    await call('/admin/courts/'+shutting.id+'/close', { method:'POST', body: JSON.stringify({
+      until: $('#shutUntil').value, reason: $('#shutReason').value.trim() || undefined,
+    })});
+    $('#shutModal').classList.remove('on');
+    openSetup(); load();
+  } catch(e){ $('#shutErr').textContent = e.message; $('#shutErr').classList.add('on') }
+};
+
+/* турниры */
+const TSTATE = { soon:'скоро', open:'запись открыта', closed:'запись закрыта', done:'завершён' };
+async function loadTournaments(){
+  try {
+    const rows = await call('/admin/tournaments');
+    $('#tournRows').innerHTML = rows.length ? rows.map(t => `
+      <div class="trow">
+        <div class="tn"><b>${t.name}</b>
+          <span>${new Date(t.startsAt).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
+          · ${t.format} · ${TSTATE[t.state]||t.state} · записалось ${t.taken} из ${t.seats}</span></div>
+        <button class="btn small" data-id="${t.id}">Открыть</button>
+      </div>`).join('') : '<div class="empty">Турниров пока нет.</div>';
+    $('#tournRows').querySelectorAll('button[data-id]').forEach(b =>
+      b.onclick = () => openTournament(rows.find(t => t.id === +b.dataset.id)));
+  } catch(e){ $('#tournRows').innerHTML = `<div class="empty">${e.message}</div>` }
+}
+
+let editing = null;
+$('#tnNew').onclick = () => openTournament(null);
+
+async function openTournament(t){
+  editing = t;
+  $('#tnTitle').textContent = t ? t.name : 'Новый турнир';
+  $('#tnName').value = t?.name ?? '';
+  // input datetime-local ждёт местное время без зоны
+  $('#tnStart').value = t ? new Date(new Date(t.startsAt).getTime()+3*3600e3).toISOString().slice(0,16)
+                          : new Date(Date.now()+7*864e5).toISOString().slice(0,16);
+  $('#tnFormat').value = t?.format ?? 'Americano';
+  $('#tnFee').value = t ? t.fee/100 : 2500;
+  $('#tnSeats').value = t?.seats ?? 16;
+  $('#tnState').value = t?.state ?? 'soon';
+  $('#tnCover').value = t?.coverUrl ?? 't1';
+  $('#tnResult').value = t?.resultText ?? '';
+  $('#tnEntries').innerHTML = '';
+  $('#tnErr').classList.remove('on');
+  $('#tnModal').classList.add('on');
+
+  if(t){
+    try {
+      const es = await call(`/admin/tournaments/${t.id}/entries`);
+      $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Записались: ${es.length}</div>` +
+        (es.length ? es.map(e => `<div class="e"><span>${e.name}</span><span>${phoneNice(e.phone)}</span></div>`).join('')
+                   : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
+    } catch {}
+  }
+}
+
+$('#tnSave').onclick = async () => {
+  const body = {
+    id: editing?.id,
+    name: $('#tnName').value.trim(),
+    // назад в UTC: поле отдаёт московское время без зоны
+    startsAt: new Date(new Date($('#tnStart').value).getTime()-3*3600e3).toISOString(),
+    format: $('#tnFormat').value.trim(),
+    fee: +$('#tnFee').value, seats: +$('#tnSeats').value,
+    state: $('#tnState').value, coverUrl: $('#tnCover').value,
+    resultText: $('#tnResult').value.trim(),
+  };
+  try {
+    await call('/admin/tournaments', { method:'POST', body: JSON.stringify(body) });
+    $('#tnModal').classList.remove('on');
+    loadTournaments();
+  } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
+};
 
 /* ── выход ────────────────────────────────────────────── */
 $('#logout').onclick = () => {

@@ -6,7 +6,7 @@ import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from './admin.guard';
 import { clubHour, clubToday, hourOf, isValidDate } from '../time';
-import { CLOSE_HOUR, MORNING_UNTIL, OPEN_HOUR } from '../club';
+import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
 
 class StatusDto {
@@ -23,7 +23,10 @@ class CloseCourtDto {
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly club: ClubService,
+  ) {}
 
   /** День менеджера: все заявки и брони на дату, по времени. */
   @Get('day')
@@ -31,6 +34,7 @@ export class AdminController {
     const d = date || clubToday();
     if (!isValidDate(d)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
 
+    const set = await this.club.get();
     const rows = await this.db.bookings.findMany({
       where: { starts_at: { gte: clubHour(d, 0), lt: clubHour(d, 24) } },
       orderBy: [{ starts_at: 'asc' }, { court_id: 'asc' }],
@@ -43,8 +47,8 @@ export class AdminController {
 
     return {
       date: d,
-      openHour: OPEN_HOUR,
-      closeHour: CLOSE_HOUR,
+      openHour: set.openHour,
+      closeHour: set.closeHour,
       courts: courts.map(c => ({
         id: c.id, name: c.name, isActive: c.is_active,
         closedUntil: c.closed_until, closedReason: c.closed_reason,
@@ -185,15 +189,16 @@ export class AdminController {
       throw new BadRequestException(court.closed_reason ?? 'Площадка закрыта');
     }
 
+    const set = await this.club.get();
     const hoursCount = Math.trunc(
       body.hours ?? Math.round((+b.ends_at - +b.starts_at) / 3600_000));
-    if (body.hour < OPEN_HOUR || hoursCount < 1 || body.hour + hoursCount > CLOSE_HOUR) {
+    if (body.hour < set.openHour || hoursCount < 1 || body.hour + hoursCount > set.closeHour) {
       throw new BadRequestException('Время не помещается в рабочий день');
     }
 
     let price = 0;
     for (let h = body.hour; h < body.hour + hoursCount; h++) {
-      price += h < MORNING_UNTIL ? court.price_morning : court.price_standard;
+      price += h < set.morningUntil ? court.price_morning : court.price_standard;
     }
 
     try {
@@ -212,6 +217,157 @@ export class AdminController {
       }
       throw e;
     }
+  }
+
+  /* ── управление клубом ──────────────────────────────────────────────
+     Раньше цены, часы, названия площадок и турниры правились только
+     в базе руками программиста. Теперь всё это делает менеджер. */
+
+  /** Всё, что можно настроить: площадки целиком и настройки клуба. */
+  @Get('setup')
+  async setup() {
+    const [courts, set] = await Promise.all([
+      this.db.courts.findMany({ orderBy: { sort_order: 'asc' } }),
+      this.club.get(),
+    ]);
+    return {
+      settings: set,
+      courts: courts.map(c => ({
+        id: c.id, name: c.name, isFootball: c.is_football,
+        priceMorning: c.price_morning, priceStandard: c.price_standard,
+        isActive: c.is_active, sortOrder: c.sort_order,
+        closedUntil: c.closed_until, closedReason: c.closed_reason,
+      })),
+    };
+  }
+
+  /** Часы работы, граница утреннего тарифа, предельная длина брони. */
+  @Post('settings')
+  async saveSettings(@Body() body: Partial<{
+    openHour: number; closeHour: number; morningUntil: number;
+    maxHours: number; cancelHours: number;
+  }>) {
+    const cur = await this.club.get();
+    const next = {
+      open_hour: int(body.openHour, cur.openHour, 0, 23),
+      close_hour: int(body.closeHour, cur.closeHour, 1, 24),
+      morning_until: int(body.morningUntil, cur.morningUntil, 0, 24),
+      max_hours: int(body.maxHours, cur.maxHours, 1, 12),
+      cancel_hours: int(body.cancelHours, cur.cancelHours, 0, 48),
+    };
+    if (next.open_hour >= next.close_hour) {
+      throw new BadRequestException('Открытие должно быть раньше закрытия');
+    }
+    if (next.morning_until < next.open_hour || next.morning_until > next.close_hour) {
+      throw new BadRequestException('Граница утреннего тарифа должна быть внутри рабочего дня');
+    }
+    await this.db.settings.upsert({
+      where: { id: 1 },
+      update: { ...next, updated_at: new Date() },
+      create: { id: 1, ...next },
+    });
+    this.club.forget();
+    return this.club.get();
+  }
+
+  /** Название, цены, порядок и включение площадки. */
+  @Post('courts/:id')
+  async saveCourt(@Param('id') id: string, @Body() body: Partial<{
+    name: string; priceMorning: number; priceStandard: number;
+    isActive: boolean; sortOrder: number;
+  }>) {
+    const court = await this.db.courts.findUnique({ where: { id } });
+    if (!court) throw new NotFoundException('Площадка не найдена');
+
+    const data: any = {};
+    if (body.name != null) {
+      const n = String(body.name).trim();
+      if (n.length < 1 || n.length > 60) throw new BadRequestException('Название от 1 до 60 знаков');
+      data.name = n;
+    }
+    // Цены приходят в рублях — так их и вводит менеджер; в базе копейки
+    if (body.priceMorning != null) data.price_morning = rubToKop(body.priceMorning);
+    if (body.priceStandard != null) data.price_standard = rubToKop(body.priceStandard);
+    if (body.isActive != null) data.is_active = !!body.isActive;
+    if (body.sortOrder != null) data.sort_order = int(body.sortOrder, court.sort_order, 0, 999);
+
+    const c = await this.db.courts.update({ where: { id }, data });
+    return { id: c.id, name: c.name, isActive: c.is_active,
+             priceMorning: c.price_morning, priceStandard: c.price_standard };
+  }
+
+  /** Турниры: список с числом записавшихся. */
+  @Get('tournaments')
+  async tournaments() {
+    const rows = await this.db.tournaments.findMany({ orderBy: { starts_at: 'desc' } });
+    const counts = await this.db.tournament_entries.groupBy({
+      by: ['tournament_id'], _count: { _all: true },
+    });
+    const taken = new Map(counts.map(c => [String(c.tournament_id), c._count._all]));
+    return rows.map(t => ({
+      id: Number(t.id), name: t.name, startsAt: t.starts_at, format: t.format,
+      fee: t.fee, seats: t.seats, state: t.state, coverUrl: t.cover_url,
+      resultText: t.result_text, taken: taken.get(String(t.id)) ?? 0,
+    }));
+  }
+
+  /** Кто записался: имя и телефон, чтобы можно было позвонить. */
+  @Get('tournaments/:id/entries')
+  async entries(@Param('id') id: string) {
+    const rows = await this.db.tournament_entries.findMany({
+      where: { tournament_id: BigInt(id) },
+      orderBy: { created_at: 'asc' },
+      include: { clients: true },
+    });
+    return rows.map(e => ({
+      id: Number(e.id), name: e.clients.name, phone: e.clients.phone,
+      signedAt: e.created_at,
+    }));
+  }
+
+  /** Завести турнир или изменить существующий. */
+  @Post('tournaments')
+  async saveTournament(@Body() body: Partial<{
+    id: number; name: string; startsAt: string; format: string;
+    fee: number; seats: number; state: string; coverUrl: string; resultText: string;
+  }>) {
+    const STATES = ['soon', 'open', 'closed', 'done'];
+    const data: any = {};
+
+    if (body.name != null) {
+      const n = String(body.name).trim();
+      if (!n || n.length > 120) throw new BadRequestException('Название от 1 до 120 знаков');
+      data.name = n;
+    }
+    if (body.startsAt != null) {
+      const d = new Date(body.startsAt);
+      if (Number.isNaN(+d)) throw new BadRequestException('Неверная дата начала');
+      data.starts_at = d;
+    }
+    if (body.format != null) data.format = String(body.format).trim().slice(0, 80);
+    if (body.fee != null) data.fee = rubToKop(body.fee);
+    if (body.seats != null) data.seats = int(body.seats, 16, 2, 200);
+    if (body.state != null) {
+      if (!STATES.includes(body.state)) throw new BadRequestException('Неизвестное состояние турнира');
+      data.state = body.state;
+    }
+    if (body.coverUrl != null) data.cover_url = String(body.coverUrl).trim().slice(0, 200) || null;
+    if (body.resultText != null) data.result_text = String(body.resultText).trim().slice(0, 2000) || null;
+
+    if (body.id) {
+      const t = await this.db.tournaments.update({ where: { id: BigInt(body.id) }, data });
+      return { id: Number(t.id) };
+    }
+    if (!data.name || !data.starts_at) {
+      throw new BadRequestException('Для нового турнира нужны название и дата начала');
+    }
+    const t = await this.db.tournaments.create({ data: {
+      name: data.name, starts_at: data.starts_at,
+      format: data.format ?? 'Americano', fee: data.fee ?? 0,
+      seats: data.seats ?? 16, state: data.state ?? 'soon',
+      cover_url: data.cover_url ?? null, result_text: data.result_text ?? null,
+    }});
+    return { id: Number(t.id) };
   }
 
   /** Дата брони в часовом поясе клуба, в виде ГГГГ-ММ-ДД. */
@@ -233,11 +389,12 @@ export class AdminController {
 
     // Часы должны лежать внутри рабочего дня: раньше 23:00 на три часа
     // сохранялось и рисовалось в сетке как «23:00 – 26:00».
+    const set = await this.club.get();
     const hoursCount = Math.trunc(body.hours);
-    if (!Number.isFinite(body.hour) || body.hour < OPEN_HOUR || body.hour >= CLOSE_HOUR) {
-      throw new BadRequestException(`Час должен быть от ${OPEN_HOUR} до ${CLOSE_HOUR - 1}`);
+    if (!Number.isFinite(body.hour) || body.hour < set.openHour || body.hour >= set.closeHour) {
+      throw new BadRequestException(`Час должен быть от ${set.openHour} до ${set.closeHour - 1}`);
     }
-    if (hoursCount < 1 || body.hour + hoursCount > CLOSE_HOUR) {
+    if (hoursCount < 1 || body.hour + hoursCount > set.closeHour) {
       throw new BadRequestException('Игра не помещается до закрытия клуба');
     }
 
@@ -262,7 +419,7 @@ export class AdminController {
 
     let price = 0;
     for (let h = body.hour; h < body.hour + hoursCount; h++) {
-      price += h < MORNING_UNTIL ? court.price_morning : court.price_standard;
+      price += h < set.morningUntil ? court.price_morning : court.price_standard;
     }
 
     try {
@@ -317,4 +474,20 @@ export class AdminController {
       })),
     };
   }
+}
+
+/** Целое число в заданных границах; иначе — прежнее значение. */
+function int(v: unknown, fallback: number, min: number, max: number): number {
+  const n = Math.trunc(Number(v));
+  return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+}
+
+/** Рубли от менеджера в копейки для базы. Дробные рубли не принимаем:
+ *  цена корта — круглая сумма, а копейки в интерфейсе только путают. */
+function rubToKop(rub: unknown): number {
+  const n = Math.round(Number(rub));
+  if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+    throw new BadRequestException('Цена должна быть от 0 до 1 000 000 ₽');
+  }
+  return n * 100;
 }

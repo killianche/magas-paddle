@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
-import { CLOSE_HOUR, MORNING_UNTIL } from '../club';
+import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
 import { clubHour, clubToday, hourOf, isValidDate } from '../time';
 
@@ -13,7 +13,10 @@ const EXCLUSION_VIOLATION = '23P01';
 
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly club: ClubService,
+  ) {}
 
   /** Записи одного человека — ищем по телефону, входа в приложении нет. */
   @Get()
@@ -47,8 +50,12 @@ export class BookingsController {
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
     const bookingPhone = normalizePhone(dto.phone);
     if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
-    if (dto.hour + dto.hours > CLOSE_HOUR) {
-      throw new BadRequestException(`Клуб закрывается в ${CLOSE_HOUR}:00`);
+    const set = await this.club.get();
+    if (dto.hour < set.openHour || dto.hour + dto.hours > set.closeHour) {
+      throw new BadRequestException(`Клуб работает с ${set.openHour}:00 до ${set.closeHour}:00`);
+    }
+    if (dto.hours > set.maxHours) {
+      throw new BadRequestException(`Больше ${set.maxHours} часов подряд занять нельзя`);
     }
 
     const court = await this.db.courts.findUnique({ where: { id: dto.courtId } });
@@ -64,7 +71,7 @@ export class BookingsController {
     // Цена складывается по часам: игра может начаться днём и уйти в вечер
     let price = 0;
     for (let h = dto.hour; h < dto.hour + dto.hours; h++) {
-      price += h < MORNING_UNTIL ? court.price_morning : court.price_standard;
+      price += h < set.morningUntil ? court.price_morning : court.price_standard;
     }
 
     const client = await this.db.clients.upsert({
@@ -92,7 +99,7 @@ export class BookingsController {
         throw new ConflictException({
           code: 'slot_taken',
           message: 'Это время только что заняли',
-          alternatives: await this.alternatives(dto.date, dto.hour, dto.hours, court.id),
+          alternatives: await this.alternatives(dto.date, dto.hour, dto.hours, court.id, set.closeHour),
         });
       }
       throw e;
@@ -118,7 +125,8 @@ export class BookingsController {
 
   /** Чем заменить занятое время: сначала другие площадки того же типа
    *  в тот же час, потом ближайшее время на той же площадке. */
-  private async alternatives(date: string, hour: number, hours: number, exceptId: string) {
+  private async alternatives(date: string, hour: number, hours: number,
+                             exceptId: string, closeHour: number) {
     const courts = await this.db.courts.findMany({ where: { is_active: true }, orderBy: { sort_order: 'asc' } });
     const from = courts.find(c => c.id === exceptId);
     const busy = await this.db.bookings.findMany({
@@ -139,7 +147,7 @@ export class BookingsController {
       .map(c => ({ courtId: c.id, courtName: c.name, hour, hours }));
 
     let later: { courtId: string; courtName: string; hour: number; hours: number } | null = null;
-    for (let h = hour + 1; h + hours <= CLOSE_HOUR; h++) {
+    for (let h = hour + 1; h + hours <= closeHour; h++) {
       if (!taken(exceptId, h, hours)) {
         later = { courtId: exceptId, courtName: from?.name ?? exceptId, hour: h, hours };
         break;

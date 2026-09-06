@@ -1,11 +1,14 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CLOSE_HOUR, MORNING_UNTIL, MAX_HOURS, OPEN_HOUR } from '../club';
+import { ClubService } from '../club';
 import { clubHour, clubToday, hourOf, isValidDate } from '../time';
 
 @Controller('availability')
 export class AvailabilityController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly club: ClubService,
+  ) {}
 
   /** Сетка «часы × площадки» на один день — то, из чего рисуется главный экран.
    *  Отдаём сразу и статус часа, и цену, и сколько часов подряд свободно:
@@ -17,6 +20,7 @@ export class AvailabilityController {
       throw new BadRequestException('Дата должна быть в виде ГГГГ-ММ-ДД');
     }
 
+    const set = await this.club.get();
     const [courts, bookings] = await Promise.all([
       this.db.courts.findMany({ where: { is_active: true }, orderBy: { sort_order: 'asc' } }),
       this.db.bookings.findMany({
@@ -43,7 +47,7 @@ export class AvailabilityController {
       const closed = c.closed_until != null && c.closed_until > new Date();
 
       const hours = [];
-      for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
+      for (let h = set.openHour; h < set.closeHour; h++) {
         const started = day === clubToday() && clubHour(day, h) <= now;
         const status = closed ? 'closed'
           : started ? 'past'
@@ -52,9 +56,9 @@ export class AvailabilityController {
         hours.push({
           hour: h,
           status,
-          price: h < MORNING_UNTIL ? c.price_morning : c.price_standard,
+          price: h < set.morningUntil ? c.price_morning : c.price_standard,
           // Сколько часов подряд можно взять начиная с этого
-          maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now),
+          maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, set.closeHour, set.maxHours),
         });
       }
       return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours };
@@ -62,18 +66,19 @@ export class AvailabilityController {
 
     return {
       date: day,
-      openHour: OPEN_HOUR,
-      closeHour: CLOSE_HOUR,
-      morningUntil: MORNING_UNTIL,
+      openHour: set.openHour,
+      closeHour: set.closeHour,
+      morningUntil: set.morningUntil,
       courts: rows,
     };
   }
 }
 
 /** Сколько часов подряд свободно, начиная с указанного, но не больше предела. */
-function runFrom(day: string, from: number, busy: Set<number>, now: Date): number {
+function runFrom(day: string, from: number, busy: Set<number>, now: Date,
+                 closeHour: number, maxHours: number): number {
   let n = 0;
-  for (let h = from; h < CLOSE_HOUR && n < MAX_HOURS; h++) {
+  for (let h = from; h < closeHour && n < maxHours; h++) {
     if (busy.has(h) || clubHour(day, h) <= now) break;
     n++;
   }
