@@ -1,0 +1,188 @@
+// Прайс-лист. Цены берутся с сервера, а не вписаны в экран: клуб меняет их
+// в базе, приложение подхватывает без пересборки.
+import { ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
+import { router, Stack } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import Svg, { Circle } from 'react-native-svg';
+import { C, R, S, HIT, DISP, DISP_MED } from '../src/theme';
+import { api, rub, discountPercent, type ApiCourt } from '../src/api';
+import { useApi } from '../src/useApi';
+import { Loading, Failed } from '../src/components/status';
+import { IconChevron } from '../src/components/icons';
+import { hh, plural } from '../src/dates';
+import { useHydrated } from '../src/hydrated';
+
+const CLOSE_HOUR = 24;
+
+export default function Prices() {
+  const hydrated = useHydrated();
+  const q = useApi(() => api.courts(), []);
+
+  if (!hydrated || q.loading) return <Loading note="Смотрю цены" />;
+  if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;
+
+  const courts = q.data;
+  const padel = courts.find(c => !c.isFootball);
+  const football = courts.find(c => c.isFootball);
+
+  // Сетка сама открывается на сегодня; отдельный параметр часа ей не нужен.
+  const go = () => { Haptics.selectionAsync(); router.push('/schedule') };
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
+      contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <Stack.Screen options={{ title: 'Цены' }} />
+
+      <View style={s.head}>
+        <View style={s.eyebrowRow}>
+          <View style={s.slash} />
+          <Text style={s.eyebrow}>ЦЕНЫ</Text>
+        </View>
+        <Text style={s.h1} allowFontScaling={false}>ПРАЙС-ЛИСТ</Text>
+        <Text style={s.lede}>Аренда корта целиком, на любое число игроков. Оплата на месте.</Text>
+      </View>
+
+      <Pressable onPress={go} accessibilityRole="button"
+        style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}>
+        <Text style={s.ctaT}>Забронировать корт</Text>
+        <IconChevron size={19} color={C.onLime} />
+      </Pressable>
+
+      {padel && (() => {
+        const open = 9;                        // час открытия приходит вместе с сеткой
+        const until = padel.morningUntil;
+        const morningHours = Math.max(0, until - open);
+        const dayHours = Math.max(1, CLOSE_HOUR - open);
+        const off = discountPercent(padel.priceMorning, padel.priceStandard);
+        return (
+          <>
+            <Text style={s.group}>Падел-корт, за час</Text>
+
+            <Band
+              from={open} to={until} price={padel.priceMorning}
+              share={morningHours / dayHours} badge={off > 0 ? `−${off}%` : undefined}
+              note={`Дешевле обычного на ${off}% — утро свободнее`}
+              onBook={go} best />
+
+            <Band
+              from={until} to={CLOSE_HOUR} price={padel.priceStandard}
+              share={(dayHours - morningHours) / dayHours}
+              note="Основная цена: день и вечер"
+              onBook={go} />
+
+            <Text style={s.small}>
+              Час считается по своему тарифу. Игра с {hh(until - 1)} на два часа —
+              {' '}{rub(padel.priceMorning)} за первый час и {rub(padel.priceStandard)} за второй,
+              всего {rub(padel.priceMorning + padel.priceStandard)}.
+            </Text>
+          </>
+        );
+      })()}
+
+      {football && (
+        <>
+          <Text style={s.group}>Мини-футбольное поле</Text>
+          <View style={[s.band, { paddingBottom: 18 }]}>
+            <Text style={s.bandTime}>{football.name}</Text>
+            {/* ЗАГЛУШКА: цену поля клуб ещё не назвал — не выдумываем (вопрос Q47) */}
+            <Text style={s.soon}>Цену уточняйте в клубе</Text>
+            <Text style={s.bandNote}>Как только клуб назовёт цену, она появится здесь сама.</Text>
+          </View>
+        </>
+      )}
+
+      <Text style={s.foot}>
+        Цены показаны за аренду площадки целиком. Отмена бесплатна за 4 часа до игры.
+      </Text>
+    </ScrollView>
+  );
+}
+
+/** Один тариф: время, цена, доля дня кружком и кнопка «занять». */
+function Band({ from, to, price, share, badge, note, onBook, best }: {
+  from: number; to: number; price: number; share: number;
+  badge?: string; note: string; onBook: () => void; best?: boolean;
+}) {
+  const hours = to - from;
+  return (
+    <View style={[s.band, best && s.bandBest]}>
+      <View style={s.bandTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.bandTime}>С {hh(from)} до {hh(to)}</Text>
+          <Text style={s.bandHours}>
+            {hours} {plural(hours, 'час', 'часа', 'часов')} в сутках
+          </Text>
+          <View style={s.priceRow}>
+            <Text style={[s.price, best && { color: C.lime }]} allowFontScaling={false}>
+              {rub(price)}
+            </Text>
+            {!!badge && <View style={s.badge}><Text style={s.badgeT}>{badge}</Text></View>}
+          </View>
+        </View>
+        <Donut share={share} accent={!!best} />
+      </View>
+      <Text style={s.bandNote}>{note}</Text>
+      <Pressable onPress={onBook} accessibilityRole="button"
+        accessibilityLabel={`Забронировать время с ${hh(from)} до ${hh(to)}`}
+        style={({ pressed }) => [s.book, pressed && { opacity: 0.85 }]}>
+        <Text style={s.bookT}>Забронировать это время</Text>
+        <IconChevron size={16} color={C.text} />
+      </Pressable>
+    </View>
+  );
+}
+
+/** Кружок: какую часть рабочего дня занимает тариф. */
+function Donut({ share, accent }: { share: number; accent: boolean }) {
+  const size = 62, r = 25, cx = size / 2;
+  const len = 2 * Math.PI * r;
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={cx} cy={cx} r={r} stroke={C.line} strokeWidth={10} fill="none" />
+      <Circle cx={cx} cy={cx} r={r} stroke={accent ? C.lime : C.greenMid} strokeWidth={10}
+        fill="none" strokeDasharray={`${len * share} ${len}`}
+        strokeLinecap="butt" transform={`rotate(-90 ${cx} ${cx})`} />
+    </Svg>
+  );
+}
+
+const s = StyleSheet.create({
+  head: { paddingHorizontal: S.xl, paddingTop: 14 },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  slash: { width: 22, height: 9, backgroundColor: C.lime,
+    transform: [{ skewX: '-20deg' }], borderRadius: 1 },
+  eyebrow: { color: C.dim, fontSize: 13, fontWeight: '700', letterSpacing: 0.6 },
+  h1: { color: C.text, fontFamily: DISP, fontSize: 44, lineHeight: 50, marginTop: 6,
+    letterSpacing: -0.5 },
+  lede: { color: C.dim, fontSize: 15, lineHeight: 21, marginTop: 8 },
+
+  cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.lime, borderRadius: R.xl, marginHorizontal: S.xl, marginTop: 18,
+    paddingVertical: 16, minHeight: HIT },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 19, letterSpacing: 0.6 },
+
+  group: { color: C.dim2, fontSize: 12.5, fontWeight: '700', letterSpacing: 1.2,
+    textTransform: 'uppercase', marginHorizontal: S.xl, marginTop: 26, marginBottom: 10 },
+
+  band: { marginHorizontal: S.xl, marginBottom: 10, padding: 16, borderRadius: R.xl,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  bandBest: { borderColor: 'rgba(198,240,51,.42)', backgroundColor: 'rgba(198,240,51,.05)' },
+  bandTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  bandTime: { color: C.text, fontSize: 16, fontWeight: '700' },
+  bandHours: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 8 },
+  price: { color: C.text, fontFamily: DISP, fontSize: 38, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'] },
+  badge: { backgroundColor: C.lime, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeT: { color: C.onLime, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 0.4 },
+  bandNote: { color: C.dim, fontSize: 13, marginTop: 10, lineHeight: 18 },
+  soon: { color: C.dim, fontFamily: DISP, fontSize: 24, marginTop: 8 },
+
+  book: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    marginTop: 13, paddingVertical: 12, borderRadius: R.lg, minHeight: 46,
+    backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
+  bookT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
+
+  small: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 6 },
+  foot: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 24 },
+});

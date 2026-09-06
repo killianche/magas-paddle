@@ -19,3 +19,7 @@ export const TOURN_IMG: Record<string, any> = {
   t3: require('../assets/img/t3.webp'),
   t4: require('../assets/img/t4.webp'),
 };
+
+// Логотип клуба. Из него же собраны иконки приложения — scripts/brand/make-icons.py.
+export const LOGO = require('../assets/img/logo.png');
+export const LOGO_RATIO = 844 / 1182;   // щит вытянутый: ширина / высота

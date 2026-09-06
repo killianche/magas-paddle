@@ -61,14 +61,14 @@ export type SlotStatus = 'free' | 'busy' | 'past' | 'closed';
 
 export type ApiCourt = {
   id: string; name: string; isFootball: boolean;
-  priceDay: number; priceEvening: number; eveningFrom: number;
+  priceMorning: number; priceStandard: number; morningUntil: number;
   closedUntil: string | null; closedReason: string | null;
 };
 
 export type ApiHour = { hour: number; status: SlotStatus; price: number; maxRun: number };
 
 export type ApiGrid = {
-  date: string; openHour: number; closeHour: number; eveningFrom: number;
+  date: string; openHour: number; closeHour: number; morningUntil: number;
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean; hours: ApiHour[] }[];
 };
 
@@ -122,3 +122,9 @@ export const api = {
 /** Цены с сервера приходят в копейках. */
 export const rub = (kopecks: number) =>
   (kopecks / 100).toLocaleString('ru-RU').replace(/,/g, ' ') + ' ₽';
+
+/** На сколько процентов льготная цена ниже основной. Считаем в целых числах:
+    выражение (1 - low/full) * 100 для 2000 и 2500 даёт 19.999… и «−19%».
+    Округляем вниз — никогда не обещаем скидку больше настоящей. */
+export const discountPercent = (low: number, full: number) =>
+  full > 0 && low < full ? Math.floor(((full - low) * 100) / full) : 0;

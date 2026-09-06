@@ -19,6 +19,7 @@ model bookings {
   price      Int
   source     String         @default("app")
   comment    String?
+  guest_name String?
   created_at DateTime       @default(now()) @db.Timestamptz(6)
   updated_at DateTime       @default(now()) @db.Timestamptz(6)
   clients    clients?       @relation(fields: [client_id], references: [id], onUpdate: NoAction)
@@ -45,8 +46,8 @@ model courts {
   id            String     @id
   name          String
   is_football   Boolean    @default(false)
-  price_day     Int
-  price_evening Int
+  price_morning  Int
+  price_standard Int
   is_active     Boolean    @default(true)
   closed_until  DateTime?  @db.Timestamptz(6)
   closed_reason String?

@@ -24,7 +24,7 @@ build () { # $1=исходник $2=результат $3=активная
     echo '<html lang="ru"><head>'
     echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     echo '<meta name="robots" content="noindex,nofollow">'
-    echo '<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+    echo '<link rel="icon" href="/favicon.png" type="image/png">'
     cat "$OUT/.p1"
     cat <<'CSS'
 <style>

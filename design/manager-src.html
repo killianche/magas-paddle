@@ -94,18 +94,68 @@ input,select{width:100%;background:var(--surface);border:1px solid var(--line-st
 .center{text-align:center;padding:80px 20px;color:var(--dim)}
 .hist{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .hist div{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:var(--dim)}
+
+/* ── добавлено после проверки директором и менеджером клуба ─────────── */
+.logo{width:26px;height:26px;border-radius:7px;flex:none}
+.search{width:250px;padding:8px 12px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text)}
+.search:focus{outline:none;border-color:var(--line-strong)}
+.dpick{padding:7px 9px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);color-scheme:dark}
+.btn.pend{background:var(--amber);color:#231502;border-color:var(--amber);font-weight:700}
+.btn.pend b{font-variant-numeric:tabular-nums}
+
+/* Шапка таблицы и сводка не должны уезжать: к вечеру колонки оставались
+   без названий, и менеджер путал корты. */
+.stats{position:sticky;top:59px;z-index:15;background:var(--ink);padding-top:4px}
+thead th{position:sticky;top:132px;z-index:14;background:var(--ink-2)}
+td.hcell{position:sticky;left:0;z-index:12;background:var(--ink)}
+
+/* Прошедшие часы приглушены, текущий отбит линией */
+tr.past td.hcell,tr.past .slot{opacity:.45}
+tr.now td{border-top:2px solid var(--lime)}
+tr.now td.hcell{color:var(--lime);font-weight:700}
+
+/* Состояние записи словами, а не только цветом */
+.bk .st{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85;margin-top:2px}
+
+.sheet.wide{max-width:640px}
+.list{max-height:52vh;overflow:auto;margin-top:6px}
+.list .it{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);margin-bottom:7px}
+.list .it:hover{border-color:var(--line-strong)}
+.list .it .who{flex:1;min-width:0}
+.list .it .who b{display:block;font-size:14px}
+.list .it .who span{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+.list .it .when{font-size:12.5px;color:var(--dim);text-align:right;white-space:nowrap}
+.list .empty{color:var(--dim-2);padding:14px 2px}
+
+.total{margin-top:12px;padding:11px 13px;border-radius:11px;background:var(--surface-2);
+  border:1px solid var(--line);font-size:15px;font-weight:700}
+.copy{margin-left:8px;font-size:11.5px;padding:3px 8px;border-radius:7px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--dim)}
+.stale{margin:0 0 10px;padding:9px 13px;border-radius:10px;font-size:13px;
+  background:rgba(240,169,59,.10);border:1px solid rgba(240,169,59,.3);color:#DFCCA8}
+@media(max-width:900px){.search{width:150px}.dpick{display:none}}
 </style>
 
 <div class="top">
-  <div class="brand">Magas <b>Padel</b> · менеджер</div>
+  <img class="logo" src="/favicon.png" alt="">
+  <div class="brand">Magas <b>Padel</b></div>
+  <input id="search" class="search" type="search" autocomplete="off"
+         placeholder="Поиск по имени или телефону" aria-label="Поиск клиента по имени или телефону">
   <div class="spacer"></div>
+  <button class="btn pend" id="pendBtn" hidden>Новых заявок: <b id="pendN">0</b></button>
   <div class="day-nav">
     <button id="prev" title="Предыдущий день">‹</button>
     <div class="day-cur"><span id="dayTitle">—</span><small id="daySub"></small></div>
     <button id="next" title="Следующий день">›</button>
   </div>
+  <input type="date" id="datePick" class="dpick" aria-label="Выбрать дату">
   <button class="btn" id="todayBtn">Сегодня</button>
-  <button class="btn acc" id="addBtn">Занять время</button>
+  <button class="btn acc" id="addBtn">Записать клиента</button>
+  <button class="btn" id="logout" title="Выйти">Выйти</button>
 </div>
 
 <div class="wrap">
@@ -140,19 +190,71 @@ input,select{width:100%;background:var(--surface);border:1px solid var(--line-st
 <!-- занять время вручную -->
 <div class="modal" id="addModal">
   <div class="sheet">
-    <h3>Занять время</h3>
+    <h3>Записать клиента</h3>
     <p class="sub">Для тех, кто позвонил или пришёл без приложения.</p>
+    <label for="addDate">Дата</label><input id="addDate" type="date">
     <label for="addCourt">Площадка</label><select id="addCourt"></select>
     <label for="addHour">Час начала</label><select id="addHour"></select>
-    <label for="addHours">Длительность</label>
-    <select id="addHours"><option value="1">1 час</option><option value="2">2 часа</option><option value="3">3 часа</option></select>
+    <label for="addHours">Длительность</label><select id="addHours"></select>
     <label for="addName">Имя</label><input id="addName" placeholder="Кто играет">
-    <label for="addPhone">Телефон</label><input id="addPhone" placeholder="+7 928 000-00-00">
+    <label for="addPhone">Телефон</label>
+    <input id="addPhone" inputmode="tel" placeholder="+7 928 000-00-00">
     <label for="addComment">Заметка</label><input id="addComment" placeholder="Необязательно">
+    <div class="total" id="addTotal">К оплате: —</div>
     <div class="err" id="addErr"></div>
     <div class="acts">
       <button class="btn" id="addCancel">Отмена</button>
-      <button class="btn acc" id="addOk">Занять</button>
+      <button class="btn acc" id="addOk">Записать</button>
+    </div>
+  </div>
+</div>
+
+<!-- новые заявки со всех дат -->
+<div class="modal" id="pendModal">
+  <div class="sheet wide">
+    <h3>Новые заявки</h3>
+    <p class="sub">Из приложения, по всем датам. Ждут подтверждения.</p>
+    <div class="list" id="pendList"></div>
+    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- результаты поиска -->
+<div class="modal" id="findModal">
+  <div class="sheet wide">
+    <h3 id="findTitle">Найдено</h3>
+    <p class="sub">Записи по всем датам, свежие сверху.</p>
+    <div class="list" id="findList"></div>
+    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- перенос брони -->
+<div class="modal" id="moveModal">
+  <div class="sheet">
+    <h3>Перенести запись</h3>
+    <p class="sub" id="moveSub"></p>
+    <label for="moveDate">Дата</label><input id="moveDate" type="date">
+    <label for="moveCourt">Площадка</label><select id="moveCourt"></select>
+    <label for="moveHour">Час начала</label><select id="moveHour"></select>
+    <label for="moveHours">Длительность</label><select id="moveHours"></select>
+    <div class="total" id="moveTotal">К оплате: —</div>
+    <div class="err" id="moveErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="moveOk">Перенести</button>
+    </div>
+  </div>
+</div>
+
+<!-- подтверждение опасного действия -->
+<div class="modal" id="askModal">
+  <div class="sheet">
+    <h3 id="askTitle">Точно?</h3>
+    <p class="sub" id="askText"></p>
+    <div class="acts">
+      <button class="btn" data-close>Нет</button>
+      <button class="btn dg" id="askOk">Да</button>
     </div>
   </div>
 </div>
@@ -174,6 +276,48 @@ function pretty(d){ const x=new Date(d+'T00:00:00Z'); return x.getUTCDate()+' '+
 function weekday(d){ return WEEK[new Date(d+'T00:00:00Z').getUTCDay()] }
 function rub(k){ return (k/100).toLocaleString('ru-RU')+' ₽' }
 function hh(h){ return String(h).padStart(2,'0')+':00' }
+/** Час в клубе прямо сейчас; -1, если клуб ещё не открылся или уже закрыт. */
+function nowHour(){ const m=new Date(Date.now()+3*3600e3); return m.getUTCHours() }
+/** «2 часа подряд», «5 часов подряд» — без «5 часа». */
+function plural(n,one,few,many){
+  const a=Math.abs(n)%100, b=a%10;
+  if(a>10&&a<20) return many; if(b>1&&b<5) return few; if(b===1) return one; return many;
+}
+/** Читаемый номер: +7 928 000-11-22. */
+function phoneNice(p){
+  const d=String(p||'').replace(/\D/g,'');
+  return d.length===11 ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}` : (p||'—');
+}
+/** Имя на записи: клиент, гость без телефона или прочерк. */
+function who(b){ return (b.client && b.client.name) || b.guestName || 'Без имени' }
+/** Тарифы площадок приходят с сервера — здесь их не выдумываем. */
+let tariffs = {};   // courtId -> {morning, standard, until}
+async function loadTariffs(){
+  try {
+    const cs = await call('/courts');
+    tariffs = Object.fromEntries(cs.map(c =>
+      [c.id, { morning: c.priceMorning, standard: c.priceStandard, until: c.morningUntil }]));
+  } catch { tariffs = {} }
+}
+/** Цена по тарифам клуба: утро дешевле. null — если тарифы ещё не пришли. */
+function priceFor(courtId, hour, hours){
+  const t = tariffs[courtId];
+  if(!t) return null;
+  let sum = 0;
+  for(let h=hour; h<hour+hours; h++) sum += (h < t.until ? t.morning : t.standard);
+  return sum;
+}
+/** Спросить перед необратимым действием. */
+function ask(title, text){
+  return new Promise(res => {
+    $('#askTitle').textContent = title;
+    $('#askText').textContent = text;
+    $('#askModal').classList.add('on');
+    const done = v => { $('#askModal').classList.remove('on'); $('#askOk').onclick=null; res(v) };
+    $('#askOk').onclick = () => done(true);
+    $('#askModal').querySelectorAll('[data-close]').forEach(b => b.onclick = () => done(false));
+  });
+}
 const $ = s => document.querySelector(s);
 
 async function call(path, opts={}){
@@ -202,49 +346,92 @@ $('#keyInput').addEventListener('keydown', e => { if(e.key==='Enter') $('#authOk
 $('#prev').onclick = () => { date = shift(date,-1); load() };
 $('#next').onclick = () => { date = shift(date, 1); load() };
 $('#todayBtn').onclick = () => { date = todayStr(); load() };
+$('#datePick').onchange = () => { if($('#datePick').value){ date = $('#datePick').value; load() } };
 
 async function load(){
   $('#dayTitle').textContent = date===todayStr() ? 'Сегодня' : pretty(date);
   $('#daySub').textContent = pretty(date)+', '+weekday(date);
+  $('#datePick').value = date;
   try {
     day = await call('/admin/day?date='+date);
+    if(!Object.keys(tariffs).length) await loadTariffs();
     render();
+    loadPending();
   } catch(e){
-    $('#board').innerHTML = '<div class="center">'+e.message+'</div>';
-    if(/ключ/i.test(e.message)) $('#authModal').classList.add('on');
+    if(/ключ/i.test(e.message)){
+      $('#board').innerHTML = '<div class="center">'+e.message+'</div>';
+      $('#authModal').classList.add('on');
+      return;
+    }
+    // Связь пропала — расписание на экране не стираем, иначе менеджер
+    // остаётся вообще без данных посреди разговора с клиентом.
+    if(day){
+      let bar = $('#staleBar');
+      if(!bar){
+        bar = document.createElement('div');
+        bar.id = 'staleBar'; bar.className = 'stale';
+        $('#board').before(bar);
+      }
+      const t = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+      bar.innerHTML = `Нет связи с сервером. На экране данные, полученные раньше.
+        <button class="copy" onclick="load()">Обновить</button> <span style="opacity:.6">${t}</span>`;
+    } else {
+      $('#board').innerHTML = '<div class="center">'+e.message+'</div>';
+    }
   }
 }
 
 function render(){
+  const bar = $('#staleBar'); if(bar) bar.remove();
   const alive = day.bookings.filter(b => b.status!=='cancelled');
   const pending = alive.filter(b => b.status==='pending');
   const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+b.price,0);
-  const open = day.courts.filter(c => c.isActive).length;
-  const slots = open * (day.closeHour - day.openHour);
+  // Считаем только реально открытые площадки: закрытый на ремонт корт
+  // занижал занятость и цифра переставала что-либо значить.
+  const open = day.courts.filter(c =>
+    c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date())).length || 1;
+  const EVENING = 18;
+  const evSlots = open * (day.closeHour - EVENING);
+  const evBusy = alive.reduce((n,b) => {
+    let k=0; for(let h=b.hour; h<b.hour+b.hours; h++) if(h>=EVENING) k++;
+    return n+k;
+  }, 0);
+  const cancelled = day.bookings.filter(b => b.status==='cancelled').length;
 
   $('#stats').innerHTML = `
     <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения</span></div>
     <div class="stat"><b>${alive.length}</b><span>записей на день</span></div>
-    <div class="stat"><b>${Math.round(alive.reduce((s,b)=>s+b.hours,0)/slots*100)}%</b><span>занятость</span></div>
+    <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
+    <div class="stat"><b>${cancelled}</b><span>отмен за день</span></div>
     <div class="stat"><b>${rub(money)}</b><span>к оплате за день</span></div>`;
 
   const courts = day.courts;
+  const isToday = date === todayStr();
+  const cur = nowHour();
   let html = '<table><thead><tr><th></th>';
-  for(const c of courts) html += `<th>${c.name}${c.closedUntil?' 🛠':''}</th>`;
+  for(const c of courts){
+    // Значок ремонта только пока закрытие действует: раньше он оставался
+    // навсегда, а корт при этом спокойно бронировался.
+    const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
+    html += `<th>${c.name}${shut?` 🛠 <small style="color:var(--amber)">${c.closedReason||'закрыт'}</small>`:''}</th>`;
+  }
   html += '</tr></thead><tbody>';
 
   for(let h=day.openHour; h<day.closeHour; h++){
-    html += `<tr><td class="hcell">${hh(h)}</td>`;
+    const past = isToday && h < cur;
+    const now  = isToday && h === cur;
+    html += `<tr class="${past?'past':''}${now?' now':''}"><td class="hcell">${hh(h)}</td>`;
     for(const c of courts){
       const b = day.bookings.find(x => x.courtId===c.id && x.hour<=h && h<x.hour+x.hours && x.status!=='cancelled');
       if(b){
         if(b.hour===h){
-          const who = b.client ? b.client.name : 'Без имени';
+          const nm = who(b);
           const flags = b.client && (b.client.noShows>0||b.client.cancels>1) ? ' ⚠' : '';
-          html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}">
-            <div class="n">${who}${flags}</div>
+          html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}" title="${nm}">
+            <div class="n">${nm}${flags}</div>
             <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div>
-            ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} часа подряд</div>`:''}
+            <div class="st">${STATUS[b.status]||b.status}</div>
+            ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
         }
       } else if(c.closedUntil && new Date(c.closedUntil) > new Date()){
@@ -269,13 +456,16 @@ async function openBooking(id){
   const b = day.bookings.find(x => x.id===id);
   if(!b) return;
   const court = day.courts.find(c => c.id===b.courtId);
-  $('#bkTitle').textContent = b.client ? b.client.name : 'Без имени';
+  $('#bkTitle').textContent = who(b);
   $('#bkSub').textContent = court.name+' · '+pretty(date);
   $('#bkRows').innerHTML = `
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
     <div class="row"><span>К оплате</span><b>${rub(b.price)}</b></div>
     <div class="row"><span>Состояние</span><b>${STATUS[b.status]||b.status}</b></div>
-    <div class="row"><span>Телефон</span><b>${b.client?`<a href="tel:${b.client.phone}" style="color:var(--lime)">${b.client.phone}</a>`:'—'}</b></div>
+    <div class="row"><span>Телефон</span><b>${b.client
+      ? `${phoneNice(b.client.phone)}<button class="copy" id="bkCopy">копировать</button>`
+      + `<a class="copy" href="https://wa.me/${b.client.phone}" target="_blank" rel="noopener">WhatsApp</a>`
+      : '—'}</b></div>
     <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
     ${b.comment?`<div class="row"><span>Заметка</span><b>${b.comment}</b></div>`:''}`;
 
@@ -287,62 +477,253 @@ async function openBooking(id){
     if(bad.length) $('#bkHist').innerHTML = bad.join(' ');
     try {
       const c = await call('/admin/clients/'+encodeURIComponent(b.client.phone));
-      const rows = c.history.slice(0,6).map(h =>
-        `<div><span>${new Date(h.startsAt).toLocaleDateString('ru-RU')} · ${h.courtName}</span>
-         <span>${STATUS[h.status]||h.status}</span></div>`).join('');
+      // Время нужно не меньше даты: звонящий спрашивает именно «во сколько».
+      const rows = c.history.filter(h => Number(h.id) !== id).slice(0,6).map(h => {
+        const t = new Date(h.startsAt);
+        const when = t.toLocaleDateString('ru-RU') + ', '
+          + t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
+        return `<div><span>${when} · ${h.courtName}</span>
+         <span>${STATUS[h.status]||h.status}</span></div>`;
+      }).join('') || '<div><span style="color:var(--dim-2)">других записей нет</span></div>';
       $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Последние записи</div>${rows}`;
     } catch {}
   }
 
   const acts = [];
   if(b.status!=='confirmed') acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
-  if(b.status!=='no_show')  acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
-  acts.push(`<button class="btn dg" data-s="cancelled">Освободить время</button>`);
+  acts.push(`<button class="btn" data-move>Перенести</button>`);
+  // «Не пришёл» имеет смысл только после начала игры
+  const started = date < todayStr() || (date === todayStr() && b.hour <= nowHour());
+  if(b.status!=='no_show' && started) acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
+  acts.push(`<button class="btn dg" data-s="cancelled">Отменить бронь</button>`);
   $('#bkActs').innerHTML = acts.join('');
   $('#bkErr').classList.remove('on');
   $('#bkModal').classList.add('on');
 
-  $('#bkActs').querySelectorAll('button').forEach(el => el.onclick = async () => {
+  const copy = $('#bkCopy');
+  if(copy) copy.onclick = () => {
+    navigator.clipboard?.writeText(phoneNice(b.client.phone));
+    copy.textContent = 'скопировано';
+  };
+
+  const mv = $('#bkActs').querySelector('[data-move]');
+  if(mv) mv.onclick = () => { $('#bkModal').classList.remove('on'); openMove(b) };
+
+  $('#bkActs').querySelectorAll('[data-s]').forEach(el => el.onclick = async () => {
+    const st = el.dataset.s;
+    // Отмена и неявка необратимы одним кликом — раньше это делалось без вопроса
+    if(st==='cancelled' && !await ask('Отменить бронь?',
+        `${who(b)}, ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)}. Время станет свободным.`)) return;
+    if(st==='no_show' && !await ask('Отметить неявку?',
+        `${who(b)} получит отметку «не пришёл». Это видно в его карточке.`)) return;
     try {
-      await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: el.dataset.s }) });
+      await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: st }) });
       $('#bkModal').classList.remove('on');
       load();
     } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
   });
 }
 
-/* ── занять время вручную ─────────────────────────────── */
-$('#addBtn').onclick = () => openAdd(day.courts[0]?.id, 18);
-$('#addCancel').onclick = () => $('#addModal').classList.remove('on');
+/* ── перенос записи ───────────────────────────────────── */
+let moving = null;
+function openMove(b){
+  moving = b;
+  const court = day.courts.find(c => c.id===b.courtId);
+  $('#moveSub').textContent = `${who(b)} · сейчас ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)}`;
+  $('#moveDate').value = date;
+  $('#moveCourt').innerHTML = openCourtsOptions(b.courtId);
+  $('#moveHour').innerHTML = hourOptions(b.hour);
+  $('#moveHours').innerHTML = hoursOptions(b.hour, b.hours);
+  moveTotal();
+  $('#moveErr').classList.remove('on');
+  $('#moveModal').classList.add('on');
+}
+function moveTotal(){
+  const p = priceFor($('#moveCourt').value, +$('#moveHour').value, +$('#moveHours').value);
+  $('#moveTotal').textContent = 'К оплате: ' + (p==null ? '—' : rub(p));
+}
+['#moveCourt','#moveHour','#moveHours'].forEach(id => {
+  $(id).onchange = () => {
+    if(id==='#moveHour') $('#moveHours').innerHTML = hoursOptions(+$('#moveHour').value, +$('#moveHours').value);
+    moveTotal();
+  };
+});
+$('#moveOk').onclick = async () => {
+  try {
+    await call(`/admin/bookings/${moving.id}/move`, { method:'POST', body: JSON.stringify({
+      courtId: $('#moveCourt').value, date: $('#moveDate').value,
+      hour: +$('#moveHour').value, hours: +$('#moveHours').value,
+    })});
+    $('#moveModal').classList.remove('on');
+    date = $('#moveDate').value;
+    load();
+  } catch(e){ $('#moveErr').textContent = e.message; $('#moveErr').classList.add('on') }
+};
 
-function openAdd(courtId, hour){
-  $('#addCourt').innerHTML = day.courts.filter(c=>c.isActive)
-    .map(c => `<option value="${c.id}"${c.id===courtId?' selected':''}>${c.name}</option>`).join('');
-  let hours = '';
-  for(let h=day.openHour; h<day.closeHour; h++) hours += `<option value="${h}"${h===hour?' selected':''}>${hh(h)}</option>`;
-  $('#addHour').innerHTML = hours;
-  $('#addErr').classList.remove('on');
-  $('#addModal').classList.add('on');
+/* ── записать клиента вручную ─────────────────────────── */
+/** Только те площадки, что реально открыты: закрытая на ремонт пропадает. */
+function openCourtsOptions(selected){
+  return day.courts
+    .filter(c => c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date()))
+    .map(c => `<option value="${c.id}"${c.id===selected?' selected':''}>${c.name}</option>`).join('');
+}
+function hourOptions(selected){
+  let o = '';
+  for(let h=day.openHour; h<day.closeHour; h++) o += `<option value="${h}"${h===selected?' selected':''}>${hh(h)}</option>`;
+  return o;
+}
+/** Длительность ограничена закрытием клуба: «23:00 – 26:00» больше не собрать. */
+function hoursOptions(hour, selected){
+  let o = '';
+  for(let n=1; hour+n<=day.closeHour; n++){
+    o += `<option value="${n}"${n===selected?' selected':''}>${n} ${plural(n,'час','часа','часов')}</option>`;
+  }
+  return o;
 }
 
+/** Ближайший свободный час: раньше форма всегда открывалась на 18:00. */
+function suggestHour(){
+  if(date !== todayStr()) return day.openHour;
+  return Math.min(day.closeHour - 1, Math.max(day.openHour, nowHour() + 1));
+}
+
+$('#addBtn').onclick = () => openAdd(null, suggestHour());
+$('#addCancel').onclick = () => closeAdd();
+
+function closeAdd(){
+  $('#addModal').classList.remove('on');
+  // Поля обязательно чистим: иначе следующая бронь уходила на чужое имя
+  $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
+}
+
+function addTotal(){
+  const p = priceFor($('#addCourt').value, +$('#addHour').value, +$('#addHours').value);
+  $('#addTotal').textContent = 'К оплате: ' + (p==null ? '—' : rub(p));
+}
+
+function openAdd(courtId, hour){
+  $('#addDate').value = date;
+  $('#addCourt').innerHTML = openCourtsOptions(courtId);
+  $('#addHour').innerHTML = hourOptions(hour);
+  $('#addHours').innerHTML = hoursOptions(hour, 1);
+  addTotal();
+  $('#addErr').classList.remove('on');
+  $('#addModal').classList.add('on');
+  $('#addName').focus();
+}
+
+['#addCourt','#addHour','#addHours'].forEach(id => {
+  $(id).onchange = () => {
+    if(id==='#addHour') $('#addHours').innerHTML = hoursOptions(+$('#addHour').value, +$('#addHours').value);
+    addTotal();
+  };
+});
+$('#addDate').onchange = () => { date = $('#addDate').value; load() };
+
 $('#addOk').onclick = async () => {
+  const when = $('#addDate').value || date;
+  const hour = +$('#addHour').value;
+  const phone = $('#addPhone').value.replace(/\D/g,'');
+  if(phone && !/^[78]?\d{10}$/.test(phone)){
+    $('#addErr').textContent = 'Номер неполный: нужно 10 цифр после кода страны';
+    $('#addErr').classList.add('on'); return;
+  }
+  // Прошедшее время раньше записывалось молча
+  const passed = when < todayStr() || (when === todayStr() && hour < nowHour());
+  if(passed && !await ask('Это время уже прошло',
+      `Записать на ${hh(hour)}, ${pretty(when)}? Обычно так отмечают уже сыгранное.`)) return;
+
   const body = {
-    courtId: $('#addCourt').value, date,
-    hour: +$('#addHour').value, hours: +$('#addHours').value,
+    courtId: $('#addCourt').value, date: when,
+    hour, hours: +$('#addHours').value,
     name: $('#addName').value.trim() || undefined,
-    phone: $('#addPhone').value.replace(/\D/g,'').replace(/^8/,'7').replace(/^7/,'+7') || undefined,
+    phone: phone || undefined,
     comment: $('#addComment').value.trim() || undefined,
   };
   try {
     await call('/admin/bookings', { method:'POST', body: JSON.stringify(body) });
-    $('#addModal').classList.remove('on');
-    $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
+    closeAdd();
+    date = when;
     load();
   } catch(e){ $('#addErr').textContent = e.message; $('#addErr').classList.add('on') }
 };
 
+/* ── поиск по всем датам ──────────────────────────────── */
+let findTimer = null;
+$('#search').oninput = () => {
+  clearTimeout(findTimer);
+  const q = $('#search').value.trim();
+  if(q.length < 2) return;
+  findTimer = setTimeout(() => runSearch(q), 350);
+};
+$('#search').onkeydown = e => { if(e.key==='Enter'){ clearTimeout(findTimer); runSearch($('#search').value.trim()) } };
+
+async function runSearch(q){
+  if(q.length < 2) return;
+  try {
+    const rows = await call('/admin/search?q='+encodeURIComponent(q));
+    $('#findTitle').textContent = `Найдено: ${rows.length}`;
+    $('#findList').innerHTML = rows.length ? rows.map(r => `
+      <button class="it" data-date="${r.date}" data-id="${r.id}">
+        <div class="who"><b>${r.name}</b><span>${phoneNice(r.phone)} · ${r.courtName} · ${STATUS[r.status]||r.status}</span></div>
+        <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
+      </button>`).join('') : '<div class="empty">Ничего не нашлось. Попробуйте часть имени или четыре цифры номера.</div>';
+    $('#findList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
+      $('#findModal').classList.remove('on');
+      date = el.dataset.date;
+      await load();
+      openBooking(+el.dataset.id);
+    });
+    $('#findModal').classList.add('on');
+  } catch(e){
+    $('#findTitle').textContent = 'Поиск не получился';
+    $('#findList').innerHTML = `<div class="empty">${e.message}</div>`;
+    $('#findModal').classList.add('on');
+  }
+}
+
+/* ── новые заявки со всех дат ─────────────────────────── */
+async function loadPending(){
+  try {
+    const rows = await call('/admin/pending');
+    $('#pendN').textContent = rows.length;
+    $('#pendBtn').hidden = rows.length === 0;
+    $('#pendList').innerHTML = rows.length ? rows.map(r => `
+      <button class="it" data-date="${r.date}" data-id="${r.id}">
+        <div class="who"><b>${r.name}</b><span>${phoneNice(r.phone)} · ${r.courtName} · ${rub(r.price)}</span></div>
+        <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
+      </button>`).join('') : '<div class="empty">Новых заявок нет.</div>';
+    $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
+      $('#pendModal').classList.remove('on');
+      date = el.dataset.date;
+      await load();
+      openBooking(+el.dataset.id);
+    });
+  } catch {}
+}
+$('#pendBtn').onclick = () => $('#pendModal').classList.add('on');
+
+/* ── выход ────────────────────────────────────────────── */
+$('#logout').onclick = () => {
+  localStorage.removeItem(KEY_STORE);
+  location.reload();
+};
+
 document.querySelectorAll('.modal').forEach(m => m.onclick = e => {
   if(e.target===m && m.id!=='authModal') m.classList.remove('on');
+});
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => {
+  b.closest('.modal').classList.remove('on');
+});
+// Esc закрывает, Enter в форме — основное действие: руки часто заняты телефоном
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){
+    document.querySelectorAll('.modal.on').forEach(m => { if(m.id!=='authModal') m.classList.remove('on') });
+  }
+  if(e.key === 'Enter'){
+    if($('#addModal').classList.contains('on') && e.target.tagName === 'INPUT') $('#addOk').click();
+    else if($('#moveModal').classList.contains('on')) $('#moveOk').click();
+  }
 });
 
 /* ── старт ────────────────────────────────────────────── */

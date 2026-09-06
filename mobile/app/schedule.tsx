@@ -2,7 +2,7 @@
 // Подписи часов стоят на границах клеток — клетка читается как промежуток
 // от 18:00 до 19:00, а не как «момент 18:00».
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Image, RefreshControl } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Image, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +22,9 @@ export default function Schedule() {
   const [date, setDate] = useState(today());
   const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [hours, setHours] = useState(1);
+  // Какую площадку показываем крупно. Заказчик просил: у кортов разный цвет пола,
+  // и перед записью человек должен увидеть, куда именно он идёт.
+  const [peek, setPeek] = useState<string | null>(null);
 
   const q = useApi(() => api.grid(date), [date]);
   const days = useMemo(
@@ -81,6 +84,14 @@ export default function Schedule() {
 
   const closedNote = grid.courts.find(c => c.closed);
 
+  // Тарифы для подписи над сеткой: берём у обычного корта, не у футбольного поля
+  const priced = grid.courts.find(c => !c.isFootball) ?? grid.courts[0];
+  const morningPrice = priced?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
+  const standardPrice = priced?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
+
+  const showCourt = (courtId: string) => { Haptics.selectionAsync(); setPeek(courtId) };
+  const peeked = grid.courts.find(c => c.courtId === peek) ?? null;
+
   return (
     <View style={st.root}>
       <Stack.Screen options={{ title: 'Выберите время' }} />
@@ -90,6 +101,16 @@ export default function Schedule() {
           ? `Сегодня · свободно ${freeNow} из ${grid.courts.length} площадок`
           : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
       </Text>
+
+      <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
+        accessibilityRole="button" accessibilityLabel="Открыть прайс-лист"
+        style={({ pressed }) => [st.tariff, pressed && { opacity: 0.75 }]}>
+        <Text style={st.tariffT}>
+          <Text style={{ color: C.lime, fontWeight: '700' }}>{rub(morningPrice)}</Text>
+          {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
+        </Text>
+        <IconChevron size={14} color={C.dim2} />
+      </Pressable>
 
       <View style={st.days}>
         {days.map(d => {
@@ -110,13 +131,20 @@ export default function Schedule() {
         <View style={[st.headRow, { gap }]}>
           <View style={{ width: timeW }} />
           {grid.courts.map(c => (
-            <View key={c.courtId} style={st.headCell}>
+            <Pressable key={c.courtId} onPress={() => showCourt(c.courtId)}
+              accessibilityRole="button"
+              accessibilityLabel={`${c.name}: посмотреть фотографию площадки`}
+              style={({ pressed }) => [st.headCell, pressed && { opacity: 0.6 }]}>
+              {/* Миниатюра площадки прямо в шапке: у кортов разное покрытие,
+                  и цвет пола должен быть виден до того, как человек выберет час. */}
+              <Image source={IMG[c.courtId] ?? IMG.c1}
+                style={[st.headPh, c.closed && { opacity: 0.4 }]} resizeMode="cover" />
               {c.isFootball
-                ? <IconBall size={15} color={c.closed ? C.busy : C.dim} />
+                ? <IconBall size={13} color={c.closed ? C.busy : C.dim} />
                 : <Text style={[st.headT, c.closed && { color: C.busy }]}>
                     К{c.name.replace(/\D/g, '') || '?'}
                   </Text>}
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -228,7 +256,51 @@ export default function Schedule() {
           </>
         )}
       </View>
+
+      <CourtPeek court={peeked} onClose={() => setPeek(null)}
+        onPick={() => { const id = peeked!.courtId; setPeek(null);
+          router.push({ pathname: '/court', params: { id, date, hour: String(grid.openHour) } }) }} />
     </View>
+  );
+}
+
+/** Фотография площадки поверх сетки. Нужна, потому что корты отличаются
+    покрытием и цветом пола, а по букве «К3» этого не видно. */
+function CourtPeek({ court, onClose, onPick }: {
+  court: ApiGrid['courts'][number] | null; onClose: () => void; onPick: () => void;
+}) {
+  return (
+    <Modal visible={!!court} transparent animationType="fade" onRequestClose={onClose}
+      statusBarTranslucent>
+      <Pressable style={st.peekBack} onPress={onClose} accessibilityLabel="Закрыть фотографию">
+        {court && (
+          <Pressable style={st.peek} onPress={() => {}}>
+            <Image source={IMG[court.courtId] ?? IMG.c1} style={st.peekImg} resizeMode="cover" />
+            <View style={st.peekIn}>
+              <Text style={st.peekN}>{court.name}</Text>
+              <Text style={st.peekS}>
+                {court.closed ? 'Закрыта' :
+                  `${court.hours.filter(h => h.status === 'free').length} свободных часов сегодня`}
+              </Text>
+              {/* ЗАГЛУШКА: пока это не снимки клуба — см. docs/PHOTO-CREDITS.md */}
+              <Text style={st.peekNote}>
+                Фотография временная. Настоящие снимки площадок клуб пришлёт позже.
+              </Text>
+              <View style={st.peekRow}>
+                <Pressable onPress={onClose} accessibilityRole="button"
+                  style={({ pressed }) => [st.peekBtn, pressed && { opacity: 0.8 }]}>
+                  <Text style={st.peekBtnT}>Закрыть</Text>
+                </Pressable>
+                <Pressable onPress={onPick} accessibilityRole="button"
+                  style={({ pressed }) => [st.peekBtn, st.peekBtnAcc, pressed && { opacity: 0.85 }]}>
+                  <Text style={[st.peekBtnT, { color: C.onLime }]}>Подробнее</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        )}
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -254,8 +326,30 @@ const st = StyleSheet.create({
   dayD: { color: C.text, fontSize: 17, fontWeight: '700', marginTop: 1 },
 
   headRow: { flexDirection: 'row', paddingBottom: 10 },
-  headCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  headCell: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 },
   headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
+  headPh: { width: 26, height: 26, borderRadius: 8, marginBottom: 3,
+    borderWidth: 1, borderColor: C.line },
+
+  tariff: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    marginHorizontal: 20, marginTop: 8, paddingVertical: 6, paddingHorizontal: 11,
+    borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  tariffT: { color: C.dim, fontSize: 12.5 },
+
+  peekBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)',
+    alignItems: 'center', justifyContent: 'center', padding: 22 },
+  peek: { width: '100%', maxWidth: 420, borderRadius: 22, overflow: 'hidden',
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  peekImg: { width: '100%', height: 230 },
+  peekIn: { padding: 16 },
+  peekN: { color: C.text, fontSize: 19, fontWeight: '700' },
+  peekS: { color: C.lime, fontSize: 13, marginTop: 3, fontWeight: '600' },
+  peekNote: { color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 9 },
+  peekRow: { flexDirection: 'row', gap: 9, marginTop: 14 },
+  peekBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 46,
+    borderRadius: 13, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
+  peekBtnAcc: { backgroundColor: C.lime, borderColor: C.lime },
+  peekBtnT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
 
   row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
   time: { color: C.dim2, fontSize: 10.5, fontVariant: ['tabular-nums'], marginTop: -5 },

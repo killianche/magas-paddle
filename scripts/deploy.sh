@@ -32,12 +32,13 @@ open(sys.argv[2],'w',encoding='utf-8').write(
  '<!doctype html>\n<html lang="ru"><head>\n<meta charset="utf-8">\n'
  '<meta name="viewport" content="'+sys.argv[3]+'">\n'
  '<meta name="robots" content="noindex,nofollow">\n<meta name="theme-color" content="#0B0F0C">\n'
- '<link rel="icon" href="/favicon.svg" type="image/svg+xml">\n'+src[:i]+'\n</head><body>\n'+src[i:]+'\n</body></html>')
+ '<link rel="icon" href="/favicon.png" type="image/png">\n'+src[:i]+'\n</head><body>\n'+src[i:]+'\n</body></html>')
 PY
 }
 wrap "$ROOT/design/demo.html"       "$STAGE/demo.html"       "width=device-width,initial-scale=1,viewport-fit=cover"
 wrap "$ROOT/design/admin-demo.html" "$STAGE/admin-demo.html" "width=device-width,initial-scale=1"
 wrap "$ROOT/design/index-src.html"  "$STAGE/index.html"      "width=device-width,initial-scale=1"
+wrap "$ROOT/design/manager-src.html" "$STAGE/manager.html"   "width=device-width,initial-scale=1"
 
 # ---------- 2. Статика ----------
 say "Готовлю шрифты, картинки и иконку"
@@ -55,9 +56,7 @@ else
 fi
 [ -d "$ROOT/assets/img" ] && cp "$ROOT/assets/img/"*.webp "$STAGE/img/" 2>/dev/null || true
 
-cat > "$STAGE/favicon.svg" <<'EOF'
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 30"><path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z" fill="#1B5E20" stroke="#C6F033" stroke-width="1.5"/><path d="M8.4 19.6 17 9.6M17.6 19.6 9 9.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="13" cy="7.4" r="2.1" fill="#C6F033"/></svg>
-EOF
+cp "$ROOT/design/manager-favicon.png" "$STAGE/favicon.png"
 printf 'User-agent: *\nDisallow: /\n' > "$STAGE/robots.txt"
 
 # ---------- 3. Сервер ----------
@@ -69,7 +68,9 @@ $SSH "$HOST" 'export DEBIAN_FRONTEND=noninteractive
   nginx -v 2>&1'
 
 say "Копирую файлы"
-$RSYNC -az --delete -e "ssh $SSHO" "$STAGE/" "$HOST:/var/www/padelmagas/"
+# --exclude обязателен: в /v1 лежит веб-версия приложения, её кладёт
+# scripts/build-app.sh. Без исключения --delete стирал приложение целиком.
+$RSYNC -az --delete --exclude 'v1/' -e "ssh $SSHO" "$STAGE/" "$HOST:/var/www/padelmagas/"
 
 say "Настраиваю раздачу"
 $SSH "$HOST" 'cat > /etc/nginx/sites-available/padelmagas <<'"'"'CONF'"'"'

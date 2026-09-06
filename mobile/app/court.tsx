@@ -6,7 +6,7 @@ import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP } from '../src/theme';
-import { api, rub } from '../src/api';
+import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { IMG } from '../src/images';
 import { Section, Line } from '../src/components/section';
@@ -58,8 +58,8 @@ export default function CourtScreen() {
           <Text style={s.name}>{court.name}</Text>
           <Text style={s.sub}>Magas Padel, Магас</Text>
           <View style={s.priceRow}>
-            <Text style={s.price}>{rub(court.priceEvening)}</Text>
-            <Text style={s.priceU}>за час вечером</Text>
+            <Text style={s.price}>{rub(court.priceStandard)}</Text>
+            <Text style={s.priceU}>за час</Text>
             <View style={[s.tag, closed && s.tagOff]}>
               <Text style={[s.tagT, closed && { color: C.busy }]}>
                 {closed ? (court.closedReason ?? 'закрыта')
@@ -72,13 +72,17 @@ export default function CourtScreen() {
         </View>
 
         <Section title="Цены"
-          summary={`${rub(court.priceDay)} днём · ${rub(court.priceEvening)} вечером`} open>
-          <Line k={`Днём, до ${hh(court.eveningFrom)}`} v={`${rub(court.priceDay)} за час`} />
-          <Line k={`Вечером, с ${hh(court.eveningFrom)}`} v={`${rub(court.priceEvening)} за час`} accent />
-          <Line k="Два часа подряд вечером" v={rub(court.priceEvening * 2)} />
+          summary={`${rub(court.priceMorning)} утром · ${rub(court.priceStandard)} дальше`} open>
+          <Line k={`Утро, до ${hh(court.morningUntil)}`}
+            v={`${rub(court.priceMorning)} за час`} accent />
+          <Line k={`С ${hh(court.morningUntil)} до полуночи`}
+            v={`${rub(court.priceStandard)} за час`} />
+          <Line k="Выгода утром"
+            v={`−${discountPercent(court.priceMorning, court.priceStandard)}%`} />
           <Text style={s.small}>
-            Цена считается по часам: если игра начинается днём и заходит на вечер,
-            часы складываются по своим тарифам. Оплата на месте, в клубе.
+            Цена считается по часам: если игра начинается утром и заходит за
+            {' '}{hh(court.morningUntil)}, часы складываются по своим тарифам.
+            Оплата на месте, в клубе.
           </Text>
         </Section>
 

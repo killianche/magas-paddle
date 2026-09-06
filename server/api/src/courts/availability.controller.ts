@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CLOSE_HOUR, EVENING_FROM, MAX_HOURS, OPEN_HOUR } from '../club';
+import { CLOSE_HOUR, MORNING_UNTIL, MAX_HOURS, OPEN_HOUR } from '../club';
 import { clubHour, clubToday, hourOf, isValidDate } from '../time';
 
 @Controller('availability')
@@ -52,7 +52,7 @@ export class AvailabilityController {
         hours.push({
           hour: h,
           status,
-          price: h >= EVENING_FROM ? c.price_evening : c.price_day,
+          price: h < MORNING_UNTIL ? c.price_morning : c.price_standard,
           // Сколько часов подряд можно взять начиная с этого
           maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now),
         });
@@ -64,7 +64,7 @@ export class AvailabilityController {
       date: day,
       openHour: OPEN_HOUR,
       closeHour: CLOSE_HOUR,
-      eveningFrom: EVENING_FROM,
+      morningUntil: MORNING_UNTIL,
       courts: rows,
     };
   }

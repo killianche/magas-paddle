@@ -2,7 +2,7 @@
 // и уводит в выбор времени одной большой кнопкой.
 import { useCallback } from 'react';
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Image,
+  Animated, ScrollView, Text, View, Pressable, StyleSheet, Image,
   useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,8 +16,10 @@ import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
 import { Mark, IconChevron, IconCheck } from '../../src/components/icons';
+import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
+import { TopScrim, useTopScrim } from '../../src/components/topscrim';
 import {
-  today, hh, plural, dayMonth, weekdayShort, dateOfIso, hourOfIso,
+  today, hh, plural, dayMonth, dateOfIso, hourOfIso,
 } from '../../src/dates';
 
 const CLUB_NAME = 'Magas Padel';
@@ -28,6 +30,7 @@ export default function Home() {
   const { height } = useWindowDimensions();
   const { profile } = useProfile();
   const phone = profile?.phone;
+  const scrim = useTopScrim();
 
   const q = useApi(async () => {
     const [grid, tournaments, bookings] = await Promise.all([
@@ -52,8 +55,13 @@ export default function Home() {
     .map(c => c.hours.find(h => h.status === 'free')?.hour)
     .filter((h): h is number => h != null)
     .sort((a, b) => a - b)[0] ?? null;
-  const freeNow = soonest == null ? 0
-    : grid.courts.filter(c => c.hours.find(h => h.hour === soonest)?.status === 'free').length;
+  const freeText = soonest == null
+    ? 'Сегодня всё занято — посмотрите другие дни'
+    : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
+      + ` · ближайшее в ${hh(soonest)}`;
+
+  // Самая низкая цена дня — её и показываем в «от …» на витрине
+  const cheapest = Math.min(...grid.courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0));
 
   const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
   const mine = bookings.filter(b => b.status !== 'cancelled');
@@ -65,8 +73,10 @@ export default function Home() {
   };
 
   return (
-    <ScrollView style={st.root} contentContainerStyle={{ paddingBottom: 34 }}
+    <View style={st.root}>
+    <Animated.ScrollView style={st.root} contentContainerStyle={{ paddingBottom: 34 }}
       showsVerticalScrollIndicator={false}
+      onScroll={scrim.onScroll} scrollEventThrottle={scrim.scrollEventThrottle}
       refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
       <View style={[st.hero, { height: heroH }]}>
@@ -76,14 +86,16 @@ export default function Home() {
           locations={[0, 0.34, 0.72, 1]} style={st.fill} />
 
         <View style={[st.brandRow, { paddingTop: insets.top + 10 }]}>
-          <Mark size={26} />
+          <Mark size={38} />
           <Text style={st.brand}>{CLUB_NAME}</Text>
-          <Text style={st.date}>{weekdayShort(today())}, {dayMonth(today()).slice(0, 6)}</Text>
         </View>
 
         <View style={st.heroIn}>
-          <Text style={st.eyebrow}>ДОБРО ПОЖАЛОВАТЬ</Text>
-          <Text style={st.title} allowFontScaling maxFontSizeMultiplier={1.15}>
+          <Text style={st.eyebrow}>АССАЛАМУ АЛЕЙКУМ</Text>
+          {/* Плакатный заголовок не тянется системным размером шрифта:
+              при увеличении межстрочный интервал не растёт вместе с буквами
+              и у «ПРИХОДИТЕ» срезает верх. Смысл несёт текст ниже — он тянется. */}
+          <Text style={st.title} allowFontScaling={false}>
             ПРИХОДИТЕ{'\n'}ИГРАТЬ
           </Text>
           <Text style={st.lede}>
@@ -91,35 +103,19 @@ export default function Home() {
             Открыты с {hh(grid.openHour)} до полуночи.
           </Text>
 
+          {/* Свободные часы живут прямо в кнопке: раньше то же самое
+              повторялось трижды — строкой под кнопкой и отдельной карточкой. */}
           <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
+            accessibilityLabel={`Записаться. ${freeText}`}
             style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
-            <Text style={st.ctaT}>Записаться</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={st.ctaT}>Записаться</Text>
+              <Text style={st.ctaS}>{freeText}</Text>
+            </View>
+            <IconChevron size={20} color={C.onLime} />
           </Pressable>
-
-          <View style={st.live}>
-            <View style={st.liveDot} />
-            <Text style={st.liveT}>
-              {soonest != null
-                ? `Сейчас свободно ${freeNow} из ${grid.courts.length} · ближайшее в ${hh(soonest)}`
-                : 'На сегодня всё занято — посмотрите другие дни'}
-            </Text>
-          </View>
         </View>
       </View>
-
-      <Pressable onPress={() => go('/schedule')}
-        style={({ pressed }) => [st.bandWrap, pressed && { opacity: 0.85 }]}>
-        <View style={st.band}>
-          <Text style={st.bandBig}>{freeHours}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={st.bandT}>
-              {plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')} сегодня
-            </Text>
-            <Text style={st.bandS}>смотреть свободные слоты</Text>
-          </View>
-          <IconChevron size={16} color={C.dim} />
-        </View>
-      </Pressable>
 
       {(mine.length > 0 || entered.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
@@ -143,6 +139,10 @@ export default function Home() {
         </Pressable>
       )}
 
+      {/* Связь с клубом — сразу под первым экраном: заказчик просил
+          держать WhatsApp и Instagram на виду, а не прятать в «Клуб». */}
+      <SocialButtons />
+
       <View style={st.secHead}>
         <Text style={st.secT}>Площадки</Text>
         <Text style={st.secS}>{grid.courts.length} штук</Text>
@@ -150,7 +150,7 @@ export default function Home() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.strip}>
         {grid.courts.map(c => {
           const free = c.hours.find(h => h.status === 'free');
-          const price = c.hours.find(h => h.hour === (free?.hour ?? grid.eveningFrom))?.price ?? 0;
+          const price = c.hours.find(h => h.hour === (free?.hour ?? grid.morningUntil))?.price ?? 0;
           return (
             <Pressable key={c.courtId}
               onPress={() => go('/court', { id: c.courtId, date: today(), hour: String(free?.hour ?? grid.openHour) })}
@@ -207,7 +207,17 @@ export default function Home() {
           <Text style={st.secLink}>контакты и правила</Text>
         </Pressable>
       </View>
-      <View style={st.info}>
+      <Pressable onPress={() => go('/prices')} accessibilityRole="button"
+        style={({ pressed }) => [st.priceRow, pressed && { opacity: 0.85 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={st.priceT}>Прайс-лист</Text>
+          <Text style={st.priceS}>от {rub(cheapest)} за час · утром дешевле</Text>
+        </View>
+        <IconChevron size={17} color={C.dim} />
+      </Pressable>
+
+      <WhereWeAre />
+      <View style={[st.info, { marginTop: 10 }]}>
         <InfoRow k="Работаем" v={`с ${hh(grid.openHour)} до полуночи`} />
         <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />
         <InfoRow k="Оплата" v="на месте, в клубе" />
@@ -217,7 +227,9 @@ export default function Home() {
       <Text style={st.foot}>
         Данные в приложении пока учебные. Настоящие цены, часы и фотографии — от клуба.
       </Text>
-    </ScrollView>
+    </Animated.ScrollView>
+    <TopScrim scrollY={scrim.scrollY} />
+    </View>
   );
 }
 
@@ -237,28 +249,25 @@ const st = StyleSheet.create({
     borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: C.surface },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
-  brand: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 1, flex: 1 },
-  date: { color: '#C3CDBB', fontSize: 13, fontWeight: '600' },
+  brand: { color: C.text, fontFamily: DISP, fontSize: 19, letterSpacing: 1, flex: 1 },
   heroIn: { paddingHorizontal: S.xl, paddingBottom: 24 },
-  eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 2.2, marginBottom: 8 },
-  title: { color: C.text, fontFamily: DISP, fontSize: 62, lineHeight: 60,
+  eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 2.2, marginBottom: 8 },
+  // lineHeight с запасом к кеглю: у Oswald высокие прописные, при lineHeight
+  // меньше размера шрифта iOS срезает верх первой строки.
+  title: { color: C.text, fontFamily: DISP, fontSize: 58, lineHeight: 66,
     letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 16 },
-  lede: { color: '#CBD5C2', fontSize: 14, lineHeight: 20, marginTop: 10,
+  lede: { color: '#DCE4D4', fontSize: 16, lineHeight: 23, marginTop: 12, fontWeight: '500',
     textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 8 },
-  cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 18,
-    alignItems: 'center', marginTop: 20, minHeight: HIT },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 20, letterSpacing: 0.8 },
-  live: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, justifyContent: 'center' },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.lime },
-  liveT: { color: '#C3CDBB', fontSize: 12.5, fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 6 },
+  cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 16, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, minHeight: HIT },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 24, letterSpacing: 0.8 },
+  ctaS: { color: 'rgba(11,15,12,.72)', fontSize: 13, fontWeight: '600', marginTop: 2 },
 
-  bandWrap: { paddingHorizontal: S.xl, marginTop: 18 },
-  band: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 15,
-    borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, minHeight: 74 },
-  bandBig: { color: C.lime, fontFamily: DISP, fontSize: 34, fontVariant: ['tabular-nums'] },
-  bandT: { color: C.text, fontSize: 15, fontWeight: '700' },
-  bandS: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
+    marginBottom: 10, padding: 15, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface, minHeight: 66 },
+  priceT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
+  priceS: { color: C.dim, fontSize: 13, marginTop: 2 },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 11, marginHorizontal: S.xl, marginTop: 10,
     padding: 12, borderRadius: R.lg, borderWidth: 1, borderColor: 'rgba(198,240,51,.28)',

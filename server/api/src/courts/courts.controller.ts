@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EVENING_FROM } from '../club';
+import { MORNING_UNTIL } from '../club';
 
 @Controller('courts')
 export class CourtsController {
@@ -18,9 +18,9 @@ export class CourtsController {
       id: c.id,
       name: c.name,
       isFootball: c.is_football,
-      priceDay: c.price_day,
-      priceEvening: c.price_evening,
-      eveningFrom: EVENING_FROM,
+      priceMorning: c.price_morning,
+      priceStandard: c.price_standard,
+      morningUntil: MORNING_UNTIL,
       closedUntil: c.closed_until,
       closedReason: c.closed_reason,
     }));

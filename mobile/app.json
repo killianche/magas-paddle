@@ -18,7 +18,9 @@
     "android": {
       "package": "ru.padelmagas.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0B0F0C"
       }
     },
@@ -29,15 +31,24 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 170,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0F0C",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0B0F0C"
+          }
+        }
+      ]
     ],
     "scheme": "magaspadel",
     "backgroundColor": "#0B0F0C",
     "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#0B0F0C",
-      "resizeMode": "contain"
-    },
     "experiments": {
       "baseUrl": "/v1"
     },

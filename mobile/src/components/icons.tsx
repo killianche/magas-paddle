@@ -1,7 +1,9 @@
 // Иконки. Рисованные линией, в духе SF Symbols: одна толщина, скруглённые концы,
 // оптический размер 24. Никаких эмодзи — они выглядят как заглушка, а не как продукт.
-import Svg, { Path, Circle, Rect, Line, Ellipse } from 'react-native-svg';
+import { Image } from 'react-native';
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { C } from '../theme';
+import { LOGO, LOGO_RATIO } from '../images';
 
 type P = { size?: number; color?: string; active?: boolean };
 
@@ -86,22 +88,12 @@ export function IconChevron({ size = 18, color = C.dim2 }: P) {
   );
 }
 
-/** Знак клуба: щит, скрещённые падел-лопатки, мяч.
-    Раньше ручки рисовались двумя линиями и читались просто как крестик —
-    добавлены головки лопаток, иначе ракеток в знаке не видно. */
-export function Mark({ size = 30 }: { size?: number }) {
+/** Знак клуба — настоящий логотип Magas Padel (щит, ракетки, мяч).
+    Размер задаётся по высоте: щит вытянутый, ширина считается сама. */
+export function Mark({ size = 34 }: { size?: number }) {
   return (
-    <Svg width={size} height={size * 1.15} viewBox="0 0 26 30" fill="none">
-      <Path d="M13 1 24.5 6.2v11.4C24.5 24 19.4 27.6 13 29 6.6 27.6 1.5 24 1.5 17.6V6.2L13 1Z"
-        fill={C.greenDeep} stroke={C.lime} strokeWidth={1.3} strokeLinejoin="round" />
-      <Ellipse cx="9.3" cy="13" rx="3" ry="4" transform="rotate(-30 9.3 13)"
-        stroke={C.text} strokeWidth={1.5} />
-      <Ellipse cx="16.7" cy="13" rx="3" ry="4" transform="rotate(30 16.7 13)"
-        stroke={C.text} strokeWidth={1.5} />
-      <Path d="M11.5 16.6 14.6 22M14.5 16.6 11.4 22"
-        stroke={C.text} strokeWidth={1.5} strokeLinecap="round" />
-      <Circle cx="13" cy="7" r="1.7" fill={C.lime} />
-    </Svg>
+    <Image source={LOGO} accessibilityIgnoresInvertColors
+      style={{ height: size, width: size * LOGO_RATIO }} resizeMode="contain" />
   );
 }
 
@@ -121,6 +113,37 @@ export function IconCheck({ size = 14, color = C.onLime, active }: P) {
   return (
     <Svg {...base(size, color, active)} strokeWidth={active ? 2.6 : 2.2}>
       <Path d="M4.6 12.4 9.5 17.2 19.4 6.8" />
+    </Svg>
+  );
+}
+
+/** Метка на карте — «мы здесь» */
+export function IconPin({ size = 20, color = C.lime }: P) {
+  return (
+    <Svg {...base(size, color)}>
+      <Path d="M12 21.2c4.1-4.4 6.2-7.8 6.2-10.4a6.2 6.2 0 1 0-12.4 0c0 2.6 2.1 6 6.2 10.4Z" />
+      <Circle cx="12" cy="10.6" r="2.4" />
+    </Svg>
+  );
+}
+
+/** WhatsApp — трубка в облачке сообщения */
+export function IconWhatsApp({ size = 20, color = '#04240F' }: P) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M12.04 2.2c-5.4 0-9.8 4.4-9.8 9.8 0 1.73.45 3.4 1.32 4.89L2.2 21.8l5.05-1.32a9.76 9.76 0 0 0 4.79 1.22h.004c5.4 0 9.8-4.4 9.8-9.8s-4.4-9.7-9.8-9.7Zm0 17.86h-.004a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.07.8.82-3-.19-.31a8.09 8.09 0 0 1-1.24-4.32c0-4.48 3.65-8.13 8.14-8.13a8.13 8.13 0 0 1 .003 16.27Z" />
+      <Path d="M16.5 14.3c-.24-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.25-.63.8-.77.97-.14.16-.28.18-.53.06-.24-.12-1.03-.38-1.97-1.22-.73-.65-1.22-1.45-1.36-1.7-.14-.24-.02-.37.11-.5.11-.11.24-.28.36-.43.12-.14.16-.24.24-.4.08-.17.04-.31-.02-.43-.06-.12-.55-1.33-.75-1.82-.2-.47-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.24-.85.83-.85 2.03s.87 2.35.99 2.51c.12.17 1.71 2.62 4.15 3.67.58.25 1.03.4 1.39.51.58.19 1.11.16 1.53.1.47-.07 1.45-.59 1.65-1.17.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28Z" />
+    </Svg>
+  );
+}
+
+/** Instagram — рамка, объектив, вспышка */
+export function IconInstagram({ size = 20, color = C.text }: P) {
+  return (
+    <Svg {...base(size, color)}>
+      <Rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2" />
+      <Circle cx="12" cy="12" r="4.1" />
+      <Circle cx="16.9" cy="7.1" r="1.05" fill={color} stroke="none" />
     </Svg>
   );
 }

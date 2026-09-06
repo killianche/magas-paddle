@@ -3,7 +3,8 @@
  *  (вопрос Q44 в docs/OPEN-QUESTIONS.md). Тарифы приходят из базы, не отсюда. */
 export const OPEN_HOUR = 9;
 export const CLOSE_HOUR = 24;
-/** После этого часа действует вечерний тариф. */
-export const EVENING_FROM = 18;
+/** До этого часа действует утренний тариф, дальше — основной.
+ *  Правило клуба: утро до 13:00 дешевле. */
+export const MORNING_UNTIL = 13;
 /** Максимальная длительность одной брони, часов. */
 export const MAX_HOURS = 3;

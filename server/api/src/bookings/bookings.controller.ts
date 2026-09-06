@@ -4,7 +4,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
-import { CLOSE_HOUR, EVENING_FROM } from '../club';
+import { CLOSE_HOUR, MORNING_UNTIL } from '../club';
+import { normalizePhone } from '../phone';
 import { clubHour, clubToday, hourOf, isValidDate } from '../time';
 
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
@@ -17,8 +18,9 @@ export class BookingsController {
   /** Записи одного человека — ищем по телефону, входа в приложении нет. */
   @Get()
   async list(@Query('phone') phone?: string) {
-    if (!phone) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone } });
+    const key = normalizePhone(phone);
+    if (!key) throw new BadRequestException('Нужен номер телефона');
+    const client = await this.db.clients.findUnique({ where: { phone: key } });
     if (!client) return [];
 
     const rows = await this.db.bookings.findMany({
@@ -43,6 +45,8 @@ export class BookingsController {
   @Post()
   async create(@Body() dto: CreateBookingDto) {
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
+    const bookingPhone = normalizePhone(dto.phone);
+    if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
     if (dto.hour + dto.hours > CLOSE_HOUR) {
       throw new BadRequestException(`Клуб закрывается в ${CLOSE_HOUR}:00`);
     }
@@ -60,13 +64,13 @@ export class BookingsController {
     // Цена складывается по часам: игра может начаться днём и уйти в вечер
     let price = 0;
     for (let h = dto.hour; h < dto.hour + dto.hours; h++) {
-      price += h >= EVENING_FROM ? court.price_evening : court.price_day;
+      price += h < MORNING_UNTIL ? court.price_morning : court.price_standard;
     }
 
     const client = await this.db.clients.upsert({
-      where: { phone: dto.phone },
+      where: { phone: bookingPhone },
       update: { name: dto.name },
-      create: { phone: dto.phone, name: dto.name },
+      create: { phone: bookingPhone, name: dto.name },
     });
 
     try {
@@ -98,8 +102,9 @@ export class BookingsController {
   /** Отмена. Строку не удаляем: менеджеру нужна история отмен по клиенту. */
   @Delete(':id')
   async cancel(@Param('id') id: string, @Query('phone') phone?: string) {
-    if (!phone) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone } });
+    const key = normalizePhone(phone);
+    if (!key) throw new BadRequestException('Нужен номер телефона');
+    const client = await this.db.clients.findUnique({ where: { phone: key } });
     const booking = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
     if (!booking || !client || booking.client_id !== client.id) {
       throw new NotFoundException('Запись не найдена');
