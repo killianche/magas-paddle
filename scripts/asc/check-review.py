@@ -4,7 +4,11 @@
 """
 import importlib.util, pathlib, urllib.request
 
-BUILD = '58f1dd55-f041-4f3a-873e-ec8b0b43b153'
+# Сборки TestFlight: свежая сверху. Добавляя новую, дописывайте строку сюда.
+BUILDS = [
+    ('2', '3528cbc0-74d0-47cc-af8e-80ae160e3865'),
+    ('1', '58f1dd55-f041-4f3a-873e-ec8b0b43b153'),
+]
 VID   = 'd98f5a08-4d50-4543-b6f7-087427d3b640'
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'
 
@@ -19,9 +23,12 @@ STATES = {
     'APPROVED':           'одобрено, ссылка работает',
 }
 
-st, out = asc.call('GET', f'/v1/builds/{BUILD}/betaAppReviewSubmission')
-state = (out.get('data') or {}).get('attributes', {}).get('betaReviewState', '—')
-print('проверка TestFlight:', state, '—', STATES.get(state, ''))
+print('TestFlight, проверка сборок:')
+for num, bid in BUILDS:
+    st, out = asc.call('GET', f'/v1/builds/{bid}/betaAppReviewSubmission')
+    state = (out.get('data') or {}).get('attributes', {}).get('betaReviewState', '—')
+    print(f'  сборка {num}: {state} — {STATES.get(state, "")}')
+print()
 
 try:
     with urllib.request.urlopen(LINK, timeout=20) as r:
