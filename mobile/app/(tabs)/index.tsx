@@ -27,7 +27,7 @@ const CLUB_CITY = 'Магас';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const { profile } = useProfile();
   const phone = profile?.phone;
   const scrim = useTopScrim();
@@ -47,9 +47,11 @@ export default function Home() {
   if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;
 
   const { grid, tournaments, bookings } = q.data;
-  // Фотография — главное на первом экране, поэтому забирает большую его часть.
-  // Плакатный заголовок убран: снимок игры говорит сам за себя.
-  const heroH = Math.max(520, Math.min(height * 0.78, 760));
+  // Снимок клуба показываем целиком, в своих пропорциях 3:2, и почти
+  // не затемняем: фотографии тёмные сами по себе, под градиентом от них
+  // остался бы чёрный прямоугольник. Текст поэтому стоит под снимком,
+  // а не поверх — так он читается и выглядит дороже.
+  const heroH = Math.round(Math.min(width, 520) / 1.5);
 
   const freeHours = grid.courts.reduce(
     (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
@@ -64,6 +66,14 @@ export default function Home() {
 
   // Самая низкая цена дня — её и показываем в «от …» на витрине
   const cheapest = Math.min(...grid.courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0));
+
+  // Футбольное поле живёт по своим правилам: другая игра, другая компания,
+  // другая цена. В общем ряду кортов оно терялось.
+  const padel = grid.courts.filter(c => !c.isFootball);
+  const pitch = grid.courts.find(c => c.isFootball) ?? null;
+  const pitchFree = pitch?.hours.filter(h => h.status === 'free') ?? [];
+  const pitchPrice = pitch?.hours.find(h => h.status === 'free')?.price
+    ?? pitch?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
 
   const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
   const mine = bookings.filter(b => b.status !== 'cancelled');
@@ -81,36 +91,39 @@ export default function Home() {
       onScroll={scrim.onScroll} scrollEventThrottle={scrim.scrollEventThrottle}
       refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
+      <View style={[st.brandRow, { paddingTop: insets.top + 12 }]}>
+        <Mark size={34} />
+        <Text style={st.brand}>{CLUB_NAME}</Text>
+        <Text style={st.brandCity}>{CLUB_CITY}</Text>
+      </View>
+
       <View style={[st.hero, { height: heroH }]}>
-        <Image source={HERO} style={st.heroImg} resizeMode="cover" />
-        <LinearGradient
-          colors={['rgba(9,13,10,.62)', 'rgba(9,13,10,.06)', 'rgba(9,13,10,.72)', 'rgba(9,13,10,.97)']}
-          locations={[0, 0.26, 0.74, 1]} style={st.fill} />
+        <Image source={HERO} style={st.fillImg} resizeMode="cover" />
+        {/* Только мягкий край снизу, чтобы снимок не обрывался линией */}
+        <LinearGradient colors={['rgba(11,15,12,0)', 'rgba(11,15,12,.85)']}
+          locations={[0.72, 1]} style={st.fill} />
+      </View>
 
-        <View style={[st.brandRow, { paddingTop: insets.top + 10 }]}>
-          <Mark size={38} />
-          <Text style={st.brand}>{CLUB_NAME}</Text>
-        </View>
+      <View style={st.lead}>
+        <Text style={st.eyebrow}>АССАЛАМУ АЛЕЙКУМ</Text>
+        <Text style={st.leadTitle} allowFontScaling={false}>{CLUB_NAME}</Text>
+        <View style={st.rule} />
+        <Text style={st.lede}>
+          Шесть падел-кортов и мини-футбольное поле в {CLUB_CITY}е.
+          Каждый день с {hh(grid.openHour)} до полуночи.
+        </Text>
 
-        <View style={st.heroIn}>
-          <Text style={st.eyebrow}>АССАЛАМУ АЛЕЙКУМ</Text>
-          <Text style={st.lede}>
-            Шесть кортов и мини-футбольное поле в {CLUB_CITY}е.
-            Открыты с {hh(grid.openHour)} до полуночи.
-          </Text>
-
-          {/* Свободные часы живут прямо в кнопке: раньше то же самое
-              повторялось трижды — строкой под кнопкой и отдельной карточкой. */}
-          <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
-            accessibilityLabel={`Забронировать. ${freeText}`}
-            style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={st.ctaT}>Забронировать</Text>
-              <Text style={st.ctaS}>{freeText}</Text>
-            </View>
-            <IconChevron size={20} color={C.onLime} />
-          </Pressable>
-        </View>
+        {/* Свободные часы живут прямо в кнопке: раньше то же самое
+            повторялось трижды — строкой под кнопкой и отдельной карточкой. */}
+        <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
+          accessibilityLabel={`Забронировать. ${freeText}`}
+          style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={st.ctaT}>Забронировать</Text>
+            <Text style={st.ctaS}>{freeText}</Text>
+          </View>
+          <IconChevron size={20} color={C.onLime} />
+        </Pressable>
       </View>
 
       {(mine.length > 0 || entered.length > 0) && (
@@ -140,11 +153,11 @@ export default function Home() {
       <SocialButtons />
 
       <View style={st.secHead}>
-        <Text style={st.secT}>Площадки</Text>
-        <Text style={st.secS}>{grid.courts.length} штук</Text>
+        <Text style={st.secT}>Падел-корты</Text>
+        <Text style={st.secS}>{padel.length}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.strip}>
-        {grid.courts.map(c => {
+        {padel.map(c => {
           const free = c.hours.find(h => h.status === 'free');
           const price = c.hours.find(h => h.hour === (free?.hour ?? grid.morningUntil))?.price ?? 0;
           return (
@@ -169,6 +182,45 @@ export default function Home() {
           );
         })}
       </ScrollView>
+
+      {/* Мини-футбольное поле — отдельным блоком со своей записью */}
+      {pitch && (
+        <>
+          <View style={st.secHead}>
+            <Text style={st.secT}>Мини-футбол</Text>
+            <Text style={st.secS}>поле целиком</Text>
+          </View>
+          <Pressable
+            onPress={() => go('/schedule', { kind: 'football' })}
+            accessibilityRole="button"
+            accessibilityLabel={'Мини-футбольное поле. ' + (pitchFree.length > 0
+              ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
+              : 'сегодня занято') + '. Забронировать'}
+            style={({ pressed }) => [st.pitch, pressed && { opacity: 0.9 }]}>
+            <Image source={IMG[pitch.courtId] ?? IMG.f1} style={st.fillImg} resizeMode="cover" />
+            <LinearGradient colors={['rgba(9,13,10,.30)', 'rgba(9,13,10,.62)', 'rgba(9,13,10,.96)']}
+              locations={[0, 0.5, 1]} style={st.fill} />
+            <View style={st.pitchIn}>
+              <Text style={st.pitchEyebrow}>ПОЛЕ ЦЕЛИКОМ</Text>
+              <Text style={st.pitchN}>{pitch.name}</Text>
+              <Text style={st.pitchS}>
+                {pitch.closed ? 'Закрыто на ремонт'
+                  : pitchFree.length > 0
+                    ? `Свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
+                    : 'Сегодня занято — посмотрите другие дни'}
+              </Text>
+              <View style={st.pitchRow}>
+                <Text style={st.pitchPrice}>{pitchPrice > 0 ? rub(pitchPrice) : '—'}</Text>
+                <Text style={st.pitchUnit}>за час</Text>
+                <View style={st.pitchCta}>
+                  <Text style={st.pitchCtaT}>Забронировать</Text>
+                  <IconChevron size={15} color={C.onLime} />
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        </>
+      )}
 
       {tourn && (
         <>
@@ -241,25 +293,35 @@ function InfoRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  hero: { justifyContent: 'space-between', overflow: 'hidden',
-    borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: C.surface },
-  heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
-  brand: { color: C.text, fontFamily: DISP, fontSize: 19, letterSpacing: 1, flex: 1 },
-  heroIn: { paddingHorizontal: S.xl, paddingBottom: 24 },
-  eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 2.2, marginBottom: 8 },
-  lede: { color: '#DCE4D4', fontSize: 16, lineHeight: 23, marginTop: 12, fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 8 },
-  cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 16, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, minHeight: HIT },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 24, letterSpacing: 0.8 },
-  ctaS: { color: 'rgba(11,15,12,.72)', fontSize: 13, fontWeight: '600', marginTop: 2 },
+  // Для картинок мало одних краёв: без ширины и высоты React Native Web
+  // растягивает их до собственного размера, и виден лишь угол снимка.
+  fillImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%', height: '100%' },
+  hero: { overflow: 'hidden', backgroundColor: C.surface, marginTop: 14 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: S.xl },
+  brand: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: 1.4, flex: 1 },
+  brandCity: { color: C.dim2, fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase' },
+
+  lead: { paddingHorizontal: S.xl, paddingTop: 26 },
+  eyebrow: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 3 },
+  leadTitle: { color: C.text, fontFamily: DISP, fontSize: 40, lineHeight: 46,
+    letterSpacing: 1.2, marginTop: 10, textTransform: 'uppercase' },
+  // Волосяная линия вместо рамок — сдержаннее и дороже на вид
+  rule: { height: StyleSheet.hairlineWidth, backgroundColor: C.lineStrong,
+    marginTop: 18, marginBottom: 16, opacity: 0.55 },
+  lede: { color: C.dim, fontSize: 15.5, lineHeight: 24 },
+  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, minHeight: HIT },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 22, letterSpacing: 1 },
+  ctaS: { color: 'rgba(11,15,12,.66)', fontSize: 12.5, fontWeight: '600',
+    marginTop: 3, letterSpacing: 0.2 },
 
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
     marginBottom: 10, padding: 15, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, minHeight: 66 },
-  priceT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
-  priceS: { color: C.dim, fontSize: 13, marginTop: 2 },
+  priceT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 1.2,
+    textTransform: 'uppercase' },
+  priceS: { color: C.dim, fontSize: 13, marginTop: 3 },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 11, marginHorizontal: S.xl, marginTop: 10,
     padding: 12, borderRadius: R.lg, borderWidth: 1, borderColor: 'rgba(198,240,51,.28)',
@@ -269,37 +331,57 @@ const st = StyleSheet.create({
   mineT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
   mineS: { color: C.dim2, fontSize: 12, marginTop: 1 },
 
-  secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
-    paddingHorizontal: S.xl, marginTop: 28, marginBottom: 12 },
-  secT: { color: C.text, fontFamily: DISP, fontSize: 21, letterSpacing: 0.6 },
-  secS: { color: C.dim2, fontSize: 12.5 },
-  secLink: { color: C.lime, fontSize: 13, fontWeight: '600' },
+  pitch: { marginHorizontal: S.xl, height: 230, borderRadius: 24, overflow: 'hidden',
+    backgroundColor: C.surface, justifyContent: 'flex-end' },
+  pitchIn: { padding: 18 },
+  pitchEyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 2 },
+  pitchN: { color: C.text, fontFamily: DISP, fontSize: 27, letterSpacing: 0.6, marginTop: 6 },
+  pitchS: { color: '#D6DECF', fontSize: 13.5, marginTop: 4 },
+  pitchRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 14 },
+  pitchPrice: { color: C.text, fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  pitchUnit: { color: C.dim, fontSize: 13 },
+  pitchCta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto',
+    backgroundColor: C.lime, borderRadius: R.pill, paddingVertical: 10, paddingHorizontal: 16 },
+  pitchCtaT: { color: C.onLime, fontSize: 14.5, fontWeight: '700' },
+
+  // Заголовки разделов: прописные с широким трекингом. Мелкая деталь,
+  // но именно она отличает дорогой вид от обычного.
+  secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: S.xl, marginTop: 36, marginBottom: 14 },
+  secT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 2.4,
+    textTransform: 'uppercase' },
+  secS: { color: C.dim2, fontSize: 11.5, letterSpacing: 1.4, textTransform: 'uppercase',
+    fontVariant: ['tabular-nums'] },
+  secLink: { color: C.limeDim, fontSize: 12, fontWeight: '600', letterSpacing: 0.8,
+    textTransform: 'uppercase' },
   secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
     minHeight: HIT, justifyContent: 'center' },
 
   strip: { paddingHorizontal: S.xl, gap: 10 },
-  card: { width: 154, height: 190, borderRadius: R.xl, overflow: 'hidden',
+  card: { width: 164, height: 206, borderRadius: R.xl, overflow: 'hidden',
     backgroundColor: C.surface, justifyContent: 'flex-end' },
   cardImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  cardIn: { padding: 12 },
-  cardN: { color: C.text, fontSize: 15, fontWeight: '700' },
-  cardS: { color: C.lime, fontSize: 12, marginTop: 2, fontWeight: '600' },
-  cardPrice: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(9,13,10,.72)',
-    borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8 },
+  cardIn: { padding: 13 },
+  cardN: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: 0.8 },
+  cardS: { color: C.limeDim, fontSize: 11.5, marginTop: 3, fontWeight: '600', letterSpacing: 0.3 },
+  cardPrice: { position: 'absolute', top: 11, right: 11, backgroundColor: 'rgba(9,13,10,.66)',
+    borderRadius: R.pill, paddingVertical: 4, paddingHorizontal: 10,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(237,242,233,.22)' },
   cardPriceT: { color: C.text, fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
   tourn: { marginHorizontal: S.xl, height: 148, borderRadius: R.xl, overflow: 'hidden',
     justifyContent: 'flex-end', backgroundColor: C.surface },
   tournIn: { padding: 15 },
-  tournN: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: 0.4 },
+  tournN: { color: C.text, fontFamily: DISP, fontSize: 23, letterSpacing: 0.8 },
   tournS: { color: '#CBD5C2', fontSize: 12.5, marginTop: 3, fontWeight: '600' },
 
-  info: { marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
-    backgroundColor: C.surface, paddingHorizontal: 15 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13,
+  // Без рамки: только волосяные линии между строками. Меньше «коробочности».
+  info: { marginHorizontal: S.xl, borderRadius: R.lg, backgroundColor: C.surface,
+    paddingHorizontal: 16 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  infoK: { color: C.dim, fontSize: 14, flex: 1 },
-  infoV: { color: C.text, fontSize: 14, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  infoK: { color: C.dim2, fontSize: 12, flex: 1, letterSpacing: 1.2, textTransform: 'uppercase' },
+  infoV: { color: C.text, fontSize: 14.5, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
 
   foot: { color: C.dim2, fontSize: 11.5, lineHeight: 17, textAlign: 'center',
     marginTop: 22, paddingHorizontal: 30 },

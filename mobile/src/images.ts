@@ -9,7 +9,9 @@ export const IMG: Record<string, any> = {
   c6: require('../assets/img/c1.webp'),
   f1: require('../assets/img/f1.webp'),
 };
-export const HERO = require('../assets/img/hero.webp');
+// Снимки клуба, присланные заказчиком. В отличие от остальных — настоящие.
+export const HERO = require('../assets/img/club-hero.webp');
+export const CLUB_BAND = require('../assets/img/club-band.webp');
 export const TOURN = require('../assets/img/tourn.webp');
 
 // Обложки турниров. Менеджер меняет их из админки — здесь это просто ключ в данных.

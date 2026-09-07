@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Image, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S } from '../src/theme';
 import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
@@ -18,6 +18,11 @@ const DAYS_AHEAD = 5;
 
 export default function Schedule() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ kind?: string }>();
+  // Падел и мини-футбол — разные игры и разная компания. Держать их
+  // в одной сетке значит топить поле среди шести одинаковых колонок.
+  const [kind, setKind] = useState<'padel' | 'football'>(
+    params.kind === 'football' ? 'football' : 'padel');
   const [date, setDate] = useState(today());
   const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [hours, setHours] = useState(1);
@@ -32,6 +37,9 @@ export default function Schedule() {
   const gap = 3, padH = 10, timeW = 32;
 
   const grid = q.data;
+  const shown = (grid?.courts ?? []).filter(c =>
+    kind === 'football' ? c.isFootball : !c.isFootball);
+  const hasFootball = (grid?.courts ?? []).some(c => c.isFootball);
   const court = grid?.courts.find(c => c.courtId === sel?.courtId) ?? null;
   const cell = court?.hours.find(h => h.hour === sel?.hour) ?? null;
   const run = cell?.maxRun ?? 0;
@@ -46,12 +54,12 @@ export default function Schedule() {
     return sum;
   }, [court, sel, hours]);
 
-  const freeNow = grid?.courts.filter(c => {
+  const freeNow = shown.filter(c => {
     const h = c.hours.find(x => x.status === 'free');
     return h != null;
   }).length ?? 0;
-  const freeHours = grid?.courts.reduce(
-    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0) ?? 0;
+  const freeHours = shown.reduce(
+    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
 
   const pickCell = (courtId: string, h: ApiHour) => {
     if (h.status !== 'free') return;
@@ -86,10 +94,10 @@ export default function Schedule() {
   if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Выберите время' }} />
     <Failed message={q.error ?? 'Пустой ответ сервера'} onRetry={q.reload} /></>);
 
-  const closedNote = grid.courts.find(c => c.closed);
+  const closedNote = shown.find(c => c.closed);
 
   // Тарифы для подписи над сеткой: берём у обычного корта, не у футбольного поля
-  const priced = grid.courts.find(c => !c.isFootball) ?? grid.courts[0];
+  const priced = shown[0] ?? grid.courts[0];
   const morningPrice = priced?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
   const standardPrice = priced?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
 
@@ -102,9 +110,32 @@ export default function Schedule() {
 
       <Text style={st.sub}>
         {date === today()
-          ? `Сегодня · свободно ${freeNow} из ${grid.courts.length} площадок`
+          ? (kind === 'football'
+              ? `Сегодня · поле ${freeNow > 0 ? 'свободно' : 'занято'}`
+              : `Сегодня · свободно ${freeNow} из ${shown.length} кортов`)
           : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
       </Text>
+
+      {hasFootball && (
+        <View style={st.kinds}>
+          {(['padel', 'football'] as const).map(k => {
+            const on = kind === k;
+            return (
+              <Pressable key={k} onPress={() => {
+                if (on) return;
+                Haptics.selectionAsync();
+                setKind(k); setSel(null); setHours(1);
+              }}
+                accessibilityRole="button" accessibilityState={{ selected: on }}
+                style={[st.kind, on && st.kindOn]}>
+                <Text style={[st.kindT, on && { color: C.onLime }]}>
+                  {k === 'padel' ? 'Падел' : 'Мини-футбол'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
         accessibilityRole="button" accessibilityLabel="Открыть прайс-лист"
@@ -134,7 +165,7 @@ export default function Schedule() {
       <View style={{ paddingHorizontal: padH }}>
         <View style={[st.headRow, { gap }]}>
           <View style={{ width: timeW }} />
-          {grid.courts.map(c => (
+          {shown.map(c => (
             <Pressable key={c.courtId} onPress={() => showCourt(c.courtId)}
               accessibilityRole="button"
               accessibilityLabel={`${c.name}: посмотреть фотографию площадки`}
@@ -158,10 +189,10 @@ export default function Schedule() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
-        {grid.courts[0]?.hours.map(({ hour }) => (
+        {shown[0]?.hours.map(({ hour }) => (
           <View key={hour} style={[st.row, { gap }]}>
             <Text style={[st.time, { width: timeW }]}>{hh(hour)}</Text>
-            {grid.courts.map(c => {
+            {shown.map(c => {
               const h = c.hours.find(x => x.hour === hour)!;
               const free = h.status === 'free';
               const on = inRange(c.courtId, hour);
@@ -350,6 +381,12 @@ const st = StyleSheet.create({
     marginHorizontal: 20, marginTop: 8, paddingVertical: 6, paddingHorizontal: 11,
     borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   tariffT: { color: C.dim, fontSize: 12.5 },
+
+  kinds: { flexDirection: 'row', gap: 4, marginHorizontal: 20, marginTop: 10, padding: 4,
+    borderRadius: R.lg, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  kind: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 38, borderRadius: 12 },
+  kindOn: { backgroundColor: C.lime },
+  kindT: { color: C.dim, fontSize: 14, fontWeight: '700' },
 
   clear: { alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, marginTop: 8 },
   clearT: { color: C.dim, fontSize: 13.5, fontWeight: '600',
