@@ -6,7 +6,7 @@ import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
-import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
+import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
 
@@ -170,11 +170,16 @@ export class AdminController {
       where: { starts_at: { gte: clubHour(d, 0), lt: clubHour(d, 24) } },
       orderBy: [{ starts_at: 'asc' }, { court_id: 'asc' }],
     });
-    const [courts, clients] = await Promise.all([
+    const [courts, clients, paid] = await Promise.all([
       this.db.courts.findMany({ orderBy: { sort_order: 'asc' } }),
       this.db.clients.findMany({ where: { id: { in: rows.map(r => r.client_id!).filter(Boolean) } } }),
+      this.db.payments.groupBy({
+        by: ['booking_id'], where: { booking_id: { in: rows.map(r => r.id) } },
+        _sum: { amount: true },
+      }),
     ]);
     const byId = new Map(clients.map(c => [String(c.id), c]));
+    const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
 
     return {
       date: d,
@@ -193,6 +198,8 @@ export class AdminController {
           price: b.price, status: b.status, source: b.source,
           comment: b.comment, createdAt: b.created_at,
           guestName: b.guest_name,
+          paid: paidBy.get(String(b.id)) ?? 0,
+          statusAt: b.status_at, statusBy: b.status_by,
           client: cl ? {
             id: Number(cl.id), name: cl.name, phone: cl.phone,
             cancels: cl.cancels, noShows: cl.no_shows, note: cl.note,
@@ -215,7 +222,9 @@ export class AdminController {
     }
 
     const ops: any[] = [
-      this.db.bookings.update({ where: { id: b.id }, data: { status: dto.status } }),
+      this.db.bookings.update({ where: { id: b.id }, data: {
+        status: dto.status, status_at: new Date(), status_by: req.admin.login,
+      }}),
     ];
     // История поведения клиента: менеджер должен видеть, кто часто пропадает
     if (b.client_id && b.status !== dto.status) {
@@ -231,6 +240,77 @@ export class AdminController {
     await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
       `бронь №${Number(b.id)}`);
     return { id: Number(b.id), status: dto.status };
+  }
+
+  /** Платежи по броне: их бывает несколько — на корте четверо,
+   *  и скидываются они не одновременно. */
+  @Get('bookings/:id/payments')
+  async payments(@Param('id') id: string) {
+    const rows = await this.db.payments.findMany({
+      where: { booking_id: BigInt(id) }, orderBy: { created_at: 'asc' },
+    });
+    return rows.map(r => ({
+      id: Number(r.id), amount: r.amount, method: r.method, kind: r.kind,
+      receipt: r.receipt, note: r.note, by: r.admin_name, at: r.created_at,
+    }));
+  }
+
+  /** Принять деньги. Отдельного права не нужно — это работа стойки,
+   *  но записывается, кто именно принял. */
+  @Post('bookings/:id/pay')
+  async pay(@Req() req: any, @Param('id') id: string, @Body() body: {
+    amount?: number; method?: string; kind?: string; receipt?: string; note?: string;
+  }) {
+    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    if (!b) throw new NotFoundException('Запись не найдена');
+
+    const method = String(body.method ?? 'cash');
+    if (!PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
+    const kind = String(body.kind ?? 'payment');
+    if (!PAY_KINDS.includes(kind)) throw new BadRequestException('Неизвестный вид платежа');
+
+    let amount = rubToKop(Math.abs(Number(body.amount ?? 0)));
+    if (amount === 0) throw new BadRequestException('Сумма не может быть нулевой');
+    // Возврат хранится минусом: так остаётся след, кто и когда вернул деньги
+    if (kind === 'refund') amount = -amount;
+
+    const paid = await this.paidOf(b.id);
+    if (kind !== 'refund' && paid + amount > b.price * 3) {
+      throw new BadRequestException('Сумма сильно больше цены — похоже на ошибку');
+    }
+    if (kind === 'refund' && paid + amount < 0) {
+      throw new BadRequestException('Вернуть больше, чем получено, нельзя');
+    }
+
+    await this.db.payments.create({ data: {
+      booking_id: b.id, amount, method, kind,
+      receipt: body.receipt ? String(body.receipt).trim().slice(0, 40) : null,
+      note: body.note ? String(body.note).trim().slice(0, 200) : null,
+      admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+    }});
+    await this.auth.log(req.admin, KIND_WORD[kind],
+      `бронь №${Number(b.id)}, ${(Math.abs(amount) / 100).toLocaleString('ru-RU')} ₽, ${PAY_WORD[method]}`);
+    return { ok: true, paid: paid + amount, price: b.price };
+  }
+
+  /** Убрать ошибочный платёж. Это исправление, а не рядовое действие. */
+  @Post('payments/:id/delete')
+  @Needs('cancel')
+  async deletePayment(@Req() req: any, @Param('id') id: string) {
+    const row = await this.db.payments.findUnique({ where: { id: BigInt(id) } });
+    if (!row) throw new NotFoundException('Платёж не найден');
+    await this.db.payments.delete({ where: { id: row.id } });
+    await this.auth.log(req.admin, 'удалил платёж',
+      `бронь №${Number(row.booking_id)}, ${(row.amount / 100).toLocaleString('ru-RU')} ₽`);
+    return { ok: true };
+  }
+
+  /** Сколько уже получено по броне. */
+  private async paidOf(bookingId: bigint): Promise<number> {
+    const r = await this.db.payments.aggregate({
+      where: { booking_id: bookingId }, _sum: { amount: true },
+    });
+    return r._sum.amount ?? 0;
   }
 
   /** Поиск по имени и телефону сразу по всем датам.
@@ -354,6 +434,308 @@ export class AdminController {
       }
       throw e;
     }
+  }
+
+  /* ── история записей ────────────────────────────────────────────────
+     Раньше прошлое было доступно только перелистыванием дней по одному.
+     Здесь любой период, фильтры и итоги — это и есть «что было». */
+
+  @Get('history')
+  async history(@Query() q: {
+    from?: string; to?: string; status?: string; courtId?: string;
+    paid?: string; source?: string; search?: string; limit?: string; offset?: string;
+  }) {
+    const from = q.from && isValidDate(q.from) ? q.from : shiftDate(clubToday(), -30);
+    const to   = q.to   && isValidDate(q.to)   ? q.to   : clubToday();
+    if (from > to) throw new BadRequestException('Начало периода позже конца');
+
+    const where: any = {
+      starts_at: { gte: clubHour(from, 0), lt: clubHour(shiftDate(to, 1), 0) },
+    };
+    if (q.status && q.status !== 'all') where.status = q.status as any;
+    if (q.courtId) where.court_id = q.courtId;
+    if (q.paid === 'yes') where.payments = { some: {} };
+    if (q.paid === 'no') where.payments = { none: {} };
+    if (q.source === 'app' || q.source === 'admin') where.source = q.source;
+
+    const text = (q.search ?? '').trim();
+    if (text.length >= 2) {
+      const digits = text.replace(/\D/g, '');
+      const clients = await this.db.clients.findMany({
+        where: { OR: [
+          { name: { contains: text, mode: 'insensitive' } },
+          ...(digits.length >= 3 ? [{ phone: { contains: digits } }] : []),
+        ]},
+        select: { id: true },
+      });
+      where.OR = [
+        ...(clients.length ? [{ client_id: { in: clients.map(c => c.id) } }] : []),
+        { guest_name: { contains: text, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const take = Math.min(500, Math.max(1, Number(q.limit) || 100));
+    const skip = Math.max(0, Number(q.offset) || 0);
+
+    const [rows, total, charged, received] = await Promise.all([
+      this.db.bookings.findMany({ where, orderBy: { starts_at: 'desc' }, take, skip }),
+      this.db.bookings.count({ where }),
+      // Итоги по всему периоду, а не по показанной странице
+      this.db.bookings.aggregate({ where, _sum: { price: true } }),
+      this.db.payments.aggregate({
+        where: { bookings: where }, _sum: { amount: true },
+      }),
+    ]);
+
+    const [courts, clients, paid] = await Promise.all([
+      this.db.courts.findMany(),
+      this.db.clients.findMany({ where: { id: { in: rows.map(r => r.client_id!).filter(Boolean) } } }),
+      this.db.payments.groupBy({
+        by: ['booking_id'], where: { booking_id: { in: rows.map(r => r.id) } },
+        _sum: { amount: true },
+      }),
+    ]);
+    const courtName = new Map(courts.map(c => [c.id, c.name]));
+    const byId = new Map(clients.map(c => [String(c.id), c]));
+    const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
+
+    return {
+      total, from, to,
+      charged: charged._sum.price ?? 0,
+      received: received._sum.amount ?? 0,
+      rows: rows.map(b => {
+        const cl = b.client_id ? byId.get(String(b.client_id)) : null;
+        return {
+          id: Number(b.id),
+          date: this.dateOf(b.starts_at), hour: hourOf(b.starts_at),
+          hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
+          courtId: b.court_id, courtName: courtName.get(b.court_id) ?? b.court_id,
+          name: cl?.name ?? b.guest_name ?? 'Без имени',
+          phone: cl?.phone ?? null,
+          price: b.price, status: b.status, source: b.source,
+          paid: paidBy.get(String(b.id)) ?? 0,
+          statusAt: b.status_at, statusBy: b.status_by,
+          comment: b.comment,
+        };
+      }),
+    };
+  }
+
+  /* ── аналитика ──────────────────────────────────────────────────────
+     Главный вопрос руководителя — окупается ли клуб и куда бить.
+     Считаем по броням, которые состоялись: отменённые не в счёт. */
+
+  @Get('stats')
+  async stats(@Query('from') fromQ?: string, @Query('to') toQ?: string) {
+    const to   = toQ   && isValidDate(toQ)   ? toQ   : clubToday();
+    const from = fromQ && isValidDate(fromQ) ? fromQ : shiftDate(to, -29);
+    if (from > to) throw new BadRequestException('Начало периода позже конца');
+
+    const days = Math.round(
+      (+new Date(to + 'T00:00:00Z') - +new Date(from + 'T00:00:00Z')) / 864e5) + 1;
+    // Прошлый период такой же длины — иначе сравнивать не с чем
+    const prevTo = shiftDate(from, -1);
+    const prevFrom = shiftDate(prevTo, -(days - 1));
+
+    const [set, courts] = await Promise.all([
+      this.club.get(),
+      this.db.courts.findMany({ orderBy: { sort_order: 'asc' } }),
+    ]);
+    const openCourts = courts.filter(c => c.is_active).length || 1;
+    const dayHours = Math.max(1, set.closeHour - set.openHour);
+    const EVENING = 18;
+    const eveningHours = Math.max(1, set.closeHour - EVENING);
+
+    const load = async (a: string, b: string) => this.db.bookings.findMany({
+      where: { starts_at: { gte: clubHour(a, 0), lt: clubHour(shiftDate(b, 1), 0) } },
+      select: {
+        id: true, court_id: true, client_id: true, starts_at: true, ends_at: true,
+        status: true, price: true, source: true, created_at: true,
+      },
+    });
+
+    /** Платежи периода, разложенные по броням и по способам. */
+    const money = async (a: string, b: string) => this.db.payments.findMany({
+      where: { bookings: { starts_at: { gte: clubHour(a, 0), lt: clubHour(shiftDate(b, 1), 0) } } },
+      select: { booking_id: true, amount: true, method: true, kind: true },
+    });
+
+    const [rows, prevRows, pays, prevPays] = await Promise.all([
+      load(from, to), load(prevFrom, prevTo), money(from, to), money(prevFrom, prevTo),
+    ]);
+    const paidTotal = (list: { amount: number }[]) => list.reduce((n, p) => n + p.amount, 0);
+
+    /** Свод по набору броней. */
+    const sum = (list: typeof rows, payList: { amount: number }[]) => {
+      const live = list.filter(b => b.status !== 'cancelled');
+      const played = live.filter(b => b.status !== 'no_show');
+      const hoursOf = (b: typeof rows[number]) =>
+        Math.round((+b.ends_at - +b.starts_at) / 3600_000);
+      const bookedHours = played.reduce((n, b) => n + hoursOf(b), 0);
+      return {
+        bookings: live.length,
+        hours: bookedHours,
+        charged: played.reduce((n, b) => n + b.price, 0),
+        received: paidTotal(payList),
+        cancels: list.filter(b => b.status === 'cancelled').length,
+        noShows: list.filter(b => b.status === 'no_show').length,
+      };
+    };
+
+    const now = sum(rows, pays);
+    const prev = sum(prevRows, prevPays);
+
+    const hoursOf = (b: typeof rows[number]) => Math.round((+b.ends_at - +b.starts_at) / 3600_000);
+    const played = rows.filter(b => b.status !== 'cancelled' && b.status !== 'no_show');
+
+    // Загрузка: сколько часов продано из всех, что были в продаже
+    const capacity = openCourts * dayHours * days;
+    const eveningCapacity = openCourts * eveningHours * days;
+    let eveningSold = 0;
+    const byHour = new Map<number, { hours: number; revenue: number }>();
+    const byCourt = new Map<string, { hours: number; revenue: number }>();
+    const byWeekday = new Map<number, { hours: number; revenue: number }>();
+
+    for (const b of played) {
+      const start = hourOf(b.starts_at);
+      const n = hoursOf(b);
+      const perHour = n > 0 ? Math.round(b.price / n) : b.price;
+      const wd = weekdayOf(this.dateOf(b.starts_at));
+      for (let i = 0; i < n; i++) {
+        const h = start + i;
+        if (h >= EVENING) eveningSold++;
+        const cur = byHour.get(h) ?? { hours: 0, revenue: 0 };
+        byHour.set(h, { hours: cur.hours + 1, revenue: cur.revenue + perHour });
+      }
+      const c = byCourt.get(b.court_id) ?? { hours: 0, revenue: 0 };
+      byCourt.set(b.court_id, { hours: c.hours + n, revenue: c.revenue + b.price });
+      const w = byWeekday.get(wd) ?? { hours: 0, revenue: 0 };
+      byWeekday.set(wd, { hours: w.hours + n, revenue: w.revenue + b.price });
+    }
+
+    // Кто платил и чем: СБП отдельно от карты — комиссии разные
+    const byMethod: Record<string, number> = Object.fromEntries(PAY_METHODS.map(m => [m, 0]));
+    let refunded = 0, penalties = 0;
+    for (const p of pays) {
+      byMethod[p.method] = (byMethod[p.method] ?? 0) + p.amount;
+      if (p.kind === 'refund') refunded += -p.amount;
+      if (p.kind === 'penalty') penalties += p.amount;
+    }
+
+    // Тепловая карта «час × день недели» — по ней видно, где провал
+    const heat = new Map<string, number>();
+    for (const b of played) {
+      const start = hourOf(b.starts_at);
+      const wd = weekdayOf(this.dateOf(b.starts_at));
+      for (let i = 0; i < hoursOf(b); i++) {
+        const k = `${wd}:${start + i}`;
+        heat.set(k, (heat.get(k) ?? 0) + 1);
+      }
+    }
+    // Сколько раз каждый день недели попал в период — иначе доля соврёт
+    const weekdayCount = new Map<number, number>();
+    for (let i = 0; i < days; i++) {
+      const wd = weekdayOf(shiftDate(from, i));
+      weekdayCount.set(wd, (weekdayCount.get(wd) ?? 0) + 1);
+    }
+
+    // Упущенное: отменённые и неявочные часы в рублях
+    const lost = rows.filter(b => b.status === 'cancelled' || b.status === 'no_show')
+      .reduce((n, b) => n + b.price, 0);
+
+    // За сколько дней вперёд бронируют — от этого зависит, как далеко
+    // открывать расписание и когда слать напоминания
+    const depths = played.map(b =>
+      Math.max(0, Math.round((+b.starts_at - +b.created_at) / 864e5)));
+    const bookingDepth = depths.length
+      ? Math.round(depths.reduce((a, b) => a + b, 0) / depths.length * 10) / 10 : 0;
+
+    // Постоянные клиенты
+    const perClient = new Map<string, { visits: number; spent: number; last: Date }>();
+    for (const b of played) {
+      if (!b.client_id) continue;
+      const k = String(b.client_id);
+      const cur = perClient.get(k) ?? { visits: 0, spent: 0, last: b.starts_at };
+      perClient.set(k, {
+        visits: cur.visits + 1,
+        spent: cur.spent + b.price,
+        last: b.starts_at > cur.last ? b.starts_at : cur.last,
+      });
+    }
+    const topIds = [...perClient.entries()]
+      .sort((a, b) => b[1].spent - a[1].spent).slice(0, 10);
+    const topClients = topIds.length
+      ? (await this.db.clients.findMany({ where: { id: { in: topIds.map(([k]) => BigInt(k)) } } }))
+          .map(c => {
+            const d = perClient.get(String(c.id))!;
+            return { name: c.name, phone: c.phone, visits: d.visits, spent: d.spent,
+                     lastVisit: d.last };
+          })
+          .sort((a, b) => b.spent - a.spent)
+      : [];
+
+    const repeat = [...perClient.values()].filter(v => v.visits > 1).length;
+
+    // Новый клиент — тот, у кого до этого периода не было ни одной игры.
+    // Много новых и мало вернувшихся значит реклама работает, а клуб нет.
+    const ids = [...perClient.keys()].map(k => BigInt(k));
+    const seenBefore = ids.length
+      ? await this.db.bookings.findMany({
+          where: { client_id: { in: ids }, starts_at: { lt: clubHour(from, 0) },
+                   status: { not: 'cancelled' } },
+          select: { client_id: true }, distinct: ['client_id'],
+        })
+      : [];
+    const old = new Set(seenBefore.map(r => String(r.client_id)));
+    const fresh = ids.filter(id => !old.has(String(id))).length;
+
+    return {
+      from, to, days,
+      prevFrom, prevTo,
+      now, prev,
+      // Выручка на корт-час: сколько приносит один час одной площадки в среднем,
+      // включая пустые часы. Главная цифра для сравнения периодов.
+      revPerCourtHour: capacity ? Math.round(now.charged / capacity) : 0,
+      averageCheck: now.bookings ? Math.round(now.charged / now.bookings) : 0,
+      occupancy: capacity ? now.hours / capacity : 0,
+      eveningOccupancy: eveningCapacity ? eveningSold / eveningCapacity : 0,
+      unpaid: now.charged - now.received,
+      byMethod, refunded, penalties, lost, bookingDepth,
+      heat: Array.from({ length: 7 }, (_, w) => ({
+        weekday: w + 1,
+        days: weekdayCount.get(w + 1) ?? 0,
+        hours: Array.from({ length: set.closeHour - set.openHour }, (_, i) => {
+          const h = set.openHour + i;
+          const sold = heat.get(`${w + 1}:${h}`) ?? 0;
+          const cap = (weekdayCount.get(w + 1) ?? 0) * openCourts;
+          return { hour: h, sold, load: cap ? sold / cap : 0 };
+        }),
+      })),
+      openHour: set.openHour, closeHour: set.closeHour, eveningFrom: EVENING,
+      byHour: Array.from({ length: set.closeHour - set.openHour }, (_, i) => {
+        const h = set.openHour + i;
+        const v = byHour.get(h) ?? { hours: 0, revenue: 0 };
+        const cap = openCourts * days;
+        return { hour: h, hours: v.hours, revenue: v.revenue, load: cap ? v.hours / cap : 0 };
+      }),
+      byCourt: courts.map(c => {
+        const v = byCourt.get(c.id) ?? { hours: 0, revenue: 0 };
+        const cap = dayHours * days;
+        return { id: c.id, name: c.name, hours: v.hours, revenue: v.revenue,
+                 load: cap ? v.hours / cap : 0, isActive: c.is_active };
+      }),
+      byWeekday: Array.from({ length: 7 }, (_, i) => {
+        const wd = i + 1;
+        const v = byWeekday.get(wd) ?? { hours: 0, revenue: 0 };
+        return { weekday: wd, hours: v.hours, revenue: v.revenue };
+      }),
+      sources: {
+        app: rows.filter(b => b.source === 'app' && b.status !== 'cancelled').length,
+        admin: rows.filter(b => b.source !== 'app' && b.status !== 'cancelled').length,
+      },
+      clients: { total: perClient.size, repeat, fresh, returning: perClient.size - fresh },
+      topClients,
+    };
   }
 
   /* ── управление клубом ──────────────────────────────────────────────
@@ -717,3 +1099,17 @@ function checkPassword(pw: string): string {
   }
   return p;
 }
+
+/** Способы оплаты. СБП отдельно от эквайринга: комиссия у них разная,
+ *  и руководителю важно видеть, куда смещается доля. */
+export const PAY_METHODS = ['cash', 'card', 'sbp', 'transfer', 'invoice'];
+export const PAY_KINDS = ['payment', 'refund', 'penalty'];
+
+const PAY_WORD: Record<string, string> = {
+  cash: 'наличными', card: 'картой', sbp: 'по СБП',
+  transfer: 'переводом', invoice: 'по счёту',
+};
+
+const KIND_WORD: Record<string, string> = {
+  payment: 'принял оплату', refund: 'вернул деньги', penalty: 'удержал за неявку',
+};

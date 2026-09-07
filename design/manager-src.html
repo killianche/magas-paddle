@@ -204,11 +204,52 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .logRow{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
   padding:5px 0;border-bottom:1px solid var(--line-soft)}
 .logRow span{color:var(--dim-2);white-space:nowrap}
+
+/* ── разделы: день, история, аналитика ─────────────────────────────── */
+.views{display:flex;gap:3px;padding:3px;border-radius:11px;background:var(--surface);
+  border:1px solid var(--line)}
+.vw{padding:7px 14px;border-radius:8px;border:0;background:none;color:var(--dim);font-size:13px}
+.vw.on{background:var(--lime);color:#0B0F0C;font-weight:700}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filters label{display:flex;align-items:center;gap:6px;color:var(--dim-2);font-size:12.5px}
+.filters input,.filters select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);color-scheme:dark;font-size:13px}
+.hist{width:100%;border-collapse:collapse;font-size:13px}
+.hist th{text-align:left;padding:8px 10px;color:var(--dim-2);font-weight:600;font-size:12px;
+  border-bottom:1px solid var(--line);position:sticky;top:59px;background:var(--ink);z-index:5}
+.hist td{padding:9px 10px;border-bottom:1px solid var(--line-soft)}
+.hist tr.cancelled td{opacity:.5;text-decoration:line-through}
+.hist .money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hist .ok{color:var(--lime)}
+.hist .no{color:var(--amber)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:18px}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px}
+.card b{display:block;font-family:var(--disp);font-size:27px;line-height:1.1}
+.card span{display:block;font-size:12.5px;color:var(--dim-2);margin-top:5px}
+.card .delta{font-size:12px;margin-top:6px}
+.delta.up{color:var(--lime)}.delta.down{color:var(--red)}.delta.flat{color:var(--dim-2)}
+.sect{font-family:var(--disp);font-size:17px;margin:22px 0 10px;letter-spacing:.04em}
+.bars{display:flex;flex-direction:column;gap:5px}
+.bar{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.bar .lbl{width:88px;color:var(--dim);white-space:nowrap}
+.bar .track{flex:1;height:20px;border-radius:6px;background:var(--surface);overflow:hidden}
+.bar .fill{height:100%;background:var(--green-mid);border-radius:6px}
+.bar .fill.hot{background:var(--lime)}
+.bar .val{width:150px;text-align:right;color:var(--dim-2);font-variant-numeric:tabular-nums}
+.heat td.hc{text-align:center;padding:7px 4px;font-size:11.5px;border-bottom:1px solid var(--ink)}
+.heat th{font-size:11px;padding:6px 4px}
+.heat td:first-child{color:var(--dim);white-space:nowrap}
+.card.warn{border-color:rgba(240,169,59,.4);background:rgba(240,169,59,.06)}
 </style>
 
 <div class="top">
   <img class="logo" src="/favicon.png" alt="">
   <div class="brand">Magas <b>Padel</b></div>
+  <div class="views">
+    <button class="vw on" data-view="day">День</button>
+    <button class="vw" data-view="history">История</button>
+    <button class="vw" data-view="stats">Аналитика</button>
+  </div>
   <input id="search" class="search" type="search" autocomplete="off"
          placeholder="Поиск по имени или телефону" aria-label="Поиск клиента по имени или телефону">
   <div class="spacer"></div>
@@ -227,8 +268,52 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 </div>
 
 <div class="wrap">
-  <div class="stats" id="stats"></div>
-  <div id="board"><div class="center">Загружаю…</div></div>
+  <div id="viewDay">
+    <div class="stats" id="stats"></div>
+    <div id="board"><div class="center">Загружаю…</div></div>
+  </div>
+
+  <div id="viewHistory" hidden>
+    <div class="filters">
+      <label>С <input type="date" id="hFrom"></label>
+      <label>по <input type="date" id="hTo"></label>
+      <select id="hStatus">
+        <option value="all">Все состояния</option>
+        <option value="confirmed">Подтверждённые</option>
+        <option value="pending">Ждут подтверждения</option>
+        <option value="cancelled">Отменённые</option>
+        <option value="no_show">Неявки</option>
+      </select>
+      <select id="hPaid">
+        <option value="">Оплата: любая</option>
+        <option value="yes">Оплаченные</option>
+        <option value="no">Неоплаченные</option>
+      </select>
+      <select id="hCourt"><option value="">Все площадки</option></select>
+      <select id="hSource">
+        <option value="">Откуда: любые</option>
+        <option value="app">Из приложения</option>
+        <option value="admin">Записал менеджер</option>
+      </select>
+      <input id="hSearch" placeholder="Имя или телефон">
+      <button class="btn acc small" id="hGo">Показать</button>
+      <button class="btn small" id="hCsv">Выгрузить</button>
+    </div>
+    <div class="stats" id="hStats"></div>
+    <div id="hRows"><div class="center">Выберите период</div></div>
+  </div>
+
+  <div id="viewStats" hidden>
+    <div class="filters">
+      <label>С <input type="date" id="sFrom"></label>
+      <label>по <input type="date" id="sTo"></label>
+      <button class="btn small" data-period="7">Неделя</button>
+      <button class="btn small" data-period="30">Месяц</button>
+      <button class="btn small" data-period="90">Три месяца</button>
+      <button class="btn acc small" id="sGo">Показать</button>
+    </div>
+    <div id="sOut"><div class="center">Загружаю…</div></div>
+  </div>
 </div>
 
 <!-- ключ входа -->
@@ -296,6 +381,38 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <p class="sub">Записи по всем датам, свежие сверху.</p>
     <div class="list" id="findList"></div>
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- приём оплаты -->
+<div class="modal" id="payModal">
+  <div class="sheet">
+    <h3>Принять оплату</h3>
+    <p class="sub" id="paySub"></p>
+    <label>Чем платят</label>
+    <div class="days" id="payMethod">
+      <button type="button" data-m="cash" class="on">Наличными</button>
+      <button type="button" data-m="card">Картой</button>
+      <button type="button" data-m="sbp">По СБП</button>
+      <button type="button" data-m="transfer">Переводом</button>
+      <button type="button" data-m="invoice">По счёту</button>
+    </div>
+    <label>Что за платёж</label>
+    <div class="days" id="payKind">
+      <button type="button" data-k="payment" class="on">Оплата</button>
+      <button type="button" data-k="refund">Возврат</button>
+      <button type="button" data-k="penalty">Удержание за неявку</button>
+    </div>
+    <label for="payAmount">Сумма, ₽</label>
+    <input id="payAmount" type="number" min="0" step="50">
+    <p class="sub" style="margin:4px 0 0" id="payLeft"></p>
+    <label for="payReceipt">Номер чека</label>
+    <input id="payReceipt" placeholder="Необязательно">
+    <div class="err" id="payErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="payOk">Оплачено</button>
+    </div>
   </div>
 </div>
 
@@ -668,7 +785,10 @@ function render(){
   const bar = $('#staleBar'); if(bar) bar.remove();
   const alive = day.bookings.filter(b => b.status!=='cancelled');
   const pending = alive.filter(b => b.status==='pending');
+  // Две разные цифры: сколько должны заплатить и сколько уже в кассе.
+  // Раньше была одна, и она включала неоплаченные заявки.
   const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+b.price,0);
+  const got = day.bookings.reduce((s,b)=>s+(b.paid||0),0);
   // Считаем только реально открытые площадки: закрытый на ремонт корт
   // занижал занятость и цифра переставала что-либо значить.
   const open = day.courts.filter(c =>
@@ -686,7 +806,8 @@ function render(){
     <div class="stat"><b>${alive.length}</b><span>записей на день</span></div>
     <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
     <div class="stat"><b>${cancelled}</b><span>отмен за день</span></div>
-    <div class="stat"><b>${rub(money)}</b><span>к оплате за день</span></div>`;
+    <div class="stat"><b>${rub(got)}</b><span>получено</span></div>
+    <div class="stat"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
 
   const courts = day.courts;
   const isToday = date === todayStr();
@@ -713,7 +834,9 @@ function render(){
           html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}" title="${nm}">
             <div class="n">${nm}${flags}</div>
             <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div>
-            <div class="st">${STATUS[b.status]||b.status}</div>
+            <div class="st">${b.paid >= b.price ? '✓ оплачено'
+              : b.paid > 0 ? '½ ' + rub(b.paid)
+              : (STATUS[b.status]||b.status)}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
         }
@@ -749,6 +872,11 @@ async function openBooking(id){
       ? `${phoneNice(b.client.phone)}<button class="copy" id="bkCopy">копировать</button>`
       + `<a class="copy" href="https://wa.me/${b.client.phone}" target="_blank" rel="noopener">WhatsApp</a>`
       : '—'}</b></div>
+    <div class="row"><span>Оплата</span><b>${b.paid > 0
+      ? (b.paid >= b.price
+          ? `<span style="color:var(--lime)">оплачено ${rub(b.paid)}</span>`
+          : `<span style="color:var(--amber)">внесено ${rub(b.paid)} из ${rub(b.price)}</span>`)
+      : '<span style="color:var(--amber)">не оплачено</span>'}</b></div>
     <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
     ${b.comment?`<div class="row"><span>Заметка</span><b>${b.comment}</b></div>`:''}`;
 
@@ -773,7 +901,9 @@ async function openBooking(id){
   }
 
   const acts = [];
-  if(b.status!=='confirmed') acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
+  if(b.paid < b.price) acts.push(`<button class="btn acc" data-pay>Принять оплату</button>`);
+  else acts.push(`<button class="btn" data-pay>Ещё платёж</button>`);
+  if(b.status!=='confirmed') acts.push(`<button class="btn" data-s="confirmed">Подтвердить</button>`);
   acts.push(`<button class="btn" data-move>Перенести</button>`);
   // «Не пришёл» имеет смысл только после начала игры
   const started = date < todayStr() || (date === todayStr() && b.hour <= nowHour());
@@ -792,6 +922,27 @@ async function openBooking(id){
   const mv = $('#bkActs').querySelector('[data-move]');
   if(mv) mv.onclick = () => { $('#bkModal').classList.remove('on'); openMove(b) };
 
+  const payBtn = $('#bkActs').querySelector('[data-pay]');
+  if(payBtn) payBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b) };
+
+  // Список платежей: по нему видно, кто и когда принял деньги
+  if(b.paid !== 0){
+    try {
+      const ps = await call(`/admin/bookings/${id}/payments`);
+      $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Платежи</div>` +
+        ps.map(x => `<div class="logRow">
+          <div>${x.amount<0?'возврат ':''}${rub(Math.abs(x.amount))} ${METHOD[x.method]||x.method} · ${x.by}
+            ${can('cancel') ? `<button class="copy" data-pay-del="${x.id}">убрать</button>` : ''}</div>
+          <span>${new Date(x.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>`).join('');
+      $('#bkHist').querySelectorAll('[data-pay-del]').forEach(el => el.onclick = async () => {
+        if(!await ask('Убрать платёж?', 'Это исправление ошибки. Запись останется в журнале.')) return;
+        try { await call(`/admin/payments/${el.dataset.payDel}/delete`, { method:'POST', body:'{}' });
+              $('#bkModal').classList.remove('on'); load(); } catch(e){ alert(e.message) }
+      });
+    } catch {}
+  }
+
   $('#bkActs').querySelectorAll('[data-s]').forEach(el => el.onclick = async () => {
     const st = el.dataset.s;
     // Отмена и неявка необратимы одним кликом — раньше это делалось без вопроса
@@ -806,6 +957,43 @@ async function openBooking(id){
     } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
   });
 }
+
+/* ── приём оплаты ─────────────────────────────────────── */
+let paying = null;
+function openPay(b){
+  paying = b;
+  const court = day.courts.find(c => c.id===b.courtId);
+  const left = Math.max(0, b.price - b.paid);
+  $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · цена ${rub(b.price)}`;
+  $('#payLeft').textContent = b.paid
+    ? `Уже внесено ${rub(b.paid)}, осталось ${rub(left)}. Сумму можно поменять.`
+    : 'Сумму можно поменять: скидка постоянному или платят частями.';
+  $('#payAmount').value = (left || b.price)/100;
+  $('#payReceipt').value = '';
+  $('#payMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
+  $('#payKind').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
+  $('#payErr').classList.remove('on');
+  $('#payModal').classList.add('on');
+}
+$('#payKind').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#payKind').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+});
+$('#payMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#payMethod').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+});
+$('#payOk').onclick = async () => {
+  const m = $('#payMethod').querySelector('button.on')?.dataset.m ?? 'cash';
+  const k = $('#payKind').querySelector('button.on')?.dataset.k ?? 'payment';
+  try {
+    await call(`/admin/bookings/${paying.id}/pay`, { method:'POST', body: JSON.stringify({
+      amount: +$('#payAmount').value, method: m, kind: k,
+      receipt: $('#payReceipt').value.trim() || undefined })});
+    $('#payModal').classList.remove('on');
+    load();
+  } catch(e){ $('#payErr').textContent = e.message; $('#payErr').classList.add('on') }
+};
 
 /* ── перенос записи ───────────────────────────────────── */
 let moving = null;
@@ -1268,6 +1456,228 @@ $('#tnSave').onclick = async () => {
     loadTournaments();
   } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
 };
+
+/* ── переключение разделов ────────────────────────────── */
+let view = 'day';
+document.querySelectorAll('.vw').forEach(b => b.onclick = () => switchView(b.dataset.view));
+
+function switchView(v){
+  view = v;
+  document.querySelectorAll('.vw').forEach(b => b.classList.toggle('on', b.dataset.view===v));
+  $('#viewDay').hidden = v!=='day';
+  $('#viewHistory').hidden = v!=='history';
+  $('#viewStats').hidden = v!=='stats';
+  // Листалка дней и «Записать клиента» относятся только ко дню
+  document.querySelector('.day-nav').style.display = v==='day' ? '' : 'none';
+  $('#todayBtn').style.display = v==='day' ? '' : 'none';
+  $('#datePick').style.display = v==='day' ? '' : 'none';
+  $('#addBtn').style.display = v==='day' ? '' : 'none';
+  if(v==='history' && !$('#hFrom').value){
+    $('#hTo').value = todayStr(); $('#hFrom').value = shift(todayStr(), -30);
+    $('#hCourt').innerHTML = '<option value="">Все площадки</option>' +
+      (day?.courts ?? []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    loadHistory();
+  }
+  if(v==='stats' && !$('#sFrom').value){
+    $('#sTo').value = todayStr(); $('#sFrom').value = shift(todayStr(), -29);
+    loadStats();
+  }
+}
+
+/* ── история записей ──────────────────────────────────── */
+let histRows = [];
+
+function histQuery(){
+  const p = new URLSearchParams({ from: $('#hFrom').value, to: $('#hTo').value, limit: '300' });
+  if($('#hStatus').value !== 'all') p.set('status', $('#hStatus').value);
+  if($('#hPaid').value) p.set('paid', $('#hPaid').value);
+  if($('#hCourt').value) p.set('courtId', $('#hCourt').value);
+  if($('#hSource').value) p.set('source', $('#hSource').value);
+  if($('#hSearch').value.trim().length >= 2) p.set('search', $('#hSearch').value.trim());
+  return p.toString();
+}
+
+async function loadHistory(){
+  $('#hRows').innerHTML = '<div class="center">Считаю…</div>';
+  let r;
+  try { r = await call('/admin/history?' + histQuery()) }
+  catch(e){ $('#hRows').innerHTML = `<div class="center">${e.message}</div>`; return }
+  histRows = r.rows;
+
+  $('#hStats').innerHTML = `
+    <div class="stat"><b>${r.total}</b><span>записей за период</span></div>
+    <div class="stat"><b>${rub(r.charged)}</b><span>начислено</span></div>
+    <div class="stat"><b>${rub(r.received)}</b><span>получено</span></div>
+    <div class="stat${r.charged-r.received>0?' warn':''}"><b>${rub(Math.max(0,r.charged-r.received))}</b><span>не оплачено</span></div>`;
+
+  if(!r.rows.length){ $('#hRows').innerHTML = '<div class="center">За этот период ничего нет</div>'; return }
+
+  $('#hRows').innerHTML = `<table class="hist"><thead><tr>
+      <th>Когда</th><th>Площадка</th><th>Клиент</th><th>Телефон</th>
+      <th>Состояние</th><th>Откуда</th><th class="money">Цена</th><th class="money">Оплата</th>
+    </tr></thead><tbody>` +
+    r.rows.map(b => `<tr class="${b.status}">
+      <td>${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour+b.hours)}</td>
+      <td>${b.courtName}</td>
+      <td>${b.name}</td>
+      <td>${phoneNice(b.phone)}</td>
+      <td>${STATUS[b.status]||b.status}</td>
+      <td>${b.source==='app'?'приложение':'менеджер'}</td>
+      <td class="money">${rub(b.price)}</td>
+      <td class="money ${b.paid>=b.price?'ok':b.paid>0?'':'no'}">${b.paid ? rub(b.paid) : '—'}</td>
+    </tr>`).join('') +
+    `</tbody></table>` +
+    (r.total > r.rows.length
+      ? `<div class="center" style="padding:14px">Показаны ${r.rows.length} из ${r.total}. Сузьте период или фильтры.</div>`
+      : '');
+}
+
+$('#hGo').onclick = loadHistory;
+['#hStatus','#hPaid','#hCourt','#hSource'].forEach(id => $(id).onchange = loadHistory);
+$('#hSearch').addEventListener('keydown', e => { if(e.key==='Enter') loadHistory() });
+
+/* Выгрузка для бухгалтерии. Точка с запятой и BOM — иначе Excel
+   на русской раскладке кладёт всю строку в одну ячейку. */
+$('#hCsv').onclick = () => {
+  if(!histRows.length) return;
+  const head = ['Дата','Время','Площадка','Клиент','Телефон','Состояние','Откуда','Цена','Оплачено','Статус поставил'];
+  const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const lines = [head.join(';')].concat(histRows.map(b => [
+    b.date, `${hh(b.hour)}-${hh(b.hour+b.hours)}`, b.courtName, b.name,
+    phoneNice(b.phone), STATUS[b.status]||b.status, b.source==='app'?'приложение':'менеджер',
+    (b.price/100).toFixed(0), (b.paid/100).toFixed(0),
+    b.statusBy === 'client' ? 'клиент' : (b.statusBy || ''),
+  ].map(esc).join(';')));
+  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `magas-padel-${$('#hFrom').value}_${$('#hTo').value}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+/* ── аналитика ────────────────────────────────────────── */
+const WD = ['','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+const WDS = ['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const METHOD = { cash:'наличные', card:'карта', sbp:'СБП', transfer:'перевод', invoice:'счёт' };
+
+const pct = x => Math.round(x*100) + '%';
+
+/** Насколько выросло против прошлого такого же периода. */
+function delta(now, prev){
+  if(!prev) return now ? '<div class="delta up">нет данных за прошлый период</div>' : '';
+  const d = Math.round((now/prev - 1) * 100);
+  const cls = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
+  const sign = d > 0 ? '+' : '';
+  return `<div class="delta ${cls}">${sign}${d}% к прошлому периоду</div>`;
+}
+
+document.querySelectorAll('#viewStats [data-period]').forEach(b => b.onclick = () => {
+  const n = +b.dataset.period;
+  $('#sTo').value = todayStr(); $('#sFrom').value = shift(todayStr(), -(n-1));
+  loadStats();
+});
+$('#sGo').onclick = loadStats;
+
+async function loadStats(){
+  $('#sOut').innerHTML = '<div class="center">Считаю…</div>';
+  let d;
+  try { d = await call(`/admin/stats?from=${$('#sFrom').value}&to=${$('#sTo').value}`) }
+  catch(e){ $('#sOut').innerHTML = `<div class="center">${e.message}</div>`; return }
+
+  const maxHourLoad = Math.max(0.01, ...d.byHour.map(h => h.load));
+  const maxCourt = Math.max(1, ...d.byCourt.map(c => c.revenue));
+
+  $('#sOut').innerHTML = `
+    <div class="cards">
+      <div class="card"><b>${rub(d.now.received)}</b><span>получено денег</span>
+        ${delta(d.now.received, d.prev.received)}</div>
+      <div class="card"><b>${rub(d.now.charged)}</b><span>начислено по прайсу</span>
+        ${delta(d.now.charged, d.prev.charged)}</div>
+      <div class="card${d.unpaid>0?' warn':''}"><b>${rub(Math.max(0,d.unpaid))}</b><span>не оплачено</span>
+        <div class="delta flat">долги за период</div></div>
+      <div class="card"><b>${pct(d.eveningOccupancy)}</b><span>загрузка вечера, с ${d.eveningFrom}:00</span>
+        ${delta(d.now.hours, d.prev.hours)}</div>
+      <div class="card"><b>${pct(d.occupancy)}</b><span>загрузка за весь день</span></div>
+      <div class="card"><b>${rub(d.revPerCourtHour)}</b><span>выручка на корт-час</span>
+        <div class="delta flat">включая пустые часы</div></div>
+      <div class="card"><b>${rub(d.averageCheck)}</b><span>средний чек</span></div>
+      <div class="card"><b>${rub(d.lost)}</b><span>упущено на отменах и неявках</span>
+        <div class="delta flat">${d.now.cancels} отмен, ${d.now.noShows} неявок</div></div>
+    </div>
+
+    <div class="sect">Когда играют: час × день недели</div>
+    ${heatTable(d)}
+
+    <div class="sect">Загрузка по часам</div>
+    <div class="bars">${d.byHour.map(h => `
+      <div class="bar">
+        <div class="lbl">${hh(h.hour)}</div>
+        <div class="track"><div class="fill${h.load>=maxHourLoad*0.75?' hot':''}"
+          style="width:${Math.round(h.load*100)}%"></div></div>
+        <div class="val">${pct(h.load)} · ${rub(h.revenue)}</div>
+      </div>`).join('')}</div>
+
+    <div class="sect">Площадки</div>
+    <div class="bars">${d.byCourt.map(c => `
+      <div class="bar">
+        <div class="lbl">${c.name}</div>
+        <div class="track"><div class="fill" style="width:${Math.round(c.revenue/maxCourt*100)}%"></div></div>
+        <div class="val">${pct(c.load)} · ${rub(c.revenue)}</div>
+      </div>`).join('')}</div>
+
+    <div class="sect">Чем платят</div>
+    <div class="bars">${Object.entries(d.byMethod).filter(([,v]) => v).map(([k,v]) => `
+      <div class="bar">
+        <div class="lbl">${METHOD[k]||k}</div>
+        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.now.received)*100)}%"></div></div>
+        <div class="val">${rub(v)}</div>
+      </div>`).join('') || '<div class="empty">Оплат за период нет.</div>'}
+      ${d.refunded ? `<div class="bar"><div class="lbl">возвращено</div><div class="track"></div><div class="val">−${rub(d.refunded)}</div></div>` : ''}
+    </div>
+
+    <div class="sect">Клиенты</div>
+    <div class="cards">
+      <div class="card"><b>${d.clients.total}</b><span>играли за период</span></div>
+      <div class="card"><b>${d.clients.fresh}</b><span>пришли впервые</span></div>
+      <div class="card"><b>${d.clients.returning}</b><span>вернулись</span></div>
+      <div class="card"><b>${d.bookingDepth} дн.</b><span>за сколько бронируют вперёд</span></div>
+      <div class="card"><b>${d.sources.app} / ${d.sources.admin}</b><span>приложение / стойка</span></div>
+    </div>
+
+    ${d.topClients.length ? `<div class="sect">Кто приносит больше всех</div>
+    <table class="hist"><thead><tr><th>Клиент</th><th>Телефон</th>
+      <th class="money">Игр</th><th class="money">Сумма</th><th>Последний раз</th></tr></thead><tbody>` +
+      d.topClients.map(c => `<tr>
+        <td>${c.name}</td><td>${phoneNice(c.phone)}</td>
+        <td class="money">${c.visits}</td><td class="money">${rub(c.spent)}</td>
+        <td>${new Date(c.lastVisit).toLocaleDateString('ru-RU')}</td>
+      </tr>`).join('') + '</tbody></table>' : ''}
+
+    <div class="center" style="padding:16px 0;color:var(--dim-2);font-size:12.5px">
+      Сравнение с ${pretty(d.prevFrom)} — ${pretty(d.prevTo)}.
+      Отменённые брони в выручку не входят.
+    </div>`;
+}
+
+/** Тепловая карта: где провал, туда и бить ценой или группами. */
+function heatTable(d){
+  const hours = d.heat[0]?.hours ?? [];
+  if(!hours.length) return '<div class="empty">Нет данных.</div>';
+  let html = '<table class="hist heat"><thead><tr><th></th>' +
+    hours.map(h => `<th class="money">${String(h.hour).padStart(2,'0')}</th>`).join('') +
+    '</tr></thead><tbody>';
+  for(const row of d.heat){
+    html += `<tr><td>${WDS[row.weekday]}</td>` + row.hours.map(h => {
+      // Чем плотнее занят час, тем ярче клетка
+      const a = h.load;
+      const bg = a === 0 ? 'transparent' : `rgba(198,240,51,${(0.12 + a*0.8).toFixed(2)})`;
+      const col = a > 0.55 ? '#0B0F0C' : 'var(--dim)';
+      return `<td class="hc" style="background:${bg};color:${col}"
+        title="${WD[row.weekday]}, ${hh(h.hour)} — занято ${pct(h.load)}">${h.sold||''}</td>`;
+    }).join('') + '</tr>';
+  }
+  return html + '</tbody></table>';
+}
 
 /* ── сотрудники ───────────────────────────────────────── */
 let staff = [];

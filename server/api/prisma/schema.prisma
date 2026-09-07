@@ -61,6 +61,23 @@ model price_rules {
   @@index([sort_order, id], map: "price_rules_order")
 }
 
+model payments {
+  id         BigInt   @id @default(autoincrement())
+  booking_id BigInt
+  amount     Int
+  method     String
+  kind       String   @default("payment")
+  receipt    String?
+  note       String?
+  admin_id   BigInt?
+  admin_name String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  bookings   bookings @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+
+  @@index([booking_id], map: "payments_booking")
+  @@index([created_at], map: "payments_time")
+}
+
 model settings {
   id            Int      @id @default(1) @db.SmallInt
   open_hour     Int      @db.SmallInt
@@ -82,13 +99,17 @@ model bookings {
   source     String         @default("app")
   comment    String?
   guest_name String?
+  status_at  DateTime?      @db.Timestamptz(6)
+  status_by  String?
   created_at DateTime       @default(now()) @db.Timestamptz(6)
   updated_at DateTime       @default(now()) @db.Timestamptz(6)
   clients    clients?       @relation(fields: [client_id], references: [id], onUpdate: NoAction)
   courts     courts         @relation(fields: [court_id], references: [id], onUpdate: NoAction)
+  payments   payments[]
 
   @@index([client_id], map: "bookings_client")
   @@index([court_id, starts_at], map: "bookings_court_time")
+  @@index([starts_at], map: "bookings_starts")
 }
 
 model clients {

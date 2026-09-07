@@ -115,7 +115,9 @@ export class BookingsController {
       throw new NotFoundException('Запись не найдена');
     }
     await this.db.$transaction([
-      this.db.bookings.update({ where: { id: booking.id }, data: { status: 'cancelled' } }),
+      this.db.bookings.update({ where: { id: booking.id }, data: {
+        status: 'cancelled', status_at: new Date(), status_by: 'client',
+      }}),
       this.db.clients.update({ where: { id: client.id }, data: { cancels: { increment: 1 } } }),
     ]);
     return { id: Number(booking.id), status: 'cancelled' };

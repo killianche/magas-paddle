@@ -30,3 +30,10 @@ export function weekdayOf(date: string): number {
   const d = new Date(date + 'T00:00:00Z').getUTCDay();   // 0 — воскресенье
   return d === 0 ? 7 : d;
 }
+
+/** Дата плюс-минус несколько дней, в том же виде ГГГГ-ММ-ДД. */
+export function shiftDate(date: string, days: number): string {
+  const d = new Date(date + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
