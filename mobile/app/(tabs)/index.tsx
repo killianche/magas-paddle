@@ -106,11 +106,14 @@ export default function Home() {
 
       <View style={st.lead}>
         <Text style={st.eyebrow}>АССАЛАМУ АЛЕЙКУМ</Text>
-        <Text style={st.leadTitle} allowFontScaling={false}>{CLUB_NAME}</Text>
-        <View style={st.rule} />
-        <Text style={st.lede}>
-          Шесть падел-кортов и мини-футбольное поле в {CLUB_CITY}е.
-          Каждый день с {hh(grid.openHour)} до полуночи.
+        {/* Один огромный узкий заголовок прописными и больше ничего крупного.
+            Так устроена типографика Nike: крайний контраст между витринным
+            ярусом и тихим текстом 12–16, середины нет вовсе. */}
+        <Text style={st.display} allowFontScaling={false}>ПАДЕЛ{'\n'}В МАГАСЕ</Text>
+        <Text style={st.meta}>
+          {padel.length} {plural(padel.length, 'корт', 'корта', 'кортов')}
+          {pitch ? '  ·  мини-футбольное поле' : ''}
+          {'  ·  '}{hh(grid.openHour)}–24:00
         </Text>
 
         {/* Свободные часы живут прямо в кнопке: раньше то же самое
@@ -299,27 +302,32 @@ const st = StyleSheet.create({
     width: '100%', height: '100%' },
   hero: { overflow: 'hidden', backgroundColor: C.surface, marginTop: 14 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: S.xl },
-  brand: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: 1.4, flex: 1 },
-  brandCity: { color: C.dim2, fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase' },
+  brand: { color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 2.4,
+    textTransform: 'uppercase', flex: 1 },
+  brandCity: { color: C.dim2, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase' },
 
-  lead: { paddingHorizontal: S.xl, paddingTop: 26 },
-  eyebrow: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 3 },
-  leadTitle: { color: C.text, fontFamily: DISP, fontSize: 40, lineHeight: 46,
-    letterSpacing: 1.2, marginTop: 10, textTransform: 'uppercase' },
-  // Волосяная линия вместо рамок — сдержаннее и дороже на вид
-  rule: { height: StyleSheet.hairlineWidth, backgroundColor: C.lineStrong,
-    marginTop: 18, marginBottom: 16, opacity: 0.55 },
-  lede: { color: C.dim, fontSize: 15.5, lineHeight: 24 },
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17, paddingHorizontal: 20,
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, minHeight: HIT },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 22, letterSpacing: 1 },
-  ctaS: { color: 'rgba(11,15,12,.66)', fontSize: 12.5, fontWeight: '600',
+  lead: { paddingHorizontal: S.xl, paddingTop: 24 },
+  eyebrow: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 3 },
+  // Межстрочный у Nike 0,9 от кегля. В React Native так нельзя: при lineHeight
+  // меньше размера шрифта iOS срезает верх прописных — уже обжигались.
+  // Берём минимальный безопасный запас, 1,04.
+  display: { color: C.text, fontFamily: DISP, fontSize: 56, lineHeight: 58,
+    letterSpacing: 0, marginTop: 14 },
+  // Тихий ярус: всё, что не витрина, живёт здесь и не спорит с заголовком
+  meta: { color: C.dim, fontSize: 13, lineHeight: 20, marginTop: 16,
+    letterSpacing: 0.4 },
+  // Одна кнопка, без соперников на экране
+  cta: { backgroundColor: C.lime, borderRadius: R.pill, paddingVertical: 16, paddingHorizontal: 24,
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, minHeight: HIT },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 15, letterSpacing: 2.2,
+    textTransform: 'uppercase' },
+  ctaS: { color: 'rgba(11,15,12,.62)', fontSize: 13, fontWeight: '600',
     marginTop: 3, letterSpacing: 0.2 },
 
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
     marginBottom: 10, padding: 15, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, minHeight: 66 },
-  priceT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 1.2,
+  priceT: { color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.6,
     textTransform: 'uppercase' },
   priceS: { color: C.dim, fontSize: 13, marginTop: 3 },
 
@@ -328,31 +336,32 @@ const st = StyleSheet.create({
     backgroundColor: 'rgba(198,240,51,.06)', minHeight: 62 },
   mineIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
-  mineT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
-  mineS: { color: C.dim2, fontSize: 12, marginTop: 1 },
+  mineT: { color: C.text, fontSize: 15, fontWeight: '700' },
+  mineS: { color: C.dim2, fontSize: 13, marginTop: 1 },
 
   pitch: { marginHorizontal: S.xl, height: 230, borderRadius: 24, overflow: 'hidden',
     backgroundColor: C.surface, justifyContent: 'flex-end' },
   pitchIn: { padding: 18 },
   pitchEyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 2 },
-  pitchN: { color: C.text, fontFamily: DISP, fontSize: 27, letterSpacing: 0.6, marginTop: 6 },
-  pitchS: { color: '#D6DECF', fontSize: 13.5, marginTop: 4 },
+  pitchN: { color: C.text, fontFamily: DISP, fontSize: 28, lineHeight: 30,
+    letterSpacing: 0, marginTop: 8, textTransform: 'uppercase' },
+  pitchS: { color: '#D6DECF', fontSize: 13, marginTop: 4 },
   pitchRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 14 },
-  pitchPrice: { color: C.text, fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  pitchPrice: { color: C.text, fontSize: 28, fontWeight: '800', fontVariant: ['tabular-nums'] },
   pitchUnit: { color: C.dim, fontSize: 13 },
   pitchCta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto',
     backgroundColor: C.lime, borderRadius: R.pill, paddingVertical: 10, paddingHorizontal: 16 },
-  pitchCtaT: { color: C.onLime, fontSize: 14.5, fontWeight: '700' },
+  pitchCtaT: { color: C.onLime, fontSize: 15, fontWeight: '700' },
 
   // Заголовки разделов: прописные с широким трекингом. Мелкая деталь,
   // но именно она отличает дорогой вид от обычного.
   secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: S.xl, marginTop: 36, marginBottom: 14 },
-  secT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: 2.4,
+  secT: { color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 2.6,
     textTransform: 'uppercase' },
-  secS: { color: C.dim2, fontSize: 11.5, letterSpacing: 1.4, textTransform: 'uppercase',
+  secS: { color: C.dim2, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase',
     fontVariant: ['tabular-nums'] },
-  secLink: { color: C.limeDim, fontSize: 12, fontWeight: '600', letterSpacing: 0.8,
+  secLink: { color: C.limeDim, fontSize: 13, fontWeight: '600', letterSpacing: 0.8,
     textTransform: 'uppercase' },
   secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
     minHeight: HIT, justifyContent: 'center' },
@@ -362,8 +371,8 @@ const st = StyleSheet.create({
     backgroundColor: C.surface, justifyContent: 'flex-end' },
   cardImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   cardIn: { padding: 13 },
-  cardN: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: 0.8 },
-  cardS: { color: C.limeDim, fontSize: 11.5, marginTop: 3, fontWeight: '600', letterSpacing: 0.3 },
+  cardN: { color: C.text, fontSize: 15, fontWeight: '700', letterSpacing: 0.6 },
+  cardS: { color: C.limeDim, fontSize: 11, marginTop: 3, fontWeight: '600', letterSpacing: 0.3 },
   cardPrice: { position: 'absolute', top: 11, right: 11, backgroundColor: 'rgba(9,13,10,.66)',
     borderRadius: R.pill, paddingVertical: 4, paddingHorizontal: 10,
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(237,242,233,.22)' },
@@ -372,17 +381,18 @@ const st = StyleSheet.create({
   tourn: { marginHorizontal: S.xl, height: 148, borderRadius: R.xl, overflow: 'hidden',
     justifyContent: 'flex-end', backgroundColor: C.surface },
   tournIn: { padding: 15 },
-  tournN: { color: C.text, fontFamily: DISP, fontSize: 23, letterSpacing: 0.8 },
-  tournS: { color: '#CBD5C2', fontSize: 12.5, marginTop: 3, fontWeight: '600' },
+  tournN: { color: C.text, fontFamily: DISP, fontSize: 28, lineHeight: 30,
+    letterSpacing: 0, textTransform: 'uppercase' },
+  tournS: { color: '#CBD5C2', fontSize: 13, marginTop: 3, fontWeight: '600' },
 
   // Без рамки: только волосяные линии между строками. Меньше «коробочности».
   info: { marginHorizontal: S.xl, borderRadius: R.lg, backgroundColor: C.surface,
     paddingHorizontal: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  infoK: { color: C.dim2, fontSize: 12, flex: 1, letterSpacing: 1.2, textTransform: 'uppercase' },
-  infoV: { color: C.text, fontSize: 14.5, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  infoK: { color: C.dim2, fontSize: 13, flex: 1, letterSpacing: 1.2, textTransform: 'uppercase' },
+  infoV: { color: C.text, fontSize: 15, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
 
-  foot: { color: C.dim2, fontSize: 11.5, lineHeight: 17, textAlign: 'center',
+  foot: { color: C.dim2, fontSize: 11, lineHeight: 17, textAlign: 'center',
     marginTop: 22, paddingHorizontal: 30 },
 });

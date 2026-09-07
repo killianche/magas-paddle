@@ -77,7 +77,7 @@ const s = StyleSheet.create({
     backgroundColor: C.surface, minHeight: 72 },
   pin: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(198,240,51,.10)', borderWidth: 1, borderColor: 'rgba(198,240,51,.3)' },
-  mapT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
+  mapT: { color: C.text, fontSize: 15, fontWeight: '600' },
   mapS: { color: C.dim, fontSize: 13, marginTop: 2 },
 
   row: { flexDirection: 'row', gap: 10, marginHorizontal: S.xl, marginTop: 10 },
@@ -86,6 +86,7 @@ const s = StyleSheet.create({
   wa: { backgroundColor: '#4FCE5D' },
   ig: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   off: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  btnT: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: 0.4 },
-  btnS: { color: C.dim2, fontSize: 11.5, marginTop: 1 },
+  btnT: { color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.4,
+    textTransform: 'uppercase' },
+  btnS: { color: C.dim2, fontSize: 11, marginTop: 1 },
 });
