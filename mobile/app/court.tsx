@@ -24,10 +24,13 @@ export default function CourtScreen() {
   const day = String(date ?? today());
 
   const q = useApi(async () => {
-    const [courts, grid] = await Promise.all([api.courts(), api.grid(day)]);
+    const [courts, grid, prices] = await Promise.all([
+      api.courts(), api.grid(day), api.prices()]);
     const court = courts.find(c => c.id === String(id)) ?? null;
     const row = grid.courts.find(c => c.courtId === String(id)) ?? null;
-    return { court, row, grid };
+    // Правила про эту площадку или про все сразу
+    const rules = prices.rules.filter(r => !r.courtId || r.courtId === String(id));
+    return { court, row, grid, rules };
   }, [id, day]);
   useFocusEffect(useCallback(() => { q.refresh() }, [id, day]));
 
@@ -94,6 +97,11 @@ export default function CourtScreen() {
             v={`${rub(court.priceStandard)} за час`} />
           <Line k="Выгода утром"
             v={`−${discountPercent(court.priceMorning, court.priceStandard)}%`} />
+          {(q.data?.rules.length ?? 0) > 0 && (
+            <Text style={[s.small, { color: C.amber }]}>
+              В отдельные дни и часы цена другая — смотрите прайс-лист.
+            </Text>
+          )}
           <Text style={s.small}>
             Цена считается по часам: если игра начинается утром и заходит за
             {' '}{hh(court.morningUntil)}, часы складываются по своим тарифам.

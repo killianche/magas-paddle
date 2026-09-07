@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubService } from '../club';
-import { clubHour, clubToday, hourOf, isValidDate } from '../time';
+import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 
 @Controller('availability')
 export class AvailabilityController {
@@ -20,7 +20,9 @@ export class AvailabilityController {
       throw new BadRequestException('Дата должна быть в виде ГГГГ-ММ-ДД');
     }
 
-    const set = await this.club.get();
+    const pricing = await this.club.pricing();
+    const set = pricing.settings;
+    const dow = weekdayOf(day);
     const [courts, bookings] = await Promise.all([
       this.db.courts.findMany({ where: { is_active: true }, orderBy: { sort_order: 'asc' } }),
       this.db.bookings.findMany({
@@ -56,7 +58,7 @@ export class AvailabilityController {
         hours.push({
           hour: h,
           status,
-          price: h < set.morningUntil ? c.price_morning : c.price_standard,
+          price: pricing.hour(c, dow, h),
           // Сколько часов подряд можно взять начиная с этого
           maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, set.closeHour, set.maxHours),
         });

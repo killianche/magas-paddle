@@ -65,6 +65,19 @@ export type ApiCourt = {
   closedUntil: string | null; closedReason: string | null;
 };
 
+export type ApiPriceRule = {
+  id: number; courtId: string | null; days: number[] | null;
+  fromHour: number; toHour: number; price: number; note: string | null;
+};
+
+/** Всё о ценах: обычные тарифы и особые цены на дни и часы. */
+export type ApiPrices = {
+  openHour: number; closeHour: number; morningUntil: number; cancelHours: number;
+  courts: { id: string; name: string; isFootball: boolean;
+            priceMorning: number; priceStandard: number }[];
+  rules: ApiPriceRule[];
+};
+
 export type ApiHour = { hour: number; status: SlotStatus; price: number; maxRun: number };
 
 export type ApiGrid = {
@@ -94,6 +107,7 @@ export type Alternatives = {
 
 export const api = {
   courts: () => call<ApiCourt[]>('/courts'),
+  prices: () => call<ApiPrices>('/prices'),
 
   grid: (date: string) => call<ApiGrid>(`/availability?date=${encodeURIComponent(date)}`),
 

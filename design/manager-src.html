@@ -168,6 +168,25 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .ent .h{font-size:12px;color:var(--dim-2);margin-bottom:6px}
 .ent div.e{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
 .saved{color:var(--lime);font-size:12px;margin-left:8px}
+.days{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.days button{padding:7px 12px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--dim)}
+.days button.on{background:var(--lime);border-color:var(--lime);color:#0B0F0C;font-weight:700}
+.rrow{display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:8px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface)}
+.rrow .rd{flex:1;min-width:0}
+.rrow .rd b{display:block;font-size:14px}
+.rrow .rd span{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+.rrow .rp{font-family:var(--disp);font-size:19px;color:var(--lime);white-space:nowrap}
+.check{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.check .h{font-size:12.5px;color:var(--dim-2);margin-bottom:8px}
+.checkRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.checkRow input,.checkRow select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);color-scheme:dark}
+.chkOut{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chkOut span{padding:5px 9px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);font-size:12.5px;font-variant-numeric:tabular-nums}
+.chkOut span.alt{border-color:rgba(198,240,51,.45);background:rgba(198,240,51,.08);color:var(--lime)}
 </style>
 
 <div class="top">
@@ -283,7 +302,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   <div class="sheet wide">
     <h3>Управление клубом</h3>
     <div class="tabs">
-      <button class="tab on" data-tab="courts">Площадки и цены</button>
+      <button class="tab on" data-tab="courts">Площадки</button>
+      <button class="tab" data-tab="rules">Особые цены</button>
       <button class="tab" data-tab="club">Часы и правила</button>
       <button class="tab" data-tab="tourn">Турниры</button>
     </div>
@@ -294,6 +314,27 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         Выключенная площадка пропадает из приложения совсем, закрытая на ремонт
         остаётся видимой, но занять её нельзя.</p>
       <div id="courtRows"></div>
+    </div>
+
+    <div class="pane" id="paneRules">
+      <p class="sub">Обычная цена задана на вкладке «Площадки». Правило здесь перекрывает её
+        на выбранные дни и часы: например, выходные дороже или утренняя цена до 17:00.
+        Час, под который не подошло ни одно правило, стоит обычную цену.</p>
+
+      <div id="ruleRows"></div>
+      <div class="acts" style="justify-content:flex-start;margin:6px 0 0">
+        <button class="btn acc" id="ruleNew">Добавить правило</button>
+      </div>
+
+      <div class="check">
+        <div class="h">Проверка: что увидит человек в приложении</div>
+        <div class="checkRow">
+          <input type="date" id="chkDate" aria-label="Дата проверки">
+          <select id="chkCourt" aria-label="Площадка"></select>
+          <button class="btn small" id="chkGo">Показать цены дня</button>
+        </div>
+        <div id="chkOut" class="chkOut"></div>
+      </div>
     </div>
 
     <div class="pane" id="paneClub">
@@ -351,6 +392,34 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <div class="acts">
       <button class="btn" data-close>Отмена</button>
       <button class="btn acc" id="tnSave">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- правило особой цены -->
+<div class="modal" id="ruleModal">
+  <div class="sheet">
+    <h3 id="ruleTitle">Особая цена</h3>
+    <label>Дни недели</label>
+    <div class="days" id="ruleDays">
+      <button type="button" data-d="1">Пн</button><button type="button" data-d="2">Вт</button>
+      <button type="button" data-d="3">Ср</button><button type="button" data-d="4">Чт</button>
+      <button type="button" data-d="5">Пт</button><button type="button" data-d="6">Сб</button>
+      <button type="button" data-d="7">Вс</button>
+    </div>
+    <p class="sub" style="margin:4px 0 0">Ничего не выбрано — правило работает каждый день.</p>
+    <div class="grid2">
+      <div><label for="ruleFrom">С часа</label><select id="ruleFrom"></select></div>
+      <div><label for="ruleTo">До часа</label><select id="ruleTo"></select></div>
+    </div>
+    <label for="ruleCourt">Площадка</label><select id="ruleCourt"></select>
+    <label for="rulePrice">Цена за час, ₽</label><input id="rulePrice" type="number" min="0" step="100">
+    <label for="ruleNote">Заметка</label><input id="ruleNote" placeholder="Например: выходные">
+    <div class="err" id="ruleErr"></div>
+    <div class="acts">
+      <button class="btn dg" id="ruleDel" hidden>Удалить</button>
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="ruleSave">Сохранить</button>
     </div>
   </div>
 </div>
@@ -835,6 +904,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.pane').forEach(x => x.classList.remove('on'));
   $('#pane'+t.dataset.tab[0].toUpperCase()+t.dataset.tab.slice(1)).classList.add('on');
   if(t.dataset.tab==='tourn') loadTournaments();
+  if(t.dataset.tab==='rules') loadRules();
 });
 
 async function openSetup(){
@@ -909,6 +979,116 @@ $('#setSave').onclick = async () => {
     $('#setErr').classList.remove('on');
     tariffs = {}; load();
   } catch(e){ $('#setErr').textContent = e.message; $('#setErr').classList.add('on') }
+};
+
+/* ── особые цены ──────────────────────────────────────── */
+const DAYS = ['', 'Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+let rules = [];
+
+function daysText(d){
+  if(!d || !d.length) return 'каждый день';
+  if(d.length === 7) return 'каждый день';
+  if(d.join(',') === '6,7') return 'выходные';
+  if(d.join(',') === '1,2,3,4,5') return 'будни';
+  return d.map(x => DAYS[x]).join(', ');
+}
+
+async function loadRules(){
+  try { rules = await call('/admin/price-rules') }
+  catch(e){ $('#ruleRows').innerHTML = `<div class="empty">${e.message}</div>`; return }
+
+  $('#ruleRows').innerHTML = rules.length ? rules.map(r => {
+    const court = r.courtId ? (setup?.courts.find(c => c.id===r.courtId)?.name ?? r.courtId) : 'все площадки';
+    return `<div class="rrow">
+      <div class="rd"><b>${daysText(r.days)}, ${hh(r.fromHour)} – ${hh(r.toHour)}</b>
+        <span>${court}${r.note ? ' · ' + r.note : ''}</span></div>
+      <div class="rp">${rub(r.price)}</div>
+      <button class="btn small" data-id="${r.id}">Изменить</button>
+    </div>`;
+  }).join('') : '<div class="empty">Особых цен нет — везде действует обычная цена площадки.</div>';
+
+  $('#ruleRows').querySelectorAll('button[data-id]').forEach(b =>
+    b.onclick = () => openRule(rules.find(r => r.id === +b.dataset.id)));
+
+  // проверка результата
+  $('#chkCourt').innerHTML = (setup?.courts ?? [])
+    .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if(!$('#chkDate').value) $('#chkDate').value = date;
+}
+
+let ruleEdit = null;
+$('#ruleNew').onclick = () => openRule(null);
+
+function openRule(r){
+  ruleEdit = r;
+  $('#ruleTitle').textContent = r ? 'Изменить правило' : 'Новое правило';
+  const set = setup?.settings ?? { openHour: 9, closeHour: 24 };
+  let from = '', to = '';
+  for(let h=set.openHour; h<set.closeHour; h++) from += `<option value="${h}">${hh(h)}</option>`;
+  for(let h=set.openHour+1; h<=set.closeHour; h++) to += `<option value="${h}">${hh(h)}</option>`;
+  $('#ruleFrom').innerHTML = from; $('#ruleTo').innerHTML = to;
+  $('#ruleFrom').value = r ? r.fromHour : set.openHour;
+  $('#ruleTo').value   = r ? r.toHour   : set.closeHour;
+
+  $('#ruleCourt').innerHTML = '<option value="">Все площадки</option>' +
+    (setup?.courts ?? []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  $('#ruleCourt').value = r?.courtId ?? '';
+  $('#rulePrice').value = r ? r.price/100 : '';
+  $('#ruleNote').value = r?.note ?? '';
+
+  const on = new Set(r?.days ?? []);
+  $('#ruleDays').querySelectorAll('button').forEach(b =>
+    b.classList.toggle('on', on.has(+b.dataset.d)));
+
+  $('#ruleDel').hidden = !r;
+  $('#ruleErr').classList.remove('on');
+  $('#ruleModal').classList.add('on');
+}
+
+$('#ruleDays').querySelectorAll('button').forEach(b =>
+  b.onclick = () => b.classList.toggle('on'));
+
+$('#ruleSave').onclick = async () => {
+  const days = [...$('#ruleDays').querySelectorAll('button.on')].map(b => +b.dataset.d);
+  try {
+    await call('/admin/price-rules', { method:'POST', body: JSON.stringify({
+      id: ruleEdit?.id, courtId: $('#ruleCourt').value || null,
+      days: days.length ? days : null,
+      fromHour: +$('#ruleFrom').value, toHour: +$('#ruleTo').value,
+      price: +$('#rulePrice').value, note: $('#ruleNote').value.trim() || undefined,
+    })});
+    $('#ruleModal').classList.remove('on');
+    tariffs = {}; loadRules(); load();
+  } catch(e){ $('#ruleErr').textContent = e.message; $('#ruleErr').classList.add('on') }
+};
+
+$('#ruleDel').onclick = async () => {
+  if(!await ask('Убрать правило?',
+    'Часы под ним вернутся к обычной цене площадки.')) return;
+  try {
+    await call(`/admin/price-rules/${ruleEdit.id}/delete`, { method:'POST', body:'{}' });
+    $('#ruleModal').classList.remove('on');
+    tariffs = {}; loadRules(); load();
+  } catch(e){ $('#ruleErr').textContent = e.message; $('#ruleErr').classList.add('on') }
+};
+
+/* Проверка берёт те же данные, что и приложение, — расхождения быть не может */
+$('#chkGo').onclick = async () => {
+  const d = $('#chkDate').value, cid = $('#chkCourt').value;
+  if(!d || !cid) return;
+  $('#chkOut').innerHTML = '<span>считаю…</span>';
+  try {
+    const r = await fetch(`${API}/availability?date=${d}`);
+    const g = await r.json();
+    const c = g.courts.find(x => x.courtId === cid);
+    if(!c){ $('#chkOut').innerHTML = '<span>площадка не в расписании</span>'; return }
+    const base = setup?.courts.find(x => x.id===cid);
+    $('#chkOut').innerHTML = c.hours.map(h => {
+      const usual = h.hour < g.morningUntil ? base?.priceMorning : base?.priceStandard;
+      const alt = usual != null && h.price !== usual;
+      return `<span class="${alt?'alt':''}">${hh(h.hour)} ${rub(h.price)}</span>`;
+    }).join('');
+  } catch(e){ $('#chkOut').innerHTML = `<span>${e.message}</span>` }
 };
 
 /* закрытие площадки на ремонт */

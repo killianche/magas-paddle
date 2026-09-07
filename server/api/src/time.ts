@@ -24,3 +24,9 @@ export function isValidDate(s: string): boolean {
   const d = new Date(s + 'T00:00:00Z');
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
+
+/** День недели по дате клуба: 1 — понедельник, 7 — воскресенье. */
+export function weekdayOf(date: string): number {
+  const d = new Date(date + 'T00:00:00Z').getUTCDay();   // 0 — воскресенье
+  return d === 0 ? 7 : d;
+}

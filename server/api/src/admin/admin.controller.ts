@@ -5,7 +5,7 @@ import {
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from './admin.guard';
-import { clubHour, clubToday, hourOf, isValidDate } from '../time';
+import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
 
@@ -189,17 +189,15 @@ export class AdminController {
       throw new BadRequestException(court.closed_reason ?? 'Площадка закрыта');
     }
 
-    const set = await this.club.get();
+    const pricing = await this.club.pricing();
+    const set = pricing.settings;
     const hoursCount = Math.trunc(
       body.hours ?? Math.round((+b.ends_at - +b.starts_at) / 3600_000));
     if (body.hour < set.openHour || hoursCount < 1 || body.hour + hoursCount > set.closeHour) {
       throw new BadRequestException('Время не помещается в рабочий день');
     }
 
-    let price = 0;
-    for (let h = body.hour; h < body.hour + hoursCount; h++) {
-      price += h < set.morningUntil ? court.price_morning : court.price_standard;
-    }
+    const price = pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
 
     try {
       // Одна операция обновления: старое место освобождается только вместе
@@ -299,6 +297,68 @@ export class AdminController {
              priceMorning: c.price_morning, priceStandard: c.price_standard };
   }
 
+  /** Особые цены: выходные дороже, длинное утро, своя цена одной площадке. */
+  @Get('price-rules')
+  async priceRules() {
+    return (await this.club.rules()).map(r => ({
+      id: r.id, courtId: r.courtId, days: r.days,
+      fromHour: r.fromHour, toHour: r.toHour, price: r.price,
+      note: r.note, sortOrder: r.sortOrder,
+    }));
+  }
+
+  /** Завести правило или изменить существующее. */
+  @Post('price-rules')
+  async savePriceRule(@Body() body: Partial<{
+    id: number; courtId: string | null; days: number[] | null;
+    fromHour: number; toHour: number; price: number; note: string; sortOrder: number;
+  }>) {
+    const set = await this.club.get();
+    const from = int(body.fromHour, -1, 0, 23);
+    const to = int(body.toHour, -1, 1, 24);
+    if (from < 0 || to < 0) throw new BadRequestException('Часы должны быть от 0 до 24');
+    if (from >= to) throw new BadRequestException('Начало должно быть раньше конца');
+    if (from < set.openHour || to > set.closeHour) {
+      throw new BadRequestException(
+        `Правило должно лежать внутри рабочего дня: ${set.openHour}:00 – ${set.closeHour}:00`);
+    }
+
+    let days: number[] | null = null;
+    if (Array.isArray(body.days) && body.days.length) {
+      days = [...new Set(body.days.map(d => Math.trunc(Number(d))))].sort();
+      if (days.some(d => d < 1 || d > 7)) throw new BadRequestException('Дни недели: от 1 до 7');
+      if (days.length === 7) days = null;   // все семь — то же, что «любой день»
+    }
+
+    let courtId: string | null = null;
+    if (body.courtId) {
+      const c = await this.db.courts.findUnique({ where: { id: body.courtId } });
+      if (!c) throw new NotFoundException('Площадка не найдена');
+      courtId = c.id;
+    }
+
+    const data = {
+      court_id: courtId, days: days ?? [],
+      from_hour: from, to_hour: to, price: rubToKop(body.price),
+      note: body.note ? String(body.note).trim().slice(0, 120) : null,
+      sort_order: int(body.sortOrder, 0, 0, 999),
+    };
+
+    const r = body.id
+      ? await this.db.price_rules.update({ where: { id: BigInt(body.id) }, data })
+      : await this.db.price_rules.create({ data });
+    this.club.forget();
+    return { id: Number(r.id) };
+  }
+
+  /** Убрать правило. Часы под ним возвращаются к обычной цене. */
+  @Post('price-rules/:id/delete')
+  async deletePriceRule(@Param('id') id: string) {
+    await this.db.price_rules.delete({ where: { id: BigInt(id) } });
+    this.club.forget();
+    return { ok: true };
+  }
+
   /** Турниры: список с числом записавшихся. */
   @Get('tournaments')
   async tournaments() {
@@ -392,7 +452,8 @@ export class AdminController {
 
     // Часы должны лежать внутри рабочего дня: раньше 23:00 на три часа
     // сохранялось и рисовалось в сетке как «23:00 – 26:00».
-    const set = await this.club.get();
+    const pricing = await this.club.pricing();
+    const set = pricing.settings;
     const hoursCount = Math.trunc(body.hours);
     if (!Number.isFinite(body.hour) || body.hour < set.openHour || body.hour >= set.closeHour) {
       throw new BadRequestException(`Час должен быть от ${set.openHour} до ${set.closeHour - 1}`);
@@ -420,10 +481,7 @@ export class AdminController {
       clientId = c.id;
     }
 
-    let price = 0;
-    for (let h = body.hour; h < body.hour + hoursCount; h++) {
-      price += h < set.morningUntil ? court.price_morning : court.price_standard;
-    }
+    const price = pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
 
     try {
       const b = await this.db.bookings.create({ data: {

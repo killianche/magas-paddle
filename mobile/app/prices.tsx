@@ -5,23 +5,22 @@ import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle } from 'react-native-svg';
 import { C, R, S, HIT, DISP, DISP_MED } from '../src/theme';
-import { api, rub, discountPercent, type ApiCourt } from '../src/api';
+import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
 import { IconChevron } from '../src/components/icons';
 import { hh, plural } from '../src/dates';
 import { useHydrated } from '../src/hydrated';
 
-const CLOSE_HOUR = 24;
 
 export default function Prices() {
   const hydrated = useHydrated();
-  const q = useApi(() => api.courts(), []);
+  const q = useApi(() => api.prices(), []);
 
   if (!hydrated || q.loading) return <Loading note="Смотрю цены" />;
   if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;
 
-  const courts = q.data;
+  const { courts, rules, openHour, morningUntil, closeHour, cancelHours } = q.data;
   const padel = courts.find(c => !c.isFootball);
   const football = courts.find(c => c.isFootball);
 
@@ -49,10 +48,10 @@ export default function Prices() {
       </Pressable>
 
       {padel && (() => {
-        const open = 9;                        // час открытия приходит вместе с сеткой
-        const until = padel.morningUntil;
+        const open = openHour;
+        const until = morningUntil;
         const morningHours = Math.max(0, until - open);
-        const dayHours = Math.max(1, CLOSE_HOUR - open);
+        const dayHours = Math.max(1, closeHour - open);
         const off = discountPercent(padel.priceMorning, padel.priceStandard);
         return (
           <>
@@ -65,7 +64,7 @@ export default function Prices() {
               onBook={go} best />
 
             <Band
-              from={until} to={CLOSE_HOUR} price={padel.priceStandard}
+              from={until} to={closeHour} price={padel.priceStandard}
               share={(dayHours - morningHours) / dayHours}
               note="Основная цена: день и вечер"
               onBook={go} />
@@ -78,6 +77,33 @@ export default function Prices() {
           </>
         );
       })()}
+
+      {/* Особые цены: без них прайс-лист врал бы, как только клуб поднимет
+          цену на выходные — в сетке человек увидел бы другую сумму. */}
+      {rules.length > 0 && (
+        <>
+          <Text style={s.group}>Особые цены</Text>
+          {rules.map(r => (
+            <View key={r.id} style={[s.band, s.bandAlt]}>
+              <View style={s.bandTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bandTime}>{daysText(r.days)}, {hh(r.fromHour)} – {hh(r.toHour)}</Text>
+                  <Text style={s.bandHours}>
+                    {r.courtId ? (courts.find(c => c.id === r.courtId)?.name ?? r.courtId)
+                               : 'все площадки'}{r.note ? ` · ${r.note}` : ''}
+                  </Text>
+                  <Text style={[s.price, { color: C.amber, marginTop: 8 }]} allowFontScaling={false}>
+                    {rub(r.price)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
+          <Text style={s.small}>
+            В эти дни и часы действует цена отсюда, а не обычная.
+          </Text>
+        </>
+      )}
 
       {football && (
         <>
@@ -92,10 +118,22 @@ export default function Prices() {
       )}
 
       <Text style={s.foot}>
-        Цены показаны за аренду площадки целиком. Отмена бесплатна за 4 часа до игры.
+        Цены показаны за аренду площадки целиком.
+        Отмена бесплатна за {cancelHours} {plural(cancelHours, 'час', 'часа', 'часов')} до игры.
       </Text>
     </ScrollView>
   );
+}
+
+const DAYS = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+/** Дни недели человеческим языком: «выходные» вместо «Сб, Вс». */
+function daysText(d: number[] | null): string {
+  if (!d || d.length === 0 || d.length === 7) return 'Каждый день';
+  const k = [...d].sort().join(',');
+  if (k === '6,7') return 'Выходные';
+  if (k === '1,2,3,4,5') return 'Будни';
+  return [...d].sort().map(x => DAYS[x]).join(', ');
 }
 
 /** Один тариф: время, цена, доля дня кружком и кнопка «занять». */
@@ -167,6 +205,7 @@ const s = StyleSheet.create({
   band: { marginHorizontal: S.xl, marginBottom: 10, padding: 16, borderRadius: R.xl,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   bandBest: { borderColor: 'rgba(198,240,51,.42)', backgroundColor: 'rgba(198,240,51,.05)' },
+  bandAlt: { borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.06)' },
   bandTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   bandTime: { color: C.text, fontSize: 16, fontWeight: '700' },
   bandHours: { color: C.dim2, fontSize: 12.5, marginTop: 2 },

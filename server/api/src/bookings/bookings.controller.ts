@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
-import { clubHour, clubToday, hourOf, isValidDate } from '../time';
+import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
 const EXCLUSION_VIOLATION = '23P01';
@@ -50,7 +50,8 @@ export class BookingsController {
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
     const bookingPhone = normalizePhone(dto.phone);
     if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
-    const set = await this.club.get();
+    const pricing = await this.club.pricing();
+    const set = pricing.settings;
     if (dto.hour < set.openHour || dto.hour + dto.hours > set.closeHour) {
       throw new BadRequestException(`Клуб работает с ${set.openHour}:00 до ${set.closeHour}:00`);
     }
@@ -68,11 +69,8 @@ export class BookingsController {
     const endsAt = clubHour(dto.date, dto.hour + dto.hours);
     if (startsAt < new Date()) throw new BadRequestException('Это время уже прошло');
 
-    // Цена складывается по часам: игра может начаться днём и уйти в вечер
-    let price = 0;
-    for (let h = dto.hour; h < dto.hour + dto.hours; h++) {
-      price += h < set.morningUntil ? court.price_morning : court.price_standard;
-    }
+    // Цена складывается по часам: часы могут попадать под разные тарифы
+    const price = pricing.span(court, weekdayOf(dto.date), dto.hour, dto.hours);
 
     const client = await this.db.clients.upsert({
       where: { phone: bookingPhone },
