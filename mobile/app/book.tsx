@@ -132,6 +132,16 @@ export default function Book() {
           <View style={s.problem}><Text style={s.problemT}>{problem}</Text></View>
         )}
 
+        <View style={[s.note, { borderColor: 'rgba(240,169,59,.38)',
+          backgroundColor: 'rgba(240,169,59,.08)' }]}>
+          <Text style={[s.noteT, { color: '#DFCCA8' }]}>
+            Это <Text style={{ fontWeight: '700' }}>заявка</Text>, а не готовая бронь.
+            Менеджер подтвердит её и свяжется с вами. Пока он не подтвердил,
+            время держится за вами ограниченный срок — если не успеть,
+            оно вернётся в расписание.
+          </Text>
+        </View>
+
         <View style={s.note}>
           <Text style={s.noteT}>
             Если планы изменятся — отмените в приложении, время освободится для других.

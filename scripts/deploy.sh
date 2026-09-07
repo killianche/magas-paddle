@@ -39,6 +39,10 @@ wrap "$ROOT/design/demo.html"       "$STAGE/demo.html"       "width=device-width
 wrap "$ROOT/design/admin-demo.html" "$STAGE/admin-demo.html" "width=device-width,initial-scale=1"
 wrap "$ROOT/design/index-src.html"  "$STAGE/index.html"      "width=device-width,initial-scale=1"
 wrap "$ROOT/design/manager-src.html" "$STAGE/manager.html"   "width=device-width,initial-scale=1"
+# Политика конфиденциальности. Адрес /privacy.html выдан Apple при подаче
+# приложения — менять его нельзя, а без страницы по нему ревью отклоняют
+# по правилу 5.1.1.
+wrap "$ROOT/design/privacy-src.html" "$STAGE/privacy.html"   "width=device-width,initial-scale=1"
 
 # ---------- 2. Статика ----------
 say "Готовлю шрифты, картинки и иконку"

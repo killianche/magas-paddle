@@ -48,7 +48,7 @@ export default function Sent() {
 
       <View style={s.done}>
         <View style={s.tick}><IconCheck size={34} color={C.lime} active /></View>
-        <Text style={s.h}>Записано</Text>
+        <Text style={s.h}>Заявка отправлена</Text>
         <Text style={s.p}>
           <Text style={{ color: C.text, fontWeight: '700' }}>{String(p.name)}</Text>
           {'\n'}{longDate(String(p.date))}

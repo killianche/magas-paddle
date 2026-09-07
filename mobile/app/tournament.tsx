@@ -2,7 +2,8 @@
 // Сетка и счёт — вживую, в приложении их нет.
 import { useCallback, useState } from 'react';
 import {
-  ScrollView, Text, View, Pressable, StyleSheet, Image, Platform, Alert, ActivityIndicator,
+  ScrollView, Text, View, Pressable, StyleSheet, Image, Platform, Alert,
+  ActivityIndicator, Modal, TextInput,
 } from 'react-native';
 import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP } from '../src/theme';
 import { api, rub, ApiError } from '../src/api';
 import { useApi } from '../src/useApi';
-import { useProfile } from '../src/profile';
+import { useProfile, normalizePhone } from '../src/profile';
 import { TOURN_IMG } from '../src/images';
 import { IconCheck } from '../src/components/icons';
 import { Loading, Failed } from '../src/components/status';
@@ -19,7 +20,8 @@ import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile } = useProfile();
+  const { profile, save } = useProfile();
+  const [ask, setAsk] = useState(false);
   const phone = profile?.phone;
   const [busy, setBusy] = useState(false);
 
@@ -44,16 +46,21 @@ export default function TournamentScreen() {
   const done = t.state === 'done';
   const canEnter = t.state === 'open' && left > 0 && !t.entered;
 
+  // Раньше без сохранённого профиля запись на турнир упиралась в тупик:
+  // предлагалось «сначала запишитесь на корт», то есть занять и отменить
+  // ненужный час. Теперь имя и телефон спрашиваются прямо здесь.
   const enter = async () => {
-    if (!profile) {
-      const msg = 'Сначала запишитесь на корт — тогда мы будем знать, как вас зовут и как с вами связаться.';
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Нужны имя и телефон', msg);
-      return;
-    }
+    if (!profile) { setAsk(true); return }
+    await sendEntry(profile.name, profile.phone);
+  };
+
+  const sendEntry = async (name: string, ph: string) => {
     setBusy(true);
     try {
-      await api.enterTournament(t.id, profile.name, profile.phone);
+      await api.enterTournament(t.id, name, ph);
+      await save({ name, phone: ph });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAsk(false);
       q.refresh();
     } catch (e) {
       const m = e instanceof ApiError ? e.message : 'Не получилось записаться.';
@@ -168,7 +175,54 @@ export default function TournamentScreen() {
           )}
         </View>
       )}
+
+      <AskWho open={ask} fee={t.fee} busy={busy}
+        onClose={() => setAsk(false)} onSend={sendEntry} />
     </View>
+  );
+}
+
+/** Имя и телефон для записи на турнир — прямо здесь, без брони корта.
+    Раньше без сохранённого профиля предлагалось «сначала запишитесь на корт»:
+    надо было занять и отменить ненужный час, чтобы попасть на турнир. */
+function AskWho({ open, fee, busy, onClose, onSend }: {
+  open: boolean; fee: number; busy: boolean;
+  onClose: () => void; onSend: (name: string, phone: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const clean = normalizePhone(phone);
+  const ready = name.trim().length >= 2 && clean != null && !busy;
+
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}
+      statusBarTranslucent>
+      <Pressable style={s.askBack} onPress={onClose}>
+        <Pressable style={s.ask} onPress={() => {}}>
+          <Text style={s.askT}>Как вас записать?</Text>
+          <Text style={s.askS}>
+            Клуб свяжется с вами перед турниром. Взнос {rub(fee)} оплачивается в клубе.
+          </Text>
+
+          <Text style={s.askL}>Ваше имя</Text>
+          <TextInput style={s.askIn} value={name} onChangeText={setName}
+            placeholder="Как к вам обращаться" placeholderTextColor={C.dim2}
+            autoCapitalize="words" maxLength={80} accessibilityLabel="Ваше имя" />
+
+          <Text style={s.askL}>Телефон</Text>
+          <TextInput style={s.askIn} value={phone} onChangeText={setPhone}
+            placeholder="+7 928 000-00-00" placeholderTextColor={C.dim2}
+            keyboardType="phone-pad" maxLength={20} accessibilityLabel="Номер телефона" />
+
+          <Pressable disabled={!ready} onPress={() => onSend(name.trim(), clean!)}
+            accessibilityRole="button"
+            style={({ pressed }) => [s.askBtn, !ready && s.askBtnOff, pressed && ready && { opacity: 0.9 }]}>
+            {busy ? <ActivityIndicator color={C.onLime} />
+              : <Text style={[s.askBtnT, !ready && { color: C.dim2 }]}>Записаться на турнир</Text>}
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -195,6 +249,21 @@ function Fact({ k, v, last }: { k: string; v: string; last?: boolean }) {
 }
 
 const s = StyleSheet.create({
+  askBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)', justifyContent: 'center', padding: 22 },
+  ask: { backgroundColor: C.ink2, borderRadius: 22, padding: 20,
+    borderWidth: 1, borderColor: C.line },
+  askT: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: 0.6 },
+  askS: { color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 8 },
+  askL: { color: C.dim2, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase',
+    marginTop: 18, marginBottom: 7 },
+  askIn: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.lineStrong,
+    borderRadius: R.md, paddingHorizontal: 14, minHeight: HIT, color: C.text, fontSize: 15 },
+  askBtn: { backgroundColor: C.lime, borderRadius: R.pill, marginTop: 20, minHeight: HIT,
+    alignItems: 'center', justifyContent: 'center' },
+  askBtnOff: { backgroundColor: C.surface2 },
+  askBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 15, letterSpacing: 2,
+    textTransform: 'uppercase' },
+
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   cover: { height: 230, justifyContent: 'flex-end', overflow: 'hidden' },
   coverImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },

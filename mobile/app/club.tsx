@@ -8,9 +8,10 @@ import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP } from '../src/theme';
 import { hh } from '../src/dates';
 
-/** ЗАГЛУШКИ: настоящие контакты и часы ждём от клуба (вопросы Q1–Q8, Q41, Q44). */
-const CLUB = { name: 'Magas Padel', city: 'Магас', phone: '+7 928 000-00-00',
-               whatsapp: '79280000000', openHour: 9, cancelHours: 4, lateMinutes: 15 };
+import { CLUB, whatsappUrl } from '../src/club';
+
+/** ЗАГЛУШКИ: часы и правила ждём от клуба (вопросы Q44, Q40). */
+const OPEN_HOUR = 9, CANCEL_HOURS = 4, LATE_MINUTES = 15;
 const PADEL_COURTS = 6;
 import { HERO } from '../src/images';
 import { Section, Line } from '../src/components/section';
@@ -18,10 +19,8 @@ import { IconChevron } from '../src/components/icons';
 
 /** ЗАГЛУШКИ: данные, которых клуб ещё не дал. Показываются как незаполненные. */
 const UNKNOWN = {
-  address: null as string | null,
   parking: null as string | null,
   rentals: null as string | null,
-  privacyUrl: null as string | null,
 };
 
 export default function Club() {
@@ -56,32 +55,39 @@ export default function Club() {
 
         {/* Связь — главное, ради чего сюда заходят */}
         <View style={s.actions}>
-          <Pressable onPress={() => open(`tel:${CLUB.phone.replace(/[^\d+]/g, '')}`,
-            `Телефон клуба: ${CLUB.phone}`)}
-            accessibilityRole="button" accessibilityLabel={`Позвонить в клуб, ${CLUB.phone}`}
-            style={({ pressed }) => [s.act, pressed && { opacity: 0.85 }]}>
-            <Text style={s.actT}>Позвонить</Text>
-            <Text style={s.actS}>{CLUB.phone}</Text>
+          {/* Номера клуб ещё не дал. Показывать выдуманный нельзя: человек
+              позвонит незнакомому. Кнопки видны, но честно неактивны. */}
+          <Pressable disabled={!CLUB.phone}
+            onPress={() => CLUB.phone && open(`tel:${CLUB.phone.replace(/[^\d+]/g, '')}`,
+              `Телефон клуба: ${CLUB.phone}`)}
+            accessibilityRole="button"
+            accessibilityLabel={CLUB.phone ? `Позвонить в клуб, ${CLUB.phone}` : 'Телефон клуба ещё не известен'}
+            style={({ pressed }) => [s.act, !CLUB.phone && s.actOff, pressed && { opacity: 0.85 }]}>
+            <Text style={[s.actT, !CLUB.phone && { color: C.dim }]}>Позвонить</Text>
+            <Text style={s.actS}>{CLUB.phone ?? 'номер скоро появится'}</Text>
           </Pressable>
-          <Pressable onPress={() => open(`https://wa.me/${CLUB.whatsapp}`,
-            'Напишите менеджеру в WhatsApp вручную.')}
+          <Pressable disabled={!whatsappUrl()}
+            onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
             accessibilityRole="button" accessibilityLabel="Написать в WhatsApp"
-            style={({ pressed }) => [s.act, s.actWa, pressed && { opacity: 0.85 }]}>
-            <Text style={[s.actT, { color: '#04240F' }]}>WhatsApp</Text>
-            <Text style={[s.actS, { color: 'rgba(4,36,15,.7)' }]}>написать менеджеру</Text>
+            style={({ pressed }) => [s.act, whatsappUrl() ? s.actWa : s.actOff,
+              pressed && { opacity: 0.85 }]}>
+            <Text style={[s.actT, whatsappUrl() ? { color: '#04240F' } : { color: C.dim }]}>WhatsApp</Text>
+            <Text style={[s.actS, whatsappUrl() && { color: 'rgba(4,36,15,.7)' }]}>
+              {whatsappUrl() ? 'написать менеджеру' : 'номер скоро появится'}
+            </Text>
           </Pressable>
         </View>
 
-        <Section title="Часы работы" summary={`Каждый день с ${hh(CLUB.openHour)} до полуночи`} open>
-          <Line k="Будни" v={`${hh(CLUB.openHour)} – 24:00`} />
-          <Line k="Выходные" v={`${hh(CLUB.openHour)} – 24:00`} />
+        <Section title="Часы работы" summary={`Каждый день с ${hh(OPEN_HOUR)} до полуночи`} open>
+          <Line k="Будни" v={`${hh(OPEN_HOUR)} – 24:00`} />
+          <Line k="Выходные" v={`${hh(OPEN_HOUR)} – 24:00`} />
           <Text style={s.q}>
             ВОПРОС К ЗАКАЗЧИКУ: часы взяты как рабочее предположение. Если в выходные
             или праздники режим другой — пришлите, поправим.
           </Text>
         </Section>
 
-        <Section title="Как добраться" summary={UNKNOWN.address ?? 'адрес ещё не получен'}>
+        <Section title="Как добраться" summary={CLUB.address ?? 'адрес ещё не получен'}>
           <View style={s.empty}>
             <Text style={s.emptyT}>Адреса и карты пока нет</Text>
             <Text style={s.emptyS}>
@@ -91,11 +97,11 @@ export default function Club() {
           </View>
         </Section>
 
-        <Section title="Правила" summary={`Отмена за ${CLUB.cancelHours} часа · опоздание ${CLUB.lateMinutes} минут`}>
+        <Section title="Правила" summary={`Отмена за ${CANCEL_HOURS} часа · опоздание ${LATE_MINUTES} минут`}>
           <Line k="Аренда" v="ровно час, можно два и три подряд" />
           <Line k="Оплата" v="на месте, в клубе" />
-          <Line k="Отмена" v={`бесплатно за ${CLUB.cancelHours} часа`} />
-          <Line k="Опоздание" v={`корт держим ${CLUB.lateMinutes} минут`} />
+          <Line k="Отмена" v={`бесплатно за ${CANCEL_HOURS} часа`} />
+          <Line k="Опоздание" v={`корт держим ${LATE_MINUTES} минут`} />
           <Text style={s.small}>
             Отменить запись можно в разделе «Мои записи» — время сразу освободится
             для других игроков.
@@ -114,8 +120,8 @@ export default function Club() {
 
         <Section title="Документы" summary="Политика конфиденциальности">
           <Pressable
-            onPress={() => UNKNOWN.privacyUrl
-              ? open(UNKNOWN.privacyUrl, 'Ссылка пока не задана.')
+            onPress={() => CLUB.privacyUrl
+              ? open(CLUB.privacyUrl, 'Ссылка пока не задана.')
               : (Platform.OS === 'web'
                   ? alert('Документ ещё не опубликован.')
                   : Alert.alert('Пока нет', 'Документ ещё не опубликован.'))}
@@ -123,7 +129,7 @@ export default function Club() {
             <View style={{ flex: 1 }}>
               <Text style={s.docT}>Политика конфиденциальности</Text>
               <Text style={s.docS}>
-                {UNKNOWN.privacyUrl ? 'открыть' : 'ещё не опубликована'}
+                {CLUB.privacyUrl ? 'открыть' : 'ещё не опубликована'}
               </Text>
             </View>
             <IconChevron size={15} color={C.dim2} />
@@ -156,6 +162,7 @@ const s = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: S.xl, paddingVertical: 18 },
   act: { flex: 1, borderRadius: R.lg, paddingVertical: 14, paddingHorizontal: 14,
     borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12 },
+  actOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   actWa: { backgroundColor: '#25D366', borderColor: '#25D366' },
   actT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
   actS: { color: C.dim2, fontSize: 12, marginTop: 3, fontVariant: ['tabular-nums'] },

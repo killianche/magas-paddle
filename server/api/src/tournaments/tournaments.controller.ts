@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizePhone } from '../phone';
 
 class EnterDto {
   @IsString() @MaxLength(80) name: string;
@@ -23,8 +24,9 @@ export class TournamentsController {
     const taken = new Map(counts.map(c => [String(c.tournament_id), c._count._all]));
 
     let mine = new Set<string>();
-    if (phone) {
-      const client = await this.db.clients.findUnique({ where: { phone } });
+    const key = normalizePhone(phone);
+    if (key) {
+      const client = await this.db.clients.findUnique({ where: { phone: key } });
       if (client) {
         const e = await this.db.tournament_entries.findMany({
           where: { client_id: client.id }, select: { tournament_id: true },
@@ -50,6 +52,9 @@ export class TournamentsController {
 
   @Post(':id/entries')
   async enter(@Param('id') id: string, @Body() dto: EnterDto) {
+    const entryPhone = normalizePhone(dto.phone);
+    if (!entryPhone) throw new BadRequestException('Номер телефона неполный');
+
     const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     if (t.state !== 'open') throw new ConflictException('Запись на этот турнир закрыта');
@@ -58,9 +63,9 @@ export class TournamentsController {
     if (count >= t.seats) throw new ConflictException('Мест больше нет');
 
     const client = await this.db.clients.upsert({
-      where: { phone: dto.phone },
+      where: { phone: entryPhone },
       update: { name: dto.name },
-      create: { phone: dto.phone, name: dto.name },
+      create: { phone: entryPhone, name: dto.name },
     });
 
     try {
@@ -77,8 +82,9 @@ export class TournamentsController {
 
   @Delete(':id/entries')
   async leave(@Param('id') id: string, @Query('phone') phone?: string) {
-    if (!phone) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone } });
+    const key = normalizePhone(phone);
+    if (!key) throw new BadRequestException('Нужен номер телефона');
+    const client = await this.db.clients.findUnique({ where: { phone: key } });
     if (!client) throw new NotFoundException('Запись не найдена');
     const res = await this.db.tournament_entries.deleteMany({
       where: { tournament_id: BigInt(id), client_id: client.id },

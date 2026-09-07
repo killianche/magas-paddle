@@ -22,6 +22,12 @@ export const CLUB = {
 
   /** ЗАГЛУШКА: точный адрес клуб ещё не назвал (вопрос Q41). */
   address: null as string | null,
+
+  /** ЗАГЛУШКА: телефон клуба заказчик ещё не дал (вопрос Q45). */
+  phone: null as string | null,
+
+  /** Политика конфиденциальности. Адрес выдан Apple при подаче приложения. */
+  privacyUrl: 'https://padel.217-114-8-196.sslip.io/privacy.html',
 } as const;
 
 /** Ссылка на WhatsApp по номеру. null, пока номер не известен. */
