@@ -208,20 +208,28 @@ export default function Schedule() {
       <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
         {sel && court ? (
           <>
-            {/* Просто сводка выбранного. Раньше отсюда открывался экран площадки
-                со своей записью — второй путь к брони, которого быть не должно. */}
-            <View style={st.pick}>
+            {/* Карточка ведёт на рассказ о площадке — фотография, покрытие, правила.
+                Записаться оттуда нельзя: единственный путь к брони — эта сетка. */}
+            <Pressable
+              onPress={() => { Haptics.selectionAsync();
+                router.push({ pathname: '/court', params: { id: sel.courtId, date } }) }}
+              accessibilityRole="button"
+              accessibilityLabel={`${court.name}: посмотреть площадку`}
+              style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
               <Image source={IMG[sel.courtId] ?? IMG.c1} style={st.pickPh} resizeMode="cover" />
               <View style={{ flex: 1 }}>
                 <Text style={st.pickN}>{court.name}</Text>
                 <Text style={st.pickS}>{hh(sel.hour)} – {hh(sel.hour + hours)} · {rub(total)}</Text>
               </View>
-              <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setHours(1) }}
-                accessibilityRole="button" accessibilityLabel="Снять выбор времени"
-                hitSlop={10} style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
-                <Text style={st.clearT}>Сбросить</Text>
-              </Pressable>
-            </View>
+              <IconChevron size={15} color={C.dim2} />
+            </Pressable>
+
+            {/* Передумать должно быть так же просто, как выбрать */}
+            <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setHours(1) }}
+              accessibilityRole="button" accessibilityLabel="Снять выбор времени"
+              hitSlop={8} style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
+              <Text style={st.clearT}>Сбросить выбор</Text>
+            </Pressable>
 
             <View style={st.durRow}>
               {Array.from({ length: grid.maxHours }, (_, i) => i + 1).map(n => {
@@ -343,9 +351,9 @@ const st = StyleSheet.create({
     borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   tariffT: { color: C.dim, fontSize: 12.5 },
 
-  clear: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 9,
-    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
-  clearT: { color: C.dim, fontSize: 12.5, fontWeight: '600' },
+  clear: { alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, marginTop: 8 },
+  clearT: { color: C.dim, fontSize: 13.5, fontWeight: '600',
+    textDecorationLine: 'underline' },
 
   peekBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)',
     alignItems: 'center', justifyContent: 'center', padding: 22 },
