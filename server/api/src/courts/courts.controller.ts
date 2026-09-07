@@ -22,6 +22,7 @@ export class CourtsController {
       id: c.id,
       name: c.name,
       isFootball: c.is_football,
+      description: c.description,
       priceMorning: c.price_morning,
       priceStandard: c.price_standard,
       morningUntil: set.morningUntil,

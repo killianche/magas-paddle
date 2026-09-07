@@ -69,6 +69,7 @@ export class AvailabilityController {
       openHour: set.openHour,
       closeHour: set.closeHour,
       morningUntil: set.morningUntil,
+      maxHours: set.maxHours,
       courts: rows,
     };
   }

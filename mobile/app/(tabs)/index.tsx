@@ -153,7 +153,7 @@ export default function Home() {
           const price = c.hours.find(h => h.hour === (free?.hour ?? grid.morningUntil))?.price ?? 0;
           return (
             <Pressable key={c.courtId}
-              onPress={() => go('/court', { id: c.courtId, date: today(), hour: String(free?.hour ?? grid.openHour) })}
+              onPress={() => go('/court', { id: c.courtId, date: today() })}
               accessibilityRole="button"
               accessibilityLabel={`${c.name}, ${free ? 'ближайшее время ' + hh(free.hour) : c.closed ? 'закрыт' : 'сегодня занят'}`}
               style={({ pressed }) => [st.card, pressed && { opacity: 0.85 }]}>

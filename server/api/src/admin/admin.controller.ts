@@ -235,7 +235,7 @@ export class AdminController {
       courts: courts.map(c => ({
         id: c.id, name: c.name, isFootball: c.is_football,
         priceMorning: c.price_morning, priceStandard: c.price_standard,
-        isActive: c.is_active, sortOrder: c.sort_order,
+        isActive: c.is_active, sortOrder: c.sort_order, description: c.description,
         closedUntil: c.closed_until, closedReason: c.closed_reason,
       })),
     };
@@ -274,7 +274,7 @@ export class AdminController {
   @Post('courts/:id')
   async saveCourt(@Param('id') id: string, @Body() body: Partial<{
     name: string; priceMorning: number; priceStandard: number;
-    isActive: boolean; sortOrder: number;
+    isActive: boolean; sortOrder: number; description: string;
   }>) {
     const court = await this.db.courts.findUnique({ where: { id } });
     if (!court) throw new NotFoundException('Площадка не найдена');
@@ -290,6 +290,9 @@ export class AdminController {
     if (body.priceStandard != null) data.price_standard = rubToKop(body.priceStandard);
     if (body.isActive != null) data.is_active = !!body.isActive;
     if (body.sortOrder != null) data.sort_order = int(body.sortOrder, court.sort_order, 0, 999);
+    if (body.description != null) {
+      data.description = String(body.description).trim().slice(0, 1000) || null;
+    }
 
     const c = await this.db.courts.update({ where: { id }, data });
     return { id: c.id, name: c.name, isActive: c.is_active,

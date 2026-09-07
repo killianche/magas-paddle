@@ -1,11 +1,13 @@
-// Экран площадки: фотография, цены, правила. Выбор времени живёт в расписании,
-// здесь только рассказ о площадке и переход туда.
+// Экран площадки — только рассказ о ней: фотография, описание, цены, правила.
+//
+// Записи отсюда нет намеренно. Заказчик просил один-единственный путь к брони —
+// через сетку «часы × площадки», а этот экран нужен, чтобы посмотреть, какой
+// у корта пол и чем он отличается от соседнего, прежде чем выбирать час.
 import { useCallback } from 'react';
-import { ScrollView, Text, View, Pressable, StyleSheet, Image } from 'react-native';
-import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
+import { ScrollView, Text, View, StyleSheet, Image } from 'react-native';
+import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP } from '../src/theme';
+import { C, R, S, DISP } from '../src/theme';
 import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { IMG } from '../src/images';
@@ -46,7 +48,7 @@ export default function CourtScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.ink }}>
       <Stack.Screen options={{ title: court.name }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 170 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         <View style={s.hero}>
           <Image source={IMG[court.id] ?? IMG.c1} style={s.heroImg} resizeMode="cover" />
@@ -70,6 +72,19 @@ export default function CourtScreen() {
             </View>
           </View>
         </View>
+
+        {court.description ? (
+          <View style={s.about}>
+            <Text style={s.aboutT}>{court.description}</Text>
+          </View>
+        ) : (
+          <View style={s.about}>
+            {/* ЗАГЛУШКА: описание пишет клуб из админки — не выдумываем */}
+            <Text style={s.aboutNo}>
+              Клуб ещё не рассказал об этой площадке. Появится здесь, как только опишет.
+            </Text>
+          </View>
+        )}
 
         <Section title="Цены"
           summary={`${rub(court.priceMorning)} утром · ${rub(court.priceStandard)} дальше`} open>
@@ -108,16 +123,6 @@ export default function CourtScreen() {
           </View>
         </Section>
       </ScrollView>
-
-      <View style={s.bar}>
-        <Pressable
-          onPress={() => { Haptics.selectionAsync(); router.push('/schedule') }}
-          accessibilityRole="button"
-          style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}>
-          <Text style={s.ctaT}>Выбрать время</Text>
-        </Pressable>
-        <Text style={s.barSub}>Все площадки и часы на одном экране</Text>
-      </View>
     </View>
   );
 }
@@ -142,11 +147,8 @@ const s = StyleSheet.create({
   qT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
   qS: { color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.xl,
-    paddingTop: 14, paddingBottom: 34, backgroundColor: C.ink2,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17,
-    alignItems: 'center', minHeight: HIT + 10, justifyContent: 'center' },
-  ctaT: { color: C.onLime, fontSize: 17, fontWeight: '700' },
-  barSub: { color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  about: { marginHorizontal: S.xl, marginBottom: 16, padding: 14, borderRadius: R.lg,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  aboutT: { color: C.text, fontSize: 14.5, lineHeight: 21 },
+  aboutNo: { color: C.dim2, fontSize: 13, lineHeight: 19 },
 });

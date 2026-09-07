@@ -15,7 +15,6 @@ import { IconBall, IconChevron } from '../src/components/icons';
 import { today, addDays, weekdayShort, dayNumber, hh, plural } from '../src/dates';
 
 const DAYS_AHEAD = 5;
-const MAX_HOURS = 3;
 
 export default function Schedule() {
   const insets = useSafeAreaInsets();
@@ -57,6 +56,11 @@ export default function Schedule() {
   const pickCell = (courtId: string, h: ApiHour) => {
     if (h.status !== 'free') return;
     Haptics.selectionAsync();
+    // Нажатие по уже выбранной клетке снимает выбор: раньше передумать
+    // и «отжать» время было нечем.
+    if (sel && sel.courtId === courtId && sel.hour === h.hour) {
+      setSel(null); setHours(1); return;
+    }
     setSel({ courtId, hour: h.hour });
     setHours(prev => Math.min(prev, h.maxRun) || 1);
   };
@@ -204,37 +208,40 @@ export default function Schedule() {
       <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
         {sel && court ? (
           <>
-            <Pressable
-              onPress={() => router.push({ pathname: '/court',
-                params: { id: sel.courtId, date, hour: String(sel.hour) } })}
-              style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
+            {/* Просто сводка выбранного. Раньше отсюда открывался экран площадки
+                со своей записью — второй путь к брони, которого быть не должно. */}
+            <View style={st.pick}>
               <Image source={IMG[sel.courtId] ?? IMG.c1} style={st.pickPh} resizeMode="cover" />
               <View style={{ flex: 1 }}>
                 <Text style={st.pickN}>{court.name}</Text>
                 <Text style={st.pickS}>{hh(sel.hour)} – {hh(sel.hour + hours)} · {rub(total)}</Text>
               </View>
-              <IconChevron size={15} color={C.dim2} />
-            </Pressable>
+              <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setHours(1) }}
+                accessibilityRole="button" accessibilityLabel="Снять выбор времени"
+                hitSlop={10} style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
+                <Text style={st.clearT}>Сбросить</Text>
+              </Pressable>
+            </View>
 
             <View style={st.durRow}>
-              {[1, 2, 3].map(n => {
+              {Array.from({ length: grid.maxHours }, (_, i) => i + 1).map(n => {
                 const ok = n <= run;
                 const on = hours === n;
                 return (
                   <Pressable key={n} disabled={!ok} onPress={() => pickHours(n)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${n} ${n === 1 ? 'час' : 'часа'}, ${ok ? (on ? 'выбрано' : 'доступно') : 'занято'}`}
+                    accessibilityLabel={`${n} ${plural(n, 'час', 'часа', 'часов')}, ${ok ? (on ? 'выбрано' : 'доступно') : 'занято'}`}
                     accessibilityState={{ selected: on, disabled: !ok }}
                     style={[st.dur, on && st.durOn, !ok && st.durOff]}>
                     <Text style={[st.durT, on && { color: C.onLime }, !ok && { color: C.busy }]}>
-                      {n} {n === 1 ? 'час' : 'часа'}
+                      {n} {plural(n, 'час', 'часа', 'часов')}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
 
-            {run < MAX_HOURS && (
+            {run < grid.maxHours && (
               <Text style={st.warn}>
                 {run === 1
                   ? `В ${hh(sel.hour + 1)} площадка занята — свободен только один час.`
@@ -259,7 +266,7 @@ export default function Schedule() {
 
       <CourtPeek court={peeked} onClose={() => setPeek(null)}
         onPick={() => { const id = peeked!.courtId; setPeek(null);
-          router.push({ pathname: '/court', params: { id, date, hour: String(grid.openHour) } }) }} />
+          router.push({ pathname: '/court', params: { id, date } }) }} />
     </View>
   );
 }
@@ -293,7 +300,7 @@ function CourtPeek({ court, onClose, onPick }: {
                 </Pressable>
                 <Pressable onPress={onPick} accessibilityRole="button"
                   style={({ pressed }) => [st.peekBtn, st.peekBtnAcc, pressed && { opacity: 0.85 }]}>
-                  <Text style={[st.peekBtnT, { color: C.onLime }]}>Подробнее</Text>
+                  <Text style={[st.peekBtnT, { color: C.onLime }]}>О площадке</Text>
                 </Pressable>
               </View>
             </View>
@@ -335,6 +342,10 @@ const st = StyleSheet.create({
     marginHorizontal: 20, marginTop: 8, paddingVertical: 6, paddingHorizontal: 11,
     borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   tariffT: { color: C.dim, fontSize: 12.5 },
+
+  clear: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 9,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
+  clearT: { color: C.dim, fontSize: 12.5, fontWeight: '600' },
 
   peekBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)',
     alignItems: 'center', justifyContent: 'center', padding: 22 },

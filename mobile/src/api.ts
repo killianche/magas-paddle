@@ -60,7 +60,7 @@ function messageFor(status: number) {
 export type SlotStatus = 'free' | 'busy' | 'past' | 'closed';
 
 export type ApiCourt = {
-  id: string; name: string; isFootball: boolean;
+  id: string; name: string; isFootball: boolean; description: string | null;
   priceMorning: number; priceStandard: number; morningUntil: number;
   closedUntil: string | null; closedReason: string | null;
 };
@@ -68,7 +68,7 @@ export type ApiCourt = {
 export type ApiHour = { hour: number; status: SlotStatus; price: number; maxRun: number };
 
 export type ApiGrid = {
-  date: string; openHour: number; closeHour: number; morningUntil: number;
+  date: string; openHour: number; closeHour: number; morningUntil: number; maxHours: number;
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean; hours: ApiHour[] }[];
 };
 

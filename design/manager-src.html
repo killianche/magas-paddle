@@ -151,6 +151,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .crow .nm{flex:1 1 150px;min-width:0}
 .crow input[type=text]{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text)}
+.crow .c-desc{margin-top:6px;font-size:12.5px;color:var(--dim)}
 .crow .p{width:96px}
 .crow .p input{width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text);text-align:right}
@@ -288,8 +289,10 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     </div>
 
     <div class="pane on" id="paneCourts">
-      <p class="sub">Цены в рублях за час. Выключенная площадка пропадает из приложения совсем,
-        закрытая на ремонт остаётся видимой, но занять её нельзя.</p>
+      <p class="sub">Цены в рублях за час. Описание человек видит, когда открывает площадку
+        в приложении — напишите про покрытие и цвет пола, чем корт отличается от соседнего.
+        Выключенная площадка пропадает из приложения совсем, закрытая на ремонт
+        остаётся видимой, но занять её нельзя.</p>
       <div id="courtRows"></div>
     </div>
 
@@ -847,7 +850,11 @@ async function openSetup(){
   $('#courtRows').innerHTML = setup.courts.map(c => {
     const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
     return `<div class="crow${c.isActive?'':' off'}" data-id="${c.id}">
-      <div class="nm"><input type="text" class="c-name" value="${c.name.replace(/"/g,'&quot;')}"></div>
+      <div class="nm">
+        <input type="text" class="c-name" value="${c.name.replace(/"/g,'&quot;')}">
+        <input type="text" class="c-desc" placeholder="Описание: покрытие, цвет пола, чем отличается"
+               value="${(c.description||'').replace(/"/g,'&quot;')}">
+      </div>
       <div class="p"><small>утро, ₽</small><input type="number" class="c-m" min="0" step="100" value="${c.priceMorning/100}"></div>
       <div class="p"><small>дальше, ₽</small><input type="number" class="c-s" min="0" step="100" value="${c.priceStandard/100}"></div>
       <button class="btn small c-save">Сохранить</button>
@@ -865,6 +872,7 @@ async function openSetup(){
       try {
         await call('/admin/courts/'+id, { method:'POST', body: JSON.stringify({
           name: row.querySelector('.c-name').value,
+          description: row.querySelector('.c-desc').value,
           priceMorning: +row.querySelector('.c-m').value,
           priceStandard: +row.querySelector('.c-s').value,
         })});
