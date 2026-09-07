@@ -13,6 +13,18 @@ const scryptAsync = promisify(scrypt) as (
   pw: string | Buffer, salt: Buffer, len: number) => Promise<Buffer>;
 
 const KEY_LEN = 64;
+
+/** Защита от подбора пароля.
+ *
+ *  Репозиторий открыт, значит адрес админки и форма входа известны всем.
+ *  Без ограничения пароль из восьми знаков перебирается скриптом за вечер.
+ *  Считаем неудачные попытки и запираем — отдельно по логину и по адресу,
+ *  с которого стучатся: иначе перебор либо одного логина, либо всех подряд
+ *  останется возможным. */
+const MAX_FAILS = 5;
+const LOCK_MINUTES = 15;
+/** Через сколько без попыток счётчик забывается. */
+const FORGET_MINUTES = 30;
 /** Сколько живёт вход без повторного пароля. */
 const SESSION_DAYS = 30;
 
@@ -38,9 +50,55 @@ export type Admin = {
   isActive: boolean;
 };
 
+/** Счётчик неудачных попыток входа. */
+type Fails = { count: number; last: number; until: number };
+
 @Injectable()
 export class AuthService {
   constructor(private readonly db: PrismaService) {}
+
+  /** Живёт в памяти: перезапуск сервера обнуляет счётчики, и это допустимо —
+   *  перебор всё равно не успеет пройти между перезапусками. */
+  private fails = new Map<string, Fails>();
+
+  /** Сколько секунд осталось до конца блокировки. 0 — не заперто. */
+  lockedFor(keys: string[]): number {
+    const now = Date.now();
+    let left = 0;
+    for (const k of keys) {
+      const f = this.fails.get(k);
+      if (f && f.until > now) left = Math.max(left, Math.ceil((f.until - now) / 1000));
+    }
+    return left;
+  }
+
+  /** Отметить неудачную попытку и, если их слишком много, запереть. */
+  noteFail(keys: string[]): void {
+    const now = Date.now();
+    for (const k of keys) {
+      const f = this.fails.get(k);
+      const fresh = !f || now - f.last > FORGET_MINUTES * 60_000;
+      const count = fresh ? 1 : f!.count + 1;
+      this.fails.set(k, {
+        count, last: now,
+        until: count >= MAX_FAILS ? now + LOCK_MINUTES * 60_000 : 0,
+      });
+    }
+    this.sweep(now);
+  }
+
+  /** Удачный вход снимает счётчики. */
+  clearFails(keys: string[]): void {
+    for (const k of keys) this.fails.delete(k);
+  }
+
+  /** Чтобы карта не росла бесконечно от чужих попыток. */
+  private sweep(now: number): void {
+    if (this.fails.size < 500) return;
+    for (const [k, f] of this.fails) {
+      if (now - f.last > FORGET_MINUTES * 60_000 && f.until < now) this.fails.delete(k);
+    }
+  }
 
   /** Хэш пароля: соль и ключ через двоеточие. */
   async hash(password: string): Promise<string> {

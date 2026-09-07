@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, ForbiddenException, Get,
+  BadRequestException, Body, Controller, ForbiddenException, Get, HttpException,
   NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards,
 } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
@@ -27,16 +27,34 @@ export class AdminAuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { login?: string; password?: string }) {
-    const login = String(body.login ?? '').trim();
+  async login(@Req() req: any, @Body() body: { login?: string; password?: string }) {
+    const login = String(body.login ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
     if (!login || !password) throw new BadRequestException('Введите логин и пароль');
 
-    const res = await this.auth.login(login, password);
-    // Одна и та же фраза на неверный логин и неверный пароль:
-    // иначе по ответу можно перебрать, какие логины существуют.
-    if (!res) throw new UnauthorizedException('Неверный логин или пароль');
+    // Считаем попытки и по логину, и по адресу: иначе перебор одного логина
+    // с разных адресов или всех логинов с одного останется возможным.
+    const ip = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()
+      || req.socket?.remoteAddress || 'неизвестно';
+    const keys = [`login:${login}`, `ip:${ip}`];
 
+    const left = this.auth.lockedFor(keys);
+    if (left > 0) {
+      throw new HttpException(
+        `Слишком много попыток. Попробуйте через ${Math.ceil(left / 60)} мин`, 429);
+    }
+
+    const res = await this.auth.login(login, password);
+    if (!res) {
+      this.auth.noteFail(keys);
+      // Небольшая задержка: перебор становится дороже, живому человеку незаметно
+      await new Promise(r => setTimeout(r, 400));
+      // Одна и та же фраза на неверный логин и неверный пароль:
+      // иначе по ответу можно перебрать, какие логины существуют.
+      throw new UnauthorizedException('Неверный логин или пароль');
+    }
+
+    this.auth.clearFails(keys);
     await this.auth.log(res.admin, 'вошёл в админку');
     return { token: res.token, admin: res.admin, perms: PERMS };
   }
