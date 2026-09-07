@@ -146,7 +146,7 @@ export default function Book() {
           style={({ pressed }) => [s.cta, !canSend && s.ctaOff, pressed && canSend && { opacity: 0.9 }]}>
           {sending
             ? <ActivityIndicator color={C.onLime} />
-            : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Записаться</Text>}
+            : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Забронировать</Text>}
         </Pressable>
         <Text style={s.barSub}>
           {canSend || sending ? 'Запись сохранится, менеджер её подтвердит'

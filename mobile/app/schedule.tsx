@@ -259,14 +259,14 @@ export default function Schedule() {
 
             <Pressable onPress={book} accessibilityRole="button"
               style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Записаться · {rub(total)}</Text>
+              <Text style={st.ctaT}>Забронировать · {rub(total)}</Text>
             </Pressable>
           </>
         ) : (
           <>
             <Text style={st.empty}>Нажмите свободное время на нужной площадке</Text>
             <View style={[st.cta, st.ctaOff]}>
-              <Text style={[st.ctaT, { color: C.dim2 }]}>Записаться</Text>
+              <Text style={[st.ctaT, { color: C.dim2 }]}>Забронировать</Text>
             </View>
           </>
         )}

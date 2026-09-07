@@ -11,7 +11,7 @@
 | `hero-racket`, `card-racket` | Ракетка и мячи у сетки | — | [Pexels 32897040](https://www.pexels.com/photo/vibrant-indoor-padel-court-with-racket-and-balls-32897040/) | Pexels License |
 | `portrait-1`, `tourn-cover` | Портрет игрока с ракеткой, крытый корт | — | [Pexels 33641987](https://www.pexels.com/photo/portrait-of-a-padel-player-on-indoor-court-33641987/) | Pexels License |
 | `portrait-2` | Игрок с ракеткой на открытом корте | — | [Pexels 31559322](https://www.pexels.com/photo/young-woman-with-padel-racket-on-court-31559322/) | Pexels License |
-| `action-1`, `tourn-cover-2` | Удар в прыжке, ч/б | — | [Pexels 32349969](https://www.pexels.com/photo/dynamic-action-shot-of-padel-player-in-merida-32349969/) | Pexels License |
+| `action-1`, `tourn-cover-2`, `hero` | Удар в прыжке, ч/б | — | [Pexels 32349969](https://www.pexels.com/photo/dynamic-action-shot-of-padel-player-in-merida-32349969/) | Pexels License |
 | `action-2` | Игрок у сетки, ч/б | Olegs Jonins | [Unsplash db-KVhjl5Pc](https://unsplash.com/photos/a-man-plays-padel-tennis-in-a-court-db-KVhjl5Pc) | Unsplash License |
 
 **Pexels License** и **Unsplash License** — свободное коммерческое использование,
@@ -71,3 +71,19 @@ Antonio Verdín (ракетка на синем корте), Fellipe Ditadi (и�
 Новых фотографий не скачивалось, лицензии прежние.
 Корты в клубе одинаковые, поэтому разные кадры — это разные планы одного типа площадки,
 а не разные корты. **Заменить на съёмку клуба, когда заказчик пришлёт свои фотографии.**
+
+
+## Главный экран (07.09.2026)
+
+Заказчик попросил убрать плакатный заголовок и поставить крупный снимок игры.
+Взят уже проверенный кадр **Pexels 32349969** (удар в прыжке), но в большом
+разрешении: 2600×3466 вместо прежних 900×1100, обрезан под высокий экран
+до 1240×1780.
+
+Что именно на снимке, глазами в этот раз не пересматривалось — вместо этого
+скачанный файл сверен с проверенным ранее образцом `action-1.webp`:
+расхождение яркости **0,6 из 255** при подборе кадрирования, то есть это
+буквально тот же снимок. Лицензия та же, Pexels License.
+
+**ЗАГЛУШКА:** это по-прежнему чужая фотография, не с кортов клуба. Снимок
+чёрно-белый. Когда клуб пришлёт свои кадры, файл заменяется без изменения кода.

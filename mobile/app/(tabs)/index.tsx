@@ -47,7 +47,9 @@ export default function Home() {
   if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;
 
   const { grid, tournaments, bookings } = q.data;
-  const heroH = Math.max(430, Math.min(height * 0.62, 560));
+  // Фотография — главное на первом экране, поэтому забирает большую его часть.
+  // Плакатный заголовок убран: снимок игры говорит сам за себя.
+  const heroH = Math.max(520, Math.min(height * 0.78, 760));
 
   const freeHours = grid.courts.reduce(
     (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
@@ -82,8 +84,8 @@ export default function Home() {
       <View style={[st.hero, { height: heroH }]}>
         <Image source={HERO} style={st.heroImg} resizeMode="cover" />
         <LinearGradient
-          colors={['rgba(9,13,10,.78)', 'rgba(9,13,10,.30)', 'rgba(9,13,10,.80)', 'rgba(9,13,10,.97)']}
-          locations={[0, 0.34, 0.72, 1]} style={st.fill} />
+          colors={['rgba(9,13,10,.62)', 'rgba(9,13,10,.06)', 'rgba(9,13,10,.72)', 'rgba(9,13,10,.97)']}
+          locations={[0, 0.26, 0.74, 1]} style={st.fill} />
 
         <View style={[st.brandRow, { paddingTop: insets.top + 10 }]}>
           <Mark size={38} />
@@ -92,12 +94,6 @@ export default function Home() {
 
         <View style={st.heroIn}>
           <Text style={st.eyebrow}>АССАЛАМУ АЛЕЙКУМ</Text>
-          {/* Плакатный заголовок не тянется системным размером шрифта:
-              при увеличении межстрочный интервал не растёт вместе с буквами
-              и у «ПРИХОДИТЕ» срезает верх. Смысл несёт текст ниже — он тянется. */}
-          <Text style={st.title} allowFontScaling={false}>
-            ПРИХОДИТЕ{'\n'}ИГРАТЬ
-          </Text>
           <Text style={st.lede}>
             Шесть кортов и мини-футбольное поле в {CLUB_CITY}е.
             Открыты с {hh(grid.openHour)} до полуночи.
@@ -106,10 +102,10 @@ export default function Home() {
           {/* Свободные часы живут прямо в кнопке: раньше то же самое
               повторялось трижды — строкой под кнопкой и отдельной карточкой. */}
           <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
-            accessibilityLabel={`Записаться. ${freeText}`}
+            accessibilityLabel={`Забронировать. ${freeText}`}
             style={({ pressed }) => [st.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.995 }] }]}>
             <View style={{ flex: 1 }}>
-              <Text style={st.ctaT}>Записаться</Text>
+              <Text style={st.ctaT}>Забронировать</Text>
               <Text style={st.ctaS}>{freeText}</Text>
             </View>
             <IconChevron size={20} color={C.onLime} />
@@ -252,10 +248,6 @@ const st = StyleSheet.create({
   brand: { color: C.text, fontFamily: DISP, fontSize: 19, letterSpacing: 1, flex: 1 },
   heroIn: { paddingHorizontal: S.xl, paddingBottom: 24 },
   eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 2.2, marginBottom: 8 },
-  // lineHeight с запасом к кеглю: у Oswald высокие прописные, при lineHeight
-  // меньше размера шрифта iOS срезает верх первой строки.
-  title: { color: C.text, fontFamily: DISP, fontSize: 58, lineHeight: 66,
-    letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 16 },
   lede: { color: '#DCE4D4', fontSize: 16, lineHeight: 23, marginTop: 12, fontWeight: '500',
     textShadowColor: 'rgba(0,0,0,.55)', textShadowRadius: 8 },
   cta: { backgroundColor: C.lime, borderRadius: R.xl, paddingVertical: 16, paddingHorizontal: 20,
