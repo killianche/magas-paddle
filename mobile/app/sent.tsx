@@ -6,7 +6,7 @@ import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
-import { hh, longDate, weekday, plural } from '../src/dates';
+import { hh, longDate, plural } from '../src/dates';
 
 import { CLUB, whatsappUrl } from '../src/club';
 
@@ -51,7 +51,7 @@ export default function Sent() {
         <Text style={s.h}>Записано</Text>
         <Text style={s.p}>
           <Text style={{ color: C.text, fontWeight: '700' }}>{String(p.name)}</Text>
-          {'\n'}{longDate(String(p.date))}, {weekday(String(p.date))}
+          {'\n'}{longDate(String(p.date))}
           {'\n'}<Text style={{ color: C.text, fontWeight: '700' }}>{hh(hour)} – {hh(hour + hours)}</Text>
           {' '}· {hours} {plural(hours, 'час', 'часа', 'часов')}
         </Text>

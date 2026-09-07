@@ -101,6 +101,13 @@ export default function Schedule() {
   const morningPrice = priced?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
   const standardPrice = priced?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
 
+  // Прошедшие часы не показываем: занять их нельзя, а к вечеру они съедают
+  // почти весь экран, и до свободного времени приходится прокручивать.
+  // Так только сегодня — в другие дни прошедших часов нет.
+  const allHours = shown[0]?.hours ?? [];
+  const rows = allHours.filter(h => h.status !== 'past');
+  const passed = allHours.length - rows.length;
+
   const showCourt = (courtId: string) => { Haptics.selectionAsync(); setPeek(courtId) };
   const peeked = grid.courts.find(c => c.courtId === peek) ?? null;
 
@@ -184,12 +191,24 @@ export default function Schedule() {
         </View>
       </View>
 
+      {passed > 0 && rows.length > 0 && (
+        <Text style={st.passed}>
+          {hh(allHours[0].hour)} – {hh(allHours[passed - 1].hour + 1)} уже прошли
+        </Text>
+      )}
+
       <ScrollView style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: padH, paddingTop: 7, paddingBottom: 10 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
-        {shown[0]?.hours.map(({ hour }) => (
+        {rows.length === 0 && (
+          <Text style={st.allPassed}>
+            Сегодня клуб уже закрывается. Выберите другой день выше.
+          </Text>
+        )}
+
+        {rows.map(({ hour }) => (
           <View key={hour} style={[st.row, { gap }]}>
             <Text style={[st.time, { width: timeW }]}>{hh(hour)}</Text>
             {shown.map(c => {
@@ -381,6 +400,11 @@ const st = StyleSheet.create({
     marginHorizontal: 20, marginTop: 8, paddingVertical: 6, paddingHorizontal: 11,
     borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   tariffT: { color: C.dim, fontSize: 12.5 },
+
+  allPassed: { color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
+    paddingHorizontal: 30, paddingVertical: 40 },
+  passed: { color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
+    paddingHorizontal: 20, marginTop: 10, marginBottom: -2 },
 
   kinds: { flexDirection: 'row', gap: 4, marginHorizontal: 20, marginTop: 10, padding: 4,
     borderRadius: R.lg, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },

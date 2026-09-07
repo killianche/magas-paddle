@@ -11,7 +11,7 @@ import { api, rub, ApiError, type ApiBooking, type ApiTournament } from '../../s
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
-import { Pill } from '../../src/components/ui';
+
 import { IconRacket, IconTrophy, IconCheck } from '../../src/components/icons';
 import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
@@ -108,39 +108,44 @@ export default function Bookings() {
         </View>
       ))}
 
-      {bookings.map(b => (
-        <View key={'b' + b.id} style={s.card}>
-          <View style={s.head}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{b.courtName}</Text>
-              <Text style={s.date}>{longDate(dateOfIso(b.startsAt))}</Text>
+      {bookings.map(b => {
+        const st = stateOf(b);
+        return (
+          <View key={'b' + b.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
+            {/* Состояние — первое, что видит человек. Заявка и подтверждённая
+                бронь это разные вещи, и разница должна читаться сразу. */}
+            <View style={[s.band, { backgroundColor: st.bg }]}>
+              <Text style={[s.bandT, { color: st.fg }]}>{st.label}</Text>
             </View>
-            <Pill text={b.status === 'confirmed' ? 'Подтверждено' : 'Ожидает'}
-              kind={b.status === 'confirmed' ? 'ok' : 'wait'} />
-          </View>
-          <View style={s.foot}>
-            <Text style={s.time}>{hh(b.hour)} – {hh(b.hour + b.hours)}</Text>
-            <Text style={s.price}>{rub(b.price)}</Text>
-          </View>
-          {/* Неподтверждённая заявка держится ограниченное время: человек
-              должен видеть, сколько осталось, а не думать, что место за ним навсегда. */}
-          {holdLeft(b) != null && (
-            <Text style={s.hold}>
-              {holdLeft(b)! > 0
-                ? `Держим за вами ещё ${holdLeft(b)} ${plural(holdLeft(b)!, 'минуту', 'минуты', 'минут')} — подтвердите у менеджера`
-                : 'Время удержания вышло — место могло освободиться'}
-            </Text>
-          )}
-          <View style={s.actions}>
-            <View style={s.mini}>
-              <Text style={s.miniT}>{b.hours} {plural(b.hours, 'час', 'часа', 'часов')}</Text>
+
+            <View style={s.body}>
+              <View style={s.head}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.name}>{b.courtName}</Text>
+                  <Text style={s.date}>{longDate(dateOfIso(b.startsAt))}</Text>
+                </View>
+              </View>
+              <View style={s.foot}>
+                <Text style={s.time}>{hh(b.hour)} – {hh(b.hour + b.hours)}</Text>
+                <Text style={s.price}>{rub(b.price)}</Text>
+              </View>
+
+              <Text style={[s.note, st.warn && { color: C.amber }]}>{st.note}</Text>
+
+              <View style={s.actions}>
+                <View style={s.mini}>
+                  <Text style={s.miniT}>{b.hours} {plural(b.hours, 'час', 'часа', 'часов')}</Text>
+                </View>
+                {st.canCancel && (
+                  <Pressable style={[s.mini, s.miniDg]} onPress={() => cancelBooking(b)}>
+                    <Text style={[s.miniT, { color: C.red }]}>Отменить</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
-            <Pressable style={[s.mini, s.miniDg]} onPress={() => cancelBooking(b)}>
-              <Text style={[s.miniT, { color: C.red }]}>Отменить</Text>
-            </Pressable>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -165,33 +170,78 @@ function holdLeft(b: { status: string; holdUntil?: string | null }): number | nu
   return Math.max(0, Math.round((new Date(b.holdUntil).getTime() - Date.now()) / 60000));
 }
 
+/** Что показать человеку про состояние его записи.
+ *
+ *  Заявка и подтверждённая бронь — разные вещи. Пока менеджер не подтвердил,
+ *  время держится за человеком лишь на срок удержания; после подтверждения
+ *  оно закреплено, и его ждут. Раньше разница сводилась к слову
+ *  «Ожидает» мелким шрифтом, и её не замечали. */
+function stateOf(b: ApiBooking) {
+  const left = holdLeft(b);
+  const past = new Date(b.endsAt).getTime() < Date.now();
+
+  if (b.status === 'expired') return {
+    label: 'ВРЕМЯ ОСВОБОДИЛОСЬ', bg: C.surface2, fg: C.dim,
+    note: 'Заявку не успели подтвердить, и время вернулось в расписание. Выберите другое.',
+    warn: false, dim: true, canCancel: false,
+  };
+  if (b.status === 'no_show') return {
+    label: 'НЕ СОСТОЯЛАСЬ', bg: C.surface2, fg: C.dim,
+    note: 'Клуб отметил, что вы не пришли.',
+    warn: false, dim: true, canCancel: false,
+  };
+  if (past) return {
+    label: 'СЫГРАНО', bg: C.surface2, fg: C.dim,
+    note: 'Спасибо за игру. Ждём снова.',
+    warn: false, dim: true, canCancel: false,
+  };
+  if (b.status === 'confirmed') return {
+    label: 'ЗАБРОНИРОВАНО', bg: C.lime, fg: C.onLime,
+    note: 'Менеджер подтвердил запись. Время закреплено за вами — вас ждут в клубе.',
+    warn: false, dim: false, canCancel: true,
+  };
+  // pending
+  return {
+    label: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ', bg: 'rgba(240,169,59,.18)', fg: C.amber,
+    note: left == null
+      ? 'Менеджер подтвердит запись и свяжется с вами.'
+      : left > 0
+        ? `Менеджер подтвердит запись и свяжется с вами. Место держим ещё ${left} ${plural(left, 'минуту', 'минуты', 'минут')}.`
+        : 'Срок удержания вышел — место могло освободиться. Свяжитесь с менеджером.',
+    warn: left === 0, dim: false, canCancel: true,
+  };
+}
+
 const s = StyleSheet.create({
-  hold: { color: '#F0A93B', fontSize: 12.5, lineHeight: 18, marginTop: 8 },
+  band: { paddingVertical: 7, paddingHorizontal: 14 },
+  bandT: { fontSize: 11, fontWeight: '700', letterSpacing: 2 },
+  body: { padding: 14 },
+  note: { color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
   emptyIcon: { width: 62, height: 62, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(198,240,51,.26)', backgroundColor: 'rgba(198,240,51,.07)',
     marginBottom: 18 },
-  emptyT: { color: C.text, fontSize: 19, fontWeight: '700' },
-  emptyS: { color: C.dim, fontSize: 13.5, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  emptyT: { color: C.text, fontSize: 15, fontWeight: '700' },
+  emptyS: { color: C.dim, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
   emptyBtn: { marginTop: 20, paddingHorizontal: 22, paddingVertical: 14, borderRadius: R.lg,
     backgroundColor: C.lime, minHeight: HIT, justifyContent: 'center' },
-  emptyBtnT: { color: C.onLime, fontSize: 15.5, fontWeight: '700' },
+  emptyBtnT: { color: C.onLime, fontSize: 15, fontWeight: '700' },
 
   cardT: { borderColor: 'rgba(198,240,51,.3)', backgroundColor: 'rgba(198,240,51,.05)' },
   tIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(198,240,51,.28)', backgroundColor: 'rgba(198,240,51,.08)' },
   card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.xl,
-    padding: 14, marginHorizontal: S.xl, marginBottom: 10 },
+    marginHorizontal: S.xl, marginBottom: 10, overflow: 'hidden' },
   head: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
-  name: { color: C.text, fontSize: 17.5, fontWeight: '700' },
-  date: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
+  name: { color: C.text, fontSize: 15, fontWeight: '700' },
+  date: { color: C.dim2, fontSize: 13, marginTop: 2 },
   foot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
     borderTopWidth: 1, borderTopColor: C.line, paddingTop: 11 },
-  time: { color: C.text, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  price: { color: C.dim, fontSize: 14, fontVariant: ['tabular-nums'] },
+  time: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  price: { color: C.dim, fontSize: 15, fontVariant: ['tabular-nums'] },
   actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   mini: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: R.md,
     paddingVertical: 11, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   miniDg: { borderColor: 'rgba(229,100,75,.45)' },
-  miniT: { color: C.dim, fontSize: 13.5, fontWeight: '600' },
+  miniT: { color: C.dim, fontSize: 13, fontWeight: '600' },
 });

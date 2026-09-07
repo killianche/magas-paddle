@@ -26,6 +26,10 @@ export class BookingsController {
     const client = await this.db.clients.findUnique({ where: { phone: key } });
     if (!client) return [];
 
+    // Сначала освобождаем просроченные заявки: иначе человек увидит
+    // «ждёт подтверждения» у брони, которую клуб уже отпустил.
+    await this.club.releaseExpired();
+
     const rows = await this.db.bookings.findMany({
       where: { client_id: client.id, status: { not: 'cancelled' } },
       orderBy: { starts_at: 'asc' },

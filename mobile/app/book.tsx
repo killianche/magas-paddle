@@ -15,7 +15,7 @@ import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
-import { hh, longDate, weekday, plural } from '../src/dates';
+import { hh, longDate, plural } from '../src/dates';
 
 const CANCEL_HOURS = 4;   // ЗАГЛУШКА: правило отмены ждёт подтверждения клуба
 const LATE_MINUTES = 15;
@@ -107,7 +107,7 @@ export default function Book() {
         keyboardShouldPersistTaps="handled">
         <View style={s.card}>
           <Row k="Площадка" v={courtName} />
-          <Row k="Дата" v={`${longDate(date)}, ${weekday(date)}`} />
+          <Row k="Дата" v={longDate(date)} />
           <Row k="Время" v={`${hh(hour)} – ${hh(hour + hours)}`} mono />
           <Row k="Длительность" v={`${hours} ${plural(hours, 'час', 'часа', 'часов')}`} />
           <Row k="К оплате на месте" v={rub(price)} total />
