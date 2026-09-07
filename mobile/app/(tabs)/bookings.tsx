@@ -122,6 +122,15 @@ export default function Bookings() {
             <Text style={s.time}>{hh(b.hour)} – {hh(b.hour + b.hours)}</Text>
             <Text style={s.price}>{rub(b.price)}</Text>
           </View>
+          {/* Неподтверждённая заявка держится ограниченное время: человек
+              должен видеть, сколько осталось, а не думать, что место за ним навсегда. */}
+          {holdLeft(b) != null && (
+            <Text style={s.hold}>
+              {holdLeft(b)! > 0
+                ? `Держим за вами ещё ${holdLeft(b)} ${plural(holdLeft(b)!, 'минуту', 'минуты', 'минут')} — подтвердите у менеджера`
+                : 'Время удержания вышло — место могло освободиться'}
+            </Text>
+          )}
           <View style={s.actions}>
             <View style={s.mini}>
               <Text style={s.miniT}>{b.hours} {plural(b.hours, 'час', 'часа', 'часов')}</Text>
@@ -150,7 +159,14 @@ function Empty() {
   );
 }
 
+/** Сколько минут осталось держать заявку. null — удержания нет. */
+function holdLeft(b: { status: string; holdUntil?: string | null }): number | null {
+  if (b.status !== 'pending' || !b.holdUntil) return null;
+  return Math.max(0, Math.round((new Date(b.holdUntil).getTime() - Date.now()) / 60000));
+}
+
 const s = StyleSheet.create({
+  hold: { color: '#F0A93B', fontSize: 12.5, lineHeight: 18, marginTop: 8 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
   emptyIcon: { width: 62, height: 62, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(198,240,51,.26)', backgroundColor: 'rgba(198,240,51,.07)',

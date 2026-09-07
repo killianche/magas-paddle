@@ -20,6 +20,8 @@ export class AvailabilityController {
       throw new BadRequestException('Дата должна быть в виде ГГГГ-ММ-ДД');
     }
 
+    // Заявки с вышедшим сроком не должны занимать время
+    await this.club.releaseExpired();
     const pricing = await this.club.pricing();
     const set = pricing.settings;
     const dow = weekdayOf(day);
@@ -27,7 +29,7 @@ export class AvailabilityController {
       this.db.courts.findMany({ where: { is_active: true }, orderBy: { sort_order: 'asc' } }),
       this.db.bookings.findMany({
         where: {
-          status: { not: 'cancelled' },
+          status: { notIn: ['cancelled', 'expired'] },
           starts_at: { gte: clubHour(day, 0), lt: clubHour(day, 24) },
         },
         select: { court_id: true, starts_at: true, ends_at: true },

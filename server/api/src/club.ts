@@ -17,12 +17,15 @@ export type ClubSettings = {
   maxHours: number;
   /** За сколько часов отмена бесплатна. */
   cancelHours: number;
+  /** Сколько минут держим неоплаченную заявку, пока её не подтвердят. */
+  holdMinutes: number;
 };
 
 /** Значения на случай, если строки настроек в базе почему-то нет.
  *  Совпадают с умолчаниями в sql/004_settings.sql. */
 export const FALLBACK: ClubSettings = {
   openHour: 9, closeHour: 24, morningUntil: 13, maxHours: 3, cancelHours: 4,
+  holdMinutes: 60,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -58,9 +61,27 @@ export class ClubService {
       morningUntil: row.morning_until,
       maxHours: row.max_hours,
       cancelHours: row.cancel_hours,
+      holdMinutes: row.hold_minutes,
     } : FALLBACK;
     this.readAt = Date.now();
     return this.cache;
+  }
+
+  /** Освободить время у заявок, которые не подтвердили вовремя.
+   *
+   *  Оплата идёт через менеджера, поэтому заявка какое-то время висит
+   *  неоплаченной и держит корт. Раньше держала вечно: человек мог записаться
+   *  и пропасть. Теперь просроченная заявка перестаёт занимать время —
+   *  и в расписании, и в запрете на пересечение на уровне базы.
+   *
+   *  Зовём перед выдачей расписания и перед созданием брони: отдельного
+   *  планировщика для этого заводить не нужно, а задержки не будет. */
+  async releaseExpired(): Promise<number> {
+    const r = await this.db.bookings.updateMany({
+      where: { status: 'pending', hold_until: { lt: new Date() } },
+      data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
+    });
+    return r.count;
   }
 
   /** Позвать после изменения настроек, чтобы не ждать истечения кэша. */

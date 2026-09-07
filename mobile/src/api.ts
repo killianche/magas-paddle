@@ -88,7 +88,10 @@ export type ApiGrid = {
 export type ApiBooking = {
   id: number; courtId: string; courtName: string;
   startsAt: string; endsAt: string; hour: number; hours: number;
-  price: number; status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done';
+  price: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
+  /** До какого времени клуб держит неподтверждённую заявку. */
+  holdUntil?: string | null;
 };
 
 export type ApiTournament = {

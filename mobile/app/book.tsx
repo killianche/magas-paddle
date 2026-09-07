@@ -64,7 +64,8 @@ export default function Book() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
-        hour: String(hour), hours: String(hours), price: String(booking.price) } });
+        hour: String(hour), hours: String(hours), price: String(booking.price),
+        holdUntil: booking.holdUntil ?? '' } });
     } catch (e) {
       if (e instanceof ApiError && e.code === 'slot_taken') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

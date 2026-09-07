@@ -165,6 +165,7 @@ export class AdminController {
     const d = date || clubToday();
     if (!isValidDate(d)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
 
+    await this.club.releaseExpired();
     const set = await this.club.get();
     const rows = await this.db.bookings.findMany({
       where: { starts_at: { gte: clubHour(d, 0), lt: clubHour(d, 24) } },
@@ -200,6 +201,9 @@ export class AdminController {
           guestName: b.guest_name,
           paid: paidBy.get(String(b.id)) ?? 0,
           statusAt: b.status_at, statusBy: b.status_by,
+          holdUntil: b.hold_until,
+          players: b.players, discount: b.discount, discountReason: b.discount_reason,
+          createdBy: b.created_by,
           client: cl ? {
             id: Number(cl.id), name: cl.name, phone: cl.phone,
             cancels: cl.cancels, noShows: cl.no_shows, note: cl.note,
@@ -224,6 +228,8 @@ export class AdminController {
     const ops: any[] = [
       this.db.bookings.update({ where: { id: b.id }, data: {
         status: dto.status, status_at: new Date(), status_by: req.admin.login,
+        // Подтвердили — место больше не «на удержании», срок снимаем
+        hold_until: dto.status === 'confirmed' ? null : b.hold_until,
       }}),
     ];
     // История поведения клиента: менеджер должен видеть, кто часто пропадает
@@ -240,6 +246,39 @@ export class AdminController {
     await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
       `бронь №${Number(b.id)}`);
     return { id: Number(b.id), status: dto.status };
+  }
+
+  /** Скидка постоянному или по договорённости. Цена по прайсу остаётся —
+   *  иначе потом не понять, почему сумма не сошлась. */
+  @Post('bookings/:id/discount')
+  @Needs('prices')
+  async discount(@Req() req: any, @Param('id') id: string, @Body() body: {
+    amount?: number; reason?: string;
+  }) {
+    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    if (!b) throw new NotFoundException('Запись не найдена');
+    const amount = rubToKop(Math.max(0, Number(body.amount ?? 0)));
+    if (amount > b.price) throw new BadRequestException('Скидка больше цены');
+    const reason = body.reason ? String(body.reason).trim().slice(0, 200) : null;
+    if (amount > 0 && !reason) throw new BadRequestException('Напишите причину скидки');
+
+    await this.db.bookings.update({ where: { id: b.id }, data: {
+      discount: amount, discount_reason: amount > 0 ? reason : null,
+    }});
+    await this.auth.log(req.admin, amount > 0 ? 'дал скидку' : 'убрал скидку',
+      `бронь №${Number(b.id)}, ${(amount / 100).toLocaleString('ru-RU')} ₽${reason ? ', ' + reason : ''}`);
+    return { ok: true };
+  }
+
+  /** Сколько человек играло. Падел — четверо, футбол — десять;
+   *  без этого нет ни трафика, ни выручки на человека. */
+  @Post('bookings/:id/players')
+  async setPlayers(@Req() req: any, @Param('id') id: string, @Body() body: { players?: number }) {
+    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    if (!b) throw new NotFoundException('Запись не найдена');
+    const n = body.players == null ? null : int(body.players, 0, 1, 30) || null;
+    await this.db.bookings.update({ where: { id: b.id }, data: { players: n } });
+    return { ok: true, players: n };
   }
 
   /** Платежи по броне: их бывает несколько — на корте четверо,
@@ -515,6 +554,9 @@ export class AdminController {
           price: b.price, status: b.status, source: b.source,
           paid: paidBy.get(String(b.id)) ?? 0,
           statusAt: b.status_at, statusBy: b.status_by,
+          holdUntil: b.hold_until,
+          players: b.players, discount: b.discount, discountReason: b.discount_reason,
+          createdBy: b.created_by,
           comment: b.comment,
         };
       }),
@@ -551,6 +593,7 @@ export class AdminController {
       select: {
         id: true, court_id: true, client_id: true, starts_at: true, ends_at: true,
         status: true, price: true, source: true, created_at: true,
+        discount: true, players: true, status_at: true,
       },
     });
 
@@ -560,8 +603,20 @@ export class AdminController {
       select: { booking_id: true, amount: true, method: true, kind: true },
     });
 
-    const [rows, prevRows, pays, prevPays] = await Promise.all([
+    /** Прочие продажи периода: бар, прокат, тренировки. */
+    const otherSales = async (a: string, b: string) => this.db.sales.findMany({
+      where: { day: { gte: new Date(a), lte: new Date(b) } },
+      select: { category: true, amount: true, method: true },
+    });
+    /** Расходы месяцев, попавших в период. */
+    const costs = async (a: string, b: string) => this.db.expenses.findMany({
+      where: { month: { gte: new Date(a.slice(0, 7) + '-01'), lte: new Date(b.slice(0, 7) + '-01') } },
+      select: { category: true, amount: true },
+    });
+
+    const [rows, prevRows, pays, prevPays, sales, prevSales, exp, prevExp] = await Promise.all([
       load(from, to), load(prevFrom, prevTo), money(from, to), money(prevFrom, prevTo),
+      otherSales(from, to), otherSales(prevFrom, prevTo), costs(from, to), costs(prevFrom, prevTo),
     ]);
     const paidTotal = (list: { amount: number }[]) => list.reduce((n, p) => n + p.amount, 0);
 
@@ -575,7 +630,8 @@ export class AdminController {
       return {
         bookings: live.length,
         hours: bookedHours,
-        charged: played.reduce((n, b) => n + b.price, 0),
+        // Начислено с учётом ручных скидок: иначе цифра расходится с кассой
+        charged: played.reduce((n, b) => n + b.price - b.discount, 0),
         received: paidTotal(payList),
         cancels: list.filter(b => b.status === 'cancelled').length,
         noShows: list.filter(b => b.status === 'no_show').length,
@@ -584,6 +640,12 @@ export class AdminController {
 
     const now = sum(rows, pays);
     const prev = sum(prevRows, prevPays);
+
+    const salesTotal = (list: { amount: number }[]) => list.reduce((n, x) => n + x.amount, 0);
+    const otherRevenue = salesTotal(sales);
+    const prevOther = salesTotal(prevSales);
+    const spent = exp.reduce((n, x) => n + x.amount, 0);
+    const prevSpent = prevExp.reduce((n, x) => n + x.amount, 0);
 
     const hoursOf = (b: typeof rows[number]) => Math.round((+b.ends_at - +b.starts_at) / 3600_000);
     const played = rows.filter(b => b.status !== 'cancelled' && b.status !== 'no_show');
@@ -643,6 +705,18 @@ export class AdminController {
     const lost = rows.filter(b => b.status === 'cancelled' || b.status === 'no_show')
       .reduce((n, b) => n + b.price, 0);
 
+    // Поздние отмены — те, что пришли позже бесплатной границы.
+    // Считать их стало можно только с тех пор, как пишется время смены статуса.
+    const lateCancels = rows.filter(b =>
+      b.status === 'cancelled' && b.status_at != null &&
+      +b.starts_at - +b.status_at < set.cancelHours * 3600_000).length;
+
+    // Сколько человек побывало и сколько принёс каждый
+    const guests = played.reduce((n, b) => n + (b.players ?? 0), 0);
+    const withPlayers = played.filter(b => b.players != null).length;
+    const discounts = rows.filter(b => b.status !== 'cancelled')
+      .reduce((n, b) => n + b.discount, 0);
+
     // За сколько дней вперёд бронируют — от этого зависит, как далеко
     // открывать расписание и когда слать напоминания
     const depths = played.map(b =>
@@ -700,7 +774,16 @@ export class AdminController {
       occupancy: capacity ? now.hours / capacity : 0,
       eveningOccupancy: eveningCapacity ? eveningSold / eveningCapacity : 0,
       unpaid: now.charged - now.received,
-      byMethod, refunded, penalties, lost, bookingDepth,
+      byMethod, refunded, penalties, lost, bookingDepth, lateCancels, discounts,
+      // Деньги клуба целиком: аренда кортов плюс бар, прокат и тренировки,
+      // минус расходы месяцев, попавших в период
+      otherRevenue, prevOther, spent, prevSpent,
+      profit: now.charged + otherRevenue - spent,
+      prevProfit: prev.charged + prevOther - prevSpent,
+      byExpense: groupSum(exp),
+      bySale: groupSum(sales),
+      guests, guestsKnown: withPlayers, playedCount: played.length,
+      revPerGuest: guests ? Math.round(now.charged / guests) : 0,
       heat: Array.from({ length: 7 }, (_, w) => ({
         weekday: w + 1,
         days: weekdayCount.get(w + 1) ?? 0,
@@ -738,6 +821,131 @@ export class AdminController {
     };
   }
 
+  /* ── расходы и прочие продажи ───────────────────────────────────────
+     Без расходов вопрос «окупается ли клуб» не имеет ответа в системе:
+     видно только оборот. Прочие продажи — бар, прокат, тренировки —
+     тоже деньги клуба, а завести их было негде. */
+
+  @Get('expenses')
+  @Needs('prices')
+  async expenses(@Query('from') from?: string, @Query('to') to?: string) {
+    const where: any = {};
+    if (from && isValidDate(from)) where.month = { gte: new Date(from.slice(0, 7) + '-01') };
+    if (to && isValidDate(to)) {
+      where.month = { ...(where.month ?? {}), lte: new Date(to.slice(0, 7) + '-01') };
+    }
+    const rows = await this.db.expenses.findMany({ where, orderBy: [{ month: 'desc' }, { id: 'desc' }] });
+    return rows.map(r => ({
+      id: Number(r.id), month: r.month.toISOString().slice(0, 7),
+      category: r.category, amount: r.amount, note: r.note, by: r.admin_name,
+    }));
+  }
+
+  @Post('expenses')
+  @Needs('prices')
+  async saveExpense(@Req() req: any, @Body() body: {
+    id?: number; month?: string; category?: string; amount?: number; note?: string;
+  }) {
+    const CATS = ['rent', 'salary', 'utilities', 'loan', 'marketing', 'equipment', 'tax', 'other'];
+    const category = String(body.category ?? 'other');
+    if (!CATS.includes(category)) throw new BadRequestException('Неизвестная статья расходов');
+    const m = String(body.month ?? '');
+    if (!/^\d{4}-\d{2}$/.test(m)) throw new BadRequestException('Месяц в виде ГГГГ-ММ');
+    const amount = rubToKop(body.amount);
+    if (amount <= 0) throw new BadRequestException('Сумма должна быть больше нуля');
+
+    const data = {
+      month: new Date(m + '-01'), category, amount,
+      note: body.note ? String(body.note).trim().slice(0, 200) : null,
+      admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+    };
+    const r = body.id
+      ? await this.db.expenses.update({ where: { id: BigInt(body.id) }, data })
+      : await this.db.expenses.create({ data });
+    await this.auth.log(req.admin, 'записал расход',
+      `${m}, ${EXPENSE_WORD[category]}, ${(amount / 100).toLocaleString('ru-RU')} ₽`);
+    return { id: Number(r.id) };
+  }
+
+  @Post('expenses/:id/delete')
+  @Needs('prices')
+  async deleteExpense(@Req() req: any, @Param('id') id: string) {
+    await this.db.expenses.delete({ where: { id: BigInt(id) } });
+    await this.auth.log(req.admin, 'удалил расход', `№${id}`);
+    return { ok: true };
+  }
+
+  @Get('sales')
+  async sales(@Query('from') from?: string, @Query('to') to?: string) {
+    const a = from && isValidDate(from) ? from : shiftDate(clubToday(), -30);
+    const b = to && isValidDate(to) ? to : clubToday();
+    const rows = await this.db.sales.findMany({
+      where: { day: { gte: new Date(a), lte: new Date(b) } },
+      orderBy: [{ day: 'desc' }, { id: 'desc' }], take: 300,
+    });
+    return rows.map(r => ({
+      id: Number(r.id), day: r.day.toISOString().slice(0, 10),
+      category: r.category, amount: r.amount, method: r.method,
+      qty: r.qty, note: r.note, by: r.admin_name,
+    }));
+  }
+
+  /** Продать воду, прокат ракетки, тренировку. Это работа стойки. */
+  @Post('sales')
+  async saveSale(@Req() req: any, @Body() body: {
+    day?: string; category?: string; amount?: number; method?: string;
+    qty?: number; note?: string;
+  }) {
+    const CATS = ['bar', 'rental', 'coaching', 'shop', 'other'];
+    const category = String(body.category ?? 'other');
+    if (!CATS.includes(category)) throw new BadRequestException('Неизвестная статья продаж');
+    const method = String(body.method ?? 'cash');
+    if (!PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
+    const day = body.day && isValidDate(body.day) ? body.day : clubToday();
+    const amount = rubToKop(body.amount);
+    if (amount <= 0) throw new BadRequestException('Сумма должна быть больше нуля');
+
+    const r = await this.db.sales.create({ data: {
+      day: new Date(day), category, amount, method,
+      qty: int(body.qty, 1, 1, 999),
+      note: body.note ? String(body.note).trim().slice(0, 200) : null,
+      admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+    }});
+    await this.auth.log(req.admin, 'продал',
+      `${SALE_WORD[category]}, ${(amount / 100).toLocaleString('ru-RU')} ₽`);
+    return { id: Number(r.id) };
+  }
+
+  @Post('sales/:id/delete')
+  @Needs('cancel')
+  async deleteSale(@Req() req: any, @Param('id') id: string) {
+    await this.db.sales.delete({ where: { id: BigInt(id) } });
+    await this.auth.log(req.admin, 'удалил продажу', `№${id}`);
+    return { ok: true };
+  }
+
+  /** Взнос за турнир. Раньше взнос был записан на турнире,
+   *  а факта оплаты не было — «сколько собрано» никто не знал. */
+  @Post('entries/:id/pay')
+  async payEntry(@Req() req: any, @Param('id') id: string, @Body() body: {
+    amount?: number; method?: string;
+  }) {
+    const e = await this.db.tournament_entries.findUnique({
+      where: { id: BigInt(id) }, include: { tournaments: true, clients: true },
+    });
+    if (!e) throw new NotFoundException('Запись на турнир не найдена');
+    const method = String(body.method ?? 'cash');
+    if (!PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
+    const amount = body.amount == null ? e.tournaments.fee : rubToKop(body.amount);
+
+    await this.db.tournament_entries.update({ where: { id: e.id }, data: {
+      paid_amount: amount, paid_method: method, paid_at: amount > 0 ? new Date() : null,
+    }});
+    await this.auth.log(req.admin, 'принял взнос за турнир',
+      `${e.clients.name}, ${(amount / 100).toLocaleString('ru-RU')} ₽`);
+    return { ok: true };
+  }
+
   /* ── управление клубом ──────────────────────────────────────────────
      Раньше цены, часы, названия площадок и турниры правились только
      в базе руками программиста. Теперь всё это делает менеджер. */
@@ -765,7 +973,7 @@ export class AdminController {
   @Needs('club')
   async saveSettings(@Body() body: Partial<{
     openHour: number; closeHour: number; morningUntil: number;
-    maxHours: number; cancelHours: number;
+    maxHours: number; cancelHours: number; holdMinutes: number;
   }>) {
     const cur = await this.club.get();
     const next = {
@@ -774,6 +982,7 @@ export class AdminController {
       morning_until: int(body.morningUntil, cur.morningUntil, 0, 24),
       max_hours: int(body.maxHours, cur.maxHours, 1, 12),
       cancel_hours: int(body.cancelHours, cur.cancelHours, 0, 48),
+      hold_minutes: int(body.holdMinutes, cur.holdMinutes, 5, 1440),
     };
     if (next.open_hour >= next.close_hour) {
       throw new BadRequestException('Открытие должно быть раньше закрытия');
@@ -968,9 +1177,9 @@ export class AdminController {
 
   /** Занять время вручную: пришли без приложения, позвонили, турнир. */
   @Post('bookings')
-  async createManual(@Body() body: {
+  async createManual(@Req() req: any, @Body() body: {
     courtId: string; date: string; hour: number; hours: number;
-    name?: string; phone?: string; comment?: string;
+    name?: string; phone?: string; comment?: string; players?: number;
   }) {
     if (!isValidDate(body.date)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
     const court = await this.db.courts.findUnique({ where: { id: body.courtId } });
@@ -993,6 +1202,7 @@ export class AdminController {
       throw new BadRequestException(court.closed_reason ?? 'Площадка закрыта');
     }
 
+    const players = body.players ? int(body.players, 0, 1, 30) || null : null;
     const name = body.name?.trim() || null;
     const phone = normalizePhone(body.phone);
     if (body.phone && !phone) throw new BadRequestException('Номер телефона неполный');
@@ -1015,6 +1225,7 @@ export class AdminController {
         starts_at: clubHour(body.date, body.hour),
         ends_at: clubHour(body.date, body.hour + hoursCount),
         price, status: 'confirmed', source: 'admin', comment: body.comment,
+        created_by: req.admin.login, players: players,
         // имя гостя без телефона больше не теряется
         guest_name: clientId == null ? name : null,
       }});
@@ -1113,3 +1324,19 @@ const PAY_WORD: Record<string, string> = {
 const KIND_WORD: Record<string, string> = {
   payment: 'принял оплату', refund: 'вернул деньги', penalty: 'удержал за неявку',
 };
+
+const EXPENSE_WORD: Record<string, string> = {
+  rent: 'аренда', salary: 'зарплаты', utilities: 'коммуналка', loan: 'кредит',
+  marketing: 'реклама', equipment: 'инвентарь', tax: 'налоги', other: 'прочее',
+};
+
+const SALE_WORD: Record<string, string> = {
+  bar: 'бар', rental: 'прокат', coaching: 'тренировка', shop: 'товар', other: 'прочее',
+};
+
+/** Свод по статьям: {категория: сумма}. */
+function groupSum(list: { category: string; amount: number }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const x of list) out[x.category] = (out[x.category] ?? 0) + x.amount;
+  return out;
+}

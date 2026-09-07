@@ -42,6 +42,7 @@ export class BookingsController {
       hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
       price: b.price,
       status: b.status,
+      holdUntil: b.hold_until,
     }));
   }
 
@@ -50,6 +51,7 @@ export class BookingsController {
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
     const bookingPhone = normalizePhone(dto.phone);
     if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
+    await this.club.releaseExpired();
     const pricing = await this.club.pricing();
     const set = pricing.settings;
     if (dto.hour < set.openHour || dto.hour + dto.hours > set.closeHour) {
@@ -72,6 +74,11 @@ export class BookingsController {
     // Цена складывается по часам: часы могут попадать под разные тарифы
     const price = pricing.span(court, weekdayOf(dto.date), dto.hour, dto.hours);
 
+    // Срок удержания считаем от «сейчас», но не дальше начала самой игры:
+    // держать место после того, как игра началась, бессмысленно.
+    const holdUntil = new Date(Math.min(
+      Date.now() + set.holdMinutes * 60_000, +startsAt));
+
     const client = await this.db.clients.upsert({
       where: { phone: bookingPhone },
       update: { name: dto.name },
@@ -84,11 +91,15 @@ export class BookingsController {
           court_id: court.id, client_id: client.id,
           starts_at: startsAt, ends_at: endsAt,
           price, comment: dto.comment, source: 'app',
+          // Держим время ограниченный срок: оплата идёт через менеджера,
+          // и до подтверждения место не должно висеть занятым бесконечно.
+          hold_until: holdUntil,
         },
       });
       return {
         id: Number(b.id), courtId: court.id, courtName: court.name,
         startsAt: b.starts_at, endsAt: b.ends_at, price, status: b.status,
+        holdUntil: b.hold_until, holdMinutes: set.holdMinutes,
       };
     } catch (e: any) {
       // База не дала создать пересекающуюся бронь — значит время увели,

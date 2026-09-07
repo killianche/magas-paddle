@@ -67,6 +67,9 @@ tbody tr{height:52px}
 .bk.no_show{border-color:rgba(229,100,75,.5);background:rgba(229,100,75,.09)}
 .bk.cancelled{opacity:.4;text-decoration:line-through}
 
+/* Окна с одинаковым z-index перекрываются по порядку в разметке: то, что ниже,
+   оказывается сверху. Поэтому окно, открываемое поверх другого (например,
+   расход поверх «Управления»), должно стоять в разметке ПОСЛЕ него. */
 .modal{position:fixed;inset:0;background:rgba(4,7,5,.72);display:none;align-items:center;
   justify-content:center;z-index:50;padding:20px}
 .modal.on{display:flex}
@@ -262,6 +265,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   <input type="date" id="datePick" class="dpick" aria-label="Выбрать дату">
   <button class="btn" id="todayBtn">Сегодня</button>
   <button class="btn acc" id="addBtn">Записать клиента</button>
+  <button class="btn" id="saleBtn" title="Бар, прокат, тренировка">Продажа</button>
   <span class="who" id="whoAmI"></span>
   <button class="btn" id="setupBtn" title="Цены, площадки, часы, турниры">Управление</button>
   <button class="btn" id="logout" title="Выйти">Выйти</button>
@@ -351,6 +355,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <label for="addCourt">Площадка</label><select id="addCourt"></select>
     <label for="addHour">Час начала</label><select id="addHour"></select>
     <label for="addHours">Длительность</label><select id="addHours"></select>
+    <label for="addPlayers">Сколько человек играет</label>
+    <input id="addPlayers" type="number" min="1" max="30" placeholder="Необязательно">
     <label for="addName">Имя</label><input id="addName" placeholder="Кто играет">
     <label for="addPhone">Телефон</label>
     <input id="addPhone" inputmode="tel" placeholder="+7 928 000-00-00">
@@ -381,6 +387,37 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <p class="sub">Записи по всем датам, свежие сверху.</p>
     <div class="list" id="findList"></div>
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- прочая продажа -->
+<div class="modal" id="saleModal">
+  <div class="sheet">
+    <h3>Продажа</h3>
+    <p class="sub">Вода, прокат ракетки, тренировка — всё, что не аренда корта.</p>
+    <label for="saleDay">День</label><input id="saleDay" type="date">
+    <label for="saleCat">Что продали</label>
+    <select id="saleCat">
+      <option value="bar">Бар и вода</option><option value="rental">Прокат</option>
+      <option value="coaching">Тренировка</option><option value="shop">Товар</option>
+      <option value="other">Прочее</option>
+    </select>
+    <div class="grid2">
+      <div><label for="saleAmount">Сумма, ₽</label><input id="saleAmount" type="number" min="1" step="50"></div>
+      <div><label for="saleQty">Сколько штук</label><input id="saleQty" type="number" min="1" value="1"></div>
+    </div>
+    <label>Чем платят</label>
+    <div class="days" id="saleMethod">
+      <button type="button" data-m="cash" class="on">Наличными</button>
+      <button type="button" data-m="card">Картой</button>
+      <button type="button" data-m="sbp">По СБП</button>
+    </div>
+    <label for="saleNote">Заметка</label><input id="saleNote" placeholder="Необязательно">
+    <div class="err" id="saleErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="saleOk">Записать</button>
+    </div>
   </div>
 </div>
 
@@ -441,6 +478,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <div class="tabs">
       <button class="tab on" data-tab="courts">Площадки</button>
       <button class="tab" data-tab="rules">Особые цены</button>
+      <button class="tab" data-tab="money">Расходы</button>
       <button class="tab" data-tab="club">Часы и правила</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
@@ -475,6 +513,15 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
     </div>
 
+    <div class="pane" id="paneMoney">
+      <p class="sub">Постоянные расходы за месяц: аренда, зарплаты, свет, кредит, реклама.
+        Без них аналитика показывает оборот, а не заработок.</p>
+      <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
+        <button class="btn acc" id="expNew">Записать расход</button>
+      </div>
+      <div id="expRows"></div>
+    </div>
+
     <div class="pane" id="paneClub">
       <p class="sub">Меняется сразу и в приложении, и в этой сетке.</p>
       <div class="grid2">
@@ -483,6 +530,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setMorning">Утренний тариф до</label><input id="setMorning" type="number" min="0" max="24"></div>
         <div><label for="setMax">Часов подряд, не больше</label><input id="setMax" type="number" min="1" max="12"></div>
         <div><label for="setCancel">Бесплатная отмена, часов</label><input id="setCancel" type="number" min="0" max="48"></div>
+        <div><label for="setHold">Держим заявку, минут</label><input id="setHold" type="number" min="5" max="1440"></div>
       </div>
       <div class="err" id="setErr"></div>
       <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
@@ -511,6 +559,29 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     </div>
 
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- расход -->
+<div class="modal" id="expModal">
+  <div class="sheet">
+    <h3 id="expTitle">Расход</h3>
+    <label for="expMonth">Месяц</label><input id="expMonth" type="month">
+    <label for="expCat">Статья</label>
+    <select id="expCat">
+      <option value="rent">Аренда</option><option value="salary">Зарплаты</option>
+      <option value="utilities">Коммуналка</option><option value="loan">Кредит</option>
+      <option value="marketing">Реклама</option><option value="equipment">Инвентарь</option>
+      <option value="tax">Налоги</option><option value="other">Прочее</option>
+    </select>
+    <label for="expAmount">Сумма, ₽</label><input id="expAmount" type="number" min="1" step="100">
+    <label for="expNote">Заметка</label><input id="expNote" placeholder="Необязательно">
+    <div class="err" id="expErr"></div>
+    <div class="acts">
+      <button class="btn dg" id="expDel" hidden>Удалить</button>
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="expSave">Сохранить</button>
+    </div>
   </div>
 </div>
 
@@ -662,6 +733,18 @@ function phoneNice(p){
   const d=String(p||'').replace(/\D/g,'');
   return d.length===11 ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}` : (p||'—');
 }
+/** Сколько осталось держать неоплаченную заявку. null — удержания нет. */
+function holdLeft(b){
+  if(b.status !== 'pending' || !b.holdUntil) return null;
+  const min = Math.round((new Date(b.holdUntil) - Date.now()) / 60000);
+  return min > 0 ? min : 0;
+}
+function holdText(min){
+  if(min === 0) return 'срок вышел';
+  if(min < 60) return `осталось ${min} мин`;
+  return `осталось ${Math.floor(min/60)} ч ${min%60} мин`;
+}
+
 /** Имя на записи: клиент, гость без телефона или прочерк. */
 function who(b){ return (b.client && b.client.name) || b.guestName || 'Без имени' }
 /** Тарифы площадок приходят с сервера — здесь их не выдумываем. */
@@ -783,7 +866,7 @@ async function load(){
 
 function render(){
   const bar = $('#staleBar'); if(bar) bar.remove();
-  const alive = day.bookings.filter(b => b.status!=='cancelled');
+  const alive = day.bookings.filter(b => b.status!=='cancelled' && b.status!=='expired');
   const pending = alive.filter(b => b.status==='pending');
   // Две разные цифры: сколько должны заплатить и сколько уже в кассе.
   // Раньше была одна, и она включала неоплаченные заявки.
@@ -826,7 +909,7 @@ function render(){
     const now  = isToday && h === cur;
     html += `<tr class="${past?'past':''}${now?' now':''}"><td class="hcell">${hh(h)}</td>`;
     for(const c of courts){
-      const b = day.bookings.find(x => x.courtId===c.id && x.hour<=h && h<x.hour+x.hours && x.status!=='cancelled');
+      const b = day.bookings.find(x => x.courtId===c.id && x.hour<=h && h<x.hour+x.hours && x.status!=='cancelled' && x.status!=='expired');
       if(b){
         if(b.hour===h){
           const nm = who(b);
@@ -836,6 +919,7 @@ function render(){
             <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div>
             <div class="st">${b.paid >= b.price ? '✓ оплачено'
               : b.paid > 0 ? '½ ' + rub(b.paid)
+              : holdLeft(b) !== null ? '⏳ ' + holdText(holdLeft(b))
               : (STATUS[b.status]||b.status)}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
@@ -866,8 +950,13 @@ async function openBooking(id){
   $('#bkSub').textContent = court.name+' · '+pretty(date);
   $('#bkRows').innerHTML = `
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
-    <div class="row"><span>К оплате</span><b>${rub(b.price)}</b></div>
-    <div class="row"><span>Состояние</span><b>${STATUS[b.status]||b.status}</b></div>
+    <div class="row"><span>К оплате</span><b>${rub(b.price - (b.discount||0))}${
+      b.discount ? ` <span style="color:var(--dim-2);font-weight:400">вместо ${rub(b.price)}</span>` : ''}</b></div>
+    <div class="row"><span>Состояние</span><b>${STATUS[b.status]||b.status}${
+      holdLeft(b) !== null ? ` · <span style="color:var(--amber)">держим, ${holdText(holdLeft(b))}</span>` : ''
+    }</b></div>
+    ${b.discount ? `<div class="row"><span>Скидка</span><b style="color:var(--amber)">−${rub(b.discount)}${b.discountReason?' · '+b.discountReason:''}</b></div>` : ''}
+    ${b.players ? `<div class="row"><span>Играет</span><b>${b.players} чел.</b></div>` : ''}
     <div class="row"><span>Телефон</span><b>${b.client
       ? `${phoneNice(b.client.phone)}<button class="copy" id="bkCopy">копировать</button>`
       + `<a class="copy" href="https://wa.me/${b.client.phone}" target="_blank" rel="noopener">WhatsApp</a>`
@@ -901,10 +990,11 @@ async function openBooking(id){
   }
 
   const acts = [];
-  if(b.paid < b.price) acts.push(`<button class="btn acc" data-pay>Принять оплату</button>`);
+  if(b.paid < b.price - (b.discount||0)) acts.push(`<button class="btn acc" data-pay>Принять оплату</button>`);
   else acts.push(`<button class="btn" data-pay>Ещё платёж</button>`);
   if(b.status!=='confirmed') acts.push(`<button class="btn" data-s="confirmed">Подтвердить</button>`);
   acts.push(`<button class="btn" data-move>Перенести</button>`);
+  if(can('prices')) acts.push(`<button class="btn" data-disc>Скидка</button>`);
   // «Не пришёл» имеет смысл только после начала игры
   const started = date < todayStr() || (date === todayStr() && b.hour <= nowHour());
   if(b.status!=='no_show' && started) acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
@@ -921,6 +1011,22 @@ async function openBooking(id){
 
   const mv = $('#bkActs').querySelector('[data-move]');
   if(mv) mv.onclick = () => { $('#bkModal').classList.remove('on'); openMove(b) };
+
+  const disc = $('#bkActs').querySelector('[data-disc]');
+  if(disc) disc.onclick = async () => {
+    const cur = (b.discount||0)/100;
+    const v = prompt(`Скидка в рублях (цена ${rub(b.price)}). 0 — убрать скидку.`, String(cur));
+    if(v === null) return;
+    const amount = Number(v);
+    if(!Number.isFinite(amount) || amount < 0) return;
+    const reason = amount > 0 ? prompt('Причина скидки', b.discountReason || 'постоянный клиент') : '';
+    if(amount > 0 && !reason) return;
+    try {
+      await call(`/admin/bookings/${id}/discount`, { method:'POST',
+        body: JSON.stringify({ amount, reason }) });
+      $('#bkModal').classList.remove('on'); load();
+    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
+  };
 
   const payBtn = $('#bkActs').querySelector('[data-pay]');
   if(payBtn) payBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b) };
@@ -963,12 +1069,13 @@ let paying = null;
 function openPay(b){
   paying = b;
   const court = day.courts.find(c => c.id===b.courtId);
-  const left = Math.max(0, b.price - b.paid);
-  $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · цена ${rub(b.price)}`;
+  const due = b.price - (b.discount || 0);
+  const left = Math.max(0, due - b.paid);
+  $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · к оплате ${rub(due)}`;
   $('#payLeft').textContent = b.paid
     ? `Уже внесено ${rub(b.paid)}, осталось ${rub(left)}. Сумму можно поменять.`
     : 'Сумму можно поменять: скидка постоянному или платят частями.';
-  $('#payAmount').value = (left || b.price)/100;
+  $('#payAmount').value = (left || due)/100;
   $('#payReceipt').value = '';
   $('#payMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
   $('#payKind').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
@@ -1065,6 +1172,7 @@ function closeAdd(){
   $('#addModal').classList.remove('on');
   // Поля обязательно чистим: иначе следующая бронь уходила на чужое имя
   $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
+  $('#addPlayers').value = '';
 }
 
 function addTotal(){
@@ -1109,6 +1217,7 @@ $('#addOk').onclick = async () => {
     hour, hours: +$('#addHours').value,
     name: $('#addName').value.trim() || undefined,
     phone: phone || undefined,
+    players: +$('#addPlayers').value || undefined,
     comment: $('#addComment').value.trim() || undefined,
   };
   try {
@@ -1185,6 +1294,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab==='tourn') loadTournaments();
   if(t.dataset.tab==='rules') loadRules();
   if(t.dataset.tab==='staff'){ loadStaff(); loadLog() }
+  if(t.dataset.tab==='money') loadExpenses();
 });
 
 async function openSetup(){
@@ -1196,6 +1306,7 @@ async function openSetup(){
   $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
+  $('#setHold').value = st.holdMinutes;
 
   $('#courtRows').innerHTML = setup.courts.map(c => {
     const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
@@ -1254,7 +1365,7 @@ $('#setSave').onclick = async () => {
     await call('/admin/settings', { method:'POST', body: JSON.stringify({
       openHour: +$('#setOpen').value, closeHour: +$('#setClose').value,
       morningUntil: +$('#setMorning').value, maxHours: +$('#setMax').value,
-      cancelHours: +$('#setCancel').value,
+      cancelHours: +$('#setCancel').value, holdMinutes: +$('#setHold').value,
     })});
     $('#setErr').classList.remove('on');
     tariffs = {}; load();
@@ -1555,10 +1666,103 @@ $('#hCsv').onclick = () => {
   a.click(); URL.revokeObjectURL(a.href);
 };
 
+/* ── расходы ──────────────────────────────────────────── */
+let expList = [];
+async function loadExpenses(){
+  try { expList = await call('/admin/expenses') }
+  catch(e){ $('#expRows').innerHTML = `<div class="empty">${e.message}</div>`; return }
+
+  if(!expList.length){
+    $('#expRows').innerHTML = '<div class="empty">Расходы не заведены. Пока их нет, аналитика показывает оборот, а не прибыль.</div>';
+    return;
+  }
+  // Группируем по месяцам: так видно, во что обходится клуб
+  const byMonth = {};
+  for(const e of expList) (byMonth[e.month] ??= []).push(e);
+  $('#expRows').innerHTML = Object.entries(byMonth).map(([m, list]) => {
+    const total = list.reduce((n,e)=>n+e.amount,0);
+    return `<div class="sect" style="margin:14px 0 8px">${monthName(m)} · ${rub(total)}</div>` +
+      list.map(e => `<div class="rrow">
+        <div class="rd"><b>${EXPENSE[e.category]||e.category}</b>
+          <span>${e.note || ''}${e.note?' · ':''}внёс ${e.by}</span></div>
+        <div class="rp">${rub(e.amount)}</div>
+        <button class="btn small" data-id="${e.id}">Изменить</button>
+      </div>`).join('');
+  }).join('');
+
+  $('#expRows').querySelectorAll('button[data-id]').forEach(b =>
+    b.onclick = () => openExpense(expList.find(e => e.id === +b.dataset.id)));
+}
+
+function monthName(m){
+  const [y, mo] = m.split('-').map(Number);
+  return MONTHS[mo-1].replace(/я$/,'ь').replace(/а$/,'') + ' ' + y;
+}
+
+let expEdit = null;
+$('#expNew').onclick = () => openExpense(null);
+
+function openExpense(e){
+  expEdit = e;
+  $('#expTitle').textContent = e ? 'Изменить расход' : 'Новый расход';
+  $('#expMonth').value = e?.month ?? todayStr().slice(0,7);
+  $('#expCat').value = e?.category ?? 'rent';
+  $('#expAmount').value = e ? e.amount/100 : '';
+  $('#expNote').value = e?.note ?? '';
+  $('#expDel').hidden = !e;
+  $('#expErr').classList.remove('on');
+  $('#expModal').classList.add('on');
+}
+
+$('#expSave').onclick = async () => {
+  try {
+    await call('/admin/expenses', { method:'POST', body: JSON.stringify({
+      id: expEdit?.id, month: $('#expMonth').value, category: $('#expCat').value,
+      amount: +$('#expAmount').value, note: $('#expNote').value.trim() || undefined,
+    })});
+    $('#expModal').classList.remove('on'); loadExpenses();
+  } catch(e){ $('#expErr').textContent = e.message; $('#expErr').classList.add('on') }
+};
+
+$('#expDel').onclick = async () => {
+  if(!await ask('Удалить расход?', `${EXPENSE[expEdit.category]}, ${rub(expEdit.amount)}.`)) return;
+  try {
+    await call(`/admin/expenses/${expEdit.id}/delete`, { method:'POST', body:'{}' });
+    $('#expModal').classList.remove('on'); loadExpenses();
+  } catch(e){ $('#expErr').textContent = e.message; $('#expErr').classList.add('on') }
+};
+
+/* ── прочие продажи ───────────────────────────────────── */
+$('#saleBtn').onclick = () => {
+  $('#saleDay').value = date;
+  $('#saleAmount').value = ''; $('#saleQty').value = 1; $('#saleNote').value = '';
+  $('#saleMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
+  $('#saleErr').classList.remove('on');
+  $('#saleModal').classList.add('on');
+};
+$('#saleMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#saleMethod').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+});
+$('#saleOk').onclick = async () => {
+  try {
+    await call('/admin/sales', { method:'POST', body: JSON.stringify({
+      day: $('#saleDay').value, category: $('#saleCat').value,
+      amount: +$('#saleAmount').value, qty: +$('#saleQty').value,
+      method: $('#saleMethod').querySelector('button.on')?.dataset.m ?? 'cash',
+      note: $('#saleNote').value.trim() || undefined,
+    })});
+    $('#saleModal').classList.remove('on');
+  } catch(e){ $('#saleErr').textContent = e.message; $('#saleErr').classList.add('on') }
+};
+
 /* ── аналитика ────────────────────────────────────────── */
 const WD = ['','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
 const WDS = ['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const METHOD = { cash:'наличные', card:'карта', sbp:'СБП', transfer:'перевод', invoice:'счёт' };
+const EXPENSE = { rent:'аренда', salary:'зарплаты', utilities:'коммуналка', loan:'кредит',
+  marketing:'реклама', equipment:'инвентарь', tax:'налоги', other:'прочее' };
+const SALE = { bar:'бар', rental:'прокат', coaching:'тренировки', shop:'товар', other:'прочее' };
 
 const pct = x => Math.round(x*100) + '%';
 
@@ -1602,8 +1806,32 @@ async function loadStats(){
         <div class="delta flat">включая пустые часы</div></div>
       <div class="card"><b>${rub(d.averageCheck)}</b><span>средний чек</span></div>
       <div class="card"><b>${rub(d.lost)}</b><span>упущено на отменах и неявках</span>
-        <div class="delta flat">${d.now.cancels} отмен, ${d.now.noShows} неявок</div></div>
+        <div class="delta flat">${d.now.cancels} отмен, из них ${d.lateCancels} поздних · ${d.now.noShows} неявок</div></div>
+      ${d.discounts ? `<div class="card"><b>${rub(d.discounts)}</b><span>роздано скидками</span></div>` : ''}
+      ${d.guests ? `<div class="card"><b>${rub(d.revPerGuest)}</b><span>на одного игрока</span>
+        <div class="delta flat">${d.guests} человек за ${d.guestsKnown} игр</div></div>` : ''}
     </div>
+
+    <div class="sect">Сходится ли клуб</div>
+    <div class="cards">
+      <div class="card"><b>${rub(d.now.charged)}</b><span>аренда площадок</span></div>
+      <div class="card"><b>${rub(d.otherRevenue)}</b><span>бар, прокат, тренировки</span>
+        ${delta(d.otherRevenue, d.prevOther)}</div>
+      <div class="card"><b>${rub(d.spent)}</b><span>расходы за месяцы периода</span></div>
+      <div class="card ${d.profit>=0?'':'warn'}"><b>${rub(d.profit)}</b><span>${d.profit>=0?'прибыль':'убыток'}</span>
+        ${delta(d.profit, d.prevProfit)}</div>
+    </div>
+    ${Object.keys(d.byExpense).length ? `<div class="bars" style="margin-bottom:8px">` +
+      Object.entries(d.byExpense).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
+      <div class="bar"><div class="lbl">${EXPENSE[k]||k}</div>
+        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.spent)*100)}%;background:var(--red)"></div></div>
+        <div class="val">${rub(v)}</div></div>`).join('') + '</div>'
+      : '<div class="empty" style="margin-bottom:10px">Расходы не заведены — прибыль показана без них. Вносятся в «Управление» → «Расходы».</div>'}
+    ${Object.keys(d.bySale).length ? `<div class="bars">` +
+      Object.entries(d.bySale).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
+      <div class="bar"><div class="lbl">${SALE[k]||k}</div>
+        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.otherRevenue)*100)}%"></div></div>
+        <div class="val">${rub(v)}</div></div>`).join('') + '</div>' : ''}
 
     <div class="sect">Когда играют: час × день недели</div>
     ${heatTable(d)}

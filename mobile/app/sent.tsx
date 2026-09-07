@@ -8,11 +8,22 @@ import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
 import { hh, longDate, weekday, plural } from '../src/dates';
 
+import { CLUB, whatsappUrl } from '../src/club';
+
 const PHONE = '+7 928 000-00-00';       // ЗАГЛУШКА: настоящий номер ждём от клуба
-const WHATSAPP = '79280000000';
+
+/** Сколько осталось до конца удержания, словами. */
+function leftText(iso: string): string | null {
+  const min = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+  if (min <= 0) return null;
+  if (min < 60) return `${min} ${plural(min, 'минута', 'минуты', 'минут')}`;
+  const h = Math.floor(min / 60);
+  return `${h} ${plural(h, 'час', 'часа', 'часов')} ${min % 60} мин`;
+}
 
 export default function Sent() {
-  const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string; hours: string; price: string }>();
+  const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
+    hours: string; price: string; holdUntil?: string }>();
   const hydrated = useHydrated();
   const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
 
@@ -61,12 +72,28 @@ export default function Sent() {
         </View>
       </View>
 
+      {/* Место держится ограниченное время: оплата идёт через менеджера,
+          и человек должен понимать, что тянуть нельзя. */}
+      {!!p.holdUntil && leftText(String(p.holdUntil)) && (
+        <View style={s.hold}>
+          <Text style={s.holdT}>Держим корт за вами {leftText(String(p.holdUntil))}</Text>
+          <Text style={s.holdS}>
+            Напишите менеджеру, чтобы подтвердить запись. Если не успеть,
+            время снова станет свободным и его сможет занять другой.
+          </Text>
+        </View>
+      )}
+
       <View style={{ flex: 1 }} />
 
       <View style={s.bottom}>
-        <Pressable onPress={() => open(`https://wa.me/${WHATSAPP}`, 'Напишите менеджеру в WhatsApp вручную.')}
-          style={({ pressed }) => [s.wa, pressed && { opacity: 0.9 }]}>
-          <Text style={s.waT}>Написать в WhatsApp</Text>
+        {/* ЗАГЛУШКА: номер WhatsApp клуб ещё не дал — кнопка честно неактивна */}
+        <Pressable disabled={!whatsappUrl()}
+          onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
+          style={({ pressed }) => [s.wa, !whatsappUrl() && s.waOff, pressed && { opacity: 0.9 }]}>
+          <Text style={[s.waT, !whatsappUrl() && { color: C.dim }]}>
+            {whatsappUrl() ? 'Написать в WhatsApp' : 'WhatsApp: номер скоро появится'}
+          </Text>
         </Pressable>
         <Pressable onPress={() => open(`tel:${PHONE.replace(/[^\d+]/g, '')}`, `Телефон клуба: ${PHONE}`)}
           style={({ pressed }) => [s.ghost, pressed && { opacity: 0.8 }]}>
@@ -82,6 +109,11 @@ export default function Sent() {
 }
 
 const s = StyleSheet.create({
+  hold: { marginHorizontal: S.xl, marginTop: 14, padding: 15, borderRadius: R.lg,
+    borderWidth: 1, borderColor: 'rgba(240,169,59,.38)', backgroundColor: 'rgba(240,169,59,.08)' },
+  holdT: { color: '#F0A93B', fontSize: 15, fontWeight: '700' },
+  holdS: { color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  waOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
   done: { alignItems: 'center', paddingHorizontal: 30 },
   tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.lime,
