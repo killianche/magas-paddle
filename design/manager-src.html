@@ -623,6 +623,12 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div><label for="tnFee">Взнос, ₽</label><input id="tnFee" type="number" min="0"></div>
       <div><label for="tnSeats">Мест</label><input id="tnSeats" type="number" min="2" max="200"></div>
     </div>
+    <label for="tnHours">Сколько часов идёт</label>
+    <input id="tnHours" type="number" min="1" max="15">
+    <label>Какие площадки занимает</label>
+    <div class="days" id="tnCourts"></div>
+    <p class="sub" style="margin:4px 0 0">Эти площадки станут занятыми в расписании
+      на время турнира. Ничего не выбрано — турнир кортов не занимает.</p>
     <label for="tnState">Состояние</label>
     <select id="tnState">
       <option value="soon">Скоро откроем запись</option>
@@ -1512,7 +1518,8 @@ async function loadTournaments(){
       <div class="trow">
         <div class="tn"><b>${t.name}</b>
           <span>${new Date(t.startsAt).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
-          · ${t.format} · ${TSTATE[t.state]||t.state} · записалось ${t.taken} из ${t.seats}</span></div>
+          · ${t.format} · ${TSTATE[t.state]||t.state} · записалось ${t.taken} из ${t.seats}
+          · ${t.courtIds && t.courtIds.length ? `занимает ${t.courtIds.length} ${plural(t.courtIds.length,'площадку','площадки','площадок')} на ${t.hours} ${plural(t.hours,'час','часа','часов')}` : 'кортов не занимает'}</span></div>
         <button class="btn small" data-id="${t.id}">Открыть</button>
       </div>`).join('') : '<div class="empty">Турниров пока нет.</div>';
     $('#tournRows').querySelectorAll('button[data-id]').forEach(b =>
@@ -1535,6 +1542,11 @@ async function openTournament(t){
   $('#tnSeats').value = t?.seats ?? 16;
   $('#tnState').value = t?.state ?? 'soon';
   $('#tnCover').value = t?.coverUrl ?? 't1';
+  $('#tnHours').value = t?.hours ?? 3;
+  const busyIds = new Set(t?.courtIds ?? []);
+  $('#tnCourts').innerHTML = (setup?.courts ?? [])
+    .map(c => `<button type="button" data-c="${c.id}"${busyIds.has(c.id)?' class="on"':''}>${c.name}</button>`).join('');
+  $('#tnCourts').querySelectorAll('button').forEach(b => b.onclick = () => b.classList.toggle('on'));
   $('#tnResult').value = t?.resultText ?? '';
   $('#tnEntries').innerHTML = '';
   $('#tnErr').classList.remove('on');
@@ -1560,11 +1572,20 @@ $('#tnSave').onclick = async () => {
     fee: +$('#tnFee').value, seats: +$('#tnSeats').value,
     state: $('#tnState').value, coverUrl: $('#tnCover').value,
     resultText: $('#tnResult').value.trim(),
+    hours: +$('#tnHours').value,
+    courtIds: [...$('#tnCourts').querySelectorAll('button.on')].map(b => b.dataset.c),
   };
   try {
-    await call('/admin/tournaments', { method:'POST', body: JSON.stringify(body) });
+    const r = await call('/admin/tournaments', { method:'POST', body: JSON.stringify(body) });
+    // Занять корт могло не выйти: там уже стоит чужая бронь.
+    // Молчать нельзя — клуб будет думать, что площадка под турниром.
+    if (r.busy && r.busy.length) {
+      const names = r.busy.map(id => setup?.courts.find(c => c.id===id)?.name ?? id).join(', ');
+      await ask('Часть площадок занять не вышло',
+        `${names} — на это время уже есть брони. Освободите их и сохраните турнир снова.`);
+    }
     $('#tnModal').classList.remove('on');
-    loadTournaments();
+    loadTournaments(); load();
   } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
 };
 

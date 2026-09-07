@@ -109,10 +109,11 @@ export default function Prices() {
         <>
           <Text style={s.group}>Мини-футбольное поле</Text>
           <View style={[s.band, { paddingBottom: 18 }]}>
-            <Text style={s.bandTime}>{football.name}</Text>
-            {/* ЗАГЛУШКА: цену поля клуб ещё не назвал — не выдумываем (вопрос Q47) */}
-            <Text style={s.soon}>Цену уточняйте в клубе</Text>
-            <Text style={s.bandNote}>Как только клуб назовёт цену, она появится здесь сама.</Text>
+            <Text style={s.bandTime}>Поле целиком, за час</Text>
+            <Text style={s.bandHours}>С {hh(openHour)} до {hh(closeHour)}, цена одна весь день</Text>
+            <Text style={[s.price, { marginTop: 8 }]} allowFontScaling={false}>
+              {rub(football.priceStandard)}
+            </Text>
           </View>
         </>
       )}

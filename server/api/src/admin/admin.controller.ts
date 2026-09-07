@@ -1123,6 +1123,7 @@ export class AdminController {
       id: Number(t.id), name: t.name, startsAt: t.starts_at, format: t.format,
       fee: t.fee, seats: t.seats, state: t.state, coverUrl: t.cover_url,
       resultText: t.result_text, taken: taken.get(String(t.id)) ?? 0,
+      hours: t.hours, courtIds: t.court_ids,
     }));
   }
 
@@ -1143,9 +1144,10 @@ export class AdminController {
   /** Завести турнир или изменить существующий. */
   @Post('tournaments')
   @Needs('tournaments')
-  async saveTournament(@Body() body: Partial<{
+  async saveTournament(@Req() req: any, @Body() body: Partial<{
     id: number; name: string; startsAt: string; format: string;
     fee: number; seats: number; state: string; coverUrl: string; resultText: string;
+    hours: number; courtIds: string[];
   }>) {
     const STATES = ['soon', 'open', 'closed', 'done'];
     const data: any = {};
@@ -1167,12 +1169,20 @@ export class AdminController {
       if (!STATES.includes(body.state)) throw new BadRequestException('Неизвестное состояние турнира');
       data.state = body.state;
     }
+    if (body.hours != null) data.hours = int(body.hours, 3, 1, 15);
+    if (body.courtIds != null) {
+      const ids = Array.isArray(body.courtIds) ? body.courtIds.map(String) : [];
+      const known = await this.db.courts.findMany({ where: { id: { in: ids } }, select: { id: true } });
+      if (known.length !== ids.length) throw new BadRequestException('Среди площадок есть неизвестная');
+      data.court_ids = ids;
+    }
     if (body.coverUrl != null) data.cover_url = String(body.coverUrl).trim().slice(0, 200) || null;
     if (body.resultText != null) data.result_text = String(body.resultText).trim().slice(0, 2000) || null;
 
     if (body.id) {
       const t = await this.db.tournaments.update({ where: { id: BigInt(body.id) }, data });
-      return { id: Number(t.id) };
+      const busy = await this.blockCourts(t);
+      return { id: Number(t.id), busy };
     }
     if (!data.name || !data.starts_at) {
       throw new BadRequestException('Для нового турнира нужны название и дата начала');
@@ -1182,8 +1192,48 @@ export class AdminController {
       format: data.format ?? 'Americano', fee: data.fee ?? 0,
       seats: data.seats ?? 16, state: data.state ?? 'soon',
       cover_url: data.cover_url ?? null, result_text: data.result_text ?? null,
+      hours: data.hours ?? 3, court_ids: data.court_ids ?? [],
     }});
-    return { id: Number(t.id) };
+    const busy = await this.blockCourts(t);
+    await this.auth.log(req.admin, 'завёл турнир', t.name);
+    return { id: Number(t.id), busy };
+  }
+
+  /** Занять корты под турнир.
+   *
+   *  Занятие делается обычными бронями: тогда запрет на пересечение на уровне
+   *  базы работает сам, менеджер видит турнир в сетке дня, а расписание
+   *  в приложении показывает эти часы занятыми без отдельной логики.
+   *
+   *  Возвращает площадки, которые занять не вышло — там уже есть чужая бронь.
+   *  Молча пропускать нельзя: клуб будет думать, что корт под турниром. */
+  private async blockCourts(t: {
+    id: bigint; name: string; starts_at: Date; hours: number; court_ids: string[];
+    state: string;
+  }): Promise<string[]> {
+    // Старые брони этого турнира убираем всегда: состав площадок и время
+    // могли поменяться, а отменённый турнир не должен держать корты
+    await this.db.bookings.deleteMany({ where: { tournament_id: t.id } });
+    if (!t.court_ids.length || t.state === 'done') return [];
+
+    const failed: string[] = [];
+    for (const courtId of t.court_ids) {
+      try {
+        await this.db.bookings.create({ data: {
+          court_id: courtId, client_id: null,
+          starts_at: t.starts_at,
+          ends_at: new Date(+t.starts_at + t.hours * 3600_000),
+          price: 0, status: 'confirmed', source: 'tournament',
+          guest_name: `Турнир: ${t.name}`,
+          tournament_id: t.id,
+        }});
+      } catch (e: any) {
+        // Время уже занято чужой бронью — сказать, а не проглотить
+        if (String(e?.message).includes(EXCLUSION) || e?.meta?.code === EXCLUSION) failed.push(courtId);
+        else throw e;
+      }
+    }
+    return failed;
   }
 
   /** Дата брони в часовом поясе клуба, в виде ГГГГ-ММ-ДД. */
@@ -1358,3 +1408,6 @@ function groupSum(list: { category: string; amount: number }[]): Record<string, 
   for (const x of list) out[x.category] = (out[x.category] ?? 0) + x.amount;
   return out;
 }
+
+/** Ошибка PostgreSQL: бронь пересекается с существующей. */
+const EXCLUSION = '23P01';

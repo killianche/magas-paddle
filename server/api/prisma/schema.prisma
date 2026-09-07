@@ -107,15 +107,18 @@ model bookings {
   discount   Int            @default(0)
   discount_reason String?
   created_by String?
+  tournament_id BigInt?
   created_at DateTime       @default(now()) @db.Timestamptz(6)
   updated_at DateTime       @default(now()) @db.Timestamptz(6)
   clients    clients?       @relation(fields: [client_id], references: [id], onUpdate: NoAction)
   courts     courts         @relation(fields: [court_id], references: [id], onUpdate: NoAction)
+  tournaments tournaments?  @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
   payments   payments[]
 
   @@index([client_id], map: "bookings_client")
   @@index([court_id, starts_at], map: "bookings_court_time")
   @@index([starts_at], map: "bookings_starts")
+  @@index([tournament_id], map: "bookings_tournament")
 }
 
 model clients {
@@ -170,10 +173,13 @@ model tournaments {
   fee                Int
   seats              Int
   state              tournament_state     @default(soon)
+  hours              Int                  @default(3) @db.SmallInt
+  court_ids          String[]
   cover_url          String?
   result_text        String?
   created_at         DateTime             @default(now()) @db.Timestamptz(6)
   tournament_entries tournament_entries[]
+  bookings           bookings[]
 }
 
 model expenses {

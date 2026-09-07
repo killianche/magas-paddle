@@ -41,6 +41,8 @@ export class TournamentsController {
       startsAt: t.starts_at,
       format: t.format,
       fee: t.fee,
+      hours: t.hours,
+      courts: t.court_ids.length,
       seats: t.seats,
       taken: taken.get(String(t.id)) ?? 0,
       state: t.state,
