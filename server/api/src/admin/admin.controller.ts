@@ -1,10 +1,11 @@
 import {
-  BadRequestException, Body, Controller, Get, NotFoundException,
-  Param, Post, Query, UseGuards,
+  BadRequestException, Body, Controller, ForbiddenException, Get,
+  NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards,
 } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { AdminGuard } from './admin.guard';
+import { AdminGuard, Needs } from './admin.guard';
+import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
@@ -20,13 +21,143 @@ class CloseCourtDto {
   @IsOptional() @IsString() until?: string;
 }
 
+/** Вход. Единственный метод админки без охраны — иначе войти было бы нечем. */
+@Controller('admin')
+export class AdminAuthController {
+  constructor(private readonly auth: AuthService) {}
+
+  @Post('login')
+  async login(@Body() body: { login?: string; password?: string }) {
+    const login = String(body.login ?? '').trim();
+    const password = String(body.password ?? '');
+    if (!login || !password) throw new BadRequestException('Введите логин и пароль');
+
+    const res = await this.auth.login(login, password);
+    // Одна и та же фраза на неверный логин и неверный пароль:
+    // иначе по ответу можно перебрать, какие логины существуют.
+    if (!res) throw new UnauthorizedException('Неверный логин или пароль');
+
+    await this.auth.log(res.admin, 'вошёл в админку');
+    return { token: res.token, admin: res.admin, perms: PERMS };
+  }
+}
+
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
   constructor(
     private readonly db: PrismaService,
     private readonly club: ClubService,
+    private readonly auth: AuthService,
   ) {}
+
+  /** Кто я и что мне можно — панель по этому прячет недоступное. */
+  @Get('me')
+  me(@Req() req: any) {
+    const admin: Admin = req.admin;
+    return { admin, perms: PERMS, can: Object.keys(PERMS).filter(
+      p => this.auth.can(admin, p as Perm)) };
+  }
+
+  @Post('logout')
+  async logout(@Req() req: any) {
+    const header = String(req.headers['authorization'] ?? '');
+    const token = header.startsWith('Bearer ') ? header.slice(7) : req.headers['x-admin-token'];
+    await this.auth.log(req.admin, 'вышел из админки');
+    await this.auth.logout(token);
+    return { ok: true };
+  }
+
+  /* ── сотрудники ─────────────────────────────────────────────────────── */
+
+  @Get('staff')
+  @Needs('staff')
+  async staff() {
+    const rows = await this.db.admins.findMany({ orderBy: [{ role: 'asc' }, { name: 'asc' }] });
+    return rows.map(r => ({
+      id: Number(r.id), login: r.login, name: r.name, role: r.role,
+      perms: r.perms, isActive: r.is_active, lastLoginAt: r.last_login_at,
+    }));
+  }
+
+  /** Завести сотрудника или изменить его. Пароль задаётся только здесь
+   *  и обратно не читается: в базе лежит хэш. */
+  @Post('staff')
+  @Needs('staff')
+  async saveStaff(@Req() req: any, @Body() body: Partial<{
+    id: number; login: string; name: string; password: string;
+    perms: string[]; isActive: boolean;
+  }>) {
+    const me: Admin = req.admin;
+    const perms = (body.perms ?? []).filter((p): p is Perm => p in PERMS);
+
+    if (body.id) {
+      const row = await this.db.admins.findUnique({ where: { id: BigInt(body.id) } });
+      if (!row) throw new NotFoundException('Сотрудник не найден');
+
+      const data: any = {};
+      if (body.name != null) data.name = String(body.name).trim().slice(0, 80) || row.name;
+      if (body.password) data.password_hash = await this.auth.hash(checkPassword(body.password));
+
+      if (row.role === 'owner') {
+        // У владельца права снять нельзя — иначе клуб останется без хозяина
+        if (body.isActive === false) throw new BadRequestException('Владельца нельзя выключить');
+      } else {
+        if (body.perms != null) data.perms = perms;
+        if (body.isActive != null) data.is_active = !!body.isActive;
+      }
+
+      const saved = await this.db.admins.update({ where: { id: row.id }, data });
+      // Сняли права или выключили — входы закрываем сразу, не дожидаясь,
+      // пока истечёт токен
+      if (body.perms != null || body.isActive === false || body.password) {
+        await this.auth.dropSessions(Number(row.id));
+      }
+      await this.auth.log(me, 'изменил сотрудника', saved.name);
+      return { id: Number(saved.id) };
+    }
+
+    const login = String(body.login ?? '').trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,32}$/.test(login)) {
+      throw new BadRequestException('Логин: 3–32 знака, латиница, цифры, точка, дефис');
+    }
+    const name = String(body.name ?? '').trim().slice(0, 80);
+    if (!name) throw new BadRequestException('Впишите имя сотрудника');
+    if (await this.db.admins.findUnique({ where: { login } })) {
+      throw new BadRequestException('Такой логин уже занят');
+    }
+
+    const created = await this.db.admins.create({ data: {
+      login, name, role: 'staff', perms,
+      password_hash: await this.auth.hash(checkPassword(body.password ?? '')),
+    }});
+    await this.auth.log(me, 'завёл сотрудника', `${name} (${login})`);
+    return { id: Number(created.id) };
+  }
+
+  @Post('staff/:id/delete')
+  @Needs('staff')
+  async deleteStaff(@Req() req: any, @Param('id') id: string) {
+    const row = await this.db.admins.findUnique({ where: { id: BigInt(id) } });
+    if (!row) throw new NotFoundException('Сотрудник не найден');
+    if (row.role === 'owner') throw new BadRequestException('Владельца удалить нельзя');
+    await this.db.admins.delete({ where: { id: row.id } });
+    await this.auth.log(req.admin, 'удалил сотрудника', row.name);
+    return { ok: true };
+  }
+
+  /** Журнал: кто и что делал. Видит тот, кто управляет сотрудниками. */
+  @Get('log')
+  @Needs('staff')
+  async logList() {
+    const rows = await this.db.admin_log.findMany({
+      orderBy: { created_at: 'desc' }, take: 200,
+    });
+    return rows.map(r => ({
+      id: Number(r.id), name: r.admin_name, action: r.action,
+      details: r.details, at: r.created_at,
+    }));
+  }
 
   /** День менеджера: все заявки и брони на дату, по времени. */
   @Get('day')
@@ -73,9 +204,15 @@ export class AdminController {
 
   /** Подтвердить, отменить или отметить, что не пришёл. */
   @Post('bookings/:id/status')
-  async setStatus(@Param('id') id: string, @Body() dto: StatusDto) {
+  async setStatus(@Req() req: any, @Param('id') id: string, @Body() dto: StatusDto) {
     const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
+
+    // Отмена и неявка бьют по клиенту и по выручке — отдельное право
+    if ((dto.status === 'cancelled' || dto.status === 'no_show')
+        && !this.auth.can(req.admin, 'cancel')) {
+      throw new ForbiddenException('Нет доступа: отменять брони и отмечать неявку');
+    }
 
     const ops: any[] = [
       this.db.bookings.update({ where: { id: b.id }, data: { status: dto.status } }),
@@ -91,6 +228,8 @@ export class AdminController {
       }
     }
     await this.db.$transaction(ops);
+    await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
+      `бронь №${Number(b.id)}`);
     return { id: Number(b.id), status: dto.status };
   }
 
@@ -241,6 +380,7 @@ export class AdminController {
 
   /** Часы работы, граница утреннего тарифа, предельная длина брони. */
   @Post('settings')
+  @Needs('club')
   async saveSettings(@Body() body: Partial<{
     openHour: number; closeHour: number; morningUntil: number;
     maxHours: number; cancelHours: number;
@@ -270,6 +410,7 @@ export class AdminController {
 
   /** Название, цены, порядок и включение площадки. */
   @Post('courts/:id')
+  @Needs('club')
   async saveCourt(@Param('id') id: string, @Body() body: Partial<{
     name: string; priceMorning: number; priceStandard: number;
     isActive: boolean; sortOrder: number; description: string;
@@ -309,6 +450,7 @@ export class AdminController {
 
   /** Завести правило или изменить существующее. */
   @Post('price-rules')
+  @Needs('prices')
   async savePriceRule(@Body() body: Partial<{
     id: number; courtId: string | null; days: number[] | null;
     fromHour: number; toHour: number; price: number; note: string; sortOrder: number;
@@ -353,6 +495,7 @@ export class AdminController {
 
   /** Убрать правило. Часы под ним возвращаются к обычной цене. */
   @Post('price-rules/:id/delete')
+  @Needs('prices')
   async deletePriceRule(@Param('id') id: string) {
     await this.db.price_rules.delete({ where: { id: BigInt(id) } });
     this.club.forget();
@@ -390,6 +533,7 @@ export class AdminController {
 
   /** Завести турнир или изменить существующий. */
   @Post('tournaments')
+  @Needs('tournaments')
   async saveTournament(@Body() body: Partial<{
     id: number; name: string; startsAt: string; format: string;
     fee: number; seats: number; state: string; coverUrl: string; resultText: string;
@@ -503,6 +647,7 @@ export class AdminController {
 
   /** Закрыть площадку на ремонт или открыть обратно. */
   @Post('courts/:id/close')
+  @Needs('club')
   async closeCourt(@Param('id') id: string, @Body() dto: CloseCourtDto) {
     const court = await this.db.courts.findUnique({ where: { id } });
     if (!court) throw new NotFoundException('Площадка не найдена');
@@ -551,4 +696,24 @@ function rubToKop(rub: unknown): number {
     throw new BadRequestException('Цена должна быть от 0 до 1 000 000 ₽');
   }
   return n * 100;
+}
+
+/** Как назвать действие в журнале. */
+const STATUS_WORD: Record<string, string> = {
+  confirmed: 'подтвердил бронь',
+  cancelled: 'отменил бронь',
+  no_show: 'отметил неявку',
+  done: 'закрыл бронь',
+};
+
+/** Требования к паролю. Слабый пароль у человека, который может отменить
+ *  любую бронь, — это дыра, а не удобство. */
+function checkPassword(pw: string): string {
+  const p = String(pw);
+  if (p.length < 8) throw new BadRequestException('Пароль не короче 8 знаков');
+  if (p.length > 200) throw new BadRequestException('Пароль слишком длинный');
+  if (!/[a-zA-Zа-яА-Я]/.test(p) || !/\d/.test(p)) {
+    throw new BadRequestException('В пароле нужны и буквы, и цифры');
+  }
+  return p;
 }

@@ -6,13 +6,14 @@ import { AvailabilityController } from './courts/availability.controller';
 import { BookingsController } from './bookings/bookings.controller';
 import { TournamentsController } from './tournaments/tournaments.controller';
 import { HealthController } from './health.controller';
-import { AdminController } from './admin/admin.controller';
+import { AdminController, AdminAuthController } from './admin/admin.controller';
+import { AuthService } from './admin/auth.service';
 
 @Module({
   controllers: [
     HealthController, CourtsController, PricesController, AvailabilityController,
-    BookingsController, TournamentsController, AdminController,
+    BookingsController, TournamentsController, AdminController, AdminAuthController,
   ],
-  providers: [PrismaService, ClubService],
+  providers: [PrismaService, ClubService, AuthService],
 })
 export class AppModule {}

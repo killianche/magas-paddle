@@ -17,6 +17,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY package.json ./
+COPY tools ./tools
 # Не работаем от root внутри контейнера
 USER node
 EXPOSE 3001

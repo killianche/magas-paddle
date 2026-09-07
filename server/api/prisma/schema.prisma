@@ -9,6 +9,43 @@ datasource db {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+model admins {
+  id            BigInt           @id @default(autoincrement())
+  login         String           @unique
+  name          String
+  password_hash String
+  role          String           @default("staff")
+  perms         String[]
+  is_active     Boolean          @default(true)
+  created_at    DateTime         @default(now()) @db.Timestamptz(6)
+  last_login_at DateTime?        @db.Timestamptz(6)
+  sessions      admin_sessions[]
+  log           admin_log[]
+}
+
+model admin_sessions {
+  token_hash String   @id
+  admin_id   BigInt
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+  last_seen  DateTime @default(now()) @db.Timestamptz(6)
+  admins     admins   @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+
+  @@index([admin_id], map: "admin_sessions_admin")
+}
+
+model admin_log {
+  id         BigInt   @id @default(autoincrement())
+  admin_id   BigInt?
+  admin_name String
+  action     String
+  details    String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  admins     admins?  @relation(fields: [admin_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at], map: "admin_log_time")
+}
+
 model price_rules {
   id         BigInt   @id @default(autoincrement())
   court_id   String?

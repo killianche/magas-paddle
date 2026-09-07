@@ -187,6 +187,23 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .chkOut span{padding:5px 9px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface);font-size:12.5px;font-variant-numeric:tabular-nums}
 .chkOut span.alt{border-color:rgba(198,240,51,.45);background:rgba(198,240,51,.08);color:var(--lime)}
+.who{font-size:12.5px;color:var(--dim-2);white-space:nowrap}
+.perms{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+.perms label{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--text);font-weight:400}
+.chk{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13.5px}
+.passRow{display:flex;gap:8px;align-items:center}
+.passRow input{flex:1}
+.srow{display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:8px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface)}
+.srow.off{opacity:.5}
+.srow .sd{flex:1;min-width:0}
+.srow .sd b{display:block;font-size:14px}
+.srow .sd span{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+.srow .tag{font-size:11px;padding:3px 8px;border-radius:7px;border:1px solid var(--line);color:var(--dim)}
+.srow .tag.own{border-color:var(--lime);color:var(--lime)}
+.logRow{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
+  padding:5px 0;border-bottom:1px solid var(--line-soft)}
+.logRow span{color:var(--dim-2);white-space:nowrap}
 </style>
 
 <div class="top">
@@ -204,6 +221,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   <input type="date" id="datePick" class="dpick" aria-label="Выбрать дату">
   <button class="btn" id="todayBtn">Сегодня</button>
   <button class="btn acc" id="addBtn">Записать клиента</button>
+  <span class="who" id="whoAmI"></span>
   <button class="btn" id="setupBtn" title="Цены, площадки, часы, турниры">Управление</button>
   <button class="btn" id="logout" title="Выйти">Выйти</button>
 </div>
@@ -217,8 +235,10 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 <div class="modal on" id="authModal">
   <div class="sheet">
     <h3>Вход для сотрудников</h3>
-    <p class="sub">Ключ выдаёт администратор. Он сохранится в этом браузере.</p>
-    <label for="keyInput">Ключ</label>
+    <p class="sub">Логин и пароль выдаёт владелец клуба. Вход сохранится в этом браузере.</p>
+    <label for="loginInput">Логин</label>
+    <input id="loginInput" autocomplete="username" placeholder="например, aslan">
+    <label for="keyInput">Пароль</label>
     <input id="keyInput" type="password" autocomplete="current-password" placeholder="••••••••">
     <div class="err" id="authErr"></div>
     <div class="acts"><button class="btn acc" id="authOk">Войти</button></div>
@@ -306,6 +326,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <button class="tab" data-tab="rules">Особые цены</button>
       <button class="tab" data-tab="club">Часы и правила</button>
       <button class="tab" data-tab="tourn">Турниры</button>
+      <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
     </div>
 
     <div class="pane on" id="paneCourts">
@@ -358,7 +379,48 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div id="tournRows"></div>
     </div>
 
+    <div class="pane" id="paneStaff">
+      <p class="sub">У каждого свой вход. Права выдаёт владелец: смотреть день
+        и записывать клиентов может любой сотрудник, всё остальное — по разрешению.</p>
+      <div id="staffRows"></div>
+      <div class="acts" style="justify-content:flex-start;margin:6px 0 0">
+        <button class="btn acc" id="staffNew">Завести сотрудника</button>
+      </div>
+
+      <div class="check">
+        <div class="h">Журнал действий</div>
+        <div id="logRows"></div>
+      </div>
+    </div>
+
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+  </div>
+</div>
+
+<!-- сотрудник -->
+<div class="modal" id="staffModal">
+  <div class="sheet">
+    <h3 id="staffTitle">Сотрудник</h3>
+    <label for="stName">Имя</label><input id="stName" placeholder="Как его зовут">
+    <div id="stLoginWrap">
+      <label for="stLogin">Логин</label>
+      <input id="stLogin" placeholder="латиница, цифры, без пробелов">
+    </div>
+    <label for="stPass">Пароль</label>
+    <div class="passRow">
+      <input id="stPass" placeholder="не короче 8 знаков, буквы и цифры">
+      <button class="btn small" type="button" id="stGen">Придумать</button>
+    </div>
+    <p class="sub" id="stPassHint" style="margin:4px 0 0">Пароль виден только сейчас — запишите его.</p>
+    <label>Что разрешено</label>
+    <div id="stPerms" class="perms"></div>
+    <label class="chk"><input type="checkbox" id="stActive" checked> Работает</label>
+    <div class="err" id="stErr"></div>
+    <div class="acts">
+      <button class="btn dg" id="stDel" hidden>Удалить</button>
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="stSave">Сохранить</button>
+    </div>
   </div>
 </div>
 
@@ -453,8 +515,11 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
 <script>
 const API = '/api';
-const KEY_STORE = 'magas.admin.key';
+const KEY_STORE = 'magas.admin.token';
 let key = localStorage.getItem(KEY_STORE) || '';
+/** Кто вошёл и что ему можно. Заполняется после входа. */
+let me = null, myPerms = [], permNames = {};
+const can = p => myPerms.includes(p);
 let date = todayStr();
 let day = null;
 
@@ -514,7 +579,9 @@ const $ = s => document.querySelector(s);
 
 async function call(path, opts={}){
   const res = await fetch(API+path, { ...opts,
-    headers:{ 'Content-Type':'application/json', 'X-Admin-Key':key, ...(opts.headers||{}) } });
+    headers:{ 'Content-Type':'application/json',
+              ...(key ? { 'Authorization': 'Bearer ' + key } : {}),
+              ...(opts.headers||{}) } });
   const text = await res.text();
   let body = null; try { body = text ? JSON.parse(text) : null } catch {}
   if(!res.ok){ const m = body?.message; throw new Error(typeof m==='string'?m:(m?.message||'Ошибка '+res.status)) }
@@ -523,16 +590,40 @@ async function call(path, opts={}){
 
 /* ── вход ─────────────────────────────────────────────── */
 $('#authOk').onclick = async () => {
-  key = $('#keyInput').value.trim();
-  if(!key) return;
+  const login = $('#loginInput').value.trim();
+  const password = $('#keyInput').value;
+  if(!login || !password){
+    $('#authErr').textContent = 'Введите логин и пароль';
+    $('#authErr').classList.add('on'); return;
+  }
   try {
-    await call('/admin/day?date='+date);
+    const r = await call('/admin/login', { method:'POST', body: JSON.stringify({ login, password }) });
+    key = r.token;
     localStorage.setItem(KEY_STORE, key);
+    $('#keyInput').value = '';
+    $('#authErr').classList.remove('on');
     $('#authModal').classList.remove('on');
-    load();
-  } catch(e){ $('#authErr').textContent = 'Ключ не подошёл'; $('#authErr').classList.add('on') }
+    await start();
+  } catch(e){ $('#authErr').textContent = e.message; $('#authErr').classList.add('on') }
 };
-$('#keyInput').addEventListener('keydown', e => { if(e.key==='Enter') $('#authOk').click() });
+['#loginInput','#keyInput'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if(e.key==='Enter') $('#authOk').click() }));
+
+/** Узнаём, кто вошёл, и прячем то, чего человеку нельзя. */
+async function start(){
+  try {
+    const r = await call('/admin/me');
+    me = r.admin; myPerms = r.can; permNames = r.perms;
+  } catch(e){
+    key = ''; localStorage.removeItem(KEY_STORE);
+    $('#authModal').classList.add('on');
+    return;
+  }
+  $('#whoAmI').textContent = me.name + (me.role==='owner' ? ' · владелец' : '');
+  $('#tabStaff').hidden = !can('staff');
+  $('#setupBtn').hidden = !(can('club') || can('prices') || can('tournaments') || can('staff'));
+  load();
+}
 
 /* ── день ─────────────────────────────────────────────── */
 $('#prev').onclick = () => { date = shift(date,-1); load() };
@@ -905,6 +996,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('#pane'+t.dataset.tab[0].toUpperCase()+t.dataset.tab.slice(1)).classList.add('on');
   if(t.dataset.tab==='tourn') loadTournaments();
   if(t.dataset.tab==='rules') loadRules();
+  if(t.dataset.tab==='staff'){ loadStaff(); loadLog() }
 });
 
 async function openSetup(){
@@ -1177,8 +1269,110 @@ $('#tnSave').onclick = async () => {
   } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
 };
 
+/* ── сотрудники ───────────────────────────────────────── */
+let staff = [];
+
+async function loadStaff(){
+  try { staff = await call('/admin/staff') }
+  catch(e){ $('#staffRows').innerHTML = `<div class="empty">${e.message}</div>`; return }
+
+  $('#staffRows').innerHTML = staff.map(u => {
+    const rights = u.role === 'owner' ? 'все права'
+      : (u.perms.length ? u.perms.map(p => permNames[p]).join(', ') : 'только запись клиентов');
+    const seen = u.lastLoginAt
+      ? 'заходил ' + new Date(u.lastLoginAt).toLocaleDateString('ru-RU')
+      : 'ни разу не заходил';
+    return `<div class="srow${u.isActive?'':' off'}">
+      <div class="sd"><b>${u.name}</b><span>${u.login} · ${rights} · ${seen}</span></div>
+      ${u.role==='owner' ? '<span class="tag own">владелец</span>' : ''}
+      ${u.isActive ? '' : '<span class="tag">выключен</span>'}
+      <button class="btn small" data-id="${u.id}">Изменить</button>
+    </div>`;
+  }).join('');
+
+  $('#staffRows').querySelectorAll('button[data-id]').forEach(b =>
+    b.onclick = () => openStaff(staff.find(u => u.id === +b.dataset.id)));
+}
+
+async function loadLog(){
+  try {
+    const rows = await call('/admin/log');
+    $('#logRows').innerHTML = rows.length ? rows.slice(0,60).map(r => `
+      <div class="logRow">
+        <div><b>${r.name}</b> ${r.action}${r.details ? ' · ' + r.details : ''}</div>
+        <span>${new Date(r.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+      </div>`).join('') : '<div class="empty">Пока пусто.</div>';
+  } catch(e){ $('#logRows').innerHTML = `<div class="empty">${e.message}</div>` }
+}
+
+/** Пароль, который не стыдно продиктовать по телефону. */
+function makePassword(){
+  const w = ['kort','padel','magas','raketka','setka','match','podacha','gejm'];
+  const p = () => w[Math.floor(Math.random()*w.length)];
+  return `${p()}-${p()}-${100+Math.floor(Math.random()*900)}`;
+}
+
+let staffEdit = null;
+$('#staffNew').onclick = () => openStaff(null);
+$('#stGen').onclick = () => { $('#stPass').value = makePassword() };
+
+function openStaff(u){
+  staffEdit = u;
+  const owner = u?.role === 'owner';
+  $('#staffTitle').textContent = u ? u.name : 'Новый сотрудник';
+  $('#stName').value = u?.name ?? '';
+  $('#stLogin').value = u?.login ?? '';
+  // Логин менять нельзя: по нему человек входит и им подписаны записи в журнале
+  $('#stLoginWrap').style.display = u ? 'none' : '';
+  $('#stPass').value = u ? '' : makePassword();
+  $('#stPassHint').textContent = u
+    ? 'Оставьте пустым, чтобы не менять пароль.'
+    : 'Пароль виден только сейчас — запишите и передайте сотруднику.';
+
+  const on = new Set(u?.perms ?? []);
+  $('#stPerms').innerHTML = Object.entries(permNames).map(([k, title]) =>
+    `<label><input type="checkbox" value="${k}"${on.has(k)?' checked':''}${owner?' checked disabled':''}> ${title}</label>`
+  ).join('');
+  $('#stActive').checked = u ? u.isActive : true;
+  $('#stActive').disabled = owner;
+  $('#stDel').hidden = !u || owner;
+  $('#stErr').classList.remove('on');
+  $('#staffModal').classList.add('on');
+}
+
+$('#stSave').onclick = async () => {
+  const perms = [...$('#stPerms').querySelectorAll('input:checked:not(:disabled)')].map(i => i.value);
+  const body = {
+    id: staffEdit?.id,
+    name: $('#stName').value.trim(),
+    perms, isActive: $('#stActive').checked,
+  };
+  if(!staffEdit) body.login = $('#stLogin').value.trim();
+  const pass = $('#stPass').value.trim();
+  if(pass) body.password = pass;
+  if(!staffEdit && !pass){
+    $('#stErr').textContent = 'Задайте пароль'; $('#stErr').classList.add('on'); return;
+  }
+  try {
+    await call('/admin/staff', { method:'POST', body: JSON.stringify(body) });
+    $('#staffModal').classList.remove('on');
+    loadStaff(); loadLog();
+  } catch(e){ $('#stErr').textContent = e.message; $('#stErr').classList.add('on') }
+};
+
+$('#stDel').onclick = async () => {
+  if(!await ask('Удалить сотрудника?',
+    `${staffEdit.name} больше не сможет войти. Его записи в журнале останутся.`)) return;
+  try {
+    await call(`/admin/staff/${staffEdit.id}/delete`, { method:'POST', body:'{}' });
+    $('#staffModal').classList.remove('on');
+    loadStaff(); loadLog();
+  } catch(e){ $('#stErr').textContent = e.message; $('#stErr').classList.add('on') }
+};
+
 /* ── выход ────────────────────────────────────────────── */
-$('#logout').onclick = () => {
+$('#logout').onclick = async () => {
+  try { await call('/admin/logout', { method:'POST', body:'{}' }) } catch {}
   localStorage.removeItem(KEY_STORE);
   location.reload();
 };
@@ -1201,7 +1395,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── старт ────────────────────────────────────────────── */
-if(key){ $('#authModal').classList.remove('on'); load() }
+if(key){ $('#authModal').classList.remove('on'); start() }
 // Раз в минуту подтягиваем новые заявки: менеджер не должен обновлять вручную
 setInterval(() => { if(key && !document.hidden) load() }, 60000);
 </script>
