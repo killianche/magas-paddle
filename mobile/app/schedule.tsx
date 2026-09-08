@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Image, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S } from '../src/theme';
 import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
@@ -18,11 +18,6 @@ const DAYS_AHEAD = 14;   // две недели: на прошлых пяти д
 
 export default function Schedule() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ kind?: string }>();
-  // Падел и мини-футбол — разные игры и разная компания. Держать их
-  // в одной сетке значит топить поле среди шести одинаковых колонок.
-  const [kind, setKind] = useState<'padel' | 'football'>(
-    params.kind === 'football' ? 'football' : 'padel');
   const [date, setDate] = useState(today());
   const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [hours, setHours] = useState(1);
@@ -37,8 +32,9 @@ export default function Schedule() {
   const gap = 3, padH = 10, timeW = 32;
 
   const grid = q.data;
-  const shown = (grid?.courts ?? []).filter(c =>
-    kind === 'football' ? c.isFootball : !c.isFootball);
+  // Только падел-корты: поле бронируется на своём экране — сетка на шесть
+  // колонок, ужатая до одной, оставляла пустой экран.
+  const shown = (grid?.courts ?? []).filter(c => !c.isFootball);
   const hasFootball = (grid?.courts ?? []).some(c => c.isFootball);
   const court = grid?.courts.find(c => c.courtId === sel?.courtId) ?? null;
   const cell = court?.hours.find(h => h.hour === sel?.hour) ?? null;
@@ -117,31 +113,17 @@ export default function Schedule() {
 
       <Text style={st.sub}>
         {date === today()
-          ? (kind === 'football'
-              ? `Сегодня · поле ${freeNow > 0 ? 'свободно' : 'занято'}`
-              : `Сегодня · свободно ${freeNow} из ${shown.length} кортов`)
+          ? `Сегодня · свободно ${freeNow} из ${shown.length} кортов`
           : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
       </Text>
 
       {hasFootball && (
-        <View style={st.kinds}>
-          {(['padel', 'football'] as const).map(k => {
-            const on = kind === k;
-            return (
-              <Pressable key={k} onPress={() => {
-                if (on) return;
-                Haptics.selectionAsync();
-                setKind(k); setSel(null); setHours(1);
-              }}
-                accessibilityRole="button" accessibilityState={{ selected: on }}
-                style={[st.kind, on && st.kindOn]}>
-                <Text style={[st.kindT, on && { color: C.onLime }]}>
-                  {k === 'padel' ? 'Падел' : 'Мини-футбол'}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/football') }}
+          accessibilityRole="button" accessibilityLabel="Забронировать мини-футбольное поле"
+          style={({ pressed }) => [st.toPitch, pressed && { opacity: 0.8 }]}>
+          <Text style={st.toPitchT}>Мини-футбольное поле</Text>
+          <IconChevron size={15} color={C.dim} />
+        </Pressable>
       )}
 
       <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
@@ -406,11 +388,10 @@ const st = StyleSheet.create({
   passed: { color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
     paddingHorizontal: 20, marginTop: 10, marginBottom: -2 },
 
-  kinds: { flexDirection: 'row', gap: 4, marginHorizontal: 20, marginTop: 10, padding: 4,
-    borderRadius: R.lg, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  kind: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 38, borderRadius: 12 },
-  kindOn: { backgroundColor: C.lime },
-  kindT: { color: C.dim, fontSize: 14, fontWeight: '700' },
+  toPitch: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+    marginHorizontal: 20, marginTop: 10, paddingVertical: 8, paddingHorizontal: 13,
+    borderRadius: R.md, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  toPitchT: { color: C.text, fontSize: 13, fontWeight: '600' },
 
   clear: { alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, marginTop: 8 },
   clearT: { color: C.dim, fontSize: 13.5, fontWeight: '600',

@@ -194,7 +194,7 @@ export default function Home() {
             <Text style={st.secS}>поле целиком</Text>
           </View>
           <Pressable
-            onPress={() => go('/schedule', { kind: 'football' })}
+            onPress={() => go('/football')}
             accessibilityRole="button"
             accessibilityLabel={'Мини-футбольное поле. ' + (pitchFree.length > 0
               ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
