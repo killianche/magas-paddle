@@ -15,7 +15,7 @@ import { useHydrated } from '../src/hydrated';
 
 export default function Prices() {
   const hydrated = useHydrated();
-  const q = useApi(() => api.prices(), []);
+  const q = useApi(() => api.prices(), [], 'prices');
 
   if (!hydrated || q.loading) return <Loading note="Смотрю цены" />;
   if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;

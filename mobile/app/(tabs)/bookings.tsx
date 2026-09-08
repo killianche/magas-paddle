@@ -25,7 +25,7 @@ export default function Bookings() {
       api.myBookings(phone), api.tournaments(phone),
     ]);
     return { bookings, tournaments: tournaments.filter(t => t.entered) };
-  }, [phone]);
+  }, [phone], phone ? `mine.${phone}` : undefined);
 
   // Вернулись на вкладку — подтянуть свежее: бронь могли подтвердить
   useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone]));

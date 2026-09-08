@@ -29,7 +29,7 @@ export default function Football() {
   const [from, setFrom] = useState<number | null>(null);
   const [hours, setHours] = useState(1);
 
-  const q = useApi(() => api.grid(date), [date]);
+  const q = useApi(() => api.grid(date), [date], `grid.${date}`);
   const days = useMemo(
     () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today(), i)), []);
 

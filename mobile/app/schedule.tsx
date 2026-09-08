@@ -25,7 +25,7 @@ export default function Schedule() {
   // и перед записью человек должен увидеть, куда именно он идёт.
   const [peek, setPeek] = useState<string | null>(null);
 
-  const q = useApi(() => api.grid(date), [date]);
+  const q = useApi(() => api.grid(date), [date], `grid.${date}`);
   const days = useMemo(
     () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today(), i)), []);
 

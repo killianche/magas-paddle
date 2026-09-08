@@ -13,7 +13,6 @@ import { C, R, S, HIT, DISP, DISP_MED } from '../../src/theme';
 import { api, rub, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
-import { Loading, Failed } from '../../src/components/status';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
 import { Mark, IconChevron, IconCheck } from '../../src/components/icons';
 import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
@@ -39,41 +38,48 @@ export default function Home() {
       phone ? api.myBookings(phone) : Promise.resolve([] as ApiBooking[]),
     ]);
     return { grid, tournaments, bookings };
-  }, [phone]);
+  }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
   useFocusEffect(useCallback(() => { q.refresh() }, [phone]));
 
-  if (q.loading) return <Loading note="Смотрю, что свободно" />;
-  if (q.error || !q.data) return <Failed message={q.error ?? 'Пустой ответ'} onRetry={q.reload} />;
-
-  const { grid, tournaments, bookings } = q.data;
+  // Экран рисуется сразу, не дожидаясь сети: фотография, название и кнопка
+  // никаких данных не требуют. Крутилка во весь экран была самой заметной
+  // задержкой, хотя ждать было нечего.
+  const grid = q.data?.grid ?? null;
+  const tournaments = q.data?.tournaments ?? [];
+  const bookings = q.data?.bookings ?? [];
+  const waiting = !q.data && !q.error;
   // Снимок клуба показываем целиком, в своих пропорциях 3:2, и почти
   // не затемняем: фотографии тёмные сами по себе, под градиентом от них
   // остался бы чёрный прямоугольник. Текст поэтому стоит под снимком,
   // а не поверх — так он читается и выглядит дороже.
   const heroH = Math.round(Math.min(width, 520) / 1.5);
 
-  const freeHours = grid.courts.reduce(
+  const courts = grid?.courts ?? [];
+  const freeHours = courts.reduce(
     (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
-  const soonest = grid.courts
+  const soonest = courts
     .map(c => c.hours.find(h => h.status === 'free')?.hour)
     .filter((h): h is number => h != null)
     .sort((a, b) => a - b)[0] ?? null;
-  const freeText = soonest == null
-    ? 'Сегодня всё занято — посмотрите другие дни'
-    : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
-      + ` · ближайшее в ${hh(soonest)}`;
+  const freeText = waiting ? 'смотрю, что свободно'
+    : q.error ? 'нет связи с клубом'
+    : soonest == null
+      ? 'Сегодня всё занято — посмотрите другие дни'
+      : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
+        + ` · ближайшее в ${hh(soonest)}`;
 
   // Самая низкая цена дня — её и показываем в «от …» на витрине
-  const cheapest = Math.min(...grid.courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0));
+  const prices = courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0);
+  const cheapest = prices.length ? Math.min(...prices) : 0;
 
   // Футбольное поле живёт по своим правилам: другая игра, другая компания,
   // другая цена. В общем ряду кортов оно терялось.
-  const padel = grid.courts.filter(c => !c.isFootball);
-  const pitch = grid.courts.find(c => c.isFootball) ?? null;
+  const padel = courts.filter(c => !c.isFootball);
+  const pitch = courts.find(c => c.isFootball) ?? null;
   const pitchFree = pitch?.hours.filter(h => h.status === 'free') ?? [];
   const pitchPrice = pitch?.hours.find(h => h.status === 'free')?.price
-    ?? pitch?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
+    ?? pitch?.hours.find(h => h.hour >= (grid?.morningUntil ?? 13))?.price ?? 0;
 
   const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
   const mine = bookings.filter(b => b.status !== 'cancelled');
@@ -111,9 +117,13 @@ export default function Home() {
             ярусом и тихим текстом 12–16, середины нет вовсе. */}
         <Text style={st.display} allowFontScaling={false}>ПАДЕЛ{'\n'}В МАГАСЕ</Text>
         <Text style={st.meta}>
-          {padel.length} {plural(padel.length, 'корт', 'корта', 'кортов')}
-          {pitch ? '  ·  мини-футбольное поле' : ''}
-          {'  ·  '}{hh(grid.openHour)}–24:00
+          {waiting ? 'Шесть кортов и мини-футбольное поле  ·  09:00–24:00' : (
+            <>
+              {padel.length} {plural(padel.length, 'корт', 'корта', 'кортов')}
+              {pitch ? '  ·  мини-футбольное поле' : ''}
+              {'  ·  '}{hh(grid!.openHour)}–24:00
+            </>
+          )}
         </Text>
 
         {/* Свободные часы живут прямо в кнопке: раньше то же самое
@@ -128,6 +138,17 @@ export default function Home() {
           <IconChevron size={20} color={C.onLime} />
         </Pressable>
       </View>
+
+      {!!q.error && (
+        <Pressable onPress={q.reload} accessibilityRole="button"
+          style={({ pressed }) => [st.offline, pressed && { opacity: 0.8 }]}>
+          <Text style={st.offlineT}>Нет связи с клубом</Text>
+          <Text style={st.offlineS}>
+            {q.data ? 'Показано последнее, что успели загрузить. Нажмите, чтобы обновить.'
+                    : 'Нажмите, чтобы попробовать снова.'}
+          </Text>
+        </Pressable>
+      )}
 
       {(mine.length > 0 || entered.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
@@ -155,14 +176,23 @@ export default function Home() {
           держать WhatsApp и Instagram на виду, а не прятать в «Клуб». */}
       <SocialButtons />
 
-      <View style={st.secHead}>
-        <Text style={st.secT}>Падел-корты</Text>
-        <Text style={st.secS}>{padel.length}</Text>
-      </View>
+      {(padel.length > 0 || waiting) && (
+        <View style={st.secHead}>
+          <Text style={st.secT}>Падел-корты</Text>
+          <Text style={st.secS}>{waiting ? '' : padel.length}</Text>
+        </View>
+      )}
+      {waiting && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={st.strip} scrollEnabled={false}>
+          {[0, 1, 2].map(i => <View key={i} style={[st.card, st.cardWait]} />)}
+        </ScrollView>
+      )}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.strip}>
         {padel.map(c => {
           const free = c.hours.find(h => h.status === 'free');
-          const price = c.hours.find(h => h.hour === (free?.hour ?? grid.morningUntil))?.price ?? 0;
+          const price = c.hours.find(h => h.hour === (free?.hour ?? grid!.morningUntil))?.price ?? 0;
           return (
             <Pressable key={c.courtId}
               onPress={() => go('/court', { id: c.courtId, date: today() })}
@@ -269,7 +299,7 @@ export default function Home() {
 
       <WhereWeAre />
       <View style={[st.info, { marginTop: 10 }]}>
-        <InfoRow k="Работаем" v={`с ${hh(grid.openHour)} до полуночи`} />
+        <InfoRow k="Работаем" v={`с ${hh(grid?.openHour ?? 9)} до полуночи`} />
         <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />
         <InfoRow k="Оплата" v="на месте, в клубе" />
         <InfoRow k="Отмена" v="бесплатно за 4 часа" last />
@@ -355,6 +385,13 @@ const st = StyleSheet.create({
 
   // Заголовки разделов: прописные с широким трекингом. Мелкая деталь,
   // но именно она отличает дорогой вид от обычного.
+  offline: { marginHorizontal: S.xl, marginTop: 14, padding: 14, borderRadius: R.lg,
+    borderWidth: 1, borderColor: 'rgba(240,169,59,.35)', backgroundColor: 'rgba(240,169,59,.07)' },
+  offlineT: { color: C.amber, fontSize: 13, fontWeight: '700', letterSpacing: 1.2,
+    textTransform: 'uppercase' },
+  offlineS: { color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 5 },
+  cardWait: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+
   secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: S.xl, marginTop: 36, marginBottom: 14 },
   secT: { color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 2.6,

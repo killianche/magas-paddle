@@ -18,7 +18,7 @@ import { hh, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
 export default function Tournaments() {
   const { profile } = useProfile();
   const phone = profile?.phone;
-  const q = useApi(() => api.tournaments(phone), [phone]);
+  const q = useApi(() => api.tournaments(phone), [phone], `tourn.${phone ?? 'гость'}`);
   useFocusEffect(useCallback(() => { q.refresh() }, [phone]));
 
   if (q.loading) return <Loading note="Загружаю турниры" />;

@@ -76,7 +76,13 @@ export class ClubService {
    *
    *  Зовём перед выдачей расписания и перед созданием брони: отдельного
    *  планировщика для этого заводить не нужно, а задержки не будет. */
+  private sweptAt = 0;
+
   async releaseExpired(): Promise<number> {
+    // Раньше это была запись в базу на каждый показ расписания. Заявки живут
+    // десятками минут, поэтому чаще раза в 20 секунд смотреть незачем.
+    if (Date.now() - this.sweptAt < 20_000) return 0;
+    this.sweptAt = Date.now();
     const r = await this.db.bookings.updateMany({
       where: { status: 'pending', hold_until: { lt: new Date() } },
       data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
