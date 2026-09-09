@@ -161,7 +161,7 @@ export default function Book() {
           style={({ pressed }) => [s.cta, !canSend && s.ctaOff, pressed && canSend && { opacity: 0.9 }]}>
           {sending
             ? <ActivityIndicator color={C.onLime} />
-            : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Забронировать</Text>}
+            : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Отправить заявку</Text>}
         </Pressable>
         {!canSend && !sending && (
           <Text style={s.barSub}>Заполните имя и телефон</Text>

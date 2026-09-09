@@ -10,7 +10,6 @@ import { hh, longDate, plural } from '../src/dates';
 
 import { CLUB, whatsappUrl } from '../src/club';
 
-const PHONE = '+7 928 000-00-00';       // ЗАГЛУШКА: настоящий номер ждём от клуба
 
 /** Сколько осталось до конца удержания, словами. */
 function leftText(iso: string): string | null {
@@ -57,7 +56,7 @@ export default function Sent() {
         </Text>
         <View style={s.pill}>
           <View style={s.dot} />
-          <Text style={s.pillT}>МЕНЕДЖЕР ПОДТВЕРДИТ</Text>
+          <Text style={s.pillT}>МЕСТО ЗАДЕРЖАНО</Text>
         </View>
       </View>
 
@@ -74,33 +73,49 @@ export default function Sent() {
 
       {/* Место держится ограниченное время: оплата идёт через менеджера,
           и человек должен понимать, что тянуть нельзя. */}
-      {!!p.holdUntil && leftText(String(p.holdUntil)) && (
-        <View style={s.hold}>
-          <Text style={s.holdT}>Держим корт за вами {leftText(String(p.holdUntil))}</Text>
-          <Text style={s.holdS}>
-            Напишите менеджеру или дождитесь звонка: он подскажет, как внести
-            предоплату 50 %. После неё бронь подтверждается. Если не успеть,
-            время снова станет свободным и его сможет занять другой.
-          </Text>
-        </View>
-      )}
+      <View style={s.hold}>
+        <Text style={s.holdT}>
+          {!!p.holdUntil && leftText(String(p.holdUntil))
+            ? `Держим корт за вами ${leftText(String(p.holdUntil))}`
+            : 'Корт задержан за вами'}
+        </Text>
+        <Text style={s.holdS}>
+          Свяжитесь с менеджером и внесите предоплату — половину стоимости.
+          После неё бронь становится подтверждённой. Без предоплаты время
+          вернётся в расписание.
+        </Text>
+      </View>
 
       <View style={{ flex: 1 }} />
 
       <View style={s.bottom}>
-        {/* ЗАГЛУШКА: номер WhatsApp клуб ещё не дал — кнопка честно неактивна */}
+        <Text style={s.step}>Шаг 2 · Договориться о предоплате</Text>
+
+        {/* ЗАГЛУШКИ: номеров клуб ещё не дал (вопрос Q46). Выдумывать нельзя —
+            человек позвонит незнакомому, — поэтому кнопки честно неактивны. */}
         <Pressable disabled={!whatsappUrl()}
           onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
+          accessibilityRole="button"
+          accessibilityLabel="Написать менеджеру в WhatsApp"
           style={({ pressed }) => [s.wa, !whatsappUrl() && s.waOff, pressed && { opacity: 0.9 }]}>
           <Text style={[s.waT, !whatsappUrl() && { color: C.dim }]}>
             {whatsappUrl() ? 'Написать в WhatsApp' : 'WhatsApp: номер скоро появится'}
           </Text>
         </Pressable>
-        <Pressable onPress={() => open(`tel:${PHONE.replace(/[^\d+]/g, '')}`, `Телефон клуба: ${PHONE}`)}
+
+        <Pressable disabled={!CLUB.phone}
+          onPress={() => CLUB.phone && open(`tel:${CLUB.phone.replace(/[^\d+]/g, '')}`,
+            `Телефон клуба: ${CLUB.phone}`)}
+          accessibilityRole="button"
+          accessibilityLabel={CLUB.phone ? 'Позвонить менеджеру' : 'Телефон клуба ещё не известен'}
           style={({ pressed }) => [s.ghost, pressed && { opacity: 0.8 }]}>
-          <Text style={s.ghostT}>Позвонить в клуб</Text>
+          <Text style={[s.ghostT, !CLUB.phone && { color: C.dim }]}>
+            {CLUB.phone ? 'Позвонить менеджеру' : 'Телефон: номер скоро появится'}
+          </Text>
         </Pressable>
+
         <Pressable onPress={() => router.replace('/bookings')}
+          accessibilityRole="button"
           style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
           <Text style={s.linkT}>Открыть мои записи</Text>
         </Pressable>
@@ -115,6 +130,7 @@ const s = StyleSheet.create({
   holdT: { color: '#F0A93B', fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
   holdS: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
   waOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  step: { ...EYEBROW, color: C.dim2, marginBottom: 10, textAlign: 'center' },
   root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
   done: { alignItems: 'center', paddingHorizontal: 30 },
   tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.lime,
