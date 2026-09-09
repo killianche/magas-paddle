@@ -1,4 +1,4 @@
-// Запись на мини-футбольное поле.
+// Запись на футбольное поле.
 //
 // Отдельный экран, а не колонка в общей сетке. Сетка «часы × площадки» нужна,
 // когда площадок шесть и надо сравнить их между собой. Поле одно — сравнивать
@@ -45,8 +45,8 @@ export default function Football() {
     return sum;
   }, [pitch, from, hours]);
 
-  if (q.loading) return (<><Stack.Screen options={{ title: 'Мини-футбол' }} /><Loading note="Смотрю, что свободно" /></>);
-  if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Мини-футбол' }} />
+  if (q.loading) return (<><Stack.Screen options={{ title: 'Футбольное поле' }} /><Loading note="Смотрю, что свободно" /></>);
+  if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Футбольное поле' }} />
     <Failed message={q.error ?? 'Пустой ответ сервера'} onRetry={q.reload} /></>);
   if (!pitch) return (
     <NotFound title="Поля нет в расписании"
@@ -79,7 +79,7 @@ export default function Football() {
 
   return (
     <View style={s.root}>
-      <Stack.Screen options={{ title: 'Мини-футбол' }} />
+      <Stack.Screen options={{ title: 'Футбольное поле' }} />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 24 }}
@@ -92,7 +92,7 @@ export default function Football() {
             locations={[0, 0.5, 1]} style={s.fill} />
           <View style={s.heroIn}>
             <Text style={s.eyebrow}>ПОЛЕ ЦЕЛИКОМ</Text>
-            <Text style={s.name} allowFontScaling={false}>МИНИ-ФУТБОЛ</Text>
+            <Text style={s.name} allowFontScaling={false}>ФУТБОЛЬНОЕ{'\n'}ПОЛЕ</Text>
             <Text style={s.sub}>
               {closed ? 'Закрыто на ремонт'
                 : free.length > 0

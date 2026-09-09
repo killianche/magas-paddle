@@ -118,7 +118,7 @@ export const api = {
     call<ApiBooking[]>(`/bookings?phone=${encodeURIComponent(phone)}`),
 
   book: (b: { courtId: string; date: string; hour: number; hours: number;
-              name: string; phone: string; comment?: string }) =>
+              name: string; phone: string; whatsapp?: string; comment?: string }) =>
     call<ApiBooking>('/bookings', { method: 'POST', body: JSON.stringify(b) }),
 
   cancel: (id: number, phone: string) =>

@@ -97,7 +97,7 @@ export function Mark({ size = 34 }: { size?: number }) {
   );
 }
 
-/** Мяч — колонка мини-футбольного поля */
+/** Мяч — колонка футбольного поля */
 export function IconBall({ size = 15, color = C.dim }: P) {
   return (
     <Svg {...base(size, color)}>

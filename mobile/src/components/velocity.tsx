@@ -15,8 +15,8 @@ export function OutlineText({ children, size, width }: {
       <SvgText
         x={0} y={size * 0.86}
         fontFamily={DISP} fontSize={size}
-        letterSpacing={-size * 0.05}
-        fill="none" stroke={C.text} strokeWidth={1.2}>
+        letterSpacing={-size * 0.018}
+        fill="none" stroke={C.text} strokeWidth={1.5}>
         {children}
       </SvgText>
     </Svg>

@@ -27,13 +27,18 @@ export default function Book() {
   const { profile, ready, save } = useProfile();
 
   const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [taken, setTaken] = useState<Alternatives | null>(null);
 
   useEffect(() => {
-    if (profile) { setName(profile.name); setPhone(prettyPhone(profile.phone)) }
+    if (profile) {
+      setName(profile.name);
+      setSurname(profile.surname ?? '');
+      setPhone(prettyPhone(profile.phone));
+    }
   }, [profile]);
 
   const courtId = String(p.courtId ?? '');
@@ -50,6 +55,7 @@ export default function Book() {
   );
 
   const cleanPhone = normalizePhone(phone);
+  const who = [name.trim(), surname.trim()].filter(Boolean).join(' ');
   const canSend = name.trim().length >= 2 && cleanPhone != null && !sending;
 
   const submit = async () => {
@@ -58,9 +64,11 @@ export default function Book() {
     setSending(true);
     try {
       const booking = await api.book({
-        courtId, date, hour, hours, name: name.trim(), phone: cleanPhone,
+        courtId, date, hour, hours, name: who, phone: cleanPhone,
+        whatsapp: profile?.whatsapp ?? undefined,
       });
-      await save({ name: name.trim(), phone: cleanPhone });
+      await save({ ...profile, name: name.trim(),
+        surname: surname.trim() || undefined, phone: cleanPhone });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
@@ -85,9 +93,11 @@ export default function Book() {
     setTaken(null); setSending(true);
     try {
       const booking = await api.book({
-        courtId: altCourtId, date, hour: altHour, hours, name: name.trim(), phone: cleanPhone,
+        courtId: altCourtId, date, hour: altHour, hours, name: who, phone: cleanPhone,
+        whatsapp: profile?.whatsapp ?? undefined,
       });
-      await save({ name: name.trim(), phone: cleanPhone });
+      await save({ ...profile, name: name.trim(),
+        surname: surname.trim() || undefined, phone: cleanPhone });
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
         hour: String(altHour), hours: String(hours), price: String(booking.price) } });
@@ -118,6 +128,12 @@ export default function Book() {
           placeholder="Как к вам обращаться" placeholderTextColor={C.dim2}
           autoCapitalize="words" returnKeyType="next" maxLength={80}
           accessibilityLabel="Ваше имя" />
+
+        <Text style={s.label}>Фамилия</Text>
+        <TextInput style={s.input} value={surname} onChangeText={setSurname}
+          placeholder="Необязательно" placeholderTextColor={C.dim2}
+          autoCapitalize="words" returnKeyType="next" maxLength={80}
+          accessibilityLabel="Ваша фамилия" />
 
         <Text style={s.label}>Телефон</Text>
         <TextInput style={s.input} value={phone} onChangeText={setPhone}

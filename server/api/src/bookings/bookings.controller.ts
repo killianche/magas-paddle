@@ -83,10 +83,12 @@ export class BookingsController {
     const holdUntil = new Date(Math.min(
       Date.now() + set.holdMinutes * 60_000, +startsAt));
 
+    // Второй номер запоминаем, но не затираем прежний пустым значением
+    const wa = dto.whatsapp ? normalizePhone(dto.whatsapp) : null;
     const client = await this.db.clients.upsert({
       where: { phone: bookingPhone },
-      update: { name: dto.name },
-      create: { phone: bookingPhone, name: dto.name },
+      update: { name: dto.name, ...(wa ? { whatsapp: wa } : {}) },
+      create: { phone: bookingPhone, name: dto.name, whatsapp: wa },
     });
 
     try {

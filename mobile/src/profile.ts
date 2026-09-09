@@ -5,7 +5,20 @@ import { useCallback, useEffect, useState } from 'react';
 
 const KEY = 'magas.profile.v1';
 
-export type Profile = { name: string; phone: string };
+/** phone — тот номер, по которому клуб и сервер узнают человека.
+ *  whatsapp — второй номер, если он другой. Обязателен хотя бы один: если
+ *  дан только WhatsApp, он и становится основным. */
+export type Profile = {
+  name: string; surname?: string; phone: string; whatsapp?: string;
+};
+
+/** Две буквы для кружка аккаунта: «АМ» или, если фамилии нет, «А». */
+export const initials = (p: Profile) =>
+  [p.name, p.surname].filter(Boolean).map(x => x!.trim()[0] ?? '').join('').toUpperCase();
+
+/** Как человека зовут одной строкой — это и уходит клубу вместе с заявкой. */
+export const fullName = (p: Profile) =>
+  [p.name, p.surname].filter(Boolean).join(' ').trim();
 
 let cache: Profile | null = null;
 const listeners = new Set<() => void>();

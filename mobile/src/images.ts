@@ -9,6 +9,21 @@ export const IMG: Record<string, any> = {
   c6: require('../assets/img/c1.webp'),
   f1: require('../assets/img/f1.webp'),
 };
+/** Фотографии для галереи на экране площадки.
+ *  ЗАГЛУШКИ: у клуба пока по одному кадру на корт, и те чужие. Как только
+ *  придут настоящие снимки — правится только этот список, код не трогается.
+ *  ВОПРОС К ЗАКАЗЧИКУ: нужны 3–5 фотографий каждого корта. */
+export const COURT_PHOTOS: Record<string, any[]> = {
+  c1: [require('../assets/img/c1.webp'), require('../assets/img/club-hero.webp'),
+       require('../assets/img/club-band.webp')],
+  c2: [require('../assets/img/c2.webp'), require('../assets/img/club-band.webp')],
+  c3: [require('../assets/img/c3.webp'), require('../assets/img/club-hero.webp')],
+  c4: [require('../assets/img/c4.webp'), require('../assets/img/club-band.webp')],
+  c5: [require('../assets/img/c5.webp'), require('../assets/img/club-hero.webp')],
+  c6: [require('../assets/img/c1.webp'), require('../assets/img/club-band.webp')],
+  f1: [require('../assets/img/f1.webp')],
+};
+
 // Снимки клуба, присланные заказчиком. В отличие от остальных — настоящие.
 export const HERO = require('../assets/img/club-hero.webp');
 export const CLUB_BAND = require('../assets/img/club-band.webp');

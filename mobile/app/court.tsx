@@ -4,13 +4,15 @@
 // через сетку «часы × площадки», а этот экран нужен, чтобы посмотреть, какой
 // у корта пол и чем он отличается от соседнего, прежде чем выбирать час.
 import { useCallback } from 'react';
-import { ScrollView, Text, View, StyleSheet, Image } from 'react-native';
-import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
+import { ScrollView, Text, View, StyleSheet, Image, Pressable } from 'react-native';
+import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, R, S, DISP, DISP_MED, TITLE, BODY } from '../src/theme';
 import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
-import { IMG } from '../src/images';
+import { IMG, COURT_PHOTOS } from '../src/images';
+import { Gallery } from '../src/components/gallery';
 import { Section, Line } from '../src/components/section';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
@@ -53,11 +55,9 @@ export default function CourtScreen() {
       <Stack.Screen options={{ title: court.name }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-        <View style={s.hero}>
-          <Image source={IMG[court.id] ?? IMG.c1} style={s.heroImg} resizeMode="cover" />
-          <LinearGradient colors={['rgba(11,15,12,.05)', 'rgba(11,15,12,.5)', 'rgba(11,15,12,.95)']}
-            locations={[0, 0.55, 1]} style={s.fill} />
-        </View>
+        {/* Фотографии — главное на этом экране: площадки отличаются покрытием
+            и цветом пола, и выбирают их глазами. */}
+        <Gallery photos={COURT_PHOTOS[court.id] ?? [IMG[court.id] ?? IMG.c1]} />
 
         <View style={s.head}>
           <Text style={s.name}>{court.name}</Text>
@@ -75,6 +75,14 @@ export default function CourtScreen() {
             </View>
           </View>
         </View>
+
+        <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/schedule') }}
+          accessibilityRole="button" accessibilityLabel="Забронировать: открыть сетку времени"
+          style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}>
+          <Text style={s.ctaT}>Забронировать</Text>
+        </Pressable>
+        <Text style={s.ctaNote}>Откроется сетка со всеми площадками и часами</Text>
 
         {court.description ? (
           <View style={s.about}>
@@ -140,7 +148,7 @@ const s = StyleSheet.create({
   hero: { height: 230, overflow: 'hidden' },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   head: { paddingHorizontal: S.xl, paddingTop: 4, paddingBottom: 20 },
-  name: { ...TITLE.page, color: C.text },
+  name: { ...TITLE.page, color: C.text, textTransform: 'uppercase' },
   sub: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, marginTop: 5 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 14, flexWrap: 'wrap' },
   price: { ...TITLE.section, color: C.text, fontVariant: ['tabular-nums'] },
@@ -156,6 +164,12 @@ const s = StyleSheet.create({
   qT: { color: C.text, fontFamily: DISP_MED, fontSize: 13.5, letterSpacing: -0.2 },
   qS: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 
+  cta: { backgroundColor: C.lime, marginHorizontal: S.xl, marginTop: 20,
+    paddingVertical: 15, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
+  ctaNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center',
+    marginTop: 8, marginBottom: 6 },
   about: { marginHorizontal: S.xl, marginBottom: 16, padding: 14, borderRadius: R.lg,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   aboutT: { fontFamily: BODY, color: C.text, fontSize: 14.5, lineHeight: 21 },

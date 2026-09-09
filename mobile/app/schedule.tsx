@@ -36,7 +36,6 @@ export default function Schedule() {
   // Только падел-корты: поле бронируется на своём экране — сетка на шесть
   // колонок, ужатая до одной, оставляла пустой экран.
   const shown = (grid?.courts ?? []).filter(c => !c.isFootball);
-  const hasFootball = (grid?.courts ?? []).some(c => c.isFootball);
   const court = grid?.courts.find(c => c.courtId === sel?.courtId) ?? null;
   const cell = court?.hours.find(h => h.hour === sel?.hour) ?? null;
   const run = cell?.maxRun ?? 0;
@@ -50,13 +49,6 @@ export default function Schedule() {
     }
     return sum;
   }, [court, sel, hours]);
-
-  const freeNow = shown.filter(c => {
-    const h = c.hours.find(x => x.status === 'free');
-    return h != null;
-  }).length ?? 0;
-  const freeHours = shown.reduce(
-    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
 
   const pickCell = (courtId: string, h: ApiHour) => {
     if (h.status !== 'free') return;
@@ -114,36 +106,19 @@ export default function Schedule() {
 
       <View style={st.title}>
         <Eyebrow>Быстрая запись · 3 шага</Eyebrow>
-        <Text style={st.h1} allowFontScaling={false}>ВЫБЕРИТЕ{'\n'}ВРЕМЯ</Text>
-        <Text style={st.sub}>
-          {date === today()
-            ? `Сегодня свободно ${freeNow} ${plural(freeNow, 'корт', 'корта', 'кортов')} из ${shown.length}`
-            : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
-        </Text>
-      </View>
-
-      {hasFootball && (
-        <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/football') }}
-          accessibilityRole="button" accessibilityLabel="Забронировать мини-футбольное поле"
-          style={({ pressed }) => [st.toPitch, pressed && { opacity: 0.8 }]}>
-          <Text style={st.toPitchT}>Мини-футбольное поле</Text>
-          <IconChevron size={15} color={C.dim} />
-        </Pressable>
-      )}
-
-      <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
-        accessibilityRole="button" accessibilityLabel="Открыть прайс-лист" hitSlop={10}
-        style={({ pressed }) => [st.tariff, pressed && { opacity: 0.75 }]}>
+        <Text style={st.h1} allowFontScaling={false}>ВЫБЕРИТЕ ВРЕМЯ</Text>
+        {/* Тарифы — просто подпись. Кнопкой она была лишней: прайс-лист
+            открывается с главной, а здесь человек выбирает время. */}
         <Text style={st.tariffT}>
           <Text style={{ color: C.lime, fontFamily: DISP_MED }}>{rub(morningPrice)}</Text>
           {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
         </Text>
-        <IconChevron size={14} color={C.dim2} />
-      </Pressable>
+      </View>
 
-      <Text style={st.step}>01 · Дата</Text>
+      {/* flexGrow: 0 — иначе вложенная горизонтальная прокрутка растягивается
+          по высоте и под чипами остаётся пустая полоса */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={st.days}>
+        style={{ flexGrow: 0 }} contentContainerStyle={st.days}>
         {days.map(d => {
           const on = date === d;
           return (
@@ -158,7 +133,6 @@ export default function Schedule() {
         })}
       </ScrollView>
 
-      <Text style={[st.step, { marginTop: 18 }]}>02 · Корт и время</Text>
       <View style={{ paddingHorizontal: padH }}>
         <View style={[st.headRow, { gap }]}>
           <View style={{ width: timeW }} />
@@ -248,21 +222,15 @@ export default function Schedule() {
       <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
         {sel && court ? (
           <>
-            {/* Карточка ведёт на рассказ о площадке — фотография, покрытие, правила.
-                Записаться оттуда нельзя: единственный путь к брони — эта сетка. */}
-            <Pressable
-              onPress={() => { Haptics.selectionAsync();
-                router.push({ pathname: '/court', params: { id: sel.courtId, date } }) }}
-              accessibilityRole="button"
-              accessibilityLabel={`${court.name}: посмотреть площадку`}
-              style={({ pressed }) => [st.pick, pressed && { opacity: 0.7 }]}>
+            {/* Что выбрано — просто подпись. Раньше отсюда открывался экран
+                площадки, и нажатие уводило человека с полпути записи. */}
+            <View style={st.pick}>
               <Image source={IMG[sel.courtId] ?? IMG.c1} style={st.pickPh} resizeMode="cover" />
               <View style={{ flex: 1 }}>
                 <Text style={st.pickN}>{court.name}</Text>
                 <Text style={st.pickS}>{hh(sel.hour)} – {hh(sel.hour + hours)} · {rub(total)}</Text>
               </View>
-              <IconChevron size={15} color={C.dim2} />
-            </Pressable>
+            </View>
 
             {/* Передумать должно быть так же просто, как выбрать */}
             <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setHours(1) }}
@@ -289,18 +257,12 @@ export default function Schedule() {
               })}
             </View>
 
-            {run < grid.maxHours && (
-              <Text style={st.warn}>
-                {run === 1
-                  ? `В ${hh(sel.hour + 1)} площадка занята — свободен только один час.`
-                  : `В ${hh(sel.hour + run)} площадка занята — подряд можно взять ${run} часа.`}
-              </Text>
-            )}
 
             <Pressable onPress={book} accessibilityRole="button"
               style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
               <Text style={st.ctaT}>Забронировать · {rub(total)}</Text>
             </Pressable>
+            <Text style={st.payNote}>Оплата на месте или через менеджера в WhatsApp</Text>
           </>
         ) : (
           <>
@@ -372,15 +334,15 @@ function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: 
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
-  title: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 },
-  h1: { ...TITLE.page, color: C.text, marginTop: 8 },
+  title: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10 },
+  h1: { ...TITLE.card, color: C.text, marginTop: 6 },
   step: { color: '#839087', fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
     textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 9 },
   sub: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 11 },
-  days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginBottom: 6 },
-  day: { width: 64, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderRadius: R.md, paddingVertical: 8, alignItems: 'center', justifyContent: 'center',
-    minHeight: 54 },
+  days: { flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    paddingHorizontal: S.xl, marginBottom: 4 },
+  day: { width: 52, height: 52, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   dayOn: { backgroundColor: C.text, borderColor: C.text },
   dayW: { ...EYEBROW, fontSize: 11, letterSpacing: 0.2, color: C.dim2 },
   dayD: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.8, marginTop: 2 },
@@ -394,7 +356,7 @@ const st = StyleSheet.create({
   tariff: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
     marginHorizontal: 20, marginTop: 8, paddingHorizontal: 11, minHeight: HIT,
     borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 12.5 },
+  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 6 },
 
   allPassed: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
     paddingHorizontal: 30, paddingVertical: 40 },
@@ -450,6 +412,8 @@ const st = StyleSheet.create({
 
   bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: 'rgba(6,18,13,0.97)',
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  payNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center',
+    marginTop: 9 },
   empty: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
   pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
   pickPh: { width: 38, height: 38, borderRadius: 0 },
@@ -462,7 +426,6 @@ const st = StyleSheet.create({
   durOn: { backgroundColor: C.lime, borderColor: C.lime },
   durOff: { opacity: 0.4, borderStyle: 'dashed' },
   durT: { color: C.text, fontFamily: DISP_MED, fontSize: 12 },
-  warn: { fontFamily: BODY, color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
   cta: { backgroundColor: C.lime, paddingVertical: 15, alignItems: 'center', minHeight: 48,
     justifyContent: 'center' },
   ctaOff: { backgroundColor: '#15251B' },

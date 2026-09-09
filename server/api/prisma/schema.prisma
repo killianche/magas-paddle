@@ -128,6 +128,7 @@ model clients {
   no_shows           Int                  @default(0)
   cancels            Int                  @default(0)
   note               String?
+  whatsapp           String?
   created_at         DateTime             @default(now()) @db.Timestamptz(6)
   bookings           bookings[]
   tournament_entries tournament_entries[]

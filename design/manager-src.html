@@ -965,7 +965,9 @@ async function openBooking(id){
     ${b.players ? `<div class="row"><span>Играет</span><b>${b.players} чел.</b></div>` : ''}
     <div class="row"><span>Телефон</span><b>${b.client
       ? `${phoneNice(b.client.phone)}<button class="copy" id="bkCopy">копировать</button>`
-      + `<a class="copy" href="https://wa.me/${b.client.phone}" target="_blank" rel="noopener">WhatsApp</a>`
+      + `<a class="copy" href="https://wa.me/${(b.client.whatsapp||b.client.phone).replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>`
+      + (b.client.whatsapp && b.client.whatsapp!==b.client.phone
+          ? `<small style="color:var(--dim)">WhatsApp: ${phoneNice(b.client.whatsapp)}</small>` : '')
       : '—'}</b></div>
     <div class="row"><span>Оплата</span><b>${b.paid > 0
       ? (b.paid >= b.price

@@ -48,7 +48,7 @@ export default function Club() {
           <View style={s.heroIn}>
             <Text style={s.name}>{CLUB.name}</Text>
             <Text style={s.sub}>
-              {CLUB.city} · {PADEL_COURTS} кортов и мини-футбольное поле
+              {CLUB.city} · {PADEL_COURTS} кортов и футбольное поле
             </Text>
           </View>
         </View>

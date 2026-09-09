@@ -10,7 +10,7 @@ INSERT INTO courts (id, name, is_football, price_morning, price_standard, is_act
   ('c4', 'Корт 4',      false, 200000, 250000, true, 4),
   ('c5', 'Корт 5',      false, 200000, 250000, true, 5),
   ('c6', 'Корт 6',      false, 200000, 250000, true, 6),
-  ('f1', 'Мини-футбол', true,  333300, 500000, true, 7)
+  ('f1', 'Футбольное поле', true,  333300, 500000, true, 7)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name, price_morning = EXCLUDED.price_morning,
   price_standard = EXCLUDED.price_standard, sort_order = EXCLUDED.sort_order;

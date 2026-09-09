@@ -22,6 +22,11 @@ export class CreateBookingDto {
   @Matches(/^\+?\d{10,15}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
   phone: string;
 
+  /** Второй номер: WhatsApp, если он отличается от телефона.
+   *  Менеджеру нужно знать, куда писать подтверждение. */
+  @IsOptional() @Matches(/^\+?\d{10,15}$/, { message: 'Номер WhatsApp: 10–15 цифр' })
+  whatsapp?: string;
+
   @IsOptional() @IsString() @MaxLength(300)
   comment?: string;
 }

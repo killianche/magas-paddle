@@ -33,12 +33,12 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{
         title: 'Запись', headerShown: false,
         tabBarIcon: ({ color, focused }) => <IconHome color={color as string} active={focused} /> }} />
-      <Tabs.Screen name="tournaments" options={{
-        title: 'Турниры',
-        tabBarIcon: ({ color, focused }) => <IconTrophy color={color as string} active={focused} /> }} />
       <Tabs.Screen name="bookings" options={{
         title: 'Мои записи',
         tabBarIcon: ({ color, focused }) => <IconRacket color={color as string} active={focused} /> }} />
+      <Tabs.Screen name="tournaments" options={{
+        title: 'Турниры',
+        tabBarIcon: ({ color, focused }) => <IconTrophy color={color as string} active={focused} /> }} />
     </Tabs>
   );
 }

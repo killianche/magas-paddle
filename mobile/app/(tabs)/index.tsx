@@ -13,7 +13,7 @@ import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY } from '../../src/theme';
 import { Eyebrow, Ticker, OutlineText } from '../../src/components/velocity';
 import { api, rub, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
-import { useProfile } from '../../src/profile';
+import { useProfile, initials } from '../../src/profile';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
 import { Mark, IconChevron, IconCheck } from '../../src/components/icons';
 import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
@@ -110,10 +110,14 @@ export default function Home() {
             {CLUB_NAME.toUpperCase().replace(' ', '\n')}
           </Text>
           <View style={{ flex: 1 }} />
-          <Pressable onPress={() => go('/club')} accessibilityRole="button"
-            accessibilityLabel="О клубе"
+          {/* Аккаунт: имя и история посещений. Пока человек не завёл его —
+              кнопка зовёт зарегистрироваться. */}
+          <Pressable onPress={() => go('/account')} accessibilityRole="button"
+            accessibilityLabel={profile ? `Аккаунт: ${profile.name}` : 'Создать аккаунт'}
             style={({ pressed }) => [st.circle, pressed && { opacity: 0.7 }]}>
-            <Text style={st.circleT}>↗</Text>
+            <Text style={st.circleT} allowFontScaling={false}>
+              {profile ? initials(profile) : '+'}
+            </Text>
           </Pressable>
         </View>
 
@@ -138,7 +142,7 @@ export default function Home() {
         : [
             `${padel.length} ${plural(padel.length, 'корт', 'корта', 'кортов')}`,
             soonest == null ? 'сегодня всё занято' : `ближайшее в ${hh(soonest)}`,
-            cheapest ? `от ${rub(cheapest)}` : 'мини-футбол',
+            cheapest ? `от ${rub(cheapest)}` : 'футбольное поле',
           ]} />
 
       {!!q.error && (
@@ -218,17 +222,17 @@ export default function Home() {
         })}
       </ScrollView>
 
-      {/* Мини-футбольное поле — отдельным блоком со своей записью */}
+      {/* Футбольное поле — отдельным блоком со своей записью */}
       {pitch && (
         <>
           <View style={st.secHead}>
-            <Text style={st.secT}>Мини-футбол</Text>
+            <Text style={st.secT}>Футбольное поле</Text>
             <Text style={st.secS}>поле целиком</Text>
           </View>
           <Pressable
             onPress={() => go('/football')}
             accessibilityRole="button"
-            accessibilityLabel={'Мини-футбольное поле. ' + (pitchFree.length > 0
+            accessibilityLabel={'Футбольное поле. ' + (pitchFree.length > 0
               ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
               : 'сегодня занято') + '. Забронировать'}
             style={({ pressed }) => [st.pitch, pressed && { opacity: 0.9 }]}>
@@ -340,7 +344,7 @@ const st = StyleSheet.create({
   circle: { width: 38, height: 38, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,.3)', backgroundColor: 'rgba(2,7,5,.65)',
     alignItems: 'center', justifyContent: 'center' },
-  circleT: { fontFamily: BODY, color: C.text, fontSize: 15 },
+  circleT: { fontFamily: DISP, color: C.text, fontSize: 13, letterSpacing: -0.2 },
 
   heroCopy: { paddingHorizontal: S.xl, paddingBottom: 24 },
   // Плакатный заголовок: очень жирный, прописной, буквы вплотную.
@@ -371,7 +375,7 @@ const st = StyleSheet.create({
     textTransform: 'uppercase' },
   priceS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 3 },
 
-  // Мини-футбол: крупный плакат со своей записью
+  // Футбольное поле: крупный плакат со своей записью
   pitch: { marginHorizontal: S.xl, height: 214, overflow: 'hidden',
     backgroundColor: C.surface, justifyContent: 'flex-end' },
   pitchIn: { padding: 16 },

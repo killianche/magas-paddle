@@ -60,15 +60,20 @@ export const DISP = 'Inter-Black';
 export const DISP_MED = 'Inter-SemiBold';
 export const BODY = 'Inter-Regular';
 
-/** Размеры и посадка заголовков — прямо из макета.
+/** Размеры и посадка заголовков — из макета.
  *  Межстрочный меньше кегля там задан как 0.82–0.9; в React Native при таком
- *  соотношении iOS срезает верх прописных, поэтому минимум 1.0 плюс запас. */
+ *  соотношении iOS срезает верх прописных, поэтому минимум 1.0 плюс запас.
+ *
+ *  Трекинг мягче макетного −0.05 em. В макете заголовки латиницей, а
+ *  кириллические прописные шире: при исходной плотности пробел между словами
+ *  пропадал совсем — «ЧАСЫ РАБОТЫ» читалось как одно слово. Оставлено ровно
+ *  столько минуса, чтобы держался плакатный вид и слова не слипались. */
 export const TITLE = {
-  hero:    { fontFamily: DISP, fontSize: 52, lineHeight: 54, letterSpacing: -2.6 },
-  page:    { fontFamily: DISP, fontSize: 42, lineHeight: 44, letterSpacing: -2.1 },
-  section: { fontFamily: DISP, fontSize: 22, lineHeight: 24, letterSpacing: -0.9 },
-  card:    { fontFamily: DISP, fontSize: 27, lineHeight: 29, letterSpacing: -1.1 },
-  bar:     { fontFamily: DISP, fontSize: 17, lineHeight: 19, letterSpacing: -0.5 },
+  hero:    { fontFamily: DISP, fontSize: 52, lineHeight: 54, letterSpacing: -1.7 },
+  page:    { fontFamily: DISP, fontSize: 42, lineHeight: 44, letterSpacing: -1.3 },
+  section: { fontFamily: DISP, fontSize: 22, lineHeight: 24, letterSpacing: -0.3 },
+  card:    { fontFamily: DISP, fontSize: 27, lineHeight: 29, letterSpacing: -0.5 },
+  bar:     { fontFamily: DISP, fontSize: 17, lineHeight: 19, letterSpacing: -0.3 },
 } as const;
 
 /** Мелкая надпись вразрядку: «COURT CULTURE · MAGAS», «01 · Дата».
