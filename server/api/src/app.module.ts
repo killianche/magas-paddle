@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
 import { ClubService } from './club';
-import { CourtsController, PricesController } from './courts/courts.controller';
+import { ClubController, CourtsController, PricesController } from './courts/courts.controller';
 import { AvailabilityController } from './courts/availability.controller';
 import { BookingsController } from './bookings/bookings.controller';
 import { ClientsController } from './clients/clients.controller';
@@ -14,6 +14,7 @@ import { AuthService } from './admin/auth.service';
 @Module({
   controllers: [
     HealthController, CourtsController, PricesController, AvailabilityController,
+    ClubController,
     BookingsController, ClientsController, TournamentsController,
     AdminController, AdminAuthController,
   ],

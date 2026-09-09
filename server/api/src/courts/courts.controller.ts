@@ -65,3 +65,31 @@ export class PricesController {
     };
   }
 }
+
+
+/** Контакты и режим клуба для приложения.
+ *
+ *  Отдельным запросом, а не внутри расписания: экраны с контактами открывают
+ *  реже, чем сетку, а меняются они редко — приложение кэширует ответ.
+ *  Меняет их менеджер из админки, новой сборки для этого не нужно.
+ */
+@Controller('club')
+export class ClubController {
+  constructor(private readonly club: ClubService) {}
+
+  @Get()
+  async info() {
+    const s = await this.club.get();
+    return {
+      openHour: s.openHour,
+      closeHour: s.closeHour,
+      cancelHours: s.cancelHours,
+      holdMinutes: s.holdMinutes,
+      phone: s.phone,
+      whatsapp: s.whatsapp,
+      address: s.address,
+      mapUrl: s.mapUrl,
+      instagram: s.instagram,
+    };
+  }
+}

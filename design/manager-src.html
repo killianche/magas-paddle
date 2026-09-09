@@ -532,6 +532,23 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setCancel">Бесплатная отмена, часов</label><input id="setCancel" type="number" min="0" max="48"></div>
         <div><label for="setHold">Держим заявку, минут</label><input id="setHold" type="number" min="5" max="1440"></div>
       </div>
+
+      <p class="sub" style="margin-top:16px">Контакты клуба. На них держится подтверждение
+        брони: человек отправляет заявку и связывается с менеджером. Пока номер не
+        указан, кнопки в приложении неактивны — выдуманный номер не показываем.
+        Номер вводится как угодно, сохраняется в международном виде.</p>
+      <div class="grid2">
+        <div><label for="setPhone">Телефон для звонков</label>
+          <input id="setPhone" type="tel" placeholder="+7 928 000-00-00"></div>
+        <div><label for="setWa">WhatsApp</label>
+          <input id="setWa" type="tel" placeholder="+7 928 000-00-00"></div>
+        <div><label for="setAddr">Адрес</label>
+          <input id="setAddr" type="text" placeholder="Магас, улица…"></div>
+        <div><label for="setMap">Ссылка на карту</label>
+          <input id="setMap" type="url" placeholder="https://yandex.ru/maps/-/…"></div>
+        <div><label for="setInsta">Instagram</label>
+          <input id="setInsta" type="url" placeholder="https://www.instagram.com/…"></div>
+      </div>
       <div class="err" id="setErr"></div>
       <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
     </div>
@@ -1325,6 +1342,9 @@ async function openSetup(){
     setup = await call('/admin/setup');
   } catch(e){ alert(e.message); return }
   const st = setup.settings;
+  $('#setPhone').value = st.phone || ''; $('#setWa').value = st.whatsapp || '';
+  $('#setAddr').value = st.address || ''; $('#setMap').value = st.mapUrl || '';
+  $('#setInsta').value = st.instagram || '';
   $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
@@ -1388,8 +1408,13 @@ $('#setSave').onclick = async () => {
       openHour: +$('#setOpen').value, closeHour: +$('#setClose').value,
       morningUntil: +$('#setMorning').value, maxHours: +$('#setMax').value,
       cancelHours: +$('#setCancel').value, holdMinutes: +$('#setHold').value,
+      phone: $('#setPhone').value, whatsapp: $('#setWa').value,
+      address: $('#setAddr').value, mapUrl: $('#setMap').value,
+      instagram: $('#setInsta').value,
     })});
     $('#setErr').classList.remove('on');
+    $('#setSave').textContent = 'Сохранено';
+    setTimeout(() => { $('#setSave').textContent = 'Сохранить' }, 1500);
     tariffs = {}; load();
   } catch(e){ $('#setErr').textContent = e.message; $('#setErr').classList.add('on') }
 };

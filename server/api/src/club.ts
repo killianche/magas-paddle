@@ -19,6 +19,15 @@ export type ClubSettings = {
   cancelHours: number;
   /** Сколько минут держим неоплаченную заявку, пока её не подтвердят. */
   holdMinutes: number;
+
+  /** Контакты клуба. Меняются менеджером из админки: путь подтверждения брони
+   *  держится на них, и ради смены номера не должно требоваться новой сборки
+   *  приложения. null — клуб ещё не заполнил, приложение честно это показывает. */
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
+  mapUrl: string | null;
+  instagram: string | null;
 };
 
 /** Значения на случай, если строки настроек в базе почему-то нет.
@@ -26,6 +35,7 @@ export type ClubSettings = {
 export const FALLBACK: ClubSettings = {
   openHour: 9, closeHour: 24, morningUntil: 13, maxHours: 3, cancelHours: 4,
   holdMinutes: 60,
+  phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -62,6 +72,11 @@ export class ClubService {
       maxHours: row.max_hours,
       cancelHours: row.cancel_hours,
       holdMinutes: row.hold_minutes,
+      phone: row.phone ?? null,
+      whatsapp: row.whatsapp ?? null,
+      address: row.address ?? null,
+      mapUrl: row.map_url ?? null,
+      instagram: row.instagram ?? null,
     } : FALLBACK;
     this.readAt = Date.now();
     return this.cache;

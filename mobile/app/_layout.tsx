@@ -1,11 +1,16 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
+import { loadClub } from '../src/club';
 import { View } from 'react-native';
 import { C, DISP } from '../src/theme';
 
 export default function RootLayout() {
+  // Контакты клуба: сохранённые показываем сразу, свежие подтягиваем фоном
+  useEffect(() => { loadClub() }, []);
+
   // Inter, лицензия OFL. Начертания собраны из переменного шрифта и урезаны
   // до латиницы с кириллицей — по 53 КБ вместо 876 КБ исходника.
   // В макете стоял Archivo Black, но кириллицы в нём нет вовсе.

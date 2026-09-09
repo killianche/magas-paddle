@@ -9,17 +9,27 @@
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, BODY } from '../theme';
-import { CLUB, whatsappUrl } from '../club';
+import { CLUB, useClub, whatsappUrl } from '../club';
 import { hh } from '../dates';
 import { Section, Line } from './section';
+import { WhereWeAre } from './contacts';
 import { IconChevron } from './icons';
 
-/** ЗАГЛУШКИ: часы и правила ждут подтверждения клуба (вопросы Q44, Q40). */
-const OPEN_HOUR = 9, CANCEL_HOURS = 4, LATE_MINUTES = 15;
+/** ЗАГЛУШКА: правило опоздания ждёт подтверждения клуба (вопрос Q40). */
+const LATE_MINUTES = 15;
+
+/** Номер в базе лежит цифрами — человеку показываем привычно. */
+const pretty = (digits: string) => {
+  const d = digits.replace(/\D/g, '');
+  return d.length === 11
+    ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}`
+    : '+' + d;
+};
 /** ЗАГЛУШКА: прокат и раздевалка — сведений от клуба пока нет. */
 const RENTALS: string | null = null;
 
 export function ClubInfo() {
+  const club = useClub();
   const open = async (url: string, fallback: string) => {
     Haptics.selectionAsync();
     try {
@@ -37,14 +47,14 @@ export function ClubInfo() {
       {/* Номера клуб ещё не дал. Показывать выдуманный нельзя: человек
           позвонит незнакомому. Кнопки видны, но честно неактивны. */}
       <View style={s.actions}>
-        <Pressable disabled={!CLUB.phone}
-          onPress={() => CLUB.phone && open(`tel:${CLUB.phone.replace(/[^\d+]/g, '')}`,
-            `Телефон клуба: ${CLUB.phone}`)}
+        <Pressable disabled={!club.phone}
+          onPress={() => club.phone && open(`tel:${club.phone.replace(/[^\d+]/g, '')}`,
+            `Телефон клуба: ${club.phone}`)}
           accessibilityRole="button"
-          accessibilityLabel={CLUB.phone ? `Позвонить в клуб, ${CLUB.phone}` : 'Телефон клуба ещё не известен'}
-          style={({ pressed }) => [s.act, !CLUB.phone && s.actOff, pressed && { opacity: 0.85 }]}>
-          <Text style={[s.actT, !CLUB.phone && { color: C.dim }]}>Позвонить</Text>
-          <Text style={s.actS}>{CLUB.phone ?? 'номер скоро появится'}</Text>
+          accessibilityLabel={club.phone ? `Позвонить в клуб, ${club.phone}` : 'Телефон клуба ещё не известен'}
+          style={({ pressed }) => [s.act, !club.phone && s.actOff, pressed && { opacity: 0.85 }]}>
+          <Text style={[s.actT, !club.phone && { color: C.dim }]}>Позвонить</Text>
+          <Text style={s.actS}>{club.phone ? pretty(club.phone) : 'номер скоро появится'}</Text>
         </Pressable>
         <Pressable disabled={!whatsappUrl()}
           onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
@@ -58,31 +68,37 @@ export function ClubInfo() {
         </Pressable>
       </View>
 
-      <Section title="Часы работы" summary={`Каждый день с ${hh(OPEN_HOUR)} до полуночи`}>
-        <Line k="Будни" v={`${hh(OPEN_HOUR)} – 24:00`} />
-        <Line k="Выходные" v={`${hh(OPEN_HOUR)} – 24:00`} />
+      <Section title="Часы работы"
+        summary={`Каждый день с ${hh(club.openHour)} до ${hh(club.closeHour)}`}>
+        <Line k="Будни" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
+        <Line k="Выходные" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
         <Text style={s.q}>
           ВОПРОС К ЗАКАЗЧИКУ: часы взяты как рабочее предположение. Если в выходные
           или праздники режим другой — пришлите, поправим.
         </Text>
       </Section>
 
-      <Section title="Как добраться" summary={CLUB.address ?? 'адрес ещё не получен'}>
-        <View style={s.empty}>
-          <Text style={s.emptyT}>Адреса и карты пока нет</Text>
-          <Text style={s.emptyS}>
-            Клуб ещё не прислал точный адрес. Придумывать его мы не стали:
-            человек поедет не туда. Пришлите адрес — добавим карту и маршрут.
-          </Text>
-        </View>
+      <Section title="Как добраться" summary={club.address ?? 'адрес ещё не указан'}>
+        {club.address
+          ? <Line k="Адрес" v={club.address} />
+          : (
+            <View style={s.empty}>
+              <Text style={s.emptyT}>Адрес ещё не указан</Text>
+              <Text style={s.emptyS}>
+                Придумывать его мы не стали: человек поедет не туда. Менеджер
+                задаёт адрес в админке — он появится здесь сам.
+              </Text>
+            </View>
+          )}
+        <WhereWeAre />
       </Section>
 
       <Section title="Оплата и правила"
-        summary={`Предоплата 50 % · отмена за ${CANCEL_HOURS} часа`}>
+        summary={`Предоплата 50 % · отмена за ${club.cancelHours} часа`}>
         <Line k="Аренда" v="ровно час, можно два и три подряд" />
         <Line k="Подтверждение" v="предоплата 50 % менеджеру" />
         <Line k="Остаток" v="на месте, в клубе" />
-        <Line k="Отмена" v={`за ${CANCEL_HOURS} часа — бесплатно`} />
+        <Line k="Отмена" v={`за ${club.cancelHours} часа — бесплатно`} />
         <Line k="Как отменить" v="звонок, WhatsApp или «Мои записи»" />
         <Line k="Опоздание" v={`корт держим ${LATE_MINUTES} минут`} />
         <Text style={s.small}>

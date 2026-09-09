@@ -1,40 +1,103 @@
-// Контакты клуба в одном месте. Всё, чего клуб ещё не дал, здесь равно null —
-// экраны сами показывают такие пункты как незаполненные и не выдумывают значение.
-// Правило «не додумывать» — CLAUDE.md.
+// Контакты клуба.
+//
+// Номера, адрес и ссылки менеджер задаёт в админке — на них держится
+// подтверждение брони, и ради смены номера не должно требоваться новой сборки
+// приложения. Здесь только то, что от сервера не зависит, и хранение
+// присланного: последний ответ сохраняется на устройстве, чтобы экран контактов
+// открывался сразу, а не мигал пустотой.
+//
+// Чего клуб ещё не заполнил — остаётся null. Экраны показывают такие пункты
+// незаполненными и ничего не выдумывают: правило «не додумывать» в CLAUDE.md.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
+import { api } from './api';
 
-export const CLUB = {
+const KEY = 'magas.club.v1';
+
+export type ClubInfoData = {
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
+  mapUrl: string | null;
+  instagram: string | null;
+  openHour: number;
+  closeHour: number;
+  cancelHours: number;
+};
+
+/** Пока сервер не ответил. Ничего выдуманного: только часы по умолчанию,
+ *  которые всё равно приходят с первым же ответом. */
+const EMPTY: ClubInfoData = {
+  phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
+  openHour: 9, closeHour: 24, cancelHours: 4,
+};
+
+let cache: ClubInfoData = EMPTY;
+let loaded = false;
+const listeners = new Set<() => void>();
+
+/** Неизменное: имя, город, точка на карте и документ о данных.
+ *  Точку прислал заказчик, она в коде намеренно — карта не должна зависеть
+ *  от того, заполнил ли менеджер поле. */
+export const CLUB_STATIC = {
   name: 'Magas Padel',
   city: 'Магас',
   region: 'Республика Ингушетия',
-
-  /** Точка на карте — прислана заказчиком. Первая ссылка указывала чуть мимо,
-      это уточнённая: 43.184968, 44.816118. */
   point: { lat: 43.184968, lon: 44.816118 },
-
-  /** Короткая ссылка заказчика: на телефоне открывает приложение Яндекс.Карт. */
-  mapUrl: 'https://yandex.ru/maps/-/CTdnmJ8N',
-
-  instagram: 'https://www.instagram.com/padel_magas/',
-
-  /** ЗАГЛУШКА: номер WhatsApp заказчик пришлёт отдельно (вопрос Q46).
-      Как только он появится — вписать сюда только цифры, кнопка заработает сама. */
-  whatsapp: null as string | null,
-
-  /** ЗАГЛУШКА: точный адрес клуб ещё не назвал (вопрос Q41). */
-  address: null as string | null,
-
-  /** ЗАГЛУШКА: телефон клуба заказчик ещё не дал (вопрос Q45). */
-  phone: null as string | null,
-
-  /** Политика конфиденциальности. Адрес выдан Apple при подаче приложения. */
   privacyUrl: 'https://padel.217-114-8-196.sslip.io/privacy.html',
 } as const;
 
-/** Ссылка на WhatsApp по номеру. null, пока номер не известен. */
+/** Контакты одним объектом: постоянное плюс присланное клубом. */
+export const CLUB = {
+  ...CLUB_STATIC,
+  get phone() { return cache.phone },
+  get whatsapp() { return cache.whatsapp },
+  get address() { return cache.address },
+  get mapUrl() { return cache.mapUrl },
+  get instagram() { return cache.instagram },
+  get openHour() { return cache.openHour },
+  get closeHour() { return cache.closeHour },
+  get cancelHours() { return cache.cancelHours },
+};
+
+function publish(next: ClubInfoData) {
+  cache = next;
+  listeners.forEach(l => l());
+}
+
+/** Читаем сохранённое и идём за свежим. Зовётся один раз при запуске. */
+export async function loadClub(): Promise<void> {
+  if (!loaded) {
+    loaded = true;
+    try {
+      const raw = await AsyncStorage.getItem(KEY);
+      if (raw) publish({ ...EMPTY, ...JSON.parse(raw) });
+    } catch {}
+  }
+  try {
+    const fresh = await api.club();
+    publish({ ...EMPTY, ...fresh });
+    AsyncStorage.setItem(KEY, JSON.stringify(fresh)).catch(() => {});
+  } catch {}
+}
+
+/** Перерисовать экран, когда контакты приедут. */
+export function useClub(): ClubInfoData {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const l = () => tick(n => n + 1);
+    listeners.add(l);
+    loadClub();
+    return () => { listeners.delete(l) };
+  }, []);
+  return cache;
+}
+
+/** Ссылка на WhatsApp по номеру. null, пока номер не задан в админке. */
 export function whatsappUrl(): string | null {
-  return CLUB.whatsapp ? `https://wa.me/${CLUB.whatsapp}` : null;
+  return cache.whatsapp ? `https://wa.me/${cache.whatsapp.replace(/\D/g, '')}` : null;
 }
 
 /** Координаты человеку — на случай, если карты не открылись. */
 export const pointText =
-  `${CLUB.point.lat.toFixed(5)}, ${CLUB.point.lon.toFixed(5)}`;
+  `${CLUB_STATIC.point.lat.toFixed(5)}, ${CLUB_STATIC.point.lon.toFixed(5)}`;

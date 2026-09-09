@@ -131,6 +131,13 @@ export const api = {
 
   grid: (date: string) => call<ApiGrid>(`/availability?date=${encodeURIComponent(date)}`),
 
+  /** Контакты и режим клуба. Меняются менеджером из админки. */
+  club: () => call<{
+    openHour: number; closeHour: number; cancelHours: number; holdMinutes: number;
+    phone: string | null; whatsapp: string | null; address: string | null;
+    mapUrl: string | null; instagram: string | null;
+  }>('/club'),
+
   /** Знает ли клуб этот номер и стоит ли на нём пароль. */
   checkPhone: (phone: string) =>
     call<{ known: boolean; hasPassword: boolean; profile: ClientCard | null }>(

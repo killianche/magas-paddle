@@ -993,6 +993,8 @@ export class AdminController {
   async saveSettings(@Body() body: Partial<{
     openHour: number; closeHour: number; morningUntil: number;
     maxHours: number; cancelHours: number; holdMinutes: number;
+    phone: string; whatsapp: string; address: string;
+    mapUrl: string; instagram: string;
   }>) {
     const cur = await this.club.get();
     const next = {
@@ -1002,6 +1004,12 @@ export class AdminController {
       max_hours: int(body.maxHours, cur.maxHours, 1, 12),
       cancel_hours: int(body.cancelHours, cur.cancelHours, 0, 48),
       hold_minutes: int(body.holdMinutes, cur.holdMinutes, 5, 1440),
+      // Контакты: пустая строка означает «убрать», не заданное поле не трогаем
+      phone: body.phone === undefined ? cur.phone : phoneOrNull(body.phone),
+      whatsapp: body.whatsapp === undefined ? cur.whatsapp : phoneOrNull(body.whatsapp),
+      address: body.address === undefined ? cur.address : (body.address.trim() || null),
+      map_url: body.mapUrl === undefined ? cur.mapUrl : linkOrNull(body.mapUrl),
+      instagram: body.instagram === undefined ? cur.instagram : linkOrNull(body.instagram),
     };
     if (next.open_hour >= next.close_hour) {
       throw new BadRequestException('Открытие должно быть раньше закрытия');
@@ -1366,6 +1374,28 @@ export class AdminController {
       })),
     };
   }
+}
+
+/** Номер для звонка и WhatsApp: только цифры, 10–15 знаков. Пусто — убрать.
+ *  Проверяем, потому что кривой номер ломает и ссылку wa.me, и набор. */
+function phoneOrNull(v: string): string | null {
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 15) {
+    throw new BadRequestException('Номер должен состоять из 10–15 цифр');
+  }
+  // Восьмёрку приводим к семёрке: wa.me понимает только международный вид
+  return digits.length === 11 && digits[0] === '8' ? '7' + digits.slice(1) : digits;
+}
+
+/** Ссылка. Пусто — убрать. Только http(s), иначе можно подсунуть что угодно. */
+function linkOrNull(v: string): string | null {
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  if (!/^https?:\/\//i.test(raw)) throw new BadRequestException('Ссылка должна начинаться с https://');
+  if (raw.length > 500) throw new BadRequestException('Ссылка слишком длинная');
+  return raw;
 }
 
 /** Целое число в заданных границах; иначе — прежнее значение. */

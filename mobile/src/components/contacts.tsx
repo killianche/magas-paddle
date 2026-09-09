@@ -3,7 +3,7 @@
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, BODY } from '../theme';
-import { CLUB, pointText, whatsappUrl } from '../club';
+import { CLUB, pointText, useClub, whatsappUrl } from '../club';
 import { IconPin, IconChevron, IconWhatsApp, IconInstagram } from './icons';
 
 /** Открывает ссылку, а если открыть нечем — говорит человеку, что делать руками. */
@@ -19,9 +19,13 @@ async function open(url: string, fallback: string) {
 
 /** Карточка «мы здесь» — ведёт в Яндекс.Карты, оттуда строится маршрут. */
 export function WhereWeAre() {
+  const club = useClub();
   return (
     <Pressable
-      onPress={() => open(CLUB.mapUrl, `Координаты клуба: ${pointText}`)}
+      onPress={() => club.mapUrl
+        ? open(club.mapUrl, `Координаты клуба: ${pointText}`)
+        : open(`https://yandex.ru/maps/?pt=${CLUB.point.lon},${CLUB.point.lat}&z=17`,
+            `Координаты клуба: ${pointText}`)}
       accessibilityRole="button"
       accessibilityLabel="Открыть расположение клуба в Яндекс.Картах"
       style={({ pressed }) => [s.map, pressed && { opacity: 0.85 }]}>
@@ -39,6 +43,7 @@ export function WhereWeAre() {
 
 /** Две кнопки связи. WhatsApp остаётся видимым и без номера — но честно неактивным. */
 export function SocialButtons() {
+  const club = useClub();
   const wa = whatsappUrl();
   return (
     <View style={s.row}>
@@ -58,9 +63,11 @@ export function SocialButtons() {
       </Pressable>
 
       <Pressable
-        onPress={() => open(CLUB.instagram, 'Мы в Instagram: padel_magas')}
+        disabled={!club.instagram}
+        onPress={() => club.instagram && open(club.instagram, 'Мы в Instagram: padel_magas')}
         accessibilityRole="button" accessibilityLabel="Открыть Instagram клуба"
-        style={({ pressed }) => [s.btn, s.ig, pressed && { opacity: 0.85 }]}>
+        style={({ pressed }) => [s.btn, club.instagram ? s.ig : s.off,
+          pressed && { opacity: 0.85 }]}>
         <IconInstagram size={21} color={C.text} />
         <View style={{ flex: 1 }}>
           <Text style={s.btnT}>Instagram</Text>

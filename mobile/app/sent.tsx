@@ -8,23 +8,20 @@ import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
 import { hh, longDate, plural } from '../src/dates';
 
-import { CLUB, whatsappUrl } from '../src/club';
+import { CLUB, useClub, whatsappUrl } from '../src/club';
 
 
 /** Сколько осталось до конца удержания, словами. */
-function leftText(iso: string): string | null {
-  const min = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
-  if (min <= 0) return null;
-  if (min < 60) return `${min} ${plural(min, 'минута', 'минуты', 'минут')}`;
-  const h = Math.floor(min / 60);
-  return `${h} ${plural(h, 'час', 'часа', 'часов')} ${min % 60} мин`;
-}
 
 export default function Sent() {
+  const club = useClub();
   const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
     hours: string; price: string; holdUntil?: string }>();
   const hydrated = useHydrated();
   const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
+  const price = Number(p.price ?? 0);
+  // Половина к предоплате, округляем до рубля вверх — так менеджеру называть проще
+  const prepay = Math.ceil(price / 2 / 100) * 100;
 
   if (!hydrated) return <ScreenSkeleton />;
   if (!p.name || !p.hour) return (
@@ -60,36 +57,32 @@ export default function Sent() {
         </View>
       </View>
 
+      {/* Один блок на всё, что человеку сейчас нужно знать: сколько стоит,
+          что будет дальше и сколько внести. Обратный отсчёт убран: он торопил
+          и пугал, а решает всё равно менеджер. */}
       <View style={s.card}>
         <View style={s.row}>
           <Text style={s.rowK}>Номер записи</Text>
           <Text style={s.rowV}>№ {String(p.id ?? '—')}</Text>
         </View>
-        <View style={[s.row, s.rowLast]}>
+        <View style={s.row}>
           <Text style={s.rowK}>Стоимость</Text>
-          <Text style={[s.rowV, { fontFamily: BODY, color: C.lime, fontSize: 20 }]}>{rub(Number(p.price ?? 0))}</Text>
+          <Text style={[s.rowV, { color: C.text }]}>{rub(price)}</Text>
         </View>
-      </View>
-
-      {/* Место держится ограниченное время: оплата идёт через менеджера,
-          и человек должен понимать, что тянуть нельзя. */}
-      <View style={s.hold}>
-        <Text style={s.holdT}>
-          {!!p.holdUntil && leftText(String(p.holdUntil))
-            ? `Держим корт за вами ${leftText(String(p.holdUntil))}`
-            : 'Корт задержан за вами'}
-        </Text>
-        <Text style={s.holdS}>
-          Свяжитесь с менеджером и внесите предоплату — половину стоимости.
-          После неё бронь становится подтверждённой. Без предоплаты время
-          вернётся в расписание.
+        <View style={[s.row, s.rowLast]}>
+          <Text style={s.rowK}>Предоплата</Text>
+          <Text style={[s.rowV, { color: C.lime, fontSize: 20 }]}>{rub(prepay)}</Text>
+        </View>
+        <Text style={s.note}>
+          С вами свяжется менеджер: подскажет, как внести предоплату — половину
+          стоимости. После неё бронь подтверждается, остальное платится на месте.
         </Text>
       </View>
 
       <View style={{ flex: 1 }} />
 
       <View style={s.bottom}>
-        <Text style={s.step}>Шаг 2 · Договориться о предоплате</Text>
+        <Text style={s.step}>Можно связаться самому</Text>
 
         {/* ЗАГЛУШКИ: номеров клуб ещё не дал (вопрос Q46). Выдумывать нельзя —
             человек позвонит незнакомому, — поэтому кнопки честно неактивны. */}
@@ -103,14 +96,14 @@ export default function Sent() {
           </Text>
         </Pressable>
 
-        <Pressable disabled={!CLUB.phone}
-          onPress={() => CLUB.phone && open(`tel:${CLUB.phone.replace(/[^\d+]/g, '')}`,
-            `Телефон клуба: ${CLUB.phone}`)}
+        <Pressable disabled={!club.phone}
+          onPress={() => club.phone && open(`tel:${club.phone.replace(/[^\d+]/g, '')}`,
+            `Телефон клуба: ${club.phone}`)}
           accessibilityRole="button"
-          accessibilityLabel={CLUB.phone ? 'Позвонить менеджеру' : 'Телефон клуба ещё не известен'}
+          accessibilityLabel={club.phone ? 'Позвонить менеджеру' : 'Телефон клуба ещё не известен'}
           style={({ pressed }) => [s.ghost, pressed && { opacity: 0.8 }]}>
-          <Text style={[s.ghostT, !CLUB.phone && { color: C.dim }]}>
-            {CLUB.phone ? 'Позвонить менеджеру' : 'Телефон: номер скоро появится'}
+          <Text style={[s.ghostT, !club.phone && { color: C.dim }]}>
+            {club.phone ? 'Позвонить менеджеру' : 'Телефон: номер скоро появится'}
           </Text>
         </Pressable>
 
@@ -125,10 +118,9 @@ export default function Sent() {
 }
 
 const s = StyleSheet.create({
-  hold: { marginHorizontal: S.xl, marginTop: 14, padding: 15, borderRadius: R.lg,
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.38)', backgroundColor: 'rgba(240,169,59,.08)' },
-  holdT: { color: '#F0A93B', fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
-  holdS: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19,
+    paddingTop: 13, paddingBottom: 15,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
   waOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   step: { ...EYEBROW, color: C.dim2, marginBottom: 10, textAlign: 'center' },
   root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
