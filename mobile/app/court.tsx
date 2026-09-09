@@ -17,11 +17,13 @@ import { Section, Line } from '../src/components/section';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
 import { hh, today, plural } from '../src/dates';
+import { useClub } from '../src/club';
 
 const CANCEL_HOURS = 4;    // ЗАГЛУШКА: правила ждут подтверждения клуба
 const LATE_MINUTES = 15;
 
 export default function CourtScreen() {
+  const club = useClub();
   const { id, date } = useLocalSearchParams<{ id: string; date?: string }>();
   const day = String(date ?? today());
 
@@ -119,11 +121,11 @@ export default function CourtScreen() {
         </Section>
 
         <Section title="Правила"
-          summary={`Отмена за ${CANCEL_HOURS} часа · опоздание ${LATE_MINUTES} минут`}>
-          <Line k="Отмена" v={`за ${CANCEL_HOURS} часа — бесплатно`} />
-          <Line k="Опоздание" v={`корт держим ${LATE_MINUTES} минут`} />
+          summary={`Отмена за ${club.cancelHours} часа · опоздание ${club.lateMinutes} минут`}>
+          <Line k="Отмена" v={`за ${club.cancelHours} часа — бесплатно`} />
+          <Line k="Опоздание" v={`корт держим ${club.lateMinutes} минут`} />
           <Line k="Минимальная аренда" v="один час" />
-          <Line k="Подтверждение" v="предоплата 50 %" />
+          <Line k="Подтверждение" v={`предоплата ${club.prepayPercent} %`} />
           <Line k="Остаток" v="на месте, в клубе" />
           <Text style={s.small}>
             Если планы изменились — скажите менеджеру или отмените в разделе

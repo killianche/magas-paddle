@@ -23,6 +23,15 @@ export type ClubInfoData = {
   openHour: number;
   closeHour: number;
   cancelHours: number;
+  /** Доля предоплаты, проценты: после неё бронь подтверждают. */
+  prepayPercent: number;
+  /** Сколько минут держат корт за опоздавшим. */
+  lateMinutes: number;
+  /** Прокат и раздевалка — свободный текст клуба. */
+  rentalsText: string | null;
+  /** Разделы, которые клуб может выключить. */
+  showTournaments: boolean;
+  showFootball: boolean;
 };
 
 /** Пока сервер не ответил. Ничего выдуманного: только часы по умолчанию,
@@ -30,6 +39,8 @@ export type ClubInfoData = {
 const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
+  prepayPercent: 50, lateMinutes: 15, rentalsText: null,
+  showTournaments: true, showFootball: true,
 };
 
 let cache: ClubInfoData = EMPTY;
@@ -58,6 +69,11 @@ export const CLUB = {
   get openHour() { return cache.openHour },
   get closeHour() { return cache.closeHour },
   get cancelHours() { return cache.cancelHours },
+  get prepayPercent() { return cache.prepayPercent },
+  get lateMinutes() { return cache.lateMinutes },
+  get rentalsText() { return cache.rentalsText },
+  get showTournaments() { return cache.showTournaments },
+  get showFootball() { return cache.showFootball },
 };
 
 function publish(next: ClubInfoData) {

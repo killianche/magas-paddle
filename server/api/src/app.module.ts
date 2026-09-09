@@ -6,6 +6,8 @@ import { AvailabilityController } from './courts/availability.controller';
 import { BookingsController } from './bookings/bookings.controller';
 import { ClientsController } from './clients/clients.controller';
 import { ClientAuthService } from './clients/client-auth.service';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
 import { TournamentsController } from './tournaments/tournaments.controller';
 import { HealthController } from './health.controller';
 import { AdminController, AdminAuthController } from './admin/admin.controller';
@@ -15,9 +17,10 @@ import { AuthService } from './admin/auth.service';
   controllers: [
     HealthController, CourtsController, PricesController, AvailabilityController,
     ClubController,
-    BookingsController, ClientsController, TournamentsController,
+    BookingsController, ClientsController, NotificationsController, TournamentsController,
     AdminController, AdminAuthController,
   ],
-  providers: [PrismaService, ClubService, AuthService, ClientAuthService],
+  providers: [PrismaService, ClubService, AuthService, ClientAuthService,
+    NotificationsService],
 })
 export class AppModule {}

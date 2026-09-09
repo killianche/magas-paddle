@@ -15,9 +15,6 @@ import { Section, Line } from './section';
 import { WhereWeAre } from './contacts';
 import { IconChevron } from './icons';
 
-/** ЗАГЛУШКА: правило опоздания ждёт подтверждения клуба (вопрос Q40). */
-const LATE_MINUTES = 15;
-
 /** Номер в базе лежит цифрами — человеку показываем привычно. */
 const pretty = (digits: string) => {
   const d = digits.replace(/\D/g, '');
@@ -25,9 +22,6 @@ const pretty = (digits: string) => {
     ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}`
     : '+' + d;
 };
-/** ЗАГЛУШКА: прокат и раздевалка — сведений от клуба пока нет. */
-const RENTALS: string | null = null;
-
 export function ClubInfo() {
   const club = useClub();
   const open = async (url: string, fallback: string) => {
@@ -94,17 +88,17 @@ export function ClubInfo() {
       </Section>
 
       <Section title="Оплата и правила"
-        summary={`Предоплата 50 % · отмена за ${club.cancelHours} часа`}>
+        summary={`Предоплата ${club.prepayPercent} % · отмена за ${club.cancelHours} часа`}>
         <Line k="Аренда" v="ровно час, можно два и три подряд" />
-        <Line k="Подтверждение" v="предоплата 50 % менеджеру" />
+        <Line k="Подтверждение" v={`предоплата ${club.prepayPercent} % менеджеру`} />
         <Line k="Остаток" v="на месте, в клубе" />
         <Line k="Отмена" v={`за ${club.cancelHours} часа — бесплатно`} />
         <Line k="Как отменить" v="звонок, WhatsApp или «Мои записи»" />
-        <Line k="Опоздание" v={`корт держим ${LATE_MINUTES} минут`} />
+        <Line k="Опоздание" v={`корт держим ${club.lateMinutes} минут`} />
         <Text style={s.small}>
           После заявки менеджер связывается по телефону или в WhatsApp и говорит,
-          как внести предоплату — половину стоимости. Как только она получена,
-          бронь становится подтверждённой. Остальное платится на месте.
+          как внести предоплату — {club.prepayPercent} % стоимости. Как только она
+          получена, бронь становится подтверждённой. Остальное платится на месте.
         </Text>
         <Text style={s.small}>
           Отменить можно у менеджера — по телефону или в WhatsApp, — а также
@@ -112,14 +106,19 @@ export function ClubInfo() {
         </Text>
       </Section>
 
-      <Section title="Прокат и раздевалка" summary={RENTALS ?? 'сведений пока нет'}>
-        <View style={s.empty}>
-          <Text style={s.emptyT}>Эти сведения ещё не получены</Text>
-          <Text style={s.emptyS}>
-            Есть ли прокат ракеток и по какой цене, входят ли мячи в стоимость,
-            что с раздевалкой, душем и парковкой — вопрос к клубу.
-          </Text>
-        </View>
+      <Section title="Прокат и раздевалка"
+        summary={club.rentalsText ? 'что есть в клубе' : 'сведений пока нет'}>
+        {club.rentalsText
+          ? <Text style={s.rentals}>{club.rentalsText}</Text>
+          : (
+            <View style={s.empty}>
+              <Text style={s.emptyT}>Эти сведения ещё не заполнены</Text>
+              <Text style={s.emptyS}>
+                Есть ли прокат ракеток и по какой цене, входят ли мячи в стоимость,
+                что с раздевалкой и душем — менеджер пишет это в админке.
+              </Text>
+            </View>
+          )}
       </Section>
 
       <Section title="Документы" summary="Политика конфиденциальности">
@@ -157,6 +156,7 @@ const s = StyleSheet.create({
   emptyS: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 
   small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  rentals: { fontFamily: BODY, color: C.text, fontSize: 14, lineHeight: 21 },
   q: { fontFamily: BODY, color: C.amber, fontSize: 12, lineHeight: 17, marginTop: 12 },
 
   doc: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,

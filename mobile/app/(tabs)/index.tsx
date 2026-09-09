@@ -14,8 +14,9 @@ import { Eyebrow, Ticker, OutlineText } from '../../src/components/velocity';
 import { api, rub, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
+import { useClub } from '../../src/club';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
-import { Mark, IconChevron, IconCheck } from '../../src/components/icons';
+import { Mark, IconChevron, IconCheck, IconBell } from '../../src/components/icons';
 import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
 import {
@@ -29,8 +30,16 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { profile } = useProfile();
+  const club = useClub();
   const phone = profile?.phone;
   const scrim = useTopScrim();
+
+  // Непрочитанные уведомления: отдельным лёгким запросом, чтобы главная не
+  // ждала его и рисовалась сразу.
+  const notes = useApi(
+    () => phone ? api.notifications(phone) : Promise.resolve({ items: [], unread: 0 }),
+    [phone], phone ? `notes.${phone}` : undefined);
+  const unread = notes.data?.unread ?? 0;
 
   const q = useApi(async () => {
     const [grid, tournaments, bookings] = await Promise.all([
@@ -41,7 +50,7 @@ export default function Home() {
     return { grid, tournaments, bookings };
   }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
-  useFocusEffect(useCallback(() => { q.refresh() }, [phone]));
+  useFocusEffect(useCallback(() => { q.refresh(); notes.refresh() }, [phone]));
 
   // Экран рисуется сразу, не дожидаясь сети: фотография, название и кнопка
   // никаких данных не требуют. Крутилка во весь экран была самой заметной
@@ -110,6 +119,17 @@ export default function Home() {
             {CLUB_NAME.toUpperCase().replace(' ', '\n')}
           </Text>
           <View style={{ flex: 1 }} />
+          {/* Уведомления клуба: подтверждение брони, отмена, новости.
+              Точка на колокольчике — есть непрочитанные. */}
+          <Pressable onPress={() => go('/notifications')} accessibilityRole="button"
+            accessibilityLabel={unread > 0
+              ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
+            style={({ pressed }) => [st.circle, { marginRight: 8 },
+              pressed && { opacity: 0.7 }]}>
+            <IconBell size={18} color={C.text} />
+            {unread > 0 && <View style={st.badge} />}
+          </Pressable>
+
           {/* Аккаунт: имя и история посещений. Пока человек не завёл его —
               кнопка зовёт зарегистрироваться. */}
           <Pressable onPress={() => go('/account')} accessibilityRole="button"
@@ -222,8 +242,9 @@ export default function Home() {
         })}
       </ScrollView>
 
-      {/* Футбольное поле — отдельным блоком со своей записью */}
-      {pitch && (
+      {/* Футбольное поле — отдельным блоком со своей записью.
+          Клуб может выключить его в админке. */}
+      {pitch && club.showFootball && (
         <>
           <View style={st.secHead}>
             <Text style={st.secT}>Футбольное поле</Text>
@@ -342,6 +363,8 @@ const st = StyleSheet.create({
   // Марка в две строки, как в макете: MAGAS / PADEL
   brand: { color: C.text, fontFamily: DISP, fontSize: 15, lineHeight: 15,
     letterSpacing: -0.6 },
+  badge: { position: 'absolute', top: 7, right: 8, width: 9, height: 9, borderRadius: 5,
+    backgroundColor: C.lime, borderWidth: 1.5, borderColor: '#020705' },
   circle: { width: 38, height: 38, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,.3)', backgroundColor: 'rgba(2,7,5,.65)',
     alignItems: 'center', justifyContent: 'center' },

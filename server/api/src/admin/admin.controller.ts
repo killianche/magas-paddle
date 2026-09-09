@@ -9,6 +9,7 @@ import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
+import { NotificationsService } from '../notifications/notifications.service';
 
 class StatusDto {
   @IsIn(['confirmed', 'cancelled', 'no_show', 'done'])
@@ -67,6 +68,7 @@ export class AdminController {
     private readonly db: PrismaService,
     private readonly club: ClubService,
     private readonly auth: AuthService,
+    private readonly notes: NotificationsService,
   ) {}
 
   /** Кто я и что мне можно — панель по этому прячет недоступное. */
@@ -262,6 +264,31 @@ export class AdminController {
       }
     }
     await this.db.$transaction(ops);
+
+    // Человек должен узнать о судьбе своей заявки, не заглядывая в приложение
+    // каждые полчаса. Уведомление кладём в его ящик; когда подключат пуши,
+    // отсюда же уйдёт и push.
+    if (b.client_id && b.status !== dto.status) {
+      const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
+      const when = whenText(b.starts_at, b.ends_at);
+      const where = court?.name ?? b.court_id;
+      const text: Record<string, [string, string]> = {
+        confirmed: ['Бронь подтверждена',
+          `${where}, ${when}. Ждём вас — до встречи на корте.`],
+        cancelled: ['Бронь отменена',
+          `${where}, ${when}. Время снова свободно. Если это ошибка, напишите менеджеру.`],
+        no_show: ['Отмечено, что вы не пришли',
+          `${where}, ${when}. Если это ошибка, скажите менеджеру — поправим.`],
+        done: ['Спасибо за игру',
+          `${where}, ${when}. Будем рады видеть вас снова.`],
+      };
+      const t = text[dto.status];
+      if (t) {
+        await this.notes.toClient(b.client_id, 'booking', t[0], t[1],
+          { bookingId: b.id, by: req.admin.name });
+      }
+    }
+
     await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
       `бронь №${Number(b.id)}`);
     return { id: Number(b.id), status: dto.status };
@@ -995,6 +1022,8 @@ export class AdminController {
     maxHours: number; cancelHours: number; holdMinutes: number;
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string;
+    prepayPercent: number; lateMinutes: number; rentalsText: string;
+    showTournaments: boolean; showFootball: boolean;
   }>) {
     const cur = await this.club.get();
     const next = {
@@ -1010,6 +1039,13 @@ export class AdminController {
       address: body.address === undefined ? cur.address : (body.address.trim() || null),
       map_url: body.mapUrl === undefined ? cur.mapUrl : linkOrNull(body.mapUrl),
       instagram: body.instagram === undefined ? cur.instagram : linkOrNull(body.instagram),
+      prepay_percent: int(body.prepayPercent, cur.prepayPercent, 0, 100),
+      late_minutes: int(body.lateMinutes, cur.lateMinutes, 0, 120),
+      rentals_text: body.rentalsText === undefined
+        ? cur.rentalsText : (body.rentalsText.trim().slice(0, 800) || null),
+      show_tournaments: body.showTournaments === undefined
+        ? cur.showTournaments : !!body.showTournaments,
+      show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
     };
     if (next.open_hour >= next.close_hour) {
       throw new BadRequestException('Открытие должно быть раньше закрытия');
@@ -1354,6 +1390,51 @@ export class AdminController {
     return { ok: true };
   }
 
+  /** Написать клиенту или всем сразу.
+   *
+   *  Без адресата — рассылка: клуб закрыт на праздник, новые цены, турнир.
+   *  С номером — личное сообщение. Отдельного права не требует: писать
+   *  клиентам — обычная работа стойки, а журнал сохраняет, кто что отправил. */
+  @Post('notify')
+  async notify(@Req() req: any, @Body() body: {
+    phone?: string; title?: string; body?: string;
+  }) {
+    const title = String(body.title ?? '').trim();
+    const text = String(body.body ?? '').trim();
+    if (title.length < 2) throw new BadRequestException('Нужен заголовок');
+    if (text.length < 2) throw new BadRequestException('Нужен текст сообщения');
+    if (title.length > 120) throw new BadRequestException('Заголовок не длиннее 120 знаков');
+    if (text.length > 1000) throw new BadRequestException('Текст не длиннее 1000 знаков');
+
+    if (body.phone) {
+      const key = normalizePhone(body.phone);
+      if (!key) throw new BadRequestException('Не разобрал номер телефона');
+      const c = await this.db.clients.findUnique({ where: { phone: key } });
+      if (!c) throw new NotFoundException('Клиент не найден');
+      await this.notes.toClient(c.id, 'manual', title, text, { by: req.admin.name });
+      await this.auth.log(req.admin, 'отправил сообщение клиенту', `${c.name}, ${c.phone}`);
+      return { ok: true, to: c.name };
+    }
+
+    await this.notes.toEveryone('manual', title, text, req.admin.name);
+    await this.auth.log(req.admin, 'отправил сообщение всем', title);
+    return { ok: true, to: 'всем' };
+  }
+
+  /** Что уже отправляли. */
+  @Get('notifications')
+  async sentNotifications() {
+    const rows = await this.db.notifications.findMany({
+      orderBy: { created_at: 'desc' }, take: 60, include: { clients: true },
+    });
+    return rows.map(n => ({
+      id: Number(n.id), kind: n.kind, title: n.title, body: n.body,
+      createdAt: n.created_at, createdBy: n.created_by,
+      to: n.clients ? { name: n.clients.name, phone: n.clients.phone } : null,
+      read: n.client_id != null ? n.read_at != null : null,
+    }));
+  }
+
   @Get('clients/:phone')
   async client(@Param('phone') phone: string) {
     const c = await this.db.clients.findUnique({ where: { phone } });
@@ -1396,6 +1477,15 @@ function linkOrNull(v: string): string | null {
   if (!/^https?:\/\//i.test(raw)) throw new BadRequestException('Ссылка должна начинаться с https://');
   if (raw.length > 500) throw new BadRequestException('Ссылка слишком длинная');
   return raw;
+}
+
+/** «12 сентября, 19:00 – 20:00» — по времени клуба, а не по UTC. */
+function whenText(from: Date, to: Date): string {
+  const f = (d: Date) => d.toLocaleTimeString('ru-RU',
+    { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+  const day = from.toLocaleDateString('ru-RU',
+    { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' });
+  return `${day}, ${f(from)} – ${f(to)}`;
 }
 
 /** Целое число в заданных границах; иначе — прежнее значение. */

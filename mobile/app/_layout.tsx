@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="schedule" options={{ title: 'Выберите время' }} />
         <Stack.Screen name="court" options={{ title: 'Площадка' }} />
         <Stack.Screen name="account" options={{ title: 'Аккаунт' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Уведомления' }} />
         <Stack.Screen name="prices" options={{ title: "Цены" }} />
         <Stack.Screen name="football" options={{ title: 'Футбольное поле' }} />
         <Stack.Screen name="tournament" options={{ title: 'Турнир' }} />

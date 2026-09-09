@@ -95,6 +95,11 @@ export type ApiGrid = {
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean; hours: ApiHour[] }[];
 };
 
+export type ApiNote = {
+  id: number; kind: string; title: string; body: string;
+  createdAt: string; forEveryone: boolean; read: boolean;
+};
+
 export type ClientCard = {
   name: string; surname: string | null; phone: string;
   whatsapp: string | null; hasPassword: boolean;
@@ -131,11 +136,22 @@ export const api = {
 
   grid: (date: string) => call<ApiGrid>(`/availability?date=${encodeURIComponent(date)}`),
 
+  /** Ящик уведомлений человека. */
+  notifications: (phone: string) =>
+    call<{ items: ApiNote[]; unread: number }>(
+      `/notifications?phone=${encodeURIComponent(phone)}`),
+
+  readNotifications: (phone: string) =>
+    call<{ ok: boolean }>(`/notifications/read?phone=${encodeURIComponent(phone)}`,
+      { method: 'POST' }),
+
   /** Контакты и режим клуба. Меняются менеджером из админки. */
   club: () => call<{
     openHour: number; closeHour: number; cancelHours: number; holdMinutes: number;
     phone: string | null; whatsapp: string | null; address: string | null;
     mapUrl: string | null; instagram: string | null;
+    prepayPercent: number; lateMinutes: number; rentalsText: string | null;
+    showTournaments: boolean; showFootball: boolean;
   }>('/club'),
 
   /** Знает ли клуб этот номер и стоит ли на нём пароль. */

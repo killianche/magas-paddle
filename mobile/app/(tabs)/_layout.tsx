@@ -1,9 +1,11 @@
 import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { C, DISP, DISP_MED } from '../../src/theme';
+import { useClub } from '../../src/club';
 import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
 export default function TabsLayout() {
+  const club = useClub();
   return (
     <Tabs
       screenOptions={{
@@ -36,8 +38,10 @@ export default function TabsLayout() {
       <Tabs.Screen name="bookings" options={{
         title: 'Мои записи',
         tabBarIcon: ({ color, focused }) => <IconRacket color={color as string} active={focused} /> }} />
+      {/* Клуб может выключить турниры в админке — тогда вкладки нет совсем */}
       <Tabs.Screen name="tournaments" options={{
         title: 'Турниры',
+        href: club.showTournaments ? undefined : null,
         tabBarIcon: ({ color, focused }) => <IconTrophy color={color as string} active={focused} /> }} />
     </Tabs>
   );

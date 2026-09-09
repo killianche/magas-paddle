@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
 import { api, rub, ApiError, type Alternatives } from '../src/api';
 import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
+import { useClub } from '../src/club';
 import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
@@ -19,6 +20,7 @@ import { hh, longDate, plural } from '../src/dates';
 
 
 export default function Book() {
+  const club = useClub();
   const p = useLocalSearchParams<{
     courtId: string; name: string; date: string; hour: string; hours: string; price: string }>();
   const hydrated = useHydrated();
@@ -151,7 +153,7 @@ export default function Book() {
           backgroundColor: 'rgba(240,169,59,.08)' }]}>
           <Text style={[s.noteT, { color: '#DFCCA8' }]}>
             Это <Text style={{ fontFamily: DISP_MED }}>заявка</Text>: менеджер свяжется и
-            скажет, как внести предоплату — половину стоимости.
+            скажет, как внести предоплату — {club.prepayPercent} % стоимости.
           </Text>
         </View>
       </ScrollView>

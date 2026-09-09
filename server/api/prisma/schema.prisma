@@ -90,11 +90,44 @@ model settings {
   whatsapp      String?
   address       String?
   map_url       String?
-  instagram     String?
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  instagram        String?
+  prepay_percent   Int      @default(50) @db.SmallInt
+  late_minutes     Int      @default(15) @db.SmallInt
+  rentals_text     String?
+  show_tournaments Boolean  @default(true)
+  show_football    Boolean  @default(true)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model notifications {
+  id         BigInt    @id @default(autoincrement())
+  client_id  BigInt?
+  kind       String    @default("manual")
+  title      String
+  body       String
+  booking_id BigInt?
+  created_by String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  read_at    DateTime? @db.Timestamptz(6)
+  clients    clients?  @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  bookings   bookings? @relation(fields: [booking_id], references: [id], onDelete: SetNull)
+  reads      notification_reads[]
+
+  @@index([client_id, created_at], map: "notifications_client")
+}
+
+model notification_reads {
+  notification_id BigInt
+  client_id       BigInt
+  read_at         DateTime      @default(now()) @db.Timestamptz(6)
+  notifications   notifications @relation(fields: [notification_id], references: [id], onDelete: Cascade)
+  clients         clients       @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@id([notification_id, client_id])
 }
 
 model bookings {
+  notifications notifications[]
   id         BigInt         @id @default(autoincrement())
   court_id   String
   client_id  BigInt?
@@ -141,6 +174,8 @@ model clients {
   bookings           bookings[]
   tournament_entries tournament_entries[]
   client_sessions    client_sessions[]
+  notifications      notifications[]
+  notification_reads notification_reads[]
 }
 
 model client_sessions {

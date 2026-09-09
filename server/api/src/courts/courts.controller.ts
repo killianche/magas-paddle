@@ -90,6 +90,11 @@ export class ClubController {
       address: s.address,
       mapUrl: s.mapUrl,
       instagram: s.instagram,
+      prepayPercent: s.prepayPercent,
+      lateMinutes: s.lateMinutes,
+      rentalsText: s.rentalsText,
+      showTournaments: s.showTournaments,
+      showFootball: s.showFootball,
     };
   }
 }

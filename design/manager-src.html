@@ -122,7 +122,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 /* Состояние записи словами, а не только цветом */
 .bk .st{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85;margin-top:2px}
 
-.sheet.wide{max-width:640px}
+.sheet.wide{max-width:880px}
 .list{max-height:52vh;overflow:auto;margin-top:6px}
 .list .it{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
   padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
@@ -143,8 +143,10 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 @media(max-width:900px){.search{width:150px}.dpick{display:none}}
 
 /* ── управление клубом ─────────────────────────────────────────────── */
-.tabs{display:flex;gap:6px;margin:12px 0 4px;border-bottom:1px solid var(--line)}
-.tab{padding:8px 14px;border:0;background:none;color:var(--dim);border-bottom:2px solid transparent}
+.tabs{display:flex;flex-wrap:wrap;gap:2px 6px;margin:12px 0 4px;
+  border-bottom:1px solid var(--line)}
+.tab{padding:8px 12px;border:0;background:none;color:var(--dim);
+  border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
 .tab.on{color:var(--lime);border-bottom-color:var(--lime);font-weight:700}
 .pane{display:none}.pane.on{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
@@ -186,6 +188,14 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .checkRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .checkRow input,.checkRow select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);color-scheme:dark}
+.chk{display:flex;align-items:center;gap:9px;padding:9px 0;cursor:pointer;
+  font-size:14px;color:var(--text)}
+.chk input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--lime)}
+.ntRow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;
+  border-bottom:1px solid var(--line);font-size:13px}
+.ntRow b{display:block;color:var(--text)}
+.ntRow span{color:var(--dim)}
+.ntRow .to{white-space:nowrap;color:var(--dim-2);font-size:12px}
 .chkOut{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chkOut span{padding:5px 9px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface);font-size:12.5px;font-variant-numeric:tabular-nums}
@@ -480,6 +490,9 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <button class="tab" data-tab="rules">Особые цены</button>
       <button class="tab" data-tab="money">Расходы</button>
       <button class="tab" data-tab="club">Часы и правила</button>
+      <button class="tab" data-tab="contacts">Контакты</button>
+      <button class="tab" data-tab="app">Приложение</button>
+      <button class="tab" data-tab="notify">Уведомления</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
     </div>
@@ -532,11 +545,15 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setCancel">Бесплатная отмена, часов</label><input id="setCancel" type="number" min="0" max="48"></div>
         <div><label for="setHold">Держим заявку, минут</label><input id="setHold" type="number" min="5" max="1440"></div>
       </div>
+      <div class="err" id="setErr"></div>
+      <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
+    </div>
 
-      <p class="sub" style="margin-top:16px">Контакты клуба. На них держится подтверждение
-        брони: человек отправляет заявку и связывается с менеджером. Пока номер не
-        указан, кнопки в приложении неактивны — выдуманный номер не показываем.
-        Номер вводится как угодно, сохраняется в международном виде.</p>
+    <div class="pane" id="paneContacts">
+      <p class="sub">На контактах держится подтверждение брони: человек отправляет
+        заявку и связывается с менеджером. Пока номер не указан, кнопки в приложении
+        неактивны — выдуманный номер не показываем. Вводить можно как угодно:
+        «8 928…», «+7 928…», с пробелами.</p>
       <div class="grid2">
         <div><label for="setPhone">Телефон для звонков</label>
           <input id="setPhone" type="tel" placeholder="+7 928 000-00-00"></div>
@@ -549,8 +566,52 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setInsta">Instagram</label>
           <input id="setInsta" type="url" placeholder="https://www.instagram.com/…"></div>
       </div>
-      <div class="err" id="setErr"></div>
-      <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
+      <div class="err" id="cnErr"></div>
+      <div class="acts"><button class="btn acc" id="cnSave">Сохранить контакты</button></div>
+    </div>
+
+    <div class="pane" id="paneApp">
+      <p class="sub">Что человек видит и читает в приложении. Меняется сразу,
+        новая версия в App Store для этого не нужна.</p>
+      <div class="grid2">
+        <div><label for="setPrepay">Предоплата, % от стоимости</label>
+          <input id="setPrepay" type="number" min="0" max="100"></div>
+        <div><label for="setLate">Держим корт за опоздавшим, минут</label>
+          <input id="setLate" type="number" min="0" max="120"></div>
+      </div>
+      <div><label for="setRentals">Прокат и раздевалка</label>
+        <textarea id="setRentals" rows="3"
+          placeholder="Ракетки — 300 ₽, мячи включены, есть душ и шкафчики"></textarea></div>
+      <p class="sub" style="margin-top:14px">Разделы приложения. Выключенный
+        пропадает у всех, кто откроет приложение.</p>
+      <label class="chk"><input type="checkbox" id="setTourn"> Показывать турниры</label>
+      <label class="chk"><input type="checkbox" id="setFoot"> Показывать футбольное поле</label>
+      <div class="err" id="appErr"></div>
+      <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
+    </div>
+
+    <div class="pane" id="paneNotify">
+      <p class="sub">Сообщение приходит в приложение — человек видит его в разделе
+        «Уведомления». Пуш на экран телефона появится, когда подключим его у Apple;
+        текст и адресат останутся те же. Подтверждение и отмена брони уходят сами,
+        вручную писать про них не нужно.</p>
+      <div class="grid2">
+        <div><label for="ntPhone">Кому (номер телефона)</label>
+          <input id="ntPhone" type="tel" placeholder="пусто — всем клиентам"></div>
+        <div><label for="ntTitle">Заголовок</label>
+          <input id="ntTitle" type="text" maxlength="120" placeholder="Клуб закрыт 12 сентября"></div>
+      </div>
+      <div><label for="ntBody">Текст</label>
+        <textarea id="ntBody" rows="3" maxlength="1000"
+          placeholder="В пятницу корты закрыты на турнир. Записи на этот день перенесём — позвоним каждому."></textarea></div>
+      <div class="err" id="ntErr"></div>
+      <div class="acts" style="justify-content:flex-start">
+        <button class="btn acc" id="ntSend">Отправить</button>
+      </div>
+      <div class="check" style="margin-top:14px">
+        <div class="h">Что уже отправляли</div>
+        <div id="ntRows"></div>
+      </div>
     </div>
 
     <div class="pane" id="paneTourn">
@@ -752,6 +813,14 @@ function plural(n,one,few,many){
   if(a>10&&a<20) return many; if(b>1&&b<5) return few; if(b===1) return one; return many;
 }
 /** Читаемый номер: +7 928 000-11-22. */
+/** Экранирование для вставки в разметку. Имя и заметку вводит человек из
+ *  приложения — без этого имя вида «<img onerror=…>» выполнило бы скрипт
+ *  прямо в браузере менеджера. */
+function esc(v){
+  return String(v ?? '').replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function phoneNice(p){
   const d=String(p||'').replace(/\D/g,'');
   return d.length===11 ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}` : (p||'—');
@@ -923,7 +992,7 @@ function render(){
     // Значок ремонта только пока закрытие действует: раньше он оставался
     // навсегда, а корт при этом спокойно бронировался.
     const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
-    html += `<th>${c.name}${shut?` 🛠 <small style="color:var(--amber)">${c.closedReason||'закрыт'}</small>`:''}</th>`;
+    html += `<th>${esc(c.name)}${shut?` 🛠 <small style="color:var(--amber)">${c.closedReason||'закрыт'}</small>`:''}</th>`;
   }
   html += '</tr></thead><tbody>';
 
@@ -935,7 +1004,7 @@ function render(){
       const b = day.bookings.find(x => x.courtId===c.id && x.hour<=h && h<x.hour+x.hours && x.status!=='cancelled' && x.status!=='expired');
       if(b){
         if(b.hour===h){
-          const nm = who(b);
+          const nm = esc(who(b));
           const flags = b.client && (b.client.noShows>0||b.client.cancels>1) ? ' ⚠' : '';
           html += `<td rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}" title="${nm}">
             <div class="n">${nm}${flags}</div>
@@ -1182,7 +1251,7 @@ $('#moveOk').onclick = async () => {
 function openCourtsOptions(selected){
   return day.courts
     .filter(c => c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date()))
-    .map(c => `<option value="${c.id}"${c.id===selected?' selected':''}>${c.name}</option>`).join('');
+    .map(c => `<option value="${c.id}"${c.id===selected?' selected':''}>${esc(c.name)}</option>`).join('');
 }
 function hourOptions(selected){
   let o = '';
@@ -1284,7 +1353,7 @@ async function runSearch(q){
     $('#findTitle').textContent = `Найдено: ${rows.length}`;
     $('#findList').innerHTML = rows.length ? rows.map(r => `
       <button class="it" data-date="${r.date}" data-id="${r.id}">
-        <div class="who"><b>${r.name}</b><span>${phoneNice(r.phone)} · ${r.courtName} · ${STATUS[r.status]||r.status}</span></div>
+        <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${STATUS[r.status]||r.status}</span></div>
         <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
       </button>`).join('') : '<div class="empty">Ничего не нашлось. Попробуйте часть имени или четыре цифры номера.</div>';
     $('#findList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
@@ -1309,7 +1378,7 @@ async function loadPending(){
     $('#pendBtn').hidden = rows.length === 0;
     $('#pendList').innerHTML = rows.length ? rows.map(r => `
       <button class="it" data-date="${r.date}" data-id="${r.id}">
-        <div class="who"><b>${r.name}</b><span>${phoneNice(r.phone)} · ${r.courtName} · ${rub(r.price)}</span></div>
+        <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${rub(r.price)}</span></div>
         <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
       </button>`).join('') : '<div class="empty">Новых заявок нет.</div>';
     $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
@@ -1334,6 +1403,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab==='rules') loadRules();
   if(t.dataset.tab==='staff'){ loadStaff(); loadLog() }
   if(t.dataset.tab==='money') loadExpenses();
+  if(t.dataset.tab==='notify') loadNotifications();
 });
 
 async function openSetup(){
@@ -1345,6 +1415,10 @@ async function openSetup(){
   $('#setPhone').value = st.phone || ''; $('#setWa').value = st.whatsapp || '';
   $('#setAddr').value = st.address || ''; $('#setMap').value = st.mapUrl || '';
   $('#setInsta').value = st.instagram || '';
+  $('#setPrepay').value = st.prepayPercent; $('#setLate').value = st.lateMinutes;
+  $('#setRentals').value = st.rentalsText || '';
+  $('#setTourn').checked = st.showTournaments !== false;
+  $('#setFoot').checked = st.showFootball !== false;
   $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
@@ -1408,16 +1482,74 @@ $('#setSave').onclick = async () => {
       openHour: +$('#setOpen').value, closeHour: +$('#setClose').value,
       morningUntil: +$('#setMorning').value, maxHours: +$('#setMax').value,
       cancelHours: +$('#setCancel').value, holdMinutes: +$('#setHold').value,
+    })});
+    ok('#setErr', '#setSave', 'Сохранить');
+    tariffs = {}; load();
+  } catch(e){ fail('#setErr', e) }
+};
+
+/** Кнопка на полторы секунды говорит «сохранено» — иначе непонятно, сработало ли. */
+function ok(errSel, btnSel, label){
+  $(errSel).classList.remove('on');
+  $(btnSel).textContent = 'Сохранено';
+  setTimeout(() => { $(btnSel).textContent = label }, 1500);
+}
+function fail(errSel, e){ $(errSel).textContent = e.message; $(errSel).classList.add('on') }
+
+$('#cnSave').onclick = async () => {
+  try {
+    await call('/admin/settings', { method:'POST', body: JSON.stringify({
       phone: $('#setPhone').value, whatsapp: $('#setWa').value,
       address: $('#setAddr').value, mapUrl: $('#setMap').value,
       instagram: $('#setInsta').value,
     })});
-    $('#setErr').classList.remove('on');
-    $('#setSave').textContent = 'Сохранено';
-    setTimeout(() => { $('#setSave').textContent = 'Сохранить' }, 1500);
-    tariffs = {}; load();
-  } catch(e){ $('#setErr').textContent = e.message; $('#setErr').classList.add('on') }
+    ok('#cnErr', '#cnSave', 'Сохранить контакты');
+  } catch(e){ fail('#cnErr', e) }
 };
+
+$('#appSave').onclick = async () => {
+  try {
+    await call('/admin/settings', { method:'POST', body: JSON.stringify({
+      prepayPercent: +$('#setPrepay').value, lateMinutes: +$('#setLate').value,
+      rentalsText: $('#setRentals').value,
+      showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
+    })});
+    ok('#appErr', '#appSave', 'Сохранить');
+  } catch(e){ fail('#appErr', e) }
+};
+
+/* ── уведомления ──────────────────────────────────────── */
+$('#ntSend').onclick = async () => {
+  const phone = $('#ntPhone').value.trim();
+  const title = $('#ntTitle').value.trim();
+  const body  = $('#ntBody').value.trim();
+  if(!title || !body){ fail('#ntErr', new Error('Заполните заголовок и текст')); return }
+  if(!phone && !await ask('Отправить всем клиентам?',
+    `«${title}» увидит каждый, кто открывает приложение.`)) return;
+  try {
+    const r = await call('/admin/notify', { method:'POST',
+      body: JSON.stringify({ phone: phone || undefined, title, body }) });
+    ok('#ntErr', '#ntSend', 'Отправить');
+    $('#ntTitle').value = ''; $('#ntBody').value = ''; $('#ntPhone').value = '';
+    loadNotifications();
+  } catch(e){ fail('#ntErr', e) }
+};
+
+async function loadNotifications(){
+  try {
+    const rows = await call('/admin/notifications');
+    $('#ntRows').innerHTML = rows.length ? rows.map(n => {
+      const when = new Date(n.createdAt).toLocaleString('ru-RU',
+        { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit',
+          timeZone:'Europe/Moscow' });
+      const to = n.to ? `${n.to.name}` : 'всем';
+      const seen = n.read === true ? ' · прочитано' : n.read === false ? ' · не прочитано' : '';
+      const auto = n.kind === 'booking' ? ' · автоматически' : '';
+      return `<div class="ntRow"><div><b>${esc(n.title)}</b><span>${esc(n.body)}</span></div>
+        <div class="to">${esc(to)}<br>${when}${seen}${auto}</div></div>`;
+    }).join('') : '<div class="ntRow"><span>Пока ничего не отправляли</span></div>';
+  } catch(e){ fail('#ntErr', e) }
+}
 
 /* ── особые цены ──────────────────────────────────────── */
 const DAYS = ['', 'Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
@@ -1450,7 +1582,7 @@ async function loadRules(){
 
   // проверка результата
   $('#chkCourt').innerHTML = (setup?.courts ?? [])
-    .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   if(!$('#chkDate').value) $('#chkDate').value = date;
 }
 
@@ -1469,7 +1601,7 @@ function openRule(r){
   $('#ruleTo').value   = r ? r.toHour   : set.closeHour;
 
   $('#ruleCourt').innerHTML = '<option value="">Все площадки</option>' +
-    (setup?.courts ?? []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    (setup?.courts ?? []).map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   $('#ruleCourt').value = r?.courtId ?? '';
   $('#rulePrice').value = r ? r.price/100 : '';
   $('#ruleNote').value = r?.note ?? '';

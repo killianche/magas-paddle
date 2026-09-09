@@ -20,8 +20,9 @@ export default function Sent() {
   const hydrated = useHydrated();
   const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
   const price = Number(p.price ?? 0);
-  // Половина к предоплате, округляем до рубля вверх — так менеджеру называть проще
-  const prepay = Math.ceil(price / 2 / 100) * 100;
+  // Доля предоплаты задана в админке; округляем до рубля вверх —
+  // так менеджеру называть сумму проще
+  const prepay = Math.ceil(price * club.prepayPercent / 100 / 100) * 100;
 
   if (!hydrated) return <ScreenSkeleton />;
   if (!p.name || !p.hour) return (
@@ -74,8 +75,9 @@ export default function Sent() {
           <Text style={[s.rowV, { color: C.lime, fontSize: 20 }]}>{rub(prepay)}</Text>
         </View>
         <Text style={s.note}>
-          С вами свяжется менеджер: подскажет, как внести предоплату — половину
-          стоимости. После неё бронь подтверждается, остальное платится на месте.
+          С вами свяжется менеджер: подскажет, как внести предоплату —
+          {' '}{club.prepayPercent} % стоимости. После неё бронь подтверждается,
+          остальное платится на месте.
         </Text>
       </View>
 

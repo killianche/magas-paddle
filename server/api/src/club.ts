@@ -28,6 +28,16 @@ export type ClubSettings = {
   address: string | null;
   mapUrl: string | null;
   instagram: string | null;
+
+  /** Доля предоплаты, проценты. Бронь подтверждают после неё. */
+  prepayPercent: number;
+  /** Сколько минут держим корт за опоздавшим. */
+  lateMinutes: number;
+  /** Прокат и раздевалка — свободный текст клуба. */
+  rentalsText: string | null;
+  /** Разделы, которые клуб может выключить, пока они не нужны. */
+  showTournaments: boolean;
+  showFootball: boolean;
 };
 
 /** Значения на случай, если строки настроек в базе почему-то нет.
@@ -36,6 +46,8 @@ export const FALLBACK: ClubSettings = {
   openHour: 9, closeHour: 24, morningUntil: 13, maxHours: 3, cancelHours: 4,
   holdMinutes: 60,
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
+  prepayPercent: 50, lateMinutes: 15, rentalsText: null,
+  showTournaments: true, showFootball: true,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -77,6 +89,11 @@ export class ClubService {
       address: row.address ?? null,
       mapUrl: row.map_url ?? null,
       instagram: row.instagram ?? null,
+      prepayPercent: row.prepay_percent,
+      lateMinutes: row.late_minutes,
+      rentalsText: row.rentals_text ?? null,
+      showTournaments: row.show_tournaments,
+      showFootball: row.show_football,
     } : FALLBACK;
     this.readAt = Date.now();
     return this.cache;

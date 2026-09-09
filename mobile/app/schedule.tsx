@@ -14,10 +14,12 @@ import { Loading, Failed } from '../src/components/status';
 import { IMG } from '../src/images';
 import { IconBall, IconChevron } from '../src/components/icons';
 import { today, addDays, weekdayShort, dayNumber, hh, plural } from '../src/dates';
+import { useClub } from '../src/club';
 
 const DAYS_AHEAD = 14;   // две недели: на прошлых пяти днях нельзя было занять следующие выходные
 
 export default function Schedule() {
+  const club = useClub();
   const insets = useSafeAreaInsets();
   const [date, setDate] = useState(today());
   const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
@@ -263,7 +265,7 @@ export default function Schedule() {
               <Text style={st.ctaT}>Забронировать · {rub(total)}</Text>
             </Pressable>
             <Text style={st.payNote}>
-              Бронь подтверждается предоплатой 50 % · остальное на месте
+              Бронь подтверждается предоплатой {club.prepayPercent} % · остальное на месте
             </Text>
           </>
         ) : (

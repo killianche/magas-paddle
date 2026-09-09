@@ -97,6 +97,16 @@ export function Mark({ size = 34 }: { size?: number }) {
   );
 }
 
+/** Колокольчик — уведомления клуба */
+export function IconBell({ size = 20, color = C.text }: P) {
+  return (
+    <Svg {...base(size, color)}>
+      <Path d="M18 9.4a6 6 0 1 0-12 0c0 4.1-1.3 5.6-2 6.3h16c-.7-.7-2-2.2-2-6.3Z" />
+      <Path d="M10.2 19.2a2 2 0 0 0 3.6 0" />
+    </Svg>
+  );
+}
+
 /** Мяч — колонка футбольного поля */
 export function IconBall({ size = 15, color = C.dim }: P) {
   return (
