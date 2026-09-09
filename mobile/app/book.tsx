@@ -17,8 +17,6 @@ import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
 import { hh, longDate, plural } from '../src/dates';
 
-const CANCEL_HOURS = 4;   // ЗАГЛУШКА: правило отмены ждёт подтверждения клуба
-const LATE_MINUTES = 15;
 
 export default function Book() {
   const p = useLocalSearchParams<{
@@ -121,7 +119,7 @@ export default function Book() {
           <Row k="Дата" v={longDate(date)} />
           <Row k="Время" v={`${hh(hour)} – ${hh(hour + hours)}`} mono />
           <Row k="Длительность" v={`${hours} ${plural(hours, 'час', 'часа', 'часов')}`} />
-          <Row k="К оплате на месте" v={rub(price)} total />
+          <Row k="Стоимость" v={rub(price)} total />
         </View>
 
         <Text style={s.label}>Ваше имя</Text>
@@ -142,7 +140,7 @@ export default function Book() {
           keyboardType="phone-pad" maxLength={20}
           accessibilityLabel="Номер телефона" />
         <Text style={s.hint}>
-          По номеру клуб найдёт вашу запись, а вы — свои брони в приложении.
+          По номеру клуб найдёт вашу запись.
         </Text>
 
         {!!problem && (
@@ -152,20 +150,8 @@ export default function Book() {
         <View style={[s.note, { borderColor: 'rgba(240,169,59,.38)',
           backgroundColor: 'rgba(240,169,59,.08)' }]}>
           <Text style={[s.noteT, { color: '#DFCCA8' }]}>
-            Это <Text style={{ fontFamily: DISP_MED }}>заявка</Text>, а не готовая бронь.
-            Менеджер свяжется с вами по телефону или в WhatsApp и скажет, как внести
-            предоплату — <Text style={{ fontFamily: DISP_MED }}>половину стоимости</Text>.
-            После неё бронь становится подтверждённой, остальное платится на месте.
-            Пока предоплаты нет, время держится ограниченный срок и потом
-            возвращается в расписание.
-          </Text>
-        </View>
-
-        <View style={s.note}>
-          <Text style={s.noteT}>
-            Если планы изменятся — отмените в приложении, время освободится для других.
-            Отмена бесплатна за <Text style={{ fontFamily: DISP_MED }}>{CANCEL_HOURS} часа</Text>.
-            Опоздание больше <Text style={{ fontFamily: DISP_MED }}>{LATE_MINUTES} минут</Text> — корт может быть отдан.
+            Это <Text style={{ fontFamily: DISP_MED }}>заявка</Text>: менеджер свяжется и
+            скажет, как внести предоплату — половину стоимости.
           </Text>
         </View>
       </ScrollView>
@@ -177,10 +163,9 @@ export default function Book() {
             ? <ActivityIndicator color={C.onLime} />
             : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Забронировать</Text>}
         </Pressable>
-        <Text style={s.barSub}>
-          {canSend || sending ? 'Менеджер свяжется и подскажет про предоплату 50 %'
-            : 'Заполните имя и телефон'}
-        </Text>
+        {!canSend && !sending && (
+          <Text style={s.barSub}>Заполните имя и телефон</Text>
+        )}
       </View>
 
       <TakenSheet alternatives={taken} date={date} hours={hours}
