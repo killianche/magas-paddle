@@ -2,14 +2,18 @@
 // чьи это записи. Храним на устройстве, никуда больше не отправляем.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
+import { setToken } from './api';
 
 const KEY = 'magas.profile.v1';
+const TOKEN_KEY = 'magas.token.v1';
 
 /** phone — тот номер, по которому клуб и сервер узнают человека.
  *  whatsapp — второй номер, если он другой. Обязателен хотя бы один: если
  *  дан только WhatsApp, он и становится основным. */
 export type Profile = {
   name: string; surname?: string; phone: string; whatsapp?: string;
+  /** Стоит ли на аккаунте пароль. Пока нет — приложение зовёт его завести. */
+  hasPassword?: boolean;
 };
 
 /** Две буквы для кружка аккаунта: «АМ» или, если фамилии нет, «А». */
@@ -26,10 +30,28 @@ const listeners = new Set<() => void>();
 export async function loadProfile(): Promise<Profile | null> {
   if (cache) return cache;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    const [raw, tok] = await Promise.all([
+      AsyncStorage.getItem(KEY), AsyncStorage.getItem(TOKEN_KEY),
+    ]);
     cache = raw ? JSON.parse(raw) : null;
+    setToken(tok);
   } catch { cache = null }
   return cache;
+}
+
+/** Вошли: запоминаем токен и на устройстве, и в слое связи с сервером. */
+export async function saveToken(t: string | null) {
+  setToken(t);
+  if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
+  else await AsyncStorage.removeItem(TOKEN_KEY);
+}
+
+/** Выход: с устройства уходит всё, включая имя. */
+export async function forgetProfile() {
+  cache = null;
+  setToken(null);
+  await Promise.all([AsyncStorage.removeItem(KEY), AsyncStorage.removeItem(TOKEN_KEY)]);
+  listeners.forEach(l => l());
 }
 
 export async function saveProfile(p: Profile) {
@@ -67,5 +89,6 @@ export function useProfile() {
   }, []);
 
   const save = useCallback(async (p: Profile) => { await saveProfile(p); setProfile(p) }, []);
-  return { profile, ready, save };
+  const forget = useCallback(async () => { await forgetProfile(); setProfile(null) }, []);
+  return { profile, ready, save, forget };
 }

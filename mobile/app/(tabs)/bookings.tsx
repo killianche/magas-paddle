@@ -15,6 +15,20 @@ import { Loading, Failed } from '../../src/components/status';
 import { IconRacket, IconTrophy, IconCheck } from '../../src/components/icons';
 import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
+function NeedLogin({ note }: { note: string }) {
+  return (
+    <View style={s.empty}>
+      <View style={s.emptyIcon}><IconRacket size={26} color={C.lime} /></View>
+      <Text style={s.emptyT}>Нужен вход</Text>
+      <Text style={s.emptyS}>{note}</Text>
+      <Pressable onPress={() => router.push('/account')} accessibilityRole="button"
+        style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.9 }]}>
+        <Text style={s.emptyBtnT}>Войти в аккаунт</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function Bookings() {
   const { profile, ready } = useProfile();
   const phone = profile?.phone ?? '';
@@ -72,6 +86,9 @@ export default function Bookings() {
   if (!phone) return <Empty />;
 
   if (q.loading) return <Loading note="Смотрю ваши записи" />;
+  // Номер защищён паролем, а входа на этом устройстве нет — зовём войти,
+  // а не показываем «не удалось загрузить».
+  if (q.error && /войд/i.test(q.error)) return <NeedLogin note={q.error} />;
   if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
 
   const bookings = q.data?.bookings ?? [];

@@ -1,11 +1,12 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Delete, Get,
-  NotFoundException, Param, Post, Query,
+  Headers, NotFoundException, Param, Post, Query, UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
+import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
@@ -16,14 +17,31 @@ export class BookingsController {
   constructor(
     private readonly db: PrismaService,
     private readonly club: ClubService,
+    private readonly auth: ClientAuthService,
   ) {}
 
-  /** Записи одного человека — ищем по телефону, входа в приложении нет. */
-  @Get()
-  async list(@Query('phone') phone?: string) {
+  /** Кто спрашивает.
+   *
+   *  Сначала токен входа. Если его нет — по номеру, но только для аккаунтов
+   *  без пароля: иначе чужой номер снова открывал бы чужие записи. Так же
+   *  продолжают работать версии приложения, разосланные до появления пароля.
+   */
+  private async whose(header: string | undefined, phone: string | undefined) {
+    const byToken = await this.auth.whoIs(this.auth.tokenOf(header));
+    if (byToken) return byToken;
+
     const key = normalizePhone(phone);
-    if (!key) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone: key } });
+    if (!key) throw new UnauthorizedException('Нужно войти в аккаунт');
+    const c = await this.db.clients.findUnique({ where: { phone: key } });
+    if (!c) return null;
+    if (c.pass_hash) throw new UnauthorizedException('Этот номер защищён паролем — войдите в аккаунт');
+    return c;
+  }
+
+  /** Записи одного человека. */
+  @Get()
+  async list(@Query('phone') phone?: string, @Headers('authorization') header?: string) {
+    const client = await this.whose(header, phone);
     if (!client) return [];
 
     // Сначала освобождаем просроченные заявки: иначе человек увидит
@@ -86,7 +104,11 @@ export class BookingsController {
     // Второй номер запоминаем, но не затираем прежний пустым значением
     const wa = dto.whatsapp ? normalizePhone(dto.whatsapp) : null;
     const surname = dto.surname?.trim() || null;
-    const client = await this.db.clients.upsert({
+    // Чужую анкету заявка не переписывает: если на номере стоит пароль, имя
+    // и номера меняет только сам хозяин, войдя в аккаунт. Записаться при этом
+    // можно — бронь на чужой номер вреда не делает, менеджер всё равно звонит.
+    const known = await this.db.clients.findUnique({ where: { phone: bookingPhone } });
+    const client = known?.pass_hash ? known : await this.db.clients.upsert({
       where: { phone: bookingPhone },
       update: { name: dto.name, ...(surname ? { surname } : {}), ...(wa ? { whatsapp: wa } : {}) },
       create: { phone: bookingPhone, name: dto.name, surname, whatsapp: wa },
@@ -124,10 +146,9 @@ export class BookingsController {
 
   /** Отмена. Строку не удаляем: менеджеру нужна история отмен по клиенту. */
   @Delete(':id')
-  async cancel(@Param('id') id: string, @Query('phone') phone?: string) {
-    const key = normalizePhone(phone);
-    if (!key) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone: key } });
+  async cancel(@Param('id') id: string, @Query('phone') phone?: string,
+               @Headers('authorization') header?: string) {
+    const client = await this.whose(header, phone);
     const booking = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
     if (!booking || !client || booking.client_id !== client.id) {
       throw new NotFoundException('Запись не найдена');

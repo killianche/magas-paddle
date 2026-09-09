@@ -130,9 +130,23 @@ model clients {
   cancels            Int                  @default(0)
   note               String?
   whatsapp           String?
+  pass_hash          String?
+  pass_at            DateTime?            @db.Timestamptz(6)
   created_at         DateTime             @default(now()) @db.Timestamptz(6)
   bookings           bookings[]
   tournament_entries tournament_entries[]
+  client_sessions    client_sessions[]
+}
+
+model client_sessions {
+  token_hash String   @id
+  client_id  BigInt
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+  last_seen  DateTime @default(now()) @db.Timestamptz(6)
+  clients    clients  @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id], map: "client_sessions_client")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

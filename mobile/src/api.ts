@@ -18,6 +18,12 @@ export class ApiError extends Error {
 
 const NO_NETWORK = 'Нет связи с клубом. Проверьте интернет и попробуйте ещё раз.';
 
+/** Токен входа. Держим в памяти, чтобы не читать хранилище на каждый запрос;
+ *  на устройство его кладёт profile.ts. */
+let token: string | null = null;
+export const setToken = (t: string | null) => { token = t };
+export const getToken = () => token;
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -26,7 +32,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     res = await fetch(BASE + path, {
       ...init,
       signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
     });
     clearTimeout(timer);
   } catch {
@@ -86,8 +96,11 @@ export type ApiGrid = {
 };
 
 export type ClientCard = {
-  name: string; surname: string | null; phone: string; whatsapp: string | null;
+  name: string; surname: string | null; phone: string;
+  whatsapp: string | null; hasPassword: boolean;
 };
+
+export type Session = { token: string; profile: ClientCard };
 
 export type ApiBooking = {
   id: number; courtId: string; courtName: string;
@@ -118,12 +131,27 @@ export const api = {
 
   grid: (date: string) => call<ApiGrid>(`/availability?date=${encodeURIComponent(date)}`),
 
-  /** Анкета человека на сервере: чем заполнить приложение после переустановки. */
-  client: (phone: string) =>
-    call<ClientCard | null>(`/clients?phone=${encodeURIComponent(phone)}`),
+  /** Знает ли клуб этот номер и стоит ли на нём пароль. */
+  checkPhone: (phone: string) =>
+    call<{ known: boolean; hasPassword: boolean; profile: ClientCard | null }>(
+      `/clients/check?phone=${encodeURIComponent(phone)}`),
 
-  saveClient: (c: { name: string; surname?: string; phone: string; whatsapp?: string }) =>
-    call<ClientCard>('/clients', { method: 'POST', body: JSON.stringify(c) }),
+  register: (c: { name: string; surname?: string; phone: string;
+                  whatsapp?: string; password: string }) =>
+    call<Session>('/clients/register', { method: 'POST', body: JSON.stringify(c) }),
+
+  login: (phone: string, password: string) =>
+    call<Session>('/clients/login', { method: 'POST',
+      body: JSON.stringify({ phone, password }) }),
+
+  logout: () => call<{ ok: boolean }>('/clients/logout', { method: 'POST' }),
+
+  me: () => call<ClientCard>('/clients/me'),
+
+  updateMe: (c: { name?: string; surname?: string; whatsapp?: string;
+                  password?: string; oldPassword?: string }) =>
+    call<{ token?: string; profile: ClientCard }>('/clients/me', {
+      method: 'POST', body: JSON.stringify(c) }),
 
   myBookings: (phone: string) =>
     call<ApiBooking[]>(`/bookings?phone=${encodeURIComponent(phone)}`),

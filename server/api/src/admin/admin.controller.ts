@@ -1323,6 +1323,29 @@ export class AdminController {
   }
 
   /** Карточка клиента: вся история, включая отмены и неявки. */
+  /** Сбросить пароль клиенту.
+   *
+   *  Кода по SMS у нас нет, поэтому забытый пароль снимает менеджер: он и так
+   *  разговаривает с человеком по телефону и видит, что номер совпадает.
+   *  После сброса человек заводит пароль заново прямо в приложении, а все
+   *  прежние входы закрываются — на случай, если аккаунт увели. */
+  @Post('clients/:phone/reset-password')
+  async resetClientPassword(@Req() req: any, @Param('phone') phone: string) {
+    if (!this.auth.can(req.admin, 'club')) {
+      throw new ForbiddenException('Нет доступа: работа с клиентами');
+    }
+    const key = normalizePhone(phone);
+    if (!key) throw new BadRequestException('Не разобрал номер телефона');
+    const c = await this.db.clients.findUnique({ where: { phone: key } });
+    if (!c) throw new NotFoundException('Клиент не найден');
+    await this.db.clients.update({
+      where: { id: c.id }, data: { pass_hash: null, pass_at: null },
+    });
+    await this.db.client_sessions.deleteMany({ where: { client_id: c.id } });
+    await this.auth.log(req.admin, 'сбросил пароль клиенту', `${c.name}, ${c.phone}`);
+    return { ok: true };
+  }
+
   @Get('clients/:phone')
   async client(@Param('phone') phone: string) {
     const c = await this.db.clients.findUnique({ where: { phone } });

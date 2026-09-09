@@ -1006,6 +1006,8 @@ async function openBooking(id){
   // «Не пришёл» имеет смысл только после начала игры
   const started = date < todayStr() || (date === todayStr() && b.hour <= nowHour());
   if(b.status!=='no_show' && started) acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
+  // Пароль забывают — сбросить его может только менеджер: кода по SMS нет
+  if(b.client && can('club')) acts.push(`<button class="btn" data-pw>Сбросить пароль</button>`);
   acts.push(`<button class="btn dg" data-s="cancelled">Отменить бронь</button>`);
   $('#bkActs').innerHTML = acts.join('');
   $('#bkErr').classList.remove('on');
@@ -1015,6 +1017,18 @@ async function openBooking(id){
   if(copy) copy.onclick = () => {
     navigator.clipboard?.writeText(phoneNice(b.client.phone));
     copy.textContent = 'скопировано';
+  };
+
+  const pw = $('#bkActs').querySelector('[data-pw]');
+  if(pw) pw.onclick = async () => {
+    if(!await ask('Сбросить пароль?',
+      `${who(b)} задаст новый пароль сам в приложении. Прежние входы закроются.`)) return;
+    try {
+      await call('/admin/clients/'+encodeURIComponent(b.client.phone)+'/reset-password',
+        { method:'POST' });
+      pw.textContent = 'пароль сброшен';
+      pw.disabled = true;
+    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
   };
 
   const mv = $('#bkActs').querySelector('[data-move]');

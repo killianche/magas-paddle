@@ -1,10 +1,11 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Delete, Get,
-  NotFoundException, Param, Post, Query,
+  Headers, NotFoundException, Param, Post, Query,
 } from '@nestjs/common';
 import { IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../phone';
+import { ClientAuthService } from '../clients/client-auth.service';
 
 class EnterDto {
   @IsString() @MaxLength(80) name: string;
@@ -13,10 +14,24 @@ class EnterDto {
 
 @Controller('tournaments')
 export class TournamentsController {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly auth: ClientAuthService,
+  ) {}
+
+  /** Кто спрашивает: по токену входа, а без него — по номеру, но только
+   *  если аккаунт не защищён паролем. Та же логика, что и у записей. */
+  private async whose(header: string | undefined, phone: string | undefined) {
+    const byToken = await this.auth.whoIs(this.auth.tokenOf(header));
+    if (byToken) return byToken;
+    const key = normalizePhone(phone);
+    if (!key) return null;
+    const c = await this.db.clients.findUnique({ where: { phone: key } });
+    return c && !c.pass_hash ? c : null;
+  }
 
   @Get()
-  async list(@Query('phone') phone?: string) {
+  async list(@Query('phone') phone?: string, @Headers('authorization') header?: string) {
     const rows = await this.db.tournaments.findMany({ orderBy: { starts_at: 'asc' } });
     const counts = await this.db.tournament_entries.groupBy({
       by: ['tournament_id'], _count: { _all: true },
@@ -24,15 +39,12 @@ export class TournamentsController {
     const taken = new Map(counts.map(c => [String(c.tournament_id), c._count._all]));
 
     let mine = new Set<string>();
-    const key = normalizePhone(phone);
-    if (key) {
-      const client = await this.db.clients.findUnique({ where: { phone: key } });
-      if (client) {
-        const e = await this.db.tournament_entries.findMany({
-          where: { client_id: client.id }, select: { tournament_id: true },
-        });
-        mine = new Set(e.map(x => String(x.tournament_id)));
-      }
+    const client = await this.whose(header, phone);
+    if (client) {
+      const e = await this.db.tournament_entries.findMany({
+        where: { client_id: client.id }, select: { tournament_id: true },
+      });
+      mine = new Set(e.map(x => String(x.tournament_id)));
     }
 
     return rows.map(t => ({
@@ -83,10 +95,9 @@ export class TournamentsController {
   }
 
   @Delete(':id/entries')
-  async leave(@Param('id') id: string, @Query('phone') phone?: string) {
-    const key = normalizePhone(phone);
-    if (!key) throw new BadRequestException('Нужен номер телефона');
-    const client = await this.db.clients.findUnique({ where: { phone: key } });
+  async leave(@Param('id') id: string, @Query('phone') phone?: string,
+              @Headers('authorization') header?: string) {
+    const client = await this.whose(header, phone);
     if (!client) throw new NotFoundException('Запись не найдена');
     const res = await this.db.tournament_entries.deleteMany({
       where: { tournament_id: BigInt(id), client_id: client.id },

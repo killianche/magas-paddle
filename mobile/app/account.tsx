@@ -1,20 +1,24 @@
-// Аккаунт: кто человек и куда он ходил.
+// Аккаунт: кто человек, куда он ходил и настройки клуба.
 //
-// Пароля нет намеренно. Клуб узнаёт человека по номеру телефона — по нему же
-// сервер отдаёт его записи. Заводить логин с паролем ради шести кортов значит
-// добавить экран, который нечем восстановить, если человек его забудет.
-// Имя, фамилия и номер хранятся на устройстве и уходят только вместе с заявкой.
+// Вход по номеру телефона и паролю. Пароль появился не для красоты: без него
+// приложение узнавало человека по одному номеру, и тот, кто знал чужой номер,
+// видел чужое имя и историю посещений.
+//
+// Забытый пароль сбрасывает менеджер из админки — он и так говорит с человеком
+// по телефону. Кода по SMS нет: нужен провайдер рассылки (вопрос Q54).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
-import { api, rub, type ApiBooking } from '../src/api';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { api, rub, ApiError, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
-import { useProfile, normalizePhone, prettyPhone, fullName, type Profile } from '../src/profile';
+import {
+  useProfile, normalizePhone, prettyPhone, fullName, saveToken, type Profile,
+} from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
@@ -27,133 +31,351 @@ const LABEL: Record<string, string> = {
 };
 
 export default function Account() {
-  const { profile, ready, save } = useProfile();
-  const [edit, setEdit] = useState(false);
+  const { profile, ready, save, forget } = useProfile();
+  const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
 
   if (!ready) return <><Stack.Screen options={{ title: 'Аккаунт' }} /><View style={s.root} /></>;
-  if (!profile || edit) {
-    return <Form initial={profile} onDone={async p => { await save(p); setEdit(false) }}
-      onCancel={profile ? () => setEdit(false) : undefined} />;
+
+  if (!profile) {
+    return <Enter onDone={async (p, token) => { await saveToken(token); await save(p) }} />;
   }
-  return <Card profile={profile} onEdit={() => setEdit(true)} />;
+  if (mode === 'edit') {
+    return <EditForm profile={profile}
+      onDone={async p => { await save(p); setMode('view') }}
+      onCancel={() => setMode('view')} />;
+  }
+  if (mode === 'password') {
+    return <PasswordForm profile={profile}
+      onDone={async p => { await save(p); setMode('view') }}
+      onCancel={() => setMode('view')} />;
+  }
+  return <Card profile={profile} onEdit={() => setMode('edit')}
+    onPassword={() => setMode('password')} onForget={forget} />;
 }
 
-/* ── Регистрация и правка данных ───────────────────────────────────────── */
+/* ── Вход и регистрация ────────────────────────────────────────────────── */
 
-function Form({ initial, onDone, onCancel }: {
-  initial: Profile | null; onDone: (p: Profile) => void; onCancel?: () => void;
-}) {
-  const [name, setName] = useState(initial?.name ?? '');
-  const [surname, setSurname] = useState(initial?.surname ?? '');
-  const [phone, setPhone] = useState(initial?.phone ? prettyPhone(initial.phone) : '');
-  const [wa, setWa] = useState(initial?.whatsapp ? prettyPhone(initial.whatsapp) : '');
-
-  // Достаточно одного номера: у кого-то WhatsApp на другом номере, у кого-то
-  // его нет вовсе. Основным становится телефон, а если его не дали — WhatsApp.
-  const cleanPhone = normalizePhone(phone);
-  const cleanWa = normalizePhone(wa);
-  const main = cleanPhone ?? cleanWa;
-  const ok = name.trim().length >= 2 && !!main;
-
-  const [saving, setSaving] = useState(false);
+function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [wa, setWa] = useState('');
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const submit = async () => {
-    if (!ok || !main || saving) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const p: Profile = {
-      name: name.trim(), surname: surname.trim() || undefined, phone: main,
-      whatsapp: cleanWa && cleanWa !== main ? cleanWa : undefined,
-    };
-    setSaving(true); setProblem(null);
-    // Анкету держим и на сервере: после переустановки приложения человек
-    // вводит только номер, остальное подставится само.
-    try { await api.saveClient({ name: p.name, surname: p.surname, phone: p.phone,
-      whatsapp: p.whatsapp }) }
-    catch (e) { setProblem(e instanceof Error ? e.message : 'Не вышло сохранить на сервере') }
-    setSaving(false);
-    onDone(p);
-  };
+  /** Что делать с этим номером: клуб его ещё не знает, знает без пароля
+   *  или на нём уже стоит пароль. Пока не спросили — 'unknown'. */
+  const [state, setState] = useState<'unknown' | 'new' | 'known' | 'protected'>('unknown');
 
-  // Ввели знакомый номер — подставляем, что клуб уже о человеке знает.
-  // Что уже спрашивали, помним в ref, а не в состоянии: состояние меняло бы
-  // зависимости эффекта, тот перезапускался бы и сам гасил свой же ответ.
-  const looked = useRef<string | null>(null);
+  const clean = normalizePhone(phone);
+  const asked = useRef<string | null>(null);
+
+  // Спрашиваем сервер, как только номер стал похож на настоящий. Ключ уже
+  // спрошенного держим в ref: состояние меняло бы зависимости эффекта, и тот
+  // перезапускался бы, отменяя собственный запрос.
   useEffect(() => {
-    if (initial || !cleanPhone || cleanPhone === looked.current) return;
-    looked.current = cleanPhone;
-    api.client(cleanPhone).then(c => {
-      if (!c) return;
-      setName(n => n.trim() ? n : c.name);
-      setSurname(x => x.trim() ? x : (c.surname ?? ''));
-      if (c.whatsapp) setWa(x => x.trim() ? x : prettyPhone(c.whatsapp!));
+    if (!clean || clean === asked.current) return;
+    asked.current = clean;
+    api.checkPhone(clean).then(r => {
+      setState(!r.known ? 'new' : r.hasPassword ? 'protected' : 'known');
+      const p = r.profile;
+      if (p) {
+        setName(n => n.trim() ? n : p.name);
+        setSurname(x => x.trim() ? x : (p.surname ?? ''));
+        if (p.whatsapp) setWa(x => x.trim() ? x : prettyPhone(p.whatsapp!));
+      }
     }).catch(() => {});
-  }, [cleanPhone, initial]);
+  }, [clean]);
+
+  const login = state === 'protected';
+  const ok = !!clean && password.length >= 6 && (login || name.trim().length >= 2);
+
+  const submit = async () => {
+    if (!ok || !clean || busy) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBusy(true); setProblem(null);
+    try {
+      const cleanWa = normalizePhone(wa);
+      const res = login
+        ? await api.login(clean, password)
+        : await api.register({
+            name: name.trim(), surname: surname.trim() || undefined,
+            phone: clean, whatsapp: cleanWa && cleanWa !== clean ? cleanWa : undefined,
+            password,
+          });
+      onDone({
+        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
+        hasPassword: res.profile.hasPassword,
+      }, res.token);
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
+      setBusy(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView style={s.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Stack.Screen options={{ title: initial ? 'Мои данные' : 'Аккаунт' }} />
+      <Stack.Screen options={{ title: 'Аккаунт' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={s.head}>
-          <Eyebrow>{initial ? 'Мои данные' : 'Регистрация · 30 секунд'}</Eyebrow>
+          <Eyebrow>{login ? 'Вход' : 'Регистрация · 30 секунд'}</Eyebrow>
           <Text style={s.h1} allowFontScaling={false}>
-            {initial ? 'МОИ\nДАННЫЕ' : 'СОЗДАТЬ\nАККАУНТ'}
+            {login ? 'ВХОД\nВ АККАУНТ' : 'СОЗДАТЬ\nАККАУНТ'}
           </Text>
           <Text style={s.lede}>
-            Клуб узнаёт вас по номеру телефона: по нему в приложении видны ваши
-            записи, а менеджер понимает, с кем связаться.
+            {login
+              ? 'Этот номер уже защищён паролем. Введите его, чтобы увидеть свои записи.'
+              : 'Клуб узнаёт вас по номеру телефона, а пароль закрывает ваши записи от чужих глаз.'}
           </Text>
         </View>
-
-        <Text style={s.label}>Имя</Text>
-        <TextInput style={s.input} value={name} onChangeText={setName}
-          placeholder="Как к вам обращаться" placeholderTextColor={C.busy}
-          autoCapitalize="words" textContentType="givenName" returnKeyType="next" />
-
-        <Text style={s.label}>Фамилия</Text>
-        <TextInput style={s.input} value={surname} onChangeText={setSurname}
-          placeholder="Необязательно" placeholderTextColor={C.busy}
-          autoCapitalize="words" textContentType="familyName" returnKeyType="next" />
 
         <Text style={s.label}>Телефон</Text>
         <TextInput style={s.input} value={phone} onChangeText={setPhone}
           placeholder="+7 928 000-00-00" placeholderTextColor={C.busy}
-          keyboardType="phone-pad" textContentType="telephoneNumber" />
-        <Text style={s.label}>WhatsApp</Text>
-        <TextInput style={s.input} value={wa} onChangeText={setWa}
-          placeholder="Если номер другой" placeholderTextColor={C.busy}
-          keyboardType="phone-pad" />
+          keyboardType="phone-pad" textContentType="telephoneNumber"
+          accessibilityLabel="Номер телефона" />
+
+        {!login && (
+          <>
+            <Text style={s.label}>Имя</Text>
+            <TextInput style={s.input} value={name} onChangeText={setName}
+              placeholder="Как к вам обращаться" placeholderTextColor={C.busy}
+              autoCapitalize="words" textContentType="givenName"
+              accessibilityLabel="Имя" />
+
+            <Text style={s.label}>Фамилия</Text>
+            <TextInput style={s.input} value={surname} onChangeText={setSurname}
+              placeholder="Необязательно" placeholderTextColor={C.busy}
+              autoCapitalize="words" textContentType="familyName"
+              accessibilityLabel="Фамилия" />
+
+            <Text style={s.label}>WhatsApp</Text>
+            <TextInput style={s.input} value={wa} onChangeText={setWa}
+              placeholder="Если номер другой" placeholderTextColor={C.busy}
+              keyboardType="phone-pad" accessibilityLabel="Номер WhatsApp" />
+          </>
+        )}
+
+        <View style={s.labelRow}>
+          <Text style={[s.label, { flex: 1, marginTop: 0, paddingRight: 0 }]}>Пароль</Text>
+          <Pressable onPress={() => setShow(v => !v)} hitSlop={10} style={s.showBtn}
+            accessibilityRole="button"
+            accessibilityLabel={show ? 'Скрыть пароль' : 'Показать пароль'}>
+            <Text style={s.showT}>{show ? 'скрыть' : 'показать'}</Text>
+          </Pressable>
+        </View>
+        <TextInput style={s.input} value={password} onChangeText={setPassword}
+          placeholder={login ? 'Ваш пароль' : 'Не короче 6 знаков'}
+          placeholderTextColor={C.busy} secureTextEntry={!show}
+          autoCapitalize="none" autoCorrect={false}
+          textContentType={login ? 'password' : 'newPassword'}
+          accessibilityLabel="Пароль" />
+
         <Text style={s.hint}>
-          Достаточно одного номера — по нему менеджер подтвердит бронь.
-          Данные хранятся на вашем телефоне и уходят только вместе с заявкой.
+          {login
+            ? 'Забыли пароль — скажите менеджеру, он сбросит его, и вы зададите новый.'
+            : 'Пароль хранится у клуба только в зашифрованном виде: подсмотреть его нельзя, а забытый задаётся заново через менеджера.'}
         </Text>
 
+        {state === 'known' && (
+          <Text style={s.found}>
+            Клуб уже знает этот номер — данные подставились. Осталось придумать пароль.
+          </Text>
+        )}
         {!!problem && <Text style={s.problem}>{problem}</Text>}
 
-        <Pressable onPress={submit} disabled={!ok || saving} accessibilityRole="button"
-          style={({ pressed }) => [s.cta, (!ok || saving) && s.ctaOff,
+        <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+          style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff,
             pressed && ok && { opacity: 0.9 }]}>
-          <Text style={[s.ctaT, (!ok || saving) && { color: C.busy }]}>
-            {saving ? 'Сохраняю…' : 'Сохранить'}
+          <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
+            {busy ? 'Минуту…' : login ? 'Войти' : 'Создать аккаунт'}
           </Text>
         </Pressable>
-        {!ok && <Text style={s.barSub}>Нужны имя и хотя бы один номер</Text>}
-
-        {onCancel && (
-          <Pressable onPress={onCancel} accessibilityRole="button"
-            style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
-            <Text style={s.linkT}>Отмена</Text>
-          </Pressable>
+        {!ok && (
+          <Text style={s.barSub}>
+            {!clean ? 'Введите номер телефона'
+              : (!login && name.trim().length < 2) ? 'Введите имя'
+              : 'Пароль не короче 6 знаков'}
+          </Text>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-/* ── Карточка человека и история ───────────────────────────────────────── */
+/* ── Правка данных ─────────────────────────────────────────────────────── */
 
-function Card({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
+function EditForm({ profile, onDone, onCancel }: {
+  profile: Profile; onDone: (p: Profile) => void; onCancel: () => void;
+}) {
+  const [name, setName] = useState(profile.name);
+  const [surname, setSurname] = useState(profile.surname ?? '');
+  const [wa, setWa] = useState(profile.whatsapp ? prettyPhone(profile.whatsapp) : '');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const ok = name.trim().length >= 2;
+
+  const submit = async () => {
+    if (!ok || busy) return;
+    setBusy(true); setProblem(null);
+    try {
+      const res = await api.updateMe({
+        name: name.trim(), surname: surname.trim(),
+        whatsapp: normalizePhone(wa) ?? undefined,
+      });
+      onDone({
+        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
+        hasPassword: res.profile.hasPassword,
+      });
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не вышло сохранить');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView style={s.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Stack.Screen options={{ title: 'Мои данные' }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <View style={s.head}>
+          <Eyebrow>Мои данные</Eyebrow>
+          <Text style={s.h1} allowFontScaling={false}>МОИ{'\n'}ДАННЫЕ</Text>
+          <Text style={s.lede}>
+            Номер {prettyPhone(profile.phone)} менять нельзя — по нему клуб вас узнаёт.
+          </Text>
+        </View>
+
+        <Text style={s.label}>Имя</Text>
+        <TextInput style={s.input} value={name} onChangeText={setName}
+          autoCapitalize="words" accessibilityLabel="Имя" />
+
+        <Text style={s.label}>Фамилия</Text>
+        <TextInput style={s.input} value={surname} onChangeText={setSurname}
+          placeholder="Необязательно" placeholderTextColor={C.busy}
+          autoCapitalize="words" accessibilityLabel="Фамилия" />
+
+        <Text style={s.label}>WhatsApp</Text>
+        <TextInput style={s.input} value={wa} onChangeText={setWa}
+          placeholder="Если номер другой" placeholderTextColor={C.busy}
+          keyboardType="phone-pad" accessibilityLabel="Номер WhatsApp" />
+
+        {!!problem && <Text style={s.problem}>{problem}</Text>}
+
+        <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+          style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff, pressed && { opacity: 0.9 }]}>
+          <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
+            {busy ? 'Сохраняю…' : 'Сохранить'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onCancel} accessibilityRole="button"
+          style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
+          <Text style={s.linkT}>Отмена</Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+/* ── Пароль ────────────────────────────────────────────────────────────── */
+
+function PasswordForm({ profile, onDone, onCancel }: {
+  profile: Profile; onDone: (p: Profile) => void; onCancel: () => void;
+}) {
+  const [old, setOld] = useState('');
+  const [next, setNext] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const has = profile.hasPassword !== false;
+  const ok = next.length >= 6 && (!has || old.length >= 1);
+
+  const submit = async () => {
+    if (!ok || busy) return;
+    setBusy(true); setProblem(null);
+    try {
+      const res = await api.updateMe({ password: next, oldPassword: has ? old : undefined });
+      // Смена пароля закрывает прежние входы; своё устройство остаётся с новым токеном
+      if (res.token) await saveToken(res.token);
+      onDone({
+        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
+        hasPassword: res.profile.hasPassword,
+      });
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не вышло сменить пароль');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView style={s.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Stack.Screen options={{ title: 'Пароль' }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <View style={s.head}>
+          <Eyebrow>Безопасность</Eyebrow>
+          <Text style={s.h1} allowFontScaling={false}>
+            {has ? 'СМЕНИТЬ\nПАРОЛЬ' : 'ЗАДАТЬ\nПАРОЛЬ'}
+          </Text>
+          <Text style={s.lede}>
+            После смены пароля вход на других устройствах закроется — на этом
+            вы останетесь.
+          </Text>
+        </View>
+
+        {has && (
+          <>
+            <Text style={s.label}>Текущий пароль</Text>
+            <TextInput style={s.input} value={old} onChangeText={setOld}
+              secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
+              accessibilityLabel="Текущий пароль" />
+          </>
+        )}
+
+        <View style={s.labelRow}>
+          <Text style={[s.label, { flex: 1, marginTop: 0, paddingRight: 0 }]}>Новый пароль</Text>
+          <Pressable onPress={() => setShow(v => !v)} hitSlop={10} style={s.showBtn}
+            accessibilityRole="button"
+            accessibilityLabel={show ? 'Скрыть пароль' : 'Показать пароль'}>
+            <Text style={s.showT}>{show ? 'скрыть' : 'показать'}</Text>
+          </Pressable>
+        </View>
+        <TextInput style={s.input} value={next} onChangeText={setNext}
+          placeholder="Не короче 6 знаков" placeholderTextColor={C.busy}
+          secureTextEntry={!show} autoCapitalize="none" autoCorrect={false}
+          textContentType="newPassword" accessibilityLabel="Новый пароль" />
+
+        {!!problem && <Text style={s.problem}>{problem}</Text>}
+
+        <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+          style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff, pressed && { opacity: 0.9 }]}>
+          <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
+            {busy ? 'Минуту…' : 'Сохранить пароль'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onCancel} accessibilityRole="button"
+          style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
+          <Text style={s.linkT}>Отмена</Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+/* ── Карточка человека, история и настройки ────────────────────────────── */
+
+function Card({ profile, onEdit, onPassword, onForget }: {
+  profile: Profile; onEdit: () => void; onPassword: () => void;
+  onForget: () => Promise<void>;
+}) {
   const q = useApi(() => api.myBookings(profile.phone), [profile.phone],
     `account.${profile.phone}`);
   useFocusEffect(useCallback(() => { q.refresh() }, [profile.phone]));
@@ -167,18 +389,38 @@ function Card({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
   const soon = all.filter(b => !PAST.includes(b.status)
     && new Date(b.endsAt).getTime() >= Date.now()).length;
 
+  const leave = () => {
+    const title = 'Выйти из аккаунта?';
+    const msg = 'Записи останутся в клубе — вы увидите их снова, когда войдёте.';
+    const go = async () => { try { await api.logout() } catch {} await onForget() };
+    if (Platform.OS === 'web') { if (confirm(title + '\n\n' + msg)) go(); return }
+    Alert.alert(title, msg, [
+      { text: 'Остаться', style: 'cancel' },
+      { text: 'Выйти', style: 'destructive', onPress: go },
+    ]);
+  };
+
   return (
     <View style={s.root}>
       <Stack.Screen options={{ title: 'Аккаунт' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={s.head}>
           <Eyebrow>Аккаунт</Eyebrow>
-          <Text style={s.h1} allowFontScaling={false}>
-            {fullName(profile).toUpperCase()}
-          </Text>
+          <Text style={s.h1} allowFontScaling={false}>{fullName(profile).toUpperCase()}</Text>
           <Text style={s.phone}>{prettyPhone(profile.phone)}</Text>
           {!!profile.whatsapp && (
             <Text style={s.phone}>WhatsApp · {prettyPhone(profile.whatsapp)}</Text>
+          )}
+
+          {profile.hasPassword === false && (
+            <Pressable onPress={onPassword} accessibilityRole="button"
+              style={({ pressed }) => [s.warn, pressed && { opacity: 0.85 }]}>
+              <Text style={s.warnT}>Аккаунт без пароля</Text>
+              <Text style={s.warnS}>
+                Пока пароля нет, ваши записи может увидеть любой, кто знает ваш
+                номер. Нажмите, чтобы задать пароль.
+              </Text>
+            </Pressable>
           )}
 
           <View style={s.stats}>
@@ -190,11 +432,23 @@ function Card({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
           <View style={s.actions}>
             <Pressable onPress={onEdit} accessibilityRole="button"
               style={({ pressed }) => [s.ghost, pressed && { opacity: 0.75 }]}>
-              <Text style={s.ghostT}>Изменить данные</Text>
+              <Text style={s.ghostT}>Мои данные</Text>
             </Pressable>
             <Pressable onPress={() => router.push('/(tabs)/bookings')} accessibilityRole="button"
               style={({ pressed }) => [s.ghost, pressed && { opacity: 0.75 }]}>
               <Text style={s.ghostT}>Мои записи</Text>
+            </Pressable>
+          </View>
+          <View style={s.actions}>
+            <Pressable onPress={onPassword} accessibilityRole="button"
+              style={({ pressed }) => [s.ghost, pressed && { opacity: 0.75 }]}>
+              <Text style={s.ghostT}>
+                {profile.hasPassword === false ? 'Задать пароль' : 'Сменить пароль'}
+              </Text>
+            </Pressable>
+            <Pressable onPress={leave} accessibilityRole="button"
+              style={({ pressed }) => [s.ghost, pressed && { opacity: 0.75 }]}>
+              <Text style={[s.ghostT, { color: C.dim }]}>Выйти</Text>
             </Pressable>
           </View>
         </View>
@@ -202,9 +456,7 @@ function Card({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
         <Text style={s.group}>История посещений</Text>
 
         {q.loading && !q.data && <Text style={s.empty}>Смотрю историю…</Text>}
-        {!!q.error && !q.data && (
-          <Text style={s.empty}>{q.error}</Text>
-        )}
+        {!!q.error && !q.data && <Text style={s.empty}>{q.error}</Text>}
         {!q.loading && !q.error && past.length === 0 && (
           <Text style={s.empty}>
             Пока пусто. Как только вы сыграете, записи появятся здесь.
@@ -252,7 +504,12 @@ const s = StyleSheet.create({
   phone: { fontFamily: DISP_MED, color: C.dim, fontSize: 15, letterSpacing: -0.2,
     marginTop: 6, fontVariant: ['tabular-nums'] },
 
-  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 18,
+  warn: { marginTop: 16, padding: 14, borderWidth: 1,
+    borderColor: 'rgba(240,169,59,.38)', backgroundColor: 'rgba(240,169,59,.08)' },
+  warnT: { color: '#F0A93B', fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
+  warnS: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+
+  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 16,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, padding: 15 },
   statDiv: { width: 1, alignSelf: 'stretch', backgroundColor: C.line, marginHorizontal: 14 },
   statN: { fontFamily: DISP, color: C.text, fontSize: 30, letterSpacing: -1.4,
@@ -280,10 +537,17 @@ const s = StyleSheet.create({
   rowSt: { ...EYEBROW, color: C.dim2, marginTop: 4 },
 
   label: { ...EYEBROW, color: C.dim2, paddingHorizontal: S.xl, marginTop: 16, marginBottom: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.xl,
+    marginTop: 16, marginBottom: 8 },
+  showBtn: { minHeight: HIT, justifyContent: 'center', paddingHorizontal: 4 },
+  showT: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
+    textTransform: 'uppercase' },
   input: { marginHorizontal: S.xl, backgroundColor: C.surface, borderWidth: 1,
     borderColor: C.lineStrong, paddingVertical: 14, paddingHorizontal: 14,
     minHeight: 52, color: C.text, fontFamily: BODY, fontSize: 16 },
   hint: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17,
+    paddingHorizontal: S.xl, marginTop: 8 },
+  found: { fontFamily: BODY, color: C.limeDim, fontSize: 12.5, lineHeight: 18,
     paddingHorizontal: S.xl, marginTop: 8 },
 
   cta: { backgroundColor: C.lime, marginHorizontal: S.xl, marginTop: 22,
@@ -297,10 +561,4 @@ const s = StyleSheet.create({
   link: { paddingVertical: 14, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   linkT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
-
-  doc: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
-    paddingVertical: 13, minHeight: HIT, borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: C.line },
-  docT: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2 },
-  docS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 2 },
 });
