@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../../src/theme';
 import { api, rub, ApiError, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -214,34 +214,37 @@ function stateOf(b: ApiBooking) {
 
 const s = StyleSheet.create({
   band: { paddingVertical: 7, paddingHorizontal: 14 },
-  bandT: { fontSize: 11, fontWeight: '700', letterSpacing: 2 },
+  bandT: { ...EYEBROW },
   body: { padding: 14 },
-  note: { color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
+  note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
-  emptyIcon: { width: 62, height: 62, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+  emptyIcon: { width: 62, height: 62, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(198,240,51,.26)', backgroundColor: 'rgba(198,240,51,.07)',
     marginBottom: 18 },
-  emptyT: { color: C.text, fontSize: 15, fontWeight: '700' },
-  emptyS: { color: C.dim, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
+  emptyS: { fontFamily: BODY, color: C.dim, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
   emptyBtn: { marginTop: 20, paddingHorizontal: 22, paddingVertical: 14, borderRadius: R.lg,
     backgroundColor: C.lime, minHeight: HIT, justifyContent: 'center' },
-  emptyBtnT: { color: C.onLime, fontSize: 15, fontWeight: '700' },
+  emptyBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
 
   cardT: { borderColor: 'rgba(198,240,51,.3)', backgroundColor: 'rgba(198,240,51,.05)' },
-  tIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+  tIcon: { width: 34, height: 34, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(198,240,51,.28)', backgroundColor: 'rgba(198,240,51,.08)' },
   card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.xl,
     marginHorizontal: S.xl, marginBottom: 10, overflow: 'hidden' },
   head: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
-  name: { color: C.text, fontSize: 15, fontWeight: '700' },
-  date: { color: C.dim2, fontSize: 13, marginTop: 2 },
+  name: { ...TITLE.section, color: C.text, textTransform: 'uppercase' },
+  date: { fontFamily: BODY, color: C.dim2, fontSize: 13, marginTop: 2 },
   foot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
     borderTopWidth: 1, borderTopColor: C.line, paddingTop: 11 },
-  time: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  price: { color: C.dim, fontSize: 15, fontVariant: ['tabular-nums'] },
+  time: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'] },
+  price: { fontFamily: BODY, color: C.dim, fontSize: 15, fontVariant: ['tabular-nums'] },
   actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   mini: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: R.md,
     paddingVertical: 11, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   miniDg: { borderColor: 'rgba(229,100,75,.45)' },
-  miniT: { color: C.dim, fontSize: 13, fontWeight: '600' },
+  miniT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
+    textTransform: 'uppercase' },
 });

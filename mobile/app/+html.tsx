@@ -17,7 +17,7 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* Открывается как приложение, а не как вкладка браузера */}
         <link rel="manifest" href="/v1/manifest.webmanifest" />
-        <meta name="theme-color" content="#0B0F0C" />
+        <meta name="theme-color" content="#020705" />
         <meta name="color-scheme" content="dark" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -31,7 +31,7 @@ export default function Root({ children }: PropsWithChildren) {
 
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
-          body { background-color: #0B0F0C; }
+          body { background-color: #020705; }
           /* Чтобы страница не «дёргалась» от оттягивания на iOS */
           html, body { overscroll-behavior-y: none; }
         `}} />

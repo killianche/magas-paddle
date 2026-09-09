@@ -5,7 +5,7 @@ import { ScrollView, Text, View, Pressable, StyleSheet, Image, RefreshControl } 
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, DISP } from '../../src/theme';
+import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../../src/theme';
 import { api, rub, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -41,6 +41,7 @@ export default function Tournaments() {
 
       {hero && (
         <Pressable onPress={() => open(hero)}
+          accessibilityRole="button" accessibilityLabel={`Турнир «${hero.name}»`}
           style={({ pressed }) => [s.hero, pressed && { transform: [{ scale: 0.99 }] }]}>
           <Image source={TOURN_IMG[hero.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
             style={s.heroImg} resizeMode="cover" />
@@ -85,6 +86,7 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
   const d = dateOfIso(t.startsAt);
   return (
     <Pressable onPress={onPress}
+      accessibilityRole="button" accessibilityLabel={`Турнир «${t.name}»`}
       style={({ pressed }) => [s.row, past && { opacity: 0.72 }, pressed && { transform: [{ scale: 0.99 }] }]}>
       <View style={s.date}>
         <Text style={s.dateD}>{dayMonth(d).split(' ')[0]}</Text>
@@ -107,29 +109,30 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
 
 const s = StyleSheet.create({
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  hero: { marginHorizontal: S.xl, height: 200, borderRadius: 24, padding: S.lg,
+  hero: { marginHorizontal: S.xl, height: 200, borderRadius: 0, padding: S.lg,
     backgroundColor: '#1D4526', overflow: 'hidden', marginTop: 8 },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  flag: { alignSelf: 'flex-start', backgroundColor: C.lime, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  flag: { alignSelf: 'flex-start', backgroundColor: C.lime, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 },
   okFlag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: C.lime, borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
-  flagT: { color: C.onLime, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
-  heroName: { color: C.text, fontFamily: DISP, fontSize: 26, letterSpacing: 0.4,
+    backgroundColor: C.lime, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 },
+  flagT: { ...EYEBROW, color: C.onLime },
+  heroName: { ...TITLE.card, color: C.text, textTransform: 'uppercase',
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
-  heroMeta: { color: '#D6DECF', fontSize: 12.5, marginTop: 6, fontWeight: '600',
+  heroMeta: { fontFamily: BODY, color: '#D6DECF', fontSize: 12.5, marginTop: 6, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 8 },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl, marginBottom: 9,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.lg, padding: 12 },
   date: { width: 46, alignItems: 'center', borderRightWidth: 1, borderRightColor: C.line, paddingRight: 11 },
-  dateD: { color: C.text, fontSize: 20, fontWeight: '700' },
-  dateM: { color: C.dim2, fontSize: 9.5, letterSpacing: 0.8, fontWeight: '700' },
-  rowName: { color: C.text, fontSize: 14, fontWeight: '700' },
-  rowMeta: { color: C.dim2, fontSize: 11.5, marginTop: 2 },
-  rowOk: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.lime,
+  dateD: { color: C.text, fontFamily: DISP, fontSize: 21, letterSpacing: -1 },
+  dateM: { ...EYEBROW, color: C.dim2, marginTop: 1 },
+  rowName: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
+    textTransform: 'uppercase' },
+  rowMeta: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, marginTop: 2 },
+  rowOk: { width: 26, height: 26, borderRadius: 0, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
 
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
-  emptyT: { color: C.text, fontSize: 19, fontWeight: '700' },
-  emptyS: { color: C.dim, fontSize: 13.5, marginTop: 8, textAlign: 'center' },
+  emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
+  emptyS: { fontFamily: BODY, color: C.dim, fontSize: 13.5, marginTop: 8, textAlign: 'center' },
 });

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
 import { api, rub, ApiError, type Alternatives } from '../src/api';
 import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
 import { IMG } from '../src/images';
@@ -257,25 +257,25 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 8, gap: 14 },
   rowTotal: { borderTopColor: C.line, borderTopWidth: 1, marginTop: 4, paddingTop: 12 },
-  rowK: { color: C.dim2, fontSize: 14 },
-  rowV: { color: C.text, fontSize: 14, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
-  rowVTotal: { color: C.lime, fontSize: 20 },
+  rowK: { fontFamily: BODY, color: C.dim2, fontSize: 14 },
+  rowV: { fontFamily: BODY, color: C.text, fontSize: 14, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
+  rowVTotal: { color: C.lime, fontFamily: DISP, fontSize: 22, letterSpacing: -1 },
 
-  label: { color: C.dim, fontSize: 13.5, fontWeight: '600',
-    paddingHorizontal: S.xl, marginBottom: 8, marginTop: 6 },
-  input: { marginHorizontal: S.xl, marginBottom: 4, backgroundColor: C.surface,
+  label: { ...EYEBROW, color: C.dim2,
+    paddingHorizontal: S.xl, marginBottom: 8, marginTop: 10 },
+  input: { fontFamily: BODY, marginHorizontal: S.xl, marginBottom: 4, backgroundColor: C.surface,
     borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.md,
     paddingVertical: 14, paddingHorizontal: 14, minHeight: 52,
     color: C.text, fontSize: 16 },
-  hint: { color: C.dim2, fontSize: 12, lineHeight: 17, paddingHorizontal: S.xl, marginTop: 6 },
+  hint: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, paddingHorizontal: S.xl, marginTop: 6 },
 
   problem: { marginHorizontal: S.xl, marginTop: 14, padding: 13, borderRadius: R.md,
     backgroundColor: 'rgba(229,100,75,.1)', borderWidth: 1, borderColor: 'rgba(229,100,75,.35)' },
-  problemT: { color: '#F0B6A8', fontSize: 13, lineHeight: 19 },
+  problemT: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 19 },
 
   note: { marginHorizontal: S.xl, marginTop: 16, padding: 12, borderRadius: R.md,
     backgroundColor: 'rgba(240,169,59,.08)', borderWidth: 1, borderColor: 'rgba(240,169,59,.26)' },
-  noteT: { color: '#DFCCA8', fontSize: 12.5, lineHeight: 18 },
+  noteT: { fontFamily: BODY, color: '#DFCCA8', fontSize: 12.5, lineHeight: 18 },
 
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.xl,
     paddingTop: 14, paddingBottom: 34, backgroundColor: C.ink2,
@@ -283,28 +283,30 @@ const s = StyleSheet.create({
   cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17,
     alignItems: 'center', minHeight: HIT + 10, justifyContent: 'center' },
   ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
-  ctaT: { color: C.onLime, fontSize: 17, fontWeight: '700' },
-  barSub: { color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
+  barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
 
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,7,5,.7)' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.ink2, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+  sheet: { backgroundColor: C.ink2,
     borderTopWidth: 1, borderColor: C.line, paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 30 },
-  grab: { width: 38, height: 4, borderRadius: 2, backgroundColor: C.lineStrong,
+  grab: { width: 38, height: 4, borderRadius: 0, backgroundColor: C.lineStrong,
     alignSelf: 'center', marginBottom: 16, opacity: 0.6 },
-  sheetT: { color: C.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.3 },
-  sheetS: { color: C.dim, fontSize: 13.5, lineHeight: 20, marginTop: 7 },
-  group: { color: C.dim2, fontSize: 11.5, fontWeight: '700', letterSpacing: 0.5,
-    marginTop: 18, marginBottom: 8 },
+  sheetT: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
+  sheetS: { fontFamily: BODY, color: C.dim, fontSize: 13.5, lineHeight: 20, marginTop: 7 },
+  group: { ...EYEBROW, color: C.dim2, marginTop: 18, marginBottom: 8 },
   alt: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, marginBottom: 7,
     borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, minHeight: 62 },
-  altPh: { width: 44, height: 44, borderRadius: 12 },
-  altN: { color: C.text, fontSize: 15.5, fontWeight: '600' },
-  altS: { color: C.dim2, fontSize: 12.5, marginTop: 2, fontVariant: ['tabular-nums'] },
+  altPh: { width: 44, height: 44, borderRadius: 0 },
+  altN: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
+    textTransform: 'uppercase' },
+  altS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2, fontVariant: ['tabular-nums'] },
   none: { marginTop: 16, padding: 13, borderRadius: R.md,
     backgroundColor: 'rgba(240,169,59,.08)', borderWidth: 1, borderColor: 'rgba(240,169,59,.26)' },
-  noneT: { color: '#DFCCA8', fontSize: 13, lineHeight: 19 },
+  noneT: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19 },
   ghost: { marginTop: 14, paddingVertical: 15, borderRadius: R.lg, alignItems: 'center',
     borderWidth: 1, borderColor: C.lineStrong, minHeight: HIT },
-  ghostT: { color: C.text, fontSize: 15, fontWeight: '600' },
+  ghostT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
+    textTransform: 'uppercase' },
 });

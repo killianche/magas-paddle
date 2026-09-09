@@ -1,7 +1,7 @@
 // Общие состояния экранов: загрузка каркаса и «ничего не найдено».
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { C, R, S, HIT } from '../theme';
+import { C, R, S, HIT, DISP, TITLE, BODY } from '../theme';
 
 /** Нейтральный каркас на время, пока экран не получил параметры адреса. */
 export function ScreenSkeleton() {
@@ -35,9 +35,10 @@ const s = StyleSheet.create({
   sk: { backgroundColor: C.surface2, borderRadius: R.lg, marginHorizontal: S.xl },
   nf: { flex: 1, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 34 },
-  nfT: { color: C.text, fontSize: 21, fontWeight: '800', textAlign: 'center' },
-  nfS: { color: C.dim, fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 9 },
+  nfT: { ...TITLE.card, color: C.text, textAlign: 'center' },
+  nfS: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 9 },
   btn: { marginTop: 24, backgroundColor: C.lime, borderRadius: R.lg,
     paddingVertical: 15, paddingHorizontal: 26, minHeight: HIT, justifyContent: 'center' },
-  btnT: { color: C.onLime, fontSize: 15.5, fontWeight: '700' },
+  btnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
 });

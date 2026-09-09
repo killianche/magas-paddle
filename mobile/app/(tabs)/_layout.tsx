@@ -1,5 +1,6 @@
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { C } from '../../src/theme';
+import { C, DISP, DISP_MED } from '../../src/theme';
 import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
 export default function TabsLayout() {
@@ -9,17 +10,23 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: C.ink },
         headerTintColor: C.text,
         headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '700', fontSize: 20 },
+        headerTitleStyle: { fontFamily: DISP, fontSize: 18 },
+        // Нижняя панель по макету: почти чёрная, тонкая светлая линия сверху,
+        // подписи мелкие прописные вразрядку, активная — белая.
         tabBarStyle: {
-          backgroundColor: C.ink2,
+          backgroundColor: 'rgba(3,16,9,0.98)',
           borderTopColor: C.line,
-          borderTopWidth: 0.5,
-          height: 86,
-          paddingTop: 10,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 84,
+          paddingTop: 9,
         },
-        tabBarActiveTintColor: C.lime,
-        tabBarInactiveTintColor: C.dim2,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 3 },
+        tabBarActiveTintColor: C.text,
+        // Светлее, чем в макете: на #68766D подпись давала контраст 4.1 при норме 4.5
+        tabBarInactiveTintColor: '#8D9A91',
+        tabBarLabelStyle: {
+          fontFamily: DISP_MED, fontSize: 11, letterSpacing: 0.4,
+          textTransform: 'uppercase', marginTop: 4,
+        },
         sceneStyle: { backgroundColor: C.ink },
       }}>
       {/* Расписание больше не отдельная вкладка: сетка стоит на главной */}

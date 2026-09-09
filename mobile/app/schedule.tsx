@@ -6,7 +6,8 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Image, Modal, RefreshCon
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { Eyebrow } from '../src/components/velocity';
 import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -109,13 +110,17 @@ export default function Schedule() {
 
   return (
     <View style={st.root}>
-      <Stack.Screen options={{ title: 'Выберите время' }} />
+      <Stack.Screen options={{ title: 'Запись' }} />
 
-      <Text style={st.sub}>
-        {date === today()
-          ? `Сегодня · свободно ${freeNow} из ${shown.length} кортов`
-          : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
-      </Text>
+      <View style={st.title}>
+        <Eyebrow>Быстрая запись · 3 шага</Eyebrow>
+        <Text style={st.h1} allowFontScaling={false}>ВЫБЕРИТЕ{'\n'}ВРЕМЯ</Text>
+        <Text style={st.sub}>
+          {date === today()
+            ? `Сегодня свободно ${freeNow} ${plural(freeNow, 'корт', 'корта', 'кортов')} из ${shown.length}`
+            : `Свободно ${freeHours} ${plural(freeHours, 'час', 'часа', 'часов')} за день`}
+        </Text>
+      </View>
 
       {hasFootball && (
         <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/football') }}
@@ -127,16 +132,18 @@ export default function Schedule() {
       )}
 
       <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
-        accessibilityRole="button" accessibilityLabel="Открыть прайс-лист"
+        accessibilityRole="button" accessibilityLabel="Открыть прайс-лист" hitSlop={10}
         style={({ pressed }) => [st.tariff, pressed && { opacity: 0.75 }]}>
         <Text style={st.tariffT}>
-          <Text style={{ color: C.lime, fontWeight: '700' }}>{rub(morningPrice)}</Text>
+          <Text style={{ color: C.lime, fontFamily: DISP_MED }}>{rub(morningPrice)}</Text>
           {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
         </Text>
         <IconChevron size={14} color={C.dim2} />
       </Pressable>
 
-      <View style={st.days}>
+      <Text style={st.step}>01 · Дата</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={st.days}>
         {days.map(d => {
           const on = date === d;
           return (
@@ -144,13 +151,14 @@ export default function Schedule() {
               onPress={() => { Haptics.selectionAsync(); setDate(d); setSel(null); setHours(1) }}
               accessibilityRole="button" accessibilityState={{ selected: on }}
               style={[st.day, on && st.dayOn]}>
-              <Text style={[st.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{weekdayShort(d)}</Text>
-              <Text style={[st.dayD, on && { color: C.onLime }]}>{dayNumber(d)}</Text>
+              <Text style={[st.dayW, on && { color: '#647068' }]}>{weekdayShort(d)}</Text>
+              <Text style={[st.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
+      <Text style={[st.step, { marginTop: 18 }]}>02 · Корт и время</Text>
       <View style={{ paddingHorizontal: padH }}>
         <View style={[st.headRow, { gap }]}>
           <View style={{ width: timeW }} />
@@ -364,90 +372,100 @@ function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: 
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
-  sub: { color: C.dim2, fontSize: 12.5, paddingHorizontal: S.xl, paddingTop: 2 },
-  days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginTop: 12, marginBottom: 16 },
-  day: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderRadius: R.md, paddingVertical: 8, alignItems: 'center', minHeight: 46 },
-  dayOn: { backgroundColor: C.lime, borderColor: C.lime },
-  dayW: { color: C.dim2, fontSize: 9.5, fontWeight: '700', letterSpacing: 0.4 },
-  dayD: { color: C.text, fontSize: 17, fontWeight: '700', marginTop: 1 },
+  title: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 },
+  h1: { ...TITLE.page, color: C.text, marginTop: 8 },
+  step: { color: '#839087', fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
+    textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 9 },
+  sub: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 11 },
+  days: { flexDirection: 'row', gap: 7, paddingHorizontal: S.xl, marginBottom: 6 },
+  day: { width: 64, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
+    borderRadius: R.md, paddingVertical: 8, alignItems: 'center', justifyContent: 'center',
+    minHeight: 54 },
+  dayOn: { backgroundColor: C.text, borderColor: C.text },
+  dayW: { ...EYEBROW, fontSize: 11, letterSpacing: 0.2, color: C.dim2 },
+  dayD: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.8, marginTop: 2 },
 
   headRow: { flexDirection: 'row', paddingBottom: 10 },
   headCell: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 },
-  headT: { color: C.dim, fontSize: 11, fontWeight: '700' },
-  headPh: { width: 26, height: 26, borderRadius: 8, marginBottom: 3,
+  headT: { color: C.dim, fontFamily: DISP, fontSize: 11, letterSpacing: -0.2 },
+  headPh: { width: 26, height: 26, borderRadius: 0, marginBottom: 3,
     borderWidth: 1, borderColor: C.line },
 
   tariff: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    marginHorizontal: 20, marginTop: 8, paddingVertical: 6, paddingHorizontal: 11,
-    borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  tariffT: { color: C.dim, fontSize: 12.5 },
+    marginHorizontal: 20, marginTop: 8, paddingHorizontal: 11, minHeight: HIT,
+    borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 12.5 },
 
-  allPassed: { color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
+  allPassed: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
     paddingHorizontal: 30, paddingVertical: 40 },
-  passed: { color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
+  passed: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
     paddingHorizontal: 20, marginTop: 10, marginBottom: -2 },
 
   toPitch: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
     marginHorizontal: 20, marginTop: 10, paddingVertical: 8, paddingHorizontal: 13,
     borderRadius: R.md, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  toPitchT: { color: C.text, fontSize: 13, fontWeight: '600' },
+  toPitchT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
+    textTransform: 'uppercase' },
 
   clear: { alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, marginTop: 8 },
-  clearT: { color: C.dim, fontSize: 13.5, fontWeight: '600',
+  clearT: { fontFamily: BODY, color: C.dim, fontSize: 13.5, fontWeight: '600',
     textDecorationLine: 'underline' },
 
   peekBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)',
     alignItems: 'center', justifyContent: 'center', padding: 22 },
-  peek: { width: '100%', maxWidth: 420, borderRadius: 22, overflow: 'hidden',
+  peek: { width: '100%', maxWidth: 420, borderRadius: 0, overflow: 'hidden',
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   peekImg: { width: '100%', height: 230 },
   peekIn: { padding: 16 },
-  peekN: { color: C.text, fontSize: 19, fontWeight: '700' },
-  peekS: { color: C.lime, fontSize: 13, marginTop: 3, fontWeight: '600' },
-  peekNote: { color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 9 },
+  peekN: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
+  peekS: { fontFamily: BODY, color: C.lime, fontSize: 13, marginTop: 3, fontWeight: '600' },
+  peekNote: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 9 },
   peekRow: { flexDirection: 'row', gap: 9, marginTop: 14 },
   peekBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 46,
-    borderRadius: 13, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
+    borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
   peekBtnAcc: { backgroundColor: C.lime, borderColor: C.lime },
-  peekBtnT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
+  peekBtnT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.4,
+    textTransform: 'uppercase' },
 
   row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  time: { color: C.dim2, fontSize: 10.5, fontVariant: ['tabular-nums'], marginTop: -5 },
+  time: { fontFamily: BODY, color: C.dim2, fontSize: 11, fontVariant: ['tabular-nums'], marginTop: -5 },
   timeLast: { marginTop: -3 },
-  cell: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+  cell: { flex: 1, height: 46, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'transparent' },
-  cellFree: { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
-  cellBusy: { backgroundColor: C.surface, opacity: 0.55 },
+  cellFree: { backgroundColor: C.surface, borderColor: C.line },
+  cellBusy: { backgroundColor: '#06100B' },
   cellOff: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line },
   cellOn: { backgroundColor: C.lime, borderColor: C.lime, opacity: 1 },
   dotFree: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.lime },
   dotOn: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.onLime },
-  barOn: { width: 12, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(11,15,12,.5)' },
-  dashBusy: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.busy },
+  barOn: { width: 12, height: 2.5, borderRadius: 0, backgroundColor: 'rgba(11,15,12,.5)' },
+  dashBusy: { width: 10, height: 2, borderRadius: 0, backgroundColor: C.busy },
 
   legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 6 },
   leg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legBox: { width: 14, height: 14, borderRadius: 5, borderWidth: 1,
+  legBox: { width: 14, height: 14, borderRadius: 0, borderWidth: 1,
     borderColor: C.line, backgroundColor: C.surface },
-  legT: { color: C.dim2, fontSize: 11.5 },
-  note: { color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 6 },
+  legT: { fontFamily: BODY, color: C.dim2, fontSize: 11.5 },
+  note: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 6 },
 
-  bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: C.ink2,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
-  empty: { color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
+  bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: 'rgba(6,18,13,0.97)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  empty: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
   pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
-  pickPh: { width: 38, height: 38, borderRadius: 12 },
-  pickN: { color: C.text, fontSize: 15, fontWeight: '700' },
-  pickS: { color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
+  pickPh: { width: 38, height: 38, borderRadius: 0 },
+  pickN: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
+    textTransform: 'uppercase' },
+  pickS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
   durRow: { flexDirection: 'row', gap: 7, marginBottom: 11 },
   dur: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
     borderRadius: R.md, paddingVertical: 10, alignItems: 'center', minHeight: 42 },
   durOn: { backgroundColor: C.lime, borderColor: C.lime },
   durOff: { opacity: 0.4, borderStyle: 'dashed' },
-  durT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
-  warn: { color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
-  cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 16, alignItems: 'center' },
-  ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
-  ctaT: { color: C.onLime, fontSize: 16.5, fontWeight: '700', letterSpacing: -0.2 },
+  durT: { color: C.text, fontFamily: DISP_MED, fontSize: 12 },
+  warn: { fontFamily: BODY, color: C.amber, fontSize: 11.5, lineHeight: 16, marginBottom: 10, marginTop: -3 },
+  cta: { backgroundColor: C.lime, paddingVertical: 15, alignItems: 'center', minHeight: 48,
+    justifyContent: 'center' },
+  ctaOff: { backgroundColor: '#15251B' },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
 });

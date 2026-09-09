@@ -4,7 +4,7 @@ import { ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle } from 'react-native-svg';
-import { C, R, S, HIT, DISP, DISP_MED } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
 import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -189,40 +189,40 @@ const s = StyleSheet.create({
   head: { paddingHorizontal: S.xl, paddingTop: 14 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   slash: { width: 22, height: 9, backgroundColor: C.lime,
-    transform: [{ skewX: '-20deg' }], borderRadius: 1 },
-  eyebrow: { color: C.dim, fontSize: 13, fontWeight: '700', letterSpacing: 0.6 },
-  h1: { color: C.text, fontFamily: DISP, fontSize: 44, lineHeight: 50, marginTop: 6,
-    letterSpacing: -0.5 },
-  lede: { color: C.dim, fontSize: 15, lineHeight: 21, marginTop: 8 },
+    transform: [{ skewX: '-20deg' }], borderRadius: 0 },
+  eyebrow: { ...EYEBROW, color: C.dim2 },
+  h1: { ...TITLE.page, color: C.text, marginTop: 8 },
+  lede: { fontFamily: BODY, color: C.dim, fontSize: 15, lineHeight: 21, marginTop: 10 },
 
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: C.lime, borderRadius: R.xl, marginHorizontal: S.xl, marginTop: 18,
     paddingVertical: 16, minHeight: HIT },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 19, letterSpacing: 0.6 },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
 
-  group: { color: C.dim2, fontSize: 12.5, fontWeight: '700', letterSpacing: 1.2,
-    textTransform: 'uppercase', marginHorizontal: S.xl, marginTop: 26, marginBottom: 10 },
+  group: { ...EYEBROW, color: C.dim2, marginHorizontal: S.xl, marginTop: 28, marginBottom: 10 },
 
   band: { marginHorizontal: S.xl, marginBottom: 10, padding: 16, borderRadius: R.xl,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   bandBest: { borderColor: 'rgba(198,240,51,.42)', backgroundColor: 'rgba(198,240,51,.05)' },
   bandAlt: { borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.06)' },
   bandTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  bandTime: { color: C.text, fontSize: 16, fontWeight: '700' },
-  bandHours: { color: C.dim2, fontSize: 12.5, marginTop: 2 },
+  bandTime: { ...TITLE.section, color: C.text, textTransform: 'uppercase' },
+  bandHours: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 8 },
-  price: { color: C.text, fontFamily: DISP, fontSize: 38, letterSpacing: -0.5,
-    fontVariant: ['tabular-nums'] },
-  badge: { backgroundColor: C.lime, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeT: { color: C.onLime, fontFamily: DISP_MED, fontSize: 13, letterSpacing: 0.4 },
-  bandNote: { color: C.dim, fontSize: 13, marginTop: 10, lineHeight: 18 },
-  soon: { color: C.dim, fontFamily: DISP, fontSize: 24, marginTop: 8 },
+  price: { color: C.text, fontFamily: DISP, fontSize: 40, lineHeight: 42,
+    letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  badge: { backgroundColor: C.lime, borderRadius: 0, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeT: { color: C.onLime, fontFamily: DISP, fontSize: 12, letterSpacing: -0.2 },
+  bandNote: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 10, lineHeight: 18 },
+  soon: { ...TITLE.card, color: C.dim, marginTop: 8 },
 
   book: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     marginTop: 13, paddingVertical: 12, borderRadius: R.lg, minHeight: 46,
     backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
-  bookT: { color: C.text, fontSize: 14.5, fontWeight: '700' },
+  bookT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.4,
+    textTransform: 'uppercase' },
 
-  small: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 6 },
-  foot: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 24 },
+  small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 6 },
+  foot: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 24 },
 });

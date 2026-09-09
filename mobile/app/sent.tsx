@@ -1,7 +1,7 @@
 // Заявка отправлена. Экран должен успокоить: что записано, когда и что дальше.
 import { Text, View, StyleSheet, Pressable, Linking, Platform, Alert } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { C, R, S, HIT, DISP } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
 import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
@@ -68,7 +68,7 @@ export default function Sent() {
         </View>
         <View style={[s.row, s.rowLast]}>
           <Text style={s.rowK}>К оплате на месте</Text>
-          <Text style={[s.rowV, { color: C.lime, fontSize: 20 }]}>{rub(Number(p.price ?? 0))}</Text>
+          <Text style={[s.rowV, { fontFamily: BODY, color: C.lime, fontSize: 20 }]}>{rub(Number(p.price ?? 0))}</Text>
         </View>
       </View>
 
@@ -111,36 +111,39 @@ export default function Sent() {
 const s = StyleSheet.create({
   hold: { marginHorizontal: S.xl, marginTop: 14, padding: 15, borderRadius: R.lg,
     borderWidth: 1, borderColor: 'rgba(240,169,59,.38)', backgroundColor: 'rgba(240,169,59,.08)' },
-  holdT: { color: '#F0A93B', fontSize: 15, fontWeight: '700' },
-  holdS: { color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  holdT: { color: '#F0A93B', fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
+  holdS: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
   waOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
   done: { alignItems: 'center', paddingHorizontal: 30 },
   tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.lime,
     backgroundColor: 'rgba(198,240,51,.08)', alignItems: 'center', justifyContent: 'center' },
-  h: { color: C.text, fontFamily: DISP, fontSize: 32, letterSpacing: 0.5, marginTop: 18 },
-  p: { color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center', marginTop: 10 },
+  h: { ...TITLE.page, color: C.text, marginTop: 20, textAlign: 'center' },
+  p: { fontFamily: BODY, color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center', marginTop: 10 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 18,
     borderWidth: 1, borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.1)',
-    borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12 },
+    borderRadius: 0, paddingVertical: 6, paddingHorizontal: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
-  pillT: { color: C.amber, fontSize: 10, fontWeight: '800', letterSpacing: 0.7 },
+  pillT: { ...EYEBROW, color: C.amber },
 
   card: { marginTop: 26, marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1,
     borderColor: C.line, backgroundColor: C.surface, paddingHorizontal: 15 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
   rowLast: { borderBottomWidth: 0 },
-  rowK: { color: C.dim2, fontSize: 14 },
-  rowV: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  rowK: { fontFamily: BODY, color: C.dim2, fontSize: 14 },
+  rowV: { color: C.text, fontFamily: DISP_MED, fontSize: 15, letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'] },
 
   bottom: { paddingHorizontal: S.xl, paddingBottom: 34, gap: 10 },
   wa: { backgroundColor: '#25D366', borderRadius: R.lg, paddingVertical: 16,
     alignItems: 'center', minHeight: HIT },
-  waT: { color: '#04240F', fontSize: 16.5, fontWeight: '700' },
+  waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
   ghost: { borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.lg,
     paddingVertical: 15, alignItems: 'center', minHeight: HIT },
-  ghostT: { color: C.text, fontSize: 15.5, fontWeight: '600' },
+  ghostT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
+    textTransform: 'uppercase' },
   link: { paddingVertical: 12, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
-  linkT: { color: C.dim, fontSize: 14.5, fontWeight: '600' },
+  linkT: { fontFamily: BODY, color: C.dim, fontSize: 14.5, fontWeight: '600' },
 });

@@ -7,7 +7,7 @@ import { useCallback } from 'react';
 import { ScrollView, Text, View, StyleSheet, Image } from 'react-native';
 import { useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, R, S, DISP } from '../src/theme';
+import { C, R, S, DISP, DISP_MED, TITLE, BODY } from '../src/theme';
 import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { IMG } from '../src/images';
@@ -140,23 +140,24 @@ const s = StyleSheet.create({
   hero: { height: 230, overflow: 'hidden' },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   head: { paddingHorizontal: S.xl, paddingTop: 4, paddingBottom: 20 },
-  name: { color: C.text, fontFamily: DISP, fontSize: 30, letterSpacing: 0.4 },
-  sub: { color: C.dim2, fontSize: 13.5, marginTop: 3 },
+  name: { ...TITLE.page, color: C.text },
+  sub: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, marginTop: 5 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 14, flexWrap: 'wrap' },
-  price: { color: C.text, fontSize: 21, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  priceU: { color: C.dim, fontSize: 13 },
+  price: { ...TITLE.section, color: C.text, fontVariant: ['tabular-nums'] },
+  priceU: { fontFamily: BODY, color: C.dim, fontSize: 13 },
   tag: { marginLeft: 'auto', borderWidth: 1, borderColor: 'rgba(198,240,51,.35)',
-    backgroundColor: 'rgba(198,240,51,.08)', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 9 },
+    backgroundColor: 'rgba(198,240,51,.08)', borderRadius: 0, paddingVertical: 4, paddingHorizontal: 9 },
   tagOff: { borderColor: C.line, backgroundColor: C.surface },
-  tagT: { color: C.limeDim, fontSize: 11, fontWeight: '700' },
+  tagT: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1,
+    textTransform: 'uppercase' },
 
-  small: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
   q: { padding: 13, borderRadius: R.md, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  qT: { color: C.text, fontSize: 13.5, fontWeight: '700' },
-  qS: { color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
+  qT: { color: C.text, fontFamily: DISP_MED, fontSize: 13.5, letterSpacing: -0.2 },
+  qS: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 
   about: { marginHorizontal: S.xl, marginBottom: 16, padding: 14, borderRadius: R.lg,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  aboutT: { color: C.text, fontSize: 14.5, lineHeight: 21 },
-  aboutNo: { color: C.dim2, fontSize: 13, lineHeight: 19 },
+  aboutT: { fontFamily: BODY, color: C.text, fontSize: 14.5, lineHeight: 21 },
+  aboutNo: { fontFamily: BODY, color: C.dim2, fontSize: 13, lineHeight: 19 },
 });

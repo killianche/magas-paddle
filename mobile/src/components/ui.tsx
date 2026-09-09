@@ -1,6 +1,6 @@
 import { Pressable, Text, View, ViewStyle, TextStyle, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT } from '../theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../theme';
 
 export function Btn({ title, onPress, kind = 'primary', style }: {
   title: string; onPress?: () => void;
@@ -19,7 +19,8 @@ export function Btn({ title, onPress, kind = 'primary', style }: {
         alignItems: 'center', minHeight: HIT,
         opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.985 : 1 }],
       }, style]}>
-      <Text style={{ color: fg, fontSize: 16, fontWeight: '600' }}>{title}</Text>
+      <Text style={{ color: fg, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+        textTransform: 'uppercase' }}>{title}</Text>
     </Pressable>
   );
 }
@@ -31,9 +32,10 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
 export function Row({ k, v, mono, total }: { k: string; v: string; mono?: boolean; total?: boolean }) {
   return (
     <View style={[s.row, total && s.rowTotal]}>
-      <Text style={{ color: C.dim2, fontSize: 14 }}>{k}</Text>
+      <Text style={{ fontFamily: BODY, color: C.dim2, fontSize: 14 }}>{k}</Text>
       <Text style={{
-        color: total ? C.lime : C.text, fontSize: total ? 20 : 14, fontWeight: '600',
+        color: total ? C.lime : C.text, fontFamily: total ? DISP : DISP_MED,
+        fontSize: total ? 22 : 14, letterSpacing: total ? -1 : -0.2,
         fontVariant: mono || total ? ['tabular-nums'] : undefined,
       }}>{v}</Text>
     </View>
@@ -48,8 +50,8 @@ export function Pill({ text, kind }: { text: string; kind: 'wait' | 'ok' | 'past
   }[kind];
   return (
     <View style={{ backgroundColor: map.bg, borderColor: map.bd, borderWidth: 1,
-      borderRadius: 8, paddingVertical: 4, paddingHorizontal: 9 }}>
-      <Text style={{ color: map.fg, fontSize: 10, fontWeight: '700', letterSpacing: 0.4 }}>
+      borderRadius: 0, paddingVertical: 4, paddingHorizontal: 9 }}>
+      <Text style={{ color: map.fg, ...EYEBROW }}>
         {text.toUpperCase()}
       </Text>
     </View>
@@ -61,10 +63,11 @@ export function SectionTitle({ children, action, onAction }: {
 }) {
   return (
     <View style={s.sec}>
-      <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>{children}</Text>
+      <Text style={{ ...TITLE.section, color: C.text, textTransform: 'uppercase' }}>{children}</Text>
       {action ? (
         <Pressable onPress={onAction} hitSlop={10}>
-          <Text style={{ color: C.lime, fontSize: 13, fontWeight: '600' }}>{action}</Text>
+          <Text style={{ color: C.lime, fontFamily: DISP_MED, fontSize: 11,
+            letterSpacing: 1.4, textTransform: 'uppercase' }}>{action}</Text>
         </Pressable>
       ) : null}
     </View>

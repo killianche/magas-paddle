@@ -5,7 +5,7 @@ import { Linking, Platform, ScrollView, StyleSheet, Text, View, Pressable, Image
 import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY } from '../src/theme';
 import { hh } from '../src/dates';
 
 import { CLUB, whatsappUrl } from '../src/club';
@@ -155,31 +155,32 @@ const s = StyleSheet.create({
   hero: { height: 210, justifyContent: 'flex-end', overflow: 'hidden' },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroIn: { padding: S.xl },
-  name: { color: C.text, fontFamily: DISP, fontSize: 30, letterSpacing: 0.5,
+  name: { ...TITLE.page, color: C.text,
     textShadowColor: 'rgba(0,0,0,.5)', textShadowRadius: 12 },
-  sub: { color: '#CBD5C2', fontSize: 13, marginTop: 4 },
+  sub: { fontFamily: BODY, color: '#CBD5C2', fontSize: 13, marginTop: 6 },
 
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: S.xl, paddingVertical: 18 },
   act: { flex: 1, borderRadius: R.lg, paddingVertical: 14, paddingHorizontal: 14,
     borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12 },
   actOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   actWa: { backgroundColor: '#25D366', borderColor: '#25D366' },
-  actT: { color: C.text, fontSize: 15.5, fontWeight: '700' },
-  actS: { color: C.dim2, fontSize: 12, marginTop: 3, fontVariant: ['tabular-nums'] },
+  actT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.4,
+    textTransform: 'uppercase' },
+  actS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 3, fontVariant: ['tabular-nums'] },
 
   empty: { padding: 14, borderRadius: R.md, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface },
-  emptyT: { color: C.text, fontSize: 14, fontWeight: '700' },
-  emptyS: { color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
+  emptyT: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2 },
+  emptyS: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 
-  small: { color: C.dim2, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
-  q: { color: C.amber, fontSize: 12, lineHeight: 17, marginTop: 12 },
+  small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  q: { fontFamily: BODY, color: C.amber, fontSize: 12, lineHeight: 17, marginTop: 12 },
 
   doc: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,
     minHeight: HIT },
-  docT: { color: C.text, fontSize: 14.5, fontWeight: '600' },
-  docS: { color: C.dim2, fontSize: 12, marginTop: 2 },
+  docT: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2 },
+  docS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 2 },
 
-  foot: { color: C.dim2, fontSize: 11.5, lineHeight: 17, textAlign: 'center',
+  foot: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, lineHeight: 17, textAlign: 'center',
     marginTop: 20, paddingHorizontal: 30 },
 });

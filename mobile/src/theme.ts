@@ -1,39 +1,82 @@
-// Токены оформления. Значения проверены на контраст по WCAG AA — см. docs/BRAND.md.
+// Оформление «Velocity» — по макету заказчика MAGAS-PADEL-Velocity.
+//
+// Что отличает эту систему от прежней:
+//  · почти чёрный фон вместо тёмно-зелёного, панели заметно светлее фона;
+//  · прямые углы. Скруглений нет нигде, кроме круглых кнопок — это главный
+//    признак макета, и именно он даёт ощущение спортивной строгости;
+//  · заголовки очень жирные, прописные, с ОТРИЦАТЕЛЬНЫМ трекингом и
+//    межстрочным меньше кегля — буквы стоят вплотную;
+//  · мелкие надписи наоборот с широкой разрядкой.
+//
+// Шрифт. В макете стоял Archivo Black, но **кириллицы в нём нет ни в одном
+// начертании** — русские заголовки в браузере молча подменялись системным
+// шрифтом. Взят Inter: то же семейство, что в макете для текста, начертание
+// 900 держит тот же плакатный вес, и кириллица полная. Статические начертания
+// собраны из переменного шрифта и урезаны до латиницы с кириллицей —
+// 53 КБ на файл вместо 876 КБ исходника.
+
 export const C = {
-  ink: '#0B0F0C',
-  ink2: '#12180F',
-  surface: '#171E16',
-  surface2: '#212A1F',
-  surface3: '#2A3427',
-  line: '#2C3729',
-  lineSoft: '#222B20',
-  lineStrong: '#576D51',   // 3,01:1 — граница поля ввода
-  lime: '#C6F033',
-  limeDim: '#9BC020',
-  onLime: '#0B0F0C',       // текст на лаймовой заливке, 14,63:1
-  greenDeep: '#1B5E20',
+  /** Фон приложения */
+  ink: '#020705',
+  /** Фон панелей поверх основного */
+  ink2: '#06120D',
+  surface: '#0A1D14',
+  surface2: '#10281C',
+  surface3: '#163424',
+
+  /** Разделители: тонкие светлые линии поверх тёмного */
+  line: 'rgba(255,255,255,0.11)',
+  lineSoft: 'rgba(255,255,255,0.07)',
+  lineStrong: 'rgba(255,255,255,0.24)',
+
+  /** Акцент — «вольт». Кислотно-салатовый, только на важном */
+  lime: '#C9F23D',
+  limeDim: '#9CBE2C',
+  /** Текст на заливке акцентом */
+  onLime: '#071008',
+
+  greenDeep: '#0A1D14',
   greenMid: '#3DA84A',
-  text: '#EDF2E9',
-  dim: '#9AA795',
-  dim2: '#889085',         // 5,86:1
+
+  text: '#F5F8F2',
+  dim: '#A5B0A8',
+  dim2: '#849188',
+  busy: '#4C5A50',
+
   amber: '#F0A93B',
-  busy: '#869182',         // 5,87:1
-  red: '#E5644B',
+  red: '#FF5538',
 } as const;
 
-// Шкала как у Dynamic Type — размеры совпадают с системными стилями iOS
-export const T = {
-  largeTitle: 34, title1: 28, title2: 22, title3: 20,
-  headline: 17, body: 17, callout: 16, subhead: 15,
-  footnote: 13, caption1: 12, caption2: 11,
-} as const;
+/** Углы. В макете почти всё прямое; pill остался для круглых кнопок. */
+export const R = { sm: 0, md: 0, lg: 0, xl: 0, pill: 999 } as const;
 
-export const R = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
-export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 } as const;
+export const S = { xs: 4, sm: 8, md: 12, lg: 14, xl: 18, xxl: 26 } as const;
 
 // Минимальная зона нажатия по требованию Apple
 export const HIT = 44;
 
-/** Плакатный гротеск для крупных заголовков. Подключается в app/_layout.tsx. */
-export const DISP = 'Oswald-Bold';
-export const DISP_MED = 'Oswald-Medium';
+/** Плакатное начертание. Подключается в app/_layout.tsx. */
+export const DISP = 'Inter-Black';
+export const DISP_MED = 'Inter-SemiBold';
+export const BODY = 'Inter-Regular';
+
+/** Размеры и посадка заголовков — прямо из макета.
+ *  Межстрочный меньше кегля там задан как 0.82–0.9; в React Native при таком
+ *  соотношении iOS срезает верх прописных, поэтому минимум 1.0 плюс запас. */
+export const TITLE = {
+  hero:    { fontFamily: DISP, fontSize: 52, lineHeight: 54, letterSpacing: -2.6 },
+  page:    { fontFamily: DISP, fontSize: 42, lineHeight: 44, letterSpacing: -2.1 },
+  section: { fontFamily: DISP, fontSize: 22, lineHeight: 24, letterSpacing: -0.9 },
+  card:    { fontFamily: DISP, fontSize: 27, lineHeight: 29, letterSpacing: -1.1 },
+  bar:     { fontFamily: DISP, fontSize: 17, lineHeight: 19, letterSpacing: -0.5 },
+} as const;
+
+/** Мелкая надпись вразрядку: «COURT CULTURE · MAGAS», «01 · Дата».
+ *  В макете такие подписи 9 px, но макет — веб-страница на большом экране.
+ *  На телефоне 9 pt читается с трудом, а этим стилем набраны в том числе
+ *  «Ассаламу алейкум» и названия шагов записи. Взято 11 pt — нижняя граница
+ *  из рекомендаций Apple по размеру шрифта; разрядка чуть уменьшена,
+ *  чтобы строка занимала столько же места. */
+export const EYEBROW = {
+  fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase',
+} as const;

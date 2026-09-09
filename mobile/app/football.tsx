@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY } from '../src/theme';
 import { api, rub, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -112,8 +112,8 @@ export default function Football() {
                   onPress={() => { Haptics.selectionAsync(); setDate(d); setFrom(null); setHours(1) }}
                   accessibilityRole="button" accessibilityState={{ selected: on }}
                   style={[s.day, on && s.dayOn]}>
-                  <Text style={[s.dayW, on && { color: 'rgba(11,15,12,.62)' }]}>{weekdayShort(d)}</Text>
-                  <Text style={[s.dayD, on && { color: C.onLime }]}>{dayNumber(d)}</Text>
+                  <Text style={[s.dayW, on && { color: '#647068' }]}>{weekdayShort(d)}</Text>
+                  <Text style={[s.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
                 </Pressable>
               );
             })}
@@ -223,20 +223,19 @@ const s = StyleSheet.create({
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     width: '100%', height: '100%' },
   heroIn: { padding: S.xl },
-  eyebrow: { color: C.limeDim, fontSize: 11, letterSpacing: 3, fontWeight: '700' },
-  name: { color: C.text, fontFamily: DISP, fontSize: 34, lineHeight: 36,
-    letterSpacing: 0, marginTop: 8 },
-  sub: { color: '#D6DECF', fontSize: 13, marginTop: 6 },
+  eyebrow: { fontFamily: BODY, color: C.limeDim, fontSize: 11, letterSpacing: 3, fontWeight: '700' },
+  name: { ...TITLE.page, color: C.text, marginTop: 8 },
+  sub: { fontFamily: BODY, color: '#D6DECF', fontSize: 13, marginTop: 6 },
 
   days: { marginTop: 18 },
   day: { width: 54, paddingVertical: 9, borderRadius: R.md, alignItems: 'center',
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  dayOn: { backgroundColor: C.lime, borderColor: C.lime },
-  dayW: { color: C.dim2, fontSize: 11, letterSpacing: 0.6 },
-  dayD: { color: C.text, fontSize: 15, fontWeight: '700', marginTop: 2,
+  dayOn: { backgroundColor: C.text, borderColor: C.text },
+  dayW: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 0.6 },
+  dayD: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: -0.6, marginTop: 2,
     fontVariant: ['tabular-nums'] },
 
-  section: { color: C.dim2, fontSize: 11, letterSpacing: 2.6, textTransform: 'uppercase',
+  section: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 2.6, textTransform: 'uppercase',
     marginTop: 26, marginBottom: 12, paddingHorizontal: S.xl },
 
   // Крупные строки вместо клеток: поле одно, места на экране много
@@ -246,33 +245,34 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: C.line },
   slotBusy: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   slotOn: { backgroundColor: C.lime, borderColor: C.lime },
-  time: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'],
-    width: 118 },
-  slotState: { color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
+  time: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'], width: 122 },
+  slotState: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
     flex: 1 },
-  slotPrice: { color: C.dim, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  empty: { color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
+  slotPrice: { fontFamily: BODY, color: C.dim, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  empty: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
     paddingHorizontal: 40, paddingVertical: 40 },
 
   bottom: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong,
     backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 12 },
   picked: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  pickedT: { color: C.text, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  pickedS: { color: C.dim2, fontSize: 13, marginTop: 2 },
+  pickedT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'] },
+  pickedS: { fontFamily: BODY, color: C.dim2, fontSize: 13, marginTop: 2 },
   clear: { paddingVertical: 7, paddingHorizontal: 12 },
-  clearT: { color: C.dim, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
+  clearT: { fontFamily: BODY, color: C.dim, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
 
   durRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   dur: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 42,
     borderRadius: R.md, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   durOn: { backgroundColor: C.lime, borderColor: C.lime },
   durOff: { opacity: 0.4 },
-  durT: { color: C.text, fontSize: 13, fontWeight: '700' },
+  durT: { fontFamily: BODY, color: C.text, fontSize: 13, fontWeight: '700' },
 
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: C.lime, borderRadius: R.pill, minHeight: HIT + 6 },
   ctaOff: { backgroundColor: C.surface2 },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 15, letterSpacing: 2,
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
-  hint: { color: C.dim2, fontSize: 13, textAlign: 'center', marginBottom: 10 },
+  hint: { fontFamily: BODY, color: C.dim2, fontSize: 13, textAlign: 'center', marginBottom: 10 },
 });

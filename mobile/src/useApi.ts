@@ -43,7 +43,12 @@ export function useApi<T>(
 
   const run = useCallback(async (soft: boolean) => {
     const my = ++gen.current;
-    soft ? setRefreshing(true) : setLoading(true);
+    // Флаги берёт на себя последний запуск целиком. Иначе получалось так:
+    // экран начинал обычную загрузку, тут же приходил фокус и запускал мягкое
+    // обновление; первый запуск, увидев, что его обогнали, молча выходил и
+    // НЕ снимал признак загрузки — экран навсегда оставался крутилкой.
+    if (soft) setRefreshing(true);
+    else { setLoading(true); setRefreshing(false) }
     try {
       const res = await fn();
       if (my !== gen.current) return;
@@ -56,7 +61,7 @@ export function useApi<T>(
       if (my !== gen.current) return;
       setError(e instanceof ApiError ? e.message : 'Не получилось загрузить. Попробуйте ещё раз.');
     } finally {
-      if (my === gen.current) soft ? setRefreshing(false) : setLoading(false);
+      if (my === gen.current) { setLoading(false); setRefreshing(false) }
     }
     // fn меняется вместе с deps, поэтому в зависимостях именно они
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -3,13 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { View } from 'react-native';
-import { C } from '../src/theme';
+import { C, DISP } from '../src/theme';
 
 export default function RootLayout() {
-  // Oswald — узкий гротеск для плакатных заголовков. Лицензия OFL, кириллица полная.
+  // Inter, лицензия OFL. Начертания собраны из переменного шрифта и урезаны
+  // до латиницы с кириллицей — по 53 КБ вместо 876 КБ исходника.
+  // В макете стоял Archivo Black, но кириллицы в нём нет вовсе.
   const [ready] = useFonts({
-    'Oswald-Bold': require('../assets/fonts/Oswald-Bold.ttf'),
-    'Oswald-Medium': require('../assets/fonts/Oswald-Medium.ttf'),
+    'Inter-Black': require('../assets/fonts/Inter-Black.ttf'),
+    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
   });
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
@@ -21,7 +24,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: C.ink },
           headerTintColor: C.text,
-          headerTitleStyle: { fontWeight: '600', fontSize: 18 },
+          headerTitleStyle: { fontFamily: DISP, fontSize: 17 },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: C.ink },
           // Смахивание назад с любого места экрана, а не только от левого края
