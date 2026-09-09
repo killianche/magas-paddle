@@ -125,6 +125,7 @@ model clients {
   id                 BigInt               @id @default(autoincrement())
   phone              String               @unique
   name               String
+  surname            String?
   no_shows           Int                  @default(0)
   cancels            Int                  @default(0)
   note               String?

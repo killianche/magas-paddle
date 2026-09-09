@@ -67,7 +67,7 @@ export default function Sent() {
           <Text style={s.rowV}>№ {String(p.id ?? '—')}</Text>
         </View>
         <View style={[s.row, s.rowLast]}>
-          <Text style={s.rowK}>К оплате на месте</Text>
+          <Text style={s.rowK}>Стоимость</Text>
           <Text style={[s.rowV, { fontFamily: BODY, color: C.lime, fontSize: 20 }]}>{rub(Number(p.price ?? 0))}</Text>
         </View>
       </View>
@@ -78,7 +78,8 @@ export default function Sent() {
         <View style={s.hold}>
           <Text style={s.holdT}>Держим корт за вами {leftText(String(p.holdUntil))}</Text>
           <Text style={s.holdS}>
-            Напишите менеджеру, чтобы подтвердить запись. Если не успеть,
+            Напишите менеджеру или дождитесь звонка: он подскажет, как внести
+            предоплату 50 %. После неё бронь подтверждается. Если не успеть,
             время снова станет свободным и его сможет занять другой.
           </Text>
         </View>

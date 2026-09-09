@@ -19,6 +19,9 @@ export class CreateBookingDto {
   @IsString() @MaxLength(80)
   name: string;
 
+  @IsOptional() @IsString() @MaxLength(80)
+  surname?: string;
+
   @Matches(/^\+?\d{10,15}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
   phone: string;
 

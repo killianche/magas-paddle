@@ -85,6 +85,10 @@ export type ApiGrid = {
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean; hours: ApiHour[] }[];
 };
 
+export type ClientCard = {
+  name: string; surname: string | null; phone: string; whatsapp: string | null;
+};
+
 export type ApiBooking = {
   id: number; courtId: string; courtName: string;
   startsAt: string; endsAt: string; hour: number; hours: number;
@@ -114,11 +118,19 @@ export const api = {
 
   grid: (date: string) => call<ApiGrid>(`/availability?date=${encodeURIComponent(date)}`),
 
+  /** Анкета человека на сервере: чем заполнить приложение после переустановки. */
+  client: (phone: string) =>
+    call<ClientCard | null>(`/clients?phone=${encodeURIComponent(phone)}`),
+
+  saveClient: (c: { name: string; surname?: string; phone: string; whatsapp?: string }) =>
+    call<ClientCard>('/clients', { method: 'POST', body: JSON.stringify(c) }),
+
   myBookings: (phone: string) =>
     call<ApiBooking[]>(`/bookings?phone=${encodeURIComponent(phone)}`),
 
   book: (b: { courtId: string; date: string; hour: number; hours: number;
-              name: string; phone: string; whatsapp?: string; comment?: string }) =>
+              name: string; surname?: string; phone: string; whatsapp?: string;
+              comment?: string }) =>
     call<ApiBooking>('/bookings', { method: 'POST', body: JSON.stringify(b) }),
 
   cancel: (id: number, phone: string) =>

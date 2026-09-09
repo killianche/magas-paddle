@@ -289,7 +289,8 @@ export default function Home() {
 
       <View style={st.secHead}>
         <Text style={st.secT}>Клуб</Text>
-        <Pressable onPress={() => go('/club')} accessibilityRole="button"
+        {/* Сведения о клубе переехали в аккаунт — там же настройки и документы */}
+        <Pressable onPress={() => go('/account')} accessibilityRole="button"
           style={({ pressed }) => [st.secLinkHit, pressed && { opacity: 0.7 }]}>
           <Text style={st.secLink}>контакты и правила</Text>
         </Pressable>
@@ -307,7 +308,7 @@ export default function Home() {
       <View style={[st.info, { marginTop: 10 }]}>
         <InfoRow k="Работаем" v={`с ${hh(grid?.openHour ?? 9)} до полуночи`} />
         <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />
-        <InfoRow k="Оплата" v="на месте, в клубе" />
+        <InfoRow k="Оплата" v="предоплата 50 %, остальное на месте" />
         <InfoRow k="Отмена" v="бесплатно за 4 часа" last />
       </View>
 

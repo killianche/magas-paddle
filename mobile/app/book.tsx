@@ -55,7 +55,6 @@ export default function Book() {
   );
 
   const cleanPhone = normalizePhone(phone);
-  const who = [name.trim(), surname.trim()].filter(Boolean).join(' ');
   const canSend = name.trim().length >= 2 && cleanPhone != null && !sending;
 
   const submit = async () => {
@@ -64,7 +63,8 @@ export default function Book() {
     setSending(true);
     try {
       const booking = await api.book({
-        courtId, date, hour, hours, name: who, phone: cleanPhone,
+        courtId, date, hour, hours,
+        name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
       });
       await save({ ...profile, name: name.trim(),
@@ -93,7 +93,8 @@ export default function Book() {
     setTaken(null); setSending(true);
     try {
       const booking = await api.book({
-        courtId: altCourtId, date, hour: altHour, hours, name: who, phone: cleanPhone,
+        courtId: altCourtId, date, hour: altHour, hours,
+        name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
       });
       await save({ ...profile, name: name.trim(),
@@ -151,18 +152,20 @@ export default function Book() {
         <View style={[s.note, { borderColor: 'rgba(240,169,59,.38)',
           backgroundColor: 'rgba(240,169,59,.08)' }]}>
           <Text style={[s.noteT, { color: '#DFCCA8' }]}>
-            Это <Text style={{ fontWeight: '700' }}>заявка</Text>, а не готовая бронь.
-            Менеджер подтвердит её и свяжется с вами. Пока он не подтвердил,
-            время держится за вами ограниченный срок — если не успеть,
-            оно вернётся в расписание.
+            Это <Text style={{ fontFamily: DISP_MED }}>заявка</Text>, а не готовая бронь.
+            Менеджер свяжется с вами по телефону или в WhatsApp и скажет, как внести
+            предоплату — <Text style={{ fontFamily: DISP_MED }}>половину стоимости</Text>.
+            После неё бронь становится подтверждённой, остальное платится на месте.
+            Пока предоплаты нет, время держится ограниченный срок и потом
+            возвращается в расписание.
           </Text>
         </View>
 
         <View style={s.note}>
           <Text style={s.noteT}>
             Если планы изменятся — отмените в приложении, время освободится для других.
-            Отмена бесплатна за <Text style={{ fontWeight: '700' }}>{CANCEL_HOURS} часа</Text>.
-            Опоздание больше <Text style={{ fontWeight: '700' }}>{LATE_MINUTES} минут</Text> — корт может быть отдан.
+            Отмена бесплатна за <Text style={{ fontFamily: DISP_MED }}>{CANCEL_HOURS} часа</Text>.
+            Опоздание больше <Text style={{ fontFamily: DISP_MED }}>{LATE_MINUTES} минут</Text> — корт может быть отдан.
           </Text>
         </View>
       </ScrollView>
@@ -175,7 +178,7 @@ export default function Book() {
             : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Забронировать</Text>}
         </Pressable>
         <Text style={s.barSub}>
-          {canSend || sending ? 'Запись сохранится, менеджер её подтвердит'
+          {canSend || sending ? 'Менеджер свяжется и подскажет про предоплату 50 %'
             : 'Заполните имя и телефон'}
         </Text>
       </View>

@@ -85,10 +85,11 @@ export class BookingsController {
 
     // Второй номер запоминаем, но не затираем прежний пустым значением
     const wa = dto.whatsapp ? normalizePhone(dto.whatsapp) : null;
+    const surname = dto.surname?.trim() || null;
     const client = await this.db.clients.upsert({
       where: { phone: bookingPhone },
-      update: { name: dto.name, ...(wa ? { whatsapp: wa } : {}) },
-      create: { phone: bookingPhone, name: dto.name, whatsapp: wa },
+      update: { name: dto.name, ...(surname ? { surname } : {}), ...(wa ? { whatsapp: wa } : {}) },
+      create: { phone: bookingPhone, name: dto.name, surname, whatsapp: wa },
     });
 
     try {

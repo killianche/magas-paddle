@@ -4,9 +4,9 @@
 // сервер отдаёт его записи. Заводить логин с паролем ради шести кортов значит
 // добавить экран, который нечем восстановить, если человек его забудет.
 // Имя, фамилия и номер хранятся на устройстве и уходят только вместе с заявкой.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView,
+  KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -16,8 +16,7 @@ import { api, rub, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useProfile, normalizePhone, prettyPhone, fullName, type Profile } from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
-import { IconChevron } from '../src/components/icons';
-import { CLUB } from '../src/club';
+import { ClubInfo } from '../src/components/clubinfo';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
 
 /** Записи, которые уже прошли: их и показываем историей. */
@@ -56,14 +55,40 @@ function Form({ initial, onDone, onCancel }: {
   const main = cleanPhone ?? cleanWa;
   const ok = name.trim().length >= 2 && !!main;
 
-  const submit = () => {
-    if (!ok || !main) return;
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (!ok || !main || saving) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onDone({
+    const p: Profile = {
       name: name.trim(), surname: surname.trim() || undefined, phone: main,
       whatsapp: cleanWa && cleanWa !== main ? cleanWa : undefined,
-    });
+    };
+    setSaving(true); setProblem(null);
+    // Анкету держим и на сервере: после переустановки приложения человек
+    // вводит только номер, остальное подставится само.
+    try { await api.saveClient({ name: p.name, surname: p.surname, phone: p.phone,
+      whatsapp: p.whatsapp }) }
+    catch (e) { setProblem(e instanceof Error ? e.message : 'Не вышло сохранить на сервере') }
+    setSaving(false);
+    onDone(p);
   };
+
+  // Ввели знакомый номер — подставляем, что клуб уже о человеке знает.
+  // Что уже спрашивали, помним в ref, а не в состоянии: состояние меняло бы
+  // зависимости эффекта, тот перезапускался бы и сам гасил свой же ответ.
+  const looked = useRef<string | null>(null);
+  useEffect(() => {
+    if (initial || !cleanPhone || cleanPhone === looked.current) return;
+    looked.current = cleanPhone;
+    api.client(cleanPhone).then(c => {
+      if (!c) return;
+      setName(n => n.trim() ? n : c.name);
+      setSurname(x => x.trim() ? x : (c.surname ?? ''));
+      if (c.whatsapp) setWa(x => x.trim() ? x : prettyPhone(c.whatsapp!));
+    }).catch(() => {});
+  }, [cleanPhone, initial]);
 
   return (
     <KeyboardAvoidingView style={s.root}
@@ -104,9 +129,14 @@ function Form({ initial, onDone, onCancel }: {
           Данные хранятся на вашем телефоне и уходят только вместе с заявкой.
         </Text>
 
-        <Pressable onPress={submit} disabled={!ok} accessibilityRole="button"
-          style={({ pressed }) => [s.cta, !ok && s.ctaOff, pressed && ok && { opacity: 0.9 }]}>
-          <Text style={[s.ctaT, !ok && { color: C.busy }]}>Сохранить</Text>
+        {!!problem && <Text style={s.problem}>{problem}</Text>}
+
+        <Pressable onPress={submit} disabled={!ok || saving} accessibilityRole="button"
+          style={({ pressed }) => [s.cta, (!ok || saving) && s.ctaOff,
+            pressed && ok && { opacity: 0.9 }]}>
+          <Text style={[s.ctaT, (!ok || saving) && { color: C.busy }]}>
+            {saving ? 'Сохраняю…' : 'Сохранить'}
+          </Text>
         </Pressable>
         {!ok && <Text style={s.barSub}>Нужны имя и хотя бы один номер</Text>}
 
@@ -198,16 +228,8 @@ function Card({ profile, onEdit }: { profile: Profile; onEdit: () => void }) {
           </View>
         ))}
 
-        <Text style={s.group}>Документы</Text>
-        <Pressable onPress={() => CLUB.privacyUrl && Linking.openURL(CLUB.privacyUrl)}
-          accessibilityRole="button"
-          style={({ pressed }) => [s.doc, pressed && { opacity: 0.7 }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.docT}>Политика конфиденциальности</Text>
-            <Text style={s.docS}>какие данные хранит клуб</Text>
-          </View>
-          <IconChevron size={16} color={C.dim2} />
-        </Pressable>
+        <Text style={s.group}>Клуб и настройки</Text>
+        <ClubInfo />
       </ScrollView>
     </View>
   );
@@ -270,6 +292,8 @@ const s = StyleSheet.create({
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  problem: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 19,
+    marginHorizontal: S.xl, marginTop: 14 },
   link: { paddingVertical: 14, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   linkT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },

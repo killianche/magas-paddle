@@ -223,7 +223,8 @@ export class AdminController {
           players: b.players, discount: b.discount, discountReason: b.discount_reason,
           createdBy: b.created_by,
           client: cl ? {
-            id: Number(cl.id), name: cl.name, phone: cl.phone, whatsapp: cl.whatsapp,
+            id: Number(cl.id), name: [cl.name, cl.surname].filter(Boolean).join(' '),
+            phone: cl.phone, whatsapp: cl.whatsapp,
             cancels: cl.cancels, noShows: cl.no_shows, note: cl.note,
           } : null,
         };
@@ -1331,7 +1332,8 @@ export class AdminController {
     });
     const courts = new Map((await this.db.courts.findMany()).map(x => [x.id, x.name]));
     return {
-      id: Number(c.id), name: c.name, phone: c.phone, whatsapp: c.whatsapp,
+      id: Number(c.id), name: [c.name, c.surname].filter(Boolean).join(' '),
+      phone: c.phone, whatsapp: c.whatsapp,
       cancels: c.cancels, noShows: c.no_shows, note: c.note,
       since: c.created_at,
       history: rows.map(b => ({

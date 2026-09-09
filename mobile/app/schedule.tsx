@@ -262,7 +262,9 @@ export default function Schedule() {
               style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
               <Text style={st.ctaT}>Забронировать · {rub(total)}</Text>
             </Pressable>
-            <Text style={st.payNote}>Оплата на месте или через менеджера в WhatsApp</Text>
+            <Text style={st.payNote}>
+              Бронь подтверждается предоплатой 50 % · остальное на месте
+            </Text>
           </>
         ) : (
           <>

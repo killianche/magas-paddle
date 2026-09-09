@@ -38,7 +38,7 @@ export default function Prices() {
           <Text style={s.eyebrow}>ЦЕНЫ</Text>
         </View>
         <Text style={s.h1} allowFontScaling={false}>ПРАЙС-ЛИСТ</Text>
-        <Text style={s.lede}>Аренда корта целиком, на любое число игроков. Оплата на месте.</Text>
+        <Text style={s.lede}>Аренда корта целиком, на любое число игроков. Бронь — по предоплате 50 %.</Text>
       </View>
 
       <Pressable onPress={go} accessibilityRole="button"
@@ -119,7 +119,9 @@ export default function Prices() {
       )}
 
       <Text style={s.foot}>
-        Цены показаны за аренду площадки целиком.
+        Цены показаны за аренду площадки целиком. Бронь подтверждается после
+        предоплаты половины стоимости — менеджер подскажет, как её внести;
+        остальное платится на месте.
         Отмена бесплатна за {cancelHours} {plural(cancelHours, 'час', 'часа', 'часов')} до игры.
       </Text>
     </ScrollView>
