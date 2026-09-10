@@ -9,7 +9,7 @@ import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, R, S, DISP, DISP_MED, TITLE, BODY } from '../src/theme';
-import { api, rub, discountPercent } from '../src/api';
+import { api, rub, discountPercent, mediaUrl } from '../src/api';
 import { useApi } from '../src/useApi';
 import { IMG, COURT_PHOTOS } from '../src/images';
 import { Gallery } from '../src/components/gallery';
@@ -59,7 +59,10 @@ export default function CourtScreen() {
 
         {/* Фотографии — главное на этом экране: площадки отличаются покрытием
             и цветом пола, и выбирают их глазами. */}
-        <Gallery photos={COURT_PHOTOS[court.id] ?? [IMG[court.id] ?? IMG.c1]} />
+        {/* Снимки клуба, если он их загрузил в админке; иначе — временные */}
+        <Gallery photos={court.photos?.length
+          ? court.photos.map(u => ({ uri: mediaUrl(u) }))
+          : (COURT_PHOTOS[court.id] ?? [IMG[court.id] ?? IMG.c1])} />
 
         <View style={s.head}>
           <Text style={s.name}>{court.name}</Text>

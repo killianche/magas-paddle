@@ -32,6 +32,8 @@ export type ClubInfoData = {
   /** Разделы, которые клуб может выключить. */
   showTournaments: boolean;
   showFootball: boolean;
+  /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
+  waTemplate: string | null;
 };
 
 /** Пока сервер не ответил. Ничего выдуманного: только часы по умолчанию,
@@ -40,7 +42,7 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true,
+  showTournaments: true, showFootball: true, waTemplate: null,
 };
 
 let cache: ClubInfoData = EMPTY;
@@ -74,6 +76,7 @@ export const CLUB = {
   get rentalsText() { return cache.rentalsText },
   get showTournaments() { return cache.showTournaments },
   get showFootball() { return cache.showFootball },
+  get waTemplate() { return cache.waTemplate },
 };
 
 function publish(next: ClubInfoData) {

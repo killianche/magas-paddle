@@ -11,7 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, TAB_SPACE } from '../../src/theme';
 import { Eyebrow, Ticker, OutlineText } from '../../src/components/velocity';
-import { api, rub, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
+import { api, rub, mediaUrl, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
@@ -240,7 +240,7 @@ export default function Home() {
               accessibilityRole="button"
               accessibilityLabel={`${c.name}, ${free ? 'ближайшее время ' + hh(free.hour) : c.closed ? 'закрыт' : 'сегодня занят'}`}
               style={({ pressed }) => [st.card, pressed && { opacity: 0.85 }]}>
-              <Image source={IMG[c.courtId] ?? IMG.c1} style={st.cardImg} resizeMode="cover" />
+              <Image source={c.photo ? { uri: mediaUrl(c.photo) } : (IMG[c.courtId] ?? IMG.c1)} style={st.cardImg} resizeMode="cover" />
               <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.9)']}
                 locations={[0.35, 1]} style={st.fill} />
               <View style={st.cardIn}>
@@ -272,7 +272,7 @@ export default function Home() {
               ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
               : 'сегодня занято') + '. Забронировать'}
             style={({ pressed }) => [st.pitch, pressed && { opacity: 0.9 }]}>
-            <Image source={IMG[pitch.courtId] ?? IMG.f1} style={st.fillImg} resizeMode="cover" />
+            <Image source={pitch.photo ? { uri: mediaUrl(pitch.photo) } : (IMG[pitch.courtId] ?? IMG.f1)} style={st.fillImg} resizeMode="cover" />
             <LinearGradient colors={['rgba(9,13,10,.30)', 'rgba(9,13,10,.62)', 'rgba(9,13,10,.96)']}
               locations={[0, 0.5, 1]} style={st.fill} />
             <View style={st.pitchIn}>

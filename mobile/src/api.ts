@@ -18,6 +18,10 @@ export class ApiError extends Error {
 
 const NO_NETWORK = 'Нет связи с клубом. Проверьте интернет и попробуйте ещё раз.';
 
+/** Полный адрес файла с сайта клуба: сервер отдаёт пути вида /uploads/…,
+ *  а картинке в приложении нужен адрес целиком. */
+export const mediaUrl = (path: string) => BASE.replace(/\/api\/?$/, '') + path;
+
 /** Токен входа. Держим в памяти, чтобы не читать хранилище на каждый запрос;
  *  на устройство его кладёт profile.ts. */
 let token: string | null = null;
@@ -73,6 +77,8 @@ export type ApiCourt = {
   id: string; name: string; isFootball: boolean; description: string | null;
   priceMorning: number; priceStandard: number; morningUntil: number;
   closedUntil: string | null; closedReason: string | null;
+  /** Снимки, загруженные клубом: пути вида /uploads/… Пусто — временные фото. */
+  photos?: string[];
 };
 
 export type ApiPriceRule = {
@@ -92,7 +98,9 @@ export type ApiHour = { hour: number; status: SlotStatus; price: number; maxRun:
 
 export type ApiGrid = {
   date: string; openHour: number; closeHour: number; morningUntil: number; maxHours: number;
-  courts: { courtId: string; name: string; isFootball: boolean; closed: boolean; hours: ApiHour[] }[];
+  courts: { courtId: string; name: string; isFootball: boolean; closed: boolean;
+    /** Главное фото корта, загруженное клубом; null — временное. */
+    photo?: string | null; hours: ApiHour[] }[];
 };
 
 export type ApiNote = {
@@ -151,7 +159,7 @@ export const api = {
     phone: string | null; whatsapp: string | null; address: string | null;
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
-    showTournaments: boolean; showFootball: boolean;
+    showTournaments: boolean; showFootball: boolean; waTemplate: string | null;
   }>('/club'),
 
   /** Знает ли клуб этот номер и стоит ли на нём пароль. */

@@ -73,8 +73,10 @@ $SSH "$HOST" 'export DEBIAN_FRONTEND=noninteractive
 
 say "Копирую файлы"
 # --exclude обязателен: в /v1 лежит веб-версия приложения, её кладёт
+# build-app.sh; в /uploads — фото площадок, которые клуб загрузил из админки,
+# их --delete иначе стёр бы при каждом выкладывании сайта.
 # scripts/build-app.sh. Без исключения --delete стирал приложение целиком.
-$RSYNC -az --delete --exclude 'v1/' -e "ssh $SSHO" "$STAGE/" "$HOST:/var/www/padelmagas/"
+$RSYNC -az --delete --exclude 'v1/' --exclude 'uploads/' -e "ssh $SSHO" "$STAGE/" "$HOST:/var/www/padelmagas/"
 
 say "Настраиваю раздачу"
 $SSH "$HOST" 'cat > /etc/nginx/sites-available/padelmagas <<'"'"'CONF'"'"'
@@ -106,6 +108,11 @@ ln -sfn /etc/nginx/sites-available/padelmagas /etc/nginx/sites-enabled/padelmaga
 chown -R www-data:www-data /var/www/padelmagas
 find /var/www/padelmagas -type d -exec chmod 755 {} \;
 find /var/www/padelmagas -type f -exec chmod 644 {} \;
+# Фото площадок пишет приложение из контейнера от имени node (uid 1000).
+# Общий chown выше отдал бы папку www-data, и загрузка из админки падала бы
+# с «permission denied». Читать nginx может и так: права 755 и 644.
+mkdir -p /var/www/padelmagas/uploads
+chown -R 1000:1000 /var/www/padelmagas/uploads
 nginx -t && systemctl enable --now nginx >/dev/null 2>&1 && systemctl reload nginx
 echo "готово"'
 

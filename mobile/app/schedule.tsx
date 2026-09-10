@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
-import { api, rub, ApiError, type ApiGrid, type ApiHour } from '../src/api';
+import { api, rub, mediaUrl, ApiError, type ApiGrid, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
 import { IMG } from '../src/images';
@@ -32,8 +32,6 @@ import { useClub } from '../src/club';
 import { useProfile, fullName } from '../src/profile';
 
 const DAYS_AHEAD = 14;   // две недели: на прошлых пяти днях нельзя было занять следующие выходные
-/** С этого часа — вечер. Граница утра берётся из настроек клуба: это граница тарифа. */
-const EVENING = 18;
 /** Плиток в ряду, как в образце. */
 const COLS = 4;
 const GAP = 7;
@@ -104,14 +102,20 @@ export default function Schedule() {
     setSel({ courtId, hour: h.hour });
   };
 
-  /** Текст для WhatsApp — такой, чтобы менеджеру не пришлось переспрашивать. */
+  /** Текст для WhatsApp — такой, чтобы менеджеру не пришлось переспрашивать.
+   *  Сразу к делу, без приветствия — так попросил заказчик. Клуб может
+   *  поменять формулировку в админке; подстановки: {корт} {дата} {время}
+   *  {часы} {цена}. Имя и номер заявки добавляются сами. */
   const message = (bookingId?: number) => {
     if (!sel || !court) return '';
-    const lines = [
-      `Здравствуйте! Хочу забронировать ${court.name} на ${dayMonth(date)}, `
-        + `${hh(sel.hour)} → ${hh(sel.hour + hours)} `
-        + `(${hours} ${plural(hours, 'час', 'часа', 'часов')}), ${rub(total)}.`,
-    ];
+    const tpl = club.waTemplate?.trim()
+      || 'Хочу забронировать {корт} на {дата}, {время} ({часы}), {цена}.';
+    const lines = [tpl
+      .replace(/\{корт\}/g, court.name)
+      .replace(/\{дата\}/g, dayMonth(date))
+      .replace(/\{время\}/g, `${hh(sel.hour)} → ${hh(sel.hour + hours)}`)
+      .replace(/\{часы\}/g, `${hours} ${plural(hours, 'час', 'часа', 'часов')}`)
+      .replace(/\{цена\}/g, rub(total))];
     if (profile) lines.push(`Меня зовут ${fullName(profile)}.`);
     if (bookingId) lines.push(`Заявка №${bookingId} в приложении.`);
     return lines.join('\n');
@@ -160,8 +164,19 @@ export default function Schedule() {
     }
   };
 
-  // Номер WhatsApp клуб задаёт в админке. Пока его нет — заявка через форму
-  // в приложении, а не выдуманный номер и не мёртвая кнопка.
+  // ЗАГЛУШКА: номер WhatsApp клуб ещё не дал (задаётся в админке, раздел
+  // «Контакты»). Кнопка уже выглядит как надо, а нажатие объясняет, что
+  // WhatsApp скоро подключат, и предлагает отправить заявку в приложении.
+  const whatsappStub = () => {
+    const title = 'WhatsApp клуба скоро подключим';
+    const text = 'Пока можно отправить заявку через приложение — менеджер увидит её и свяжется с вами.';
+    if (Platform.OS === 'web') { if (confirm(`${title}\n\n${text}`)) toForm(); return }
+    Alert.alert(title, text, [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Отправить заявку', onPress: toForm },
+    ]);
+  };
+
   const toForm = () => {
     if (!sel || !court) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -178,14 +193,19 @@ export default function Schedule() {
   const live = (c: Court) => c.hours.filter(h => h.status !== 'past');
   const nothingLeft = shown.every(c => live(c).length === 0);
 
-  const morningPrice = shown[0]?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
-  const standardPrice = shown[0]?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
 
-  const parts = [
-    { key: 'am', label: 'Утро', from: 0, to: grid.morningUntil, price: morningPrice },
-    { key: 'pm', label: 'День', from: grid.morningUntil, to: EVENING, price: standardPrice },
-    { key: 'ev', label: 'Вечер', from: EVENING, to: 25, price: standardPrice },
-  ];
+  /** Подряд идущие часы с одной ценой — одна группа с заголовком
+   *  «2 000 ₽ · 09:00 – 13:00». */
+  const bands = (hs: ApiHour[]) => {
+    const out: { price: number; hours: ApiHour[] }[] = [];
+    for (const h of hs) {
+      const last = out[out.length - 1];
+      if (last && last.price === h.price
+          && last.hours[last.hours.length - 1].hour === h.hour - 1) last.hours.push(h);
+      else out.push({ price: h.price, hours: [h] });
+    }
+    return out;
+  };
 
   const peeked = grid.courts.find(c => c.courtId === peek) ?? null;
   const hasWa = !!club.whatsapp;
@@ -232,9 +252,7 @@ export default function Schedule() {
               );
             })}
           </View>
-          <Text style={st.durHint}>
-            Бронь от 1 часа · утро до {hh(grid.morningUntil)} — {rub(morningPrice)}, дальше {rub(standardPrice)}
-          </Text>
+          <Text style={st.durHint}>Минимальная бронь — 1 час</Text>
         </View>
 
         {/* ── Шаг 2: время по кортам ──────────────────────────────────── */}
@@ -264,22 +282,21 @@ export default function Schedule() {
 
               {c.closed ? (
                 <Text style={st.closed}>Корт закрыт — записаться нельзя</Text>
-              ) : parts.map(p => {
-                const inPart = hs.filter(h => h.hour >= p.from && h.hour < p.to);
-                if (inPart.length === 0) return null;
-                const free = inPart.filter(canStart).length;
+              ) : bands(hs).map(b => {
+                const free = b.hours.filter(canStart).length;
+                const from = b.hours[0].hour, to = b.hours[b.hours.length - 1].hour + 1;
                 return (
-                  <View key={p.key} style={st.part}>
+                  <View key={from} style={st.part}>
                     <View style={st.partHead}>
-                      <Text style={st.partT}>{p.label}</Text>
-                      <Text style={st.partPrice}>{rub(p.price)}/ч</Text>
+                      <Text style={st.partT}>{rub(b.price)}</Text>
+                      <Text style={st.partTime}>{hh(from)} – {hh(to)}</Text>
                       <View style={{ flex: 1 }} />
                       <Text style={[st.partFree, free === 0 && { color: C.dim2 }]}>
-                        {free === 0 ? 'всё занято' : `свободно ${free} из ${inPart.length}`}
+                        {free === 0 ? 'всё занято' : `свободно ${free} из ${b.hours.length}`}
                       </Text>
                     </View>
                     <View style={st.pills}>
-                      {inPart.map(h => {
+                      {b.hours.map(h => {
                         const ok = canStart(h);
                         const on = !!sel && sel.courtId === c.courtId && sel.hour === h.hour;
                         const covered = !!sel && sel.courtId === c.courtId
@@ -334,22 +351,12 @@ export default function Schedule() {
 
           {!!problem && <Text style={st.problem}>{problem}</Text>}
 
-          {/* Пока номер WhatsApp не указан в админке, кнопка ведёт в форму
-              приложения и называется просто «Забронировать»: надпись
-              «в WhatsApp» над кнопкой, которая открывает форму, была бы враньём. */}
-          {hasWa ? (
-            <Pressable onPress={bookInWhatsApp} disabled={sending} accessibilityRole="button"
-              accessibilityLabel="Забронировать в WhatsApp"
-              style={({ pressed }) => [st.wa, (pressed || sending) && { opacity: 0.85 }]}>
-              <IconWhatsApp size={20} color="#04240F" />
-              <Text style={st.waT}>{sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
-            </Pressable>
-          ) : (
-            <Pressable onPress={toForm} accessibilityRole="button"
-              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Забронировать</Text>
-            </Pressable>
-          )}
+          <Pressable onPress={hasWa ? bookInWhatsApp : whatsappStub} disabled={sending}
+            accessibilityRole="button" accessibilityLabel="Забронировать в WhatsApp"
+            style={({ pressed }) => [st.wa, (pressed || sending) && { opacity: 0.85 }]}>
+            <IconWhatsApp size={20} color="#04240F" />
+            <Text style={st.waT}>{sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
+          </Pressable>
 
           <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setProblem(null) }}
             accessibilityRole="button" hitSlop={8}
@@ -388,7 +395,8 @@ function CourtPeek({ court, onClose, onPick }: {
       <Pressable style={st.peekBack} onPress={onClose} accessibilityLabel="Закрыть фотографию">
         {court && (
           <Pressable style={st.peek} onPress={() => {}}>
-            <Image source={IMG[court.courtId] ?? IMG.c1} style={st.peekImg} resizeMode="cover" />
+            <Image source={court.photo ? { uri: mediaUrl(court.photo) } : (IMG[court.courtId] ?? IMG.c1)}
+              style={st.peekImg} resizeMode="cover" />
             <View style={st.peekIn}>
               <Text style={st.peekN}>{court.name}</Text>
               <Text style={st.peekS}>
@@ -463,8 +471,9 @@ const st = StyleSheet.create({
 
   part: { marginTop: 10 },
   partHead: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 8 },
-  partT: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.2 },
-  partPrice: { fontFamily: BODY, color: C.dim2, fontSize: 12 },
+  partT: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'] },
+  partTime: { fontFamily: DISP_MED, color: C.dim, fontSize: 12.5, fontVariant: ['tabular-nums'] },
   partFree: { fontFamily: DISP_MED, color: C.limeDim, fontSize: 11.5 },
 
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },

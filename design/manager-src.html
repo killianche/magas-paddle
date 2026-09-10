@@ -188,6 +188,13 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .checkRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .checkRow input,.checkRow select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);color-scheme:dark}
+.c-photos{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:8px}
+.c-photos .ph{width:108px}
+.c-photos .ph img{width:108px;height:74px;object-fit:cover;display:block;border:1px solid var(--line)}
+.c-photos .ph.main img{border-color:var(--lime)}
+.c-photos .ph-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:11px;color:var(--dim)}
+.c-photos .ph-none{font-size:12px;color:var(--dim-2)}
+.ph-add{cursor:pointer}
 .chk{display:flex;align-items:center;gap:9px;padding:9px 0;cursor:pointer;
   font-size:14px;color:var(--text)}
 .chk input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--lime)}
@@ -493,6 +500,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <button class="tab" data-tab="contacts">Контакты</button>
       <button class="tab" data-tab="app">Приложение</button>
       <button class="tab" data-tab="notify">Уведомления</button>
+      <button class="tab" data-tab="clients">Клиенты</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
     </div>
@@ -582,12 +590,28 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div><label for="setRentals">Прокат и раздевалка</label>
         <textarea id="setRentals" rows="3"
           placeholder="Ракетки — 300 ₽, мячи включены, есть душ и шкафчики"></textarea></div>
+      <div><label for="setWaTpl">Сообщение в WhatsApp при записи</label>
+        <textarea id="setWaTpl" rows="2" maxlength="500"
+          placeholder="Хочу забронировать {корт} на {дата}, {время} ({часы}), {цена}."></textarea></div>
+      <p class="sub" style="margin-top:4px">Подстановки: {корт} {дата} {время} {часы} {цена}.
+        Пусто — текст по умолчанию. Имя клиента и номер заявки приложение добавит само.</p>
       <p class="sub" style="margin-top:14px">Разделы приложения. Выключенный
         пропадает у всех, кто откроет приложение.</p>
       <label class="chk"><input type="checkbox" id="setTourn"> Показывать турниры</label>
       <label class="chk"><input type="checkbox" id="setFoot"> Показывать футбольное поле</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
+    </div>
+
+    <div class="pane" id="paneClients">
+      <p class="sub">Все, кто записывался или завёл аккаунт в приложении. «Пароль» —
+        человек защитил аккаунт; если он его забыл, сбросьте здесь, и он задаст новый
+        сам. Поиск по имени, фамилии или части номера.</p>
+      <div class="checkRow" style="margin-bottom:10px">
+        <input id="clQ" type="text" placeholder="Имя или последние цифры номера">
+        <button class="btn small" id="clGo">Найти</button>
+      </div>
+      <div id="clRows"></div>
     </div>
 
     <div class="pane" id="paneNotify">
@@ -1404,6 +1428,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab==='staff'){ loadStaff(); loadLog() }
   if(t.dataset.tab==='money') loadExpenses();
   if(t.dataset.tab==='notify') loadNotifications();
+  if(t.dataset.tab==='clients') loadClients();
 });
 
 async function openSetup(){
@@ -1417,6 +1442,7 @@ async function openSetup(){
   $('#setInsta').value = st.instagram || '';
   $('#setPrepay').value = st.prepayPercent; $('#setLate').value = st.lateMinutes;
   $('#setRentals').value = st.rentalsText || '';
+  $('#setWaTpl').value = st.waTemplate || '';
   $('#setTourn').checked = st.showTournaments !== false;
   $('#setFoot').checked = st.showFootball !== false;
   $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
@@ -1439,6 +1465,17 @@ async function openSetup(){
       <button class="btn small c-shut">${shut?'Открыть':'На ремонт'}</button>
       ${shut?`<span class="shut">до ${new Date(c.closedUntil).toLocaleDateString('ru-RU')}</span>`:''}
       <span class="saved" hidden>сохранено</span>
+      <div class="c-photos">
+        ${(c.photos||[]).map((ph, i) => `<div class="ph${i===0?' main':''}">
+            <img src="${esc(ph.url)}" alt="">
+            <div class="ph-acts">
+              ${i ? `<button class="copy" data-main="${ph.id}">сделать главной</button>` : '<span>главная</span>'}
+              <button class="copy" data-del="${ph.id}">удалить</button>
+            </div></div>`).join('')}
+        <label class="btn small ph-add">+ Фото
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple hidden></label>
+        ${(c.photos||[]).length ? '' : '<span class="ph-none">Своих фото нет — в приложении временные</span>'}
+      </div>
     </div>`;
   }).join('');
 
@@ -1456,6 +1493,30 @@ async function openSetup(){
         mark(); tariffs = {}; load();
       } catch(e){ alert(e.message) }
     };
+    // Фото: уменьшаем в браузере до 2000 px и сохраняем в JPEG — снимок с
+    // телефона весит 5–10 МБ, а в приложении хватает и 400 КБ. Заодно так
+    // открываются снимки HEIC с iPhone, если браузер умеет их читать.
+    row.querySelector('.ph-add input').onchange = async (e) => {
+      const files = [...e.target.files];
+      const add = row.querySelector('.ph-add');
+      for (const [n, f] of files.entries()) {
+        add.firstChild.textContent = `Загружаю ${n + 1} из ${files.length}…`;
+        try {
+          const data = await shrink(f);
+          await call('/admin/courts/' + id + '/photos', { method:'POST', body: JSON.stringify({ data }) });
+        } catch(err){ alert(`${f.name}: ${err.message}`) }
+      }
+      openSetup();
+    };
+    row.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if(!await ask('Удалить фото?', 'Оно пропадёт из приложения.')) return;
+      try { await call('/admin/photos/' + b.dataset.del + '/delete', { method:'POST' }); openSetup() }
+      catch(err){ alert(err.message) }
+    });
+    row.querySelectorAll('[data-main]').forEach(b => b.onclick = async () => {
+      try { await call('/admin/photos/' + b.dataset.main + '/main', { method:'POST' }); openSetup() }
+      catch(err){ alert(err.message) }
+    });
     row.querySelector('.c-act').onclick = async () => {
       const c = setup.courts.find(x => x.id===id);
       if(c.isActive && !await ask('Выключить площадку?',
@@ -1473,6 +1534,23 @@ async function openSetup(){
               openSetup(); load(); } catch(e){ alert(e.message) }
       } else openShut(c);
     };
+  });
+}
+
+/** Картинка → JPEG не больше 2000 px по длинной стороне, строкой base64. */
+function shrink(file){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 2000 / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(img.src);
+      res(cv.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => rej(new Error('браузер не смог открыть этот файл — сохраните фото в JPEG'));
+    img.src = URL.createObjectURL(file);
   });
 }
 
@@ -1511,12 +1589,57 @@ $('#appSave').onclick = async () => {
   try {
     await call('/admin/settings', { method:'POST', body: JSON.stringify({
       prepayPercent: +$('#setPrepay').value, lateMinutes: +$('#setLate').value,
-      rentalsText: $('#setRentals').value,
+      rentalsText: $('#setRentals').value, waTemplate: $('#setWaTpl').value,
       showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
     })});
     ok('#appErr', '#appSave', 'Сохранить');
   } catch(e){ fail('#appErr', e) }
 };
+
+/* ── клиенты ──────────────────────────────────────────── */
+async function loadClients(){
+  const q = $('#clQ').value.trim();
+  try {
+    const rows = await call('/admin/clients' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    $('#clRows').innerHTML = rows.length ? rows.map(c => {
+      const name = esc([c.name, c.surname].filter(Boolean).join(' '));
+      const wa = (c.whatsapp || c.phone || '').replace(/\D/g, '');
+      const last = c.lastAt ? new Date(c.lastAt).toLocaleDateString('ru-RU',
+        { day:'numeric', month:'short', timeZone:'Europe/Moscow' }) : '—';
+      const flags = [
+        c.hasPassword ? 'пароль' : 'без пароля',
+        c.cancels ? `отмен: ${c.cancels}` : '',
+        c.noShows ? `не пришёл: ${c.noShows}` : '',
+      ].filter(Boolean).join(' · ');
+      return `<div class="ntRow"><div>
+          <b>${name}</b>
+          <span>${phoneNice(c.phone)}${c.whatsapp && c.whatsapp !== c.phone
+            ? ' · WhatsApp ' + phoneNice(c.whatsapp) : ''}</span><br>
+          <span style="font-size:12px">записей: ${c.bookings} · последняя: ${last} · ${esc(flags)}</span>
+        </div>
+        <div class="to" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <a class="copy" href="https://wa.me/${wa}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="copy" data-note="${esc(c.phone)}">Написать</button>
+          ${c.hasPassword ? `<button class="copy" data-reset="${esc(c.phone)}">Сбросить пароль</button>` : ''}
+        </div></div>`;
+    }).join('') : '<div class="ntRow"><span>Никого не нашлось</span></div>';
+
+    $('#clRows').querySelectorAll('[data-note]').forEach(b => b.onclick = () => {
+      $('#ntPhone').value = b.dataset.note;
+      document.querySelector('.tab[data-tab="notify"]').click();
+      $('#ntTitle').focus();
+    });
+    $('#clRows').querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
+      if(!await ask('Сбросить пароль?', 'Клиент задаст новый пароль сам в приложении. Прежние входы закроются.')) return;
+      try {
+        await call('/admin/clients/' + encodeURIComponent(b.dataset.reset) + '/reset-password', { method:'POST' });
+        loadClients();
+      } catch(e){ alert(e.message) }
+    });
+  } catch(e){ $('#clRows').innerHTML = `<div class="ntRow"><span>${esc(e.message)}</span></div>` }
+}
+$('#clGo').onclick = loadClients;
+$('#clQ').addEventListener('keydown', e => { if(e.key === 'Enter') loadClients() });
 
 /* ── уведомления ──────────────────────────────────────── */
 $('#ntSend').onclick = async () => {

@@ -17,8 +17,11 @@ export class CourtsController {
     const courts = await this.db.courts.findMany({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' },
+      include: { court_photos: { orderBy: [{ sort: 'asc' }, { id: 'asc' }] } },
     });
     return courts.map(c => ({
+      // Снимки, загруженные клубом; пусто — приложение покажет временные
+      photos: c.court_photos.map(ph => ph.url),
       id: c.id,
       name: c.name,
       isFootball: c.is_football,
@@ -95,6 +98,7 @@ export class ClubController {
       rentalsText: s.rentalsText,
       showTournaments: s.showTournaments,
       showFootball: s.showFootball,
+      waTemplate: s.waTemplate,
     };
   }
 }

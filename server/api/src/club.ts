@@ -38,6 +38,8 @@ export type ClubSettings = {
   /** Разделы, которые клуб может выключить, пока они не нужны. */
   showTournaments: boolean;
   showFootball: boolean;
+  /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
+  waTemplate: string | null;
 };
 
 /** Значения на случай, если строки настроек в базе почему-то нет.
@@ -47,7 +49,7 @@ export const FALLBACK: ClubSettings = {
   holdMinutes: 60,
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true,
+  showTournaments: true, showFootball: true, waTemplate: null,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -94,6 +96,7 @@ export class ClubService {
       rentalsText: row.rentals_text ?? null,
       showTournaments: row.show_tournaments,
       showFootball: row.show_football,
+      waTemplate: row.wa_template ?? null,
     } : FALLBACK;
     this.readAt = Date.now();
     return this.cache;

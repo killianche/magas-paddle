@@ -9,6 +9,13 @@ import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
+import { randomBytes } from 'crypto';
+import { mkdir, unlink, writeFile } from 'fs/promises';
+import { join } from 'path';
+
+/** Куда складываются загруженные фото. В контейнере это смонтированная
+ *  папка сайта: nginx отдаёт её сам, без участия приложения. */
+const UPLOAD_DIR = process.env.UPLOAD_DIR ?? '/app/uploads';
 import { NotificationsService } from '../notifications/notifications.service';
 
 class StatusDto {
@@ -1000,12 +1007,14 @@ export class AdminController {
   @Get('setup')
   async setup() {
     const [courts, set] = await Promise.all([
-      this.db.courts.findMany({ orderBy: { sort_order: 'asc' } }),
+      this.db.courts.findMany({ orderBy: { sort_order: 'asc' },
+        include: { court_photos: { orderBy: [{ sort: 'asc' }, { id: 'asc' }] } } }),
       this.club.get(),
     ]);
     return {
       settings: set,
       courts: courts.map(c => ({
+        photos: c.court_photos.map(ph => ({ id: Number(ph.id), url: ph.url })),
         id: c.id, name: c.name, isFootball: c.is_football,
         priceMorning: c.price_morning, priceStandard: c.price_standard,
         isActive: c.is_active, sortOrder: c.sort_order, description: c.description,
@@ -1023,7 +1032,7 @@ export class AdminController {
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
-    showTournaments: boolean; showFootball: boolean;
+    showTournaments: boolean; showFootball: boolean; waTemplate: string;
   }>) {
     const cur = await this.club.get();
     const next = {
@@ -1046,6 +1055,8 @@ export class AdminController {
       show_tournaments: body.showTournaments === undefined
         ? cur.showTournaments : !!body.showTournaments,
       show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
+      wa_template: body.waTemplate === undefined
+        ? cur.waTemplate : (String(body.waTemplate).trim().slice(0, 500) || null),
     };
     if (next.open_hour >= next.close_hour) {
       throw new BadRequestException('Открытие должно быть раньше закрытия');
@@ -1060,6 +1071,68 @@ export class AdminController {
     });
     this.club.forget();
     return this.club.get();
+  }
+
+  /** Загрузить фотографию площадки.
+   *
+   *  Файл приходит строкой base64 в JSON: так не нужна отдельная библиотека
+   *  для составных запросов. Тип определяем по первым байтам файла, а не по
+   *  тому, что прислал браузер, — иначе под видом картинки можно положить
+   *  что угодно. Разрешены JPEG, PNG и WebP до 8 МБ. */
+  @Post('courts/:id/photos')
+  @Needs('club')
+  async addPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
+    const court = await this.db.courts.findUnique({ where: { id } });
+    if (!court) throw new NotFoundException('Площадка не найдена');
+    const raw = String(body.data ?? '').replace(/^data:[^;]+;base64,/, '');
+    const buf = Buffer.from(raw, 'base64');
+    if (buf.length < 100) throw new BadRequestException('Файл пустой или повреждён');
+    if (buf.length > 8 * 1024 * 1024) throw new BadRequestException('Фото больше 8 МБ — уменьшите его');
+    const ext = buf[0] === 0xff && buf[1] === 0xd8 ? 'jpg'
+      : buf.slice(0, 4).toString('hex') === '89504e47' ? 'png'
+      : buf.slice(0, 4).toString() === 'RIFF' && buf.slice(8, 12).toString() === 'WEBP' ? 'webp'
+      : null;
+    if (!ext) throw new BadRequestException('Нужна фотография в формате JPEG, PNG или WebP');
+
+    const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
+    const dir = join(UPLOAD_DIR, 'courts', court.id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, name), buf);
+
+    const last = await this.db.court_photos.findFirst({
+      where: { court_id: court.id }, orderBy: { sort: 'desc' } });
+    const ph = await this.db.court_photos.create({ data: {
+      court_id: court.id, url: `/uploads/courts/${court.id}/${name}`,
+      sort: (last?.sort ?? -1) + 1,
+    }});
+    await this.auth.log(req.admin, 'загрузил фото площадки', court.name);
+    return { id: Number(ph.id), url: ph.url };
+  }
+
+  @Post('photos/:id/delete')
+  @Needs('club')
+  async deletePhoto(@Req() req: any, @Param('id') id: string) {
+    const ph = await this.db.court_photos.findUnique({ where: { id: BigInt(id) } });
+    if (!ph) throw new NotFoundException('Фото не найдено');
+    await this.db.court_photos.delete({ where: { id: ph.id } });
+    // Файл убираем с диска; если его уже нет — не беда, запись всё равно удалена
+    const rel = ph.url.replace(/^\/uploads\//, '');
+    if (!rel.includes('..')) await unlink(join(UPLOAD_DIR, rel)).catch(() => {});
+    await this.auth.log(req.admin, 'удалил фото площадки', ph.court_id);
+    return { ok: true };
+  }
+
+  /** Сделать фото главным: оно встанет первым — на карточку и в начало галереи. */
+  @Post('photos/:id/main')
+  @Needs('club')
+  async mainPhoto(@Param('id') id: string) {
+    const ph = await this.db.court_photos.findUnique({ where: { id: BigInt(id) } });
+    if (!ph) throw new NotFoundException('Фото не найдено');
+    const first = await this.db.court_photos.findFirst({
+      where: { court_id: ph.court_id }, orderBy: { sort: 'asc' } });
+    await this.db.court_photos.update({ where: { id: ph.id },
+      data: { sort: (first?.sort ?? 0) - 1 } });
+    return { ok: true };
   }
 
   /** Название, цены, порядок и включение площадки. */
@@ -1432,6 +1505,34 @@ export class AdminController {
       createdAt: n.created_at, createdBy: n.created_by,
       to: n.clients ? { name: n.clients.name, phone: n.clients.phone } : null,
       read: n.client_id != null ? n.read_at != null : null,
+    }));
+  }
+
+  /** Все клиенты: кто записывался и кто завёл аккаунт.
+   *  Поиск по имени, фамилии или части номера — как ищут у стойки. */
+  @Get('clients')
+  async clientsList(@Query('q') q?: string) {
+    const text = String(q ?? '').trim();
+    const digits = text.replace(/\D/g, '');
+    const where: any = text ? { OR: [
+      { name: { contains: text, mode: 'insensitive' } },
+      { surname: { contains: text, mode: 'insensitive' } },
+      ...(digits.length >= 3
+        ? [{ phone: { contains: digits } }, { whatsapp: { contains: digits } }] : []),
+    ] } : {};
+    const rows = await this.db.clients.findMany({ where, orderBy: { created_at: 'desc' }, take: 300 });
+    const stats = await this.db.bookings.groupBy({
+      by: ['client_id'],
+      where: { client_id: { in: rows.map(r => r.id) }, status: { notIn: ['cancelled', 'expired'] } },
+      _count: { _all: true }, _max: { starts_at: true },
+    });
+    const byId = new Map(stats.map(x => [String(x.client_id), x]));
+    return rows.map(c => ({
+      id: Number(c.id), name: c.name, surname: c.surname, phone: c.phone,
+      whatsapp: c.whatsapp, hasPassword: !!c.pass_hash, since: c.created_at,
+      bookings: byId.get(String(c.id))?._count._all ?? 0,
+      lastAt: byId.get(String(c.id))?._max.starts_at ?? null,
+      cancels: c.cancels, noShows: c.no_shows,
     }));
   }
 

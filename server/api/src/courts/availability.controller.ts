@@ -40,6 +40,14 @@ export class AvailabilityController {
     // «с 12:00» уже нельзя, и сетка не должна это предлагать.
     const now = new Date();
 
+    // Главное фото каждого корта — первое по порядку, если клуб загружал.
+    // Нужно карточкам на главной и превью в записи.
+    const firstPhoto = new Map<string, string>();
+    for (const ph of await this.db.court_photos.findMany({
+      orderBy: [{ sort: 'asc' }, { id: 'asc' }] })) {
+      if (!firstPhoto.has(ph.court_id)) firstPhoto.set(ph.court_id, ph.url);
+    }
+
     const rows = courts.map(c => {
       const busy = new Set<number>();
       for (const b of bookings) {
@@ -65,7 +73,8 @@ export class AvailabilityController {
           maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, set.closeHour, set.maxHours),
         });
       }
-      return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours };
+      return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours,
+        photo: firstPhoto.get(c.id) ?? null };
     });
 
     return {
