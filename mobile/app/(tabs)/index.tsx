@@ -150,10 +150,12 @@ export default function Home() {
           <Text style={st.h1} allowFontScaling={false}>ВЫХОДИ</Text>
           <OutlineText size={52} width={width - S.xl * 2}>НА КОРТ</OutlineText>
 
+          {/* Во всю ширину: это главное действие приложения, и оно должно
+              читаться сразу — надпись слева, стрелка у правого края. */}
           <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
-            accessibilityLabel={`Забронировать. ${freeText}`}
+            accessibilityLabel={`Забронировать корт. ${freeText}`}
             style={({ pressed }) => [st.heroAction, pressed && { opacity: 0.9 }]}>
-            <Text style={st.heroActionT}>Забронировать</Text>
+            <Text style={st.heroActionT}>Забронировать корт</Text>
             <Text style={st.heroArrow}>→</Text>
           </Pressable>
 
@@ -394,9 +396,9 @@ const st = StyleSheet.create({
   // Отрицательный трекинг — главная черта макета.
   h1: { ...TITLE.hero, color: C.text, marginTop: 8 },
   // Вторая строка контуром. На iOS это делается обводкой текста.
-  heroAction: { flexDirection: 'row', alignItems: 'center', gap: 22,
-    alignSelf: 'flex-start', backgroundColor: C.lime,
-    paddingVertical: 14, paddingHorizontal: 17, marginTop: 16, minHeight: HIT },
+  heroAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: C.lime, paddingVertical: 16, paddingHorizontal: 18,
+    marginTop: 16, minHeight: 52 },
   heroActionT: { color: C.onLime, fontFamily: DISP, fontSize: 13, letterSpacing: 0.8,
     textTransform: 'uppercase' },
   heroArrow: { color: C.onLime, fontFamily: DISP, fontSize: 18 },

@@ -16,8 +16,15 @@ import { useClub } from '../../src/club';
 import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
 /** Высота самой панели без отступа снизу.
- *  62 было мало: контейнер подписи сжимался до трёх пикселей и текст срезало. */
-const BAR = 74;
+ *
+ *  Библиотека прижимает значок с подписью к ВЕРХУ пункта (flex-start) и даёт
+ *  им собственные поля по 5 pt, поэтому одинаковые отступы панели сверху и
+ *  снизу на глаз выходили неравными: над значком пусто, под подписью тесно.
+ *  Отступы подобраны так, чтобы видимые поля совпали: у значка в коробке
+ *  28 pt ещё свои ~5 pt пустоты сверху, у прописной подписи — ~3 pt снизу. */
+const BAR = 63;
+const PAD_TOP = 3;
+const PAD_BOTTOM = 7;
 /** Поля панели от краёв экрана. */
 const SIDE = 14;
 
@@ -44,8 +51,8 @@ export default function TabsLayout() {
           borderTopWidth: 0,
           backgroundColor: 'transparent',
           overflow: 'hidden',
-          paddingTop: 10,
-          paddingBottom: 10,
+          paddingTop: PAD_TOP,
+          paddingBottom: PAD_BOTTOM,
           // Тень отделяет панель от фотографии под ней
           shadowColor: '#000', shadowOpacity: 0.45,
           shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
@@ -61,14 +68,13 @@ export default function TabsLayout() {
             <View style={[StyleSheet.absoluteFill, s.tint]} />
           </View>
         ),
-        tabBarItemStyle: { paddingTop: 2 },
 
         tabBarActiveTintColor: C.text,
         // Светлее макета: на #68766D подпись давала контраст 4.1 при норме 4.5
         tabBarInactiveTintColor: '#8D9A91',
         tabBarLabelStyle: {
-          fontFamily: DISP_MED, fontSize: 11, lineHeight: 14, letterSpacing: 0.3,
-          textTransform: 'uppercase', marginTop: 3,
+          fontFamily: DISP_MED, fontSize: 11, lineHeight: 13, letterSpacing: 0.3,
+          textTransform: 'uppercase', marginTop: 2,
         },
         sceneStyle: { backgroundColor: C.ink },
       }}>

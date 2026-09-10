@@ -1,47 +1,77 @@
-// Экран выбора времени: сетка «часы × площадки», данные с сервера.
-// Подписи часов стоят на границах клеток — клетка читается как промежуток
-// от 18:00 до 19:00, а не как «момент 18:00».
+// Запись на корт — по образцу, который выбрал заказчик.
+//
+// Порядок как у человека в голове: сначала «сколько играем», потом «когда».
+// Время — плитками по каждому корту, разложенными на утро, день и вечер;
+// плитка сразу говорит, можно ли начать в этот час на выбранную длительность.
+// Выбрал — снизу панель со сводкой и кнопкой «Забронировать в WhatsApp»:
+// она открывает чат клуба с готовым сообщением. Так клуб и работает — бронь
+// подтверждает менеджер после предоплаты.
+//
+// Если человек уже заходил в аккаунт, заявка заодно заводится и в приложении:
+// время держится за ним, менеджер видит её в админке, человек — в «Моих
+// записях». Без аккаунта уходит только сообщение в WhatsApp.
+//
+// Шаг — один час: сервер и цены клуба почасовые. Получасовых слотов и
+// брони на полтора часа, как в образце, нет — это решение клуба (Q55).
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Image, Modal, RefreshControl } from 'react-native';
+import {
+  Alert, Image, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView,
+  StyleSheet, Text, View, useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
-import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { api, rub, ApiError, type ApiGrid, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
 import { IMG } from '../src/images';
-import { IconBall, IconChevron } from '../src/components/icons';
-import { today, addDays, weekdayShort, dayNumber, hh, plural } from '../src/dates';
+import { IconChevron, IconCheck, IconWhatsApp } from '../src/components/icons';
+import { SocialButtons, WhereWeAre } from '../src/components/contacts';
+import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../src/dates';
 import { useClub } from '../src/club';
+import { useProfile, fullName } from '../src/profile';
 
 const DAYS_AHEAD = 14;   // две недели: на прошлых пяти днях нельзя было занять следующие выходные
+/** С этого часа — вечер. Граница утра берётся из настроек клуба: это граница тарифа. */
+const EVENING = 18;
+/** Плиток в ряду, как в образце. */
+const COLS = 4;
+const GAP = 7;
+const CARD_PAD = 12;
+
+type Court = ApiGrid['courts'][number];
 
 export default function Schedule() {
   const club = useClub();
+  const { profile } = useProfile();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [date, setDate] = useState(today());
-  const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [hours, setHours] = useState(1);
-  // Какую площадку показываем крупно. Заказчик просил: у кортов разный цвет пола,
-  // и перед записью человек должен увидеть, куда именно он идёт.
+  const [sel, setSel] = useState<{ courtId: string; hour: number } | null>(null);
   const [peek, setPeek] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
   const q = useApi(() => api.grid(date), [date], `grid.${date}`);
   const days = useMemo(
     () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today(), i)), []);
 
-  const gap = 3, padH = 10, timeW = 32;
+  // Ширина плитки считается от экрана: четыре в ряд без дыр справа
+  // Минус 2 — рамка карточки: без неё четвёртая плитка не влезала и уезжала вниз
+  const pillW = Math.floor(
+    (Math.min(width, 520) - S.xl * 2 - CARD_PAD * 2 - 2 - GAP * (COLS - 1)) / COLS);
 
   const grid = q.data;
-  // Только падел-корты: поле бронируется на своём экране — сетка на шесть
-  // колонок, ужатая до одной, оставляла пустой экран.
+  // Только падел-корты: поле бронируется на своём экране
   const shown = (grid?.courts ?? []).filter(c => !c.isFootball);
   const court = grid?.courts.find(c => c.courtId === sel?.courtId) ?? null;
-  const cell = court?.hours.find(h => h.hour === sel?.hour) ?? null;
-  const run = cell?.maxRun ?? 0;
 
-  // Цена складывается по часам: день и вечер стоят по-разному
+  /** Можно ли начать в этот час на выбранную длительность. */
+  const canStart = (h: ApiHour) => h.status === 'free' && h.maxRun >= hours;
+
+  // Цена складывается по часам: утро и вечер стоят по-разному
   const total = useMemo(() => {
     if (!court || !sel) return 0;
     let sum = 0;
@@ -51,25 +81,89 @@ export default function Schedule() {
     return sum;
   }, [court, sel, hours]);
 
-  const pickCell = (courtId: string, h: ApiHour) => {
-    if (h.status !== 'free') return;
+  const pickDate = (d: string) => {
     Haptics.selectionAsync();
-    // Нажатие по уже выбранной клетке снимает выбор: раньше передумать
-    // и «отжать» время было нечем.
-    if (sel && sel.courtId === courtId && sel.hour === h.hour) {
-      setSel(null); setHours(1); return;
-    }
-    setSel({ courtId, hour: h.hour });
-    setHours(prev => Math.min(prev, h.maxRun) || 1);
+    setDate(d); setSel(null); setProblem(null);
   };
 
+  // Сменили длительность — выбранное время может перестать подходить
   const pickHours = (n: number) => {
-    if (!sel || n > run) return;
     Haptics.selectionAsync();
-    setHours(n);
+    setHours(n); setProblem(null);
+    if (sel && court) {
+      const h = court.hours.find(x => x.hour === sel.hour);
+      if (!h || !(h.status === 'free' && h.maxRun >= n)) setSel(null);
+    }
   };
 
-  const book = () => {
+  const pickSlot = (courtId: string, h: ApiHour) => {
+    if (!canStart(h)) return;
+    Haptics.selectionAsync();
+    setProblem(null);
+    // Нажатие по выбранной плитке снимает выбор
+    if (sel && sel.courtId === courtId && sel.hour === h.hour) { setSel(null); return }
+    setSel({ courtId, hour: h.hour });
+  };
+
+  /** Текст для WhatsApp — такой, чтобы менеджеру не пришлось переспрашивать. */
+  const message = (bookingId?: number) => {
+    if (!sel || !court) return '';
+    const lines = [
+      `Здравствуйте! Хочу забронировать ${court.name} на ${dayMonth(date)}, `
+        + `${hh(sel.hour)} → ${hh(sel.hour + hours)} `
+        + `(${hours} ${plural(hours, 'час', 'часа', 'часов')}), ${rub(total)}.`,
+    ];
+    if (profile) lines.push(`Меня зовут ${fullName(profile)}.`);
+    if (bookingId) lines.push(`Заявка №${bookingId} в приложении.`);
+    return lines.join('\n');
+  };
+
+  const openWhatsApp = async (text: string) => {
+    const digits = (club.whatsapp ?? '').replace(/\D/g, '');
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+    try { await Linking.openURL(url) }
+    catch {
+      const msg = 'Не получилось открыть WhatsApp. Напишите менеджеру вручную.';
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('WhatsApp', msg);
+    }
+  };
+
+  const bookInWhatsApp = async () => {
+    if (!sel || !court || sending) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setProblem(null);
+
+    // Без аккаунта — только сообщение: имени и телефона для заявки у нас нет
+    if (!profile) { await openWhatsApp(message()); return }
+
+    setSending(true);
+    try {
+      const b = await api.book({
+        courtId: sel.courtId, date, hour: sel.hour, hours,
+        name: profile.name, surname: profile.surname, phone: profile.phone,
+        whatsapp: profile.whatsapp,
+      });
+      await openWhatsApp(message(b.id));
+      // Вернётся из WhatsApp — увидит, что заявка принята и что дальше
+      router.replace({ pathname: '/sent', params: {
+        id: String(b.id), name: b.courtName, date,
+        hour: String(sel.hour), hours: String(hours), price: String(b.price),
+        holdUntil: b.holdUntil ?? '' } });
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'slot_taken') {
+        setProblem('Это время только что заняли. Выберите другое.');
+        setSel(null); q.refresh();
+      } else {
+        setProblem(e instanceof ApiError ? e.message : 'Не получилось отправить заявку.');
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Номер WhatsApp клуб задаёт в админке. Пока его нет — заявка через форму
+  // в приложении, а не выдуманный номер и не мёртвая кнопка.
+  const toForm = () => {
     if (!sel || !court) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/book', params: {
@@ -77,201 +171,211 @@ export default function Schedule() {
       hour: String(sel.hour), hours: String(hours), price: String(total) } });
   };
 
-  const inRange = (cId: string, h: number) =>
-    !!sel && sel.courtId === cId && h >= sel.hour && h < sel.hour + hours;
-
-  if (q.loading) return (<><Stack.Screen options={{ title: 'Выберите время' }} /><Loading note="Смотрю, что свободно" /></>);
-  if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Выберите время' }} />
+  if (q.loading) return (<><Stack.Screen options={{ title: 'Бронирование' }} /><Loading note="Смотрю, что свободно" /></>);
+  if (q.error || !grid) return (<><Stack.Screen options={{ title: 'Бронирование' }} />
     <Failed message={q.error ?? 'Пустой ответ сервера'} onRetry={q.reload} /></>);
 
-  const closedNote = shown.find(c => c.closed);
+  // Прошедшие часы не показываем: занять их нельзя
+  const live = (c: Court) => c.hours.filter(h => h.status !== 'past');
+  const nothingLeft = shown.every(c => live(c).length === 0);
 
-  // Тарифы для подписи над сеткой: берём у обычного корта, не у футбольного поля
-  const priced = shown[0] ?? grid.courts[0];
-  const morningPrice = priced?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
-  const standardPrice = priced?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
+  const morningPrice = shown[0]?.hours.find(h => h.hour < grid.morningUntil)?.price ?? 0;
+  const standardPrice = shown[0]?.hours.find(h => h.hour >= grid.morningUntil)?.price ?? 0;
 
-  // Прошедшие часы не показываем: занять их нельзя, а к вечеру они съедают
-  // почти весь экран, и до свободного времени приходится прокручивать.
-  // Так только сегодня — в другие дни прошедших часов нет.
-  const allHours = shown[0]?.hours ?? [];
-  const rows = allHours.filter(h => h.status !== 'past');
-  const passed = allHours.length - rows.length;
+  const parts = [
+    { key: 'am', label: 'Утро', from: 0, to: grid.morningUntil, price: morningPrice },
+    { key: 'pm', label: 'День', from: grid.morningUntil, to: EVENING, price: standardPrice },
+    { key: 'ev', label: 'Вечер', from: EVENING, to: 25, price: standardPrice },
+  ];
 
-  const showCourt = (courtId: string) => { Haptics.selectionAsync(); setPeek(courtId) };
   const peeked = grid.courts.find(c => c.courtId === peek) ?? null;
+  const hasWa = !!club.whatsapp;
 
   return (
     <View style={st.root}>
-      {/* Название экрана живёт в шапке: заголовок, надзаголовок и строка
-          тарифов занимали четверть экрана, а нужна здесь сетка. Тарифы
-          переехали вниз, к кнопке — там они и читаются перед выбором. */}
-      <Stack.Screen options={{ title: 'Выберите время' }} />
+      <Stack.Screen options={{ title: 'Бронирование' }} />
 
-      {/* flexGrow: 0 — иначе вложенная горизонтальная прокрутка растягивается
-          по высоте и под чипами остаётся пустая полоса */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }} contentContainerStyle={st.days}>
-        {days.map(d => {
-          const on = date === d;
-          return (
-            <Pressable key={d}
-              onPress={() => { Haptics.selectionAsync(); setDate(d); setSel(null); setHours(1) }}
-              accessibilityRole="button" accessibilityState={{ selected: on }}
-              style={[st.day, on && st.dayOn]}>
-              <Text style={[st.dayW, on && { color: '#647068' }]}>{weekdayShort(d)}</Text>
-              <Text style={[st.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: padH }}>
-        <View style={[st.headRow, { gap }]}>
-          <View style={{ width: timeW }} />
-          {shown.map(c => (
-            <Pressable key={c.courtId} onPress={() => showCourt(c.courtId)}
-              accessibilityRole="button"
-              accessibilityLabel={`${c.name}: посмотреть фотографию площадки`}
-              style={({ pressed }) => [st.headCell, pressed && { opacity: 0.6 }]}>
-              {/* Миниатюра площадки прямо в шапке: у кортов разное покрытие,
-                  и цвет пола должен быть виден до того, как человек выберет час. */}
-              <Image source={IMG[c.courtId] ?? IMG.c1}
-                style={[st.headPh, c.closed && { opacity: 0.4 }]} resizeMode="cover" />
-              {c.isFootball
-                ? <IconBall size={13} color={c.closed ? C.busy : C.dim} />
-                : <Text style={[st.headT, c.closed && { color: C.busy }]}>
-                    К{c.name.replace(/\D/g, '') || '?'}
-                  </Text>}
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {passed > 0 && rows.length > 0 && (
-        <Text style={st.passed}>
-          {hh(allHours[0].hour)} – {hh(allHours[passed - 1].hour + 1)} уже прошли
-        </Text>
-      )}
-
-      <ScrollView style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: padH, paddingTop: 7, paddingBottom: 10 }}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
-        {rows.length === 0 && (
-          <Text style={st.allPassed}>
-            Сегодня клуб уже закрывается. Выберите другой день выше.
-          </Text>
-        )}
+        {/* flexGrow: 0 — иначе вложенная горизонтальная прокрутка растягивается по высоте */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0 }} contentContainerStyle={st.days}>
+          {days.map(d => {
+            const on = date === d;
+            return (
+              <Pressable key={d} onPress={() => pickDate(d)}
+                accessibilityRole="button" accessibilityState={{ selected: on }}
+                style={[st.day, on && st.dayOn]}>
+                <Text style={[st.dayW, on && { color: '#647068' }]}>{weekdayShort(d)}</Text>
+                <Text style={[st.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
-        {rows.map(({ hour }) => (
-          <View key={hour} style={[st.row, { gap }]}>
-            <Text style={[st.time, { width: timeW }]}>{hh(hour)}</Text>
-            {shown.map(c => {
-              const h = c.hours.find(x => x.hour === hour)!;
-              const free = h.status === 'free';
-              const on = inRange(c.courtId, hour);
-              const start = !!sel && sel.courtId === c.courtId && sel.hour === hour;
+        {/* ── Шаг 1: длительность ─────────────────────────────────────── */}
+        <Step n={1} title="Сколько играем" />
+        <View style={st.card}>
+          <View style={st.durRow}>
+            {Array.from({ length: grid.maxHours }, (_, i) => i + 1).map(n => {
+              const on = hours === n;
               return (
-                <Pressable key={c.courtId} disabled={!free} onPress={() => pickCell(c.courtId, h)}
+                <Pressable key={n} onPress={() => pickHours(n)}
                   accessibilityRole="button"
-                  accessibilityLabel={
-                    h.status === 'closed' ? `${c.name}, закрыт`
-                    : on ? `${c.name}, ${hh(hour)}, выбрано`
-                    : free ? `${c.name}, ${hh(hour)}, свободно`
-                    : `${c.name}, ${hh(hour)}, занято`}
-                  accessibilityState={{ selected: on, disabled: !free }}
-                  style={({ pressed }) => [st.cell,
-                    h.status === 'closed' ? st.cellOff : free ? st.cellFree : st.cellBusy,
-                    on && st.cellOn,
-                    pressed && free && !on && { backgroundColor: C.surface3 }]}>
-                  {h.status === 'closed' ? null
-                    : on ? (start ? <View style={st.dotOn} /> : <View style={st.barOn} />)
-                    : free ? <View style={st.dotFree} />
-                    : <View style={st.dashBusy} />}
+                  accessibilityLabel={`${n} ${plural(n, 'час', 'часа', 'часов')}`}
+                  accessibilityState={{ selected: on }}
+                  style={({ pressed }) => [st.dur, on && st.durOn, pressed && !on && { opacity: 0.8 }]}>
+                  <Text style={[st.durT, on && { color: C.onLime }]}>{n} ч</Text>
                 </Pressable>
               );
             })}
           </View>
-        ))}
-
-        <View style={[st.row, { gap, marginBottom: 0 }]}>
-          <Text style={[st.time, st.timeLast, { width: timeW }]}>{hh(grid.closeHour)}</Text>
+          <Text style={st.durHint}>
+            Бронь от 1 часа · утро до {hh(grid.morningUntil)} — {rub(morningPrice)}, дальше {rub(standardPrice)}
+          </Text>
         </View>
 
-        <View style={st.legend}>
-          <Leg label="свободно" free />
-          <Leg label="занято" />
-          <Leg label="закрыт" dashed />
-        </View>
-        {closedNote && (
-          <Text style={st.note}>
-            {closedNote.name} закрыт{closedNote.isFootball ? 'о' : ''} — ремонт покрытия
+        {/* ── Шаг 2: время по кортам ──────────────────────────────────── */}
+        <Step n={2} title="Выбери время" note="нажми на свободный час" />
+
+        {nothingLeft && (
+          <Text style={st.allPassed}>
+            На сегодня время закончилось. Выберите другой день выше.
           </Text>
         )}
-      </ScrollView>
 
-      <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
-        {sel && court ? (
-          <>
-            {/* Что выбрано — просто подпись. Раньше отсюда открывался экран
-                площадки, и нажатие уводило человека с полпути записи. */}
-            <View style={st.pick}>
-              <Image source={IMG[sel.courtId] ?? IMG.c1} style={st.pickPh} resizeMode="cover" />
-              <View style={{ flex: 1 }}>
-                <Text style={st.pickN}>{court.name}</Text>
-                <Text style={st.pickS}>{hh(sel.hour)} – {hh(sel.hour + hours)} · {rub(total)}</Text>
-              </View>
-            </View>
+        {!nothingLeft && shown.map(c => {
+          const hs = live(c);
+          return (
+            <View key={c.courtId} style={st.card}>
+              {/* Шапка корта: нажатие показывает фотографию площадки */}
+              <Pressable onPress={() => { Haptics.selectionAsync(); setPeek(c.courtId) }}
+                accessibilityRole="button" accessibilityLabel={`${c.name}: фотография площадки`}
+                style={({ pressed }) => [st.courtHead, pressed && { opacity: 0.7 }]}>
+                <View style={st.courtNum}>
+                  <Text style={st.courtNumT}>{c.name.replace(/\D/g, '') || '·'}</Text>
+                </View>
+                <Text style={st.courtName}>{c.name}</Text>
+                <Text style={st.photoT}>фото</Text>
+                <IconChevron size={14} color={C.dim2} />
+              </Pressable>
 
-            {/* Передумать должно быть так же просто, как выбрать */}
-            <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setHours(1) }}
-              accessibilityRole="button" accessibilityLabel="Снять выбор времени"
-              hitSlop={8} style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
-              <Text style={st.clearT}>Сбросить выбор</Text>
-            </Pressable>
-
-            <View style={st.durRow}>
-              {Array.from({ length: grid.maxHours }, (_, i) => i + 1).map(n => {
-                const ok = n <= run;
-                const on = hours === n;
+              {c.closed ? (
+                <Text style={st.closed}>Корт закрыт — записаться нельзя</Text>
+              ) : parts.map(p => {
+                const inPart = hs.filter(h => h.hour >= p.from && h.hour < p.to);
+                if (inPart.length === 0) return null;
+                const free = inPart.filter(canStart).length;
                 return (
-                  <Pressable key={n} disabled={!ok} onPress={() => pickHours(n)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${n} ${plural(n, 'час', 'часа', 'часов')}, ${ok ? (on ? 'выбрано' : 'доступно') : 'занято'}`}
-                    accessibilityState={{ selected: on, disabled: !ok }}
-                    style={[st.dur, on && st.durOn, !ok && st.durOff]}>
-                    <Text style={[st.durT, on && { color: C.onLime }, !ok && { color: C.busy }]}>
-                      {n} {plural(n, 'час', 'часа', 'часов')}
-                    </Text>
-                  </Pressable>
+                  <View key={p.key} style={st.part}>
+                    <View style={st.partHead}>
+                      <Text style={st.partT}>{p.label}</Text>
+                      <Text style={st.partPrice}>{rub(p.price)}/ч</Text>
+                      <View style={{ flex: 1 }} />
+                      <Text style={[st.partFree, free === 0 && { color: C.dim2 }]}>
+                        {free === 0 ? 'всё занято' : `свободно ${free} из ${inPart.length}`}
+                      </Text>
+                    </View>
+                    <View style={st.pills}>
+                      {inPart.map(h => {
+                        const ok = canStart(h);
+                        const on = !!sel && sel.courtId === c.courtId && sel.hour === h.hour;
+                        const covered = !!sel && sel.courtId === c.courtId
+                          && h.hour > sel.hour && h.hour < sel.hour + hours;
+                        const busy = h.status !== 'free';
+                        return (
+                          <Pressable key={h.hour} disabled={!ok} onPress={() => pickSlot(c.courtId, h)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${c.name}, ${hh(h.hour)}, ${
+                              on ? 'выбрано' : ok ? 'свободно' : busy ? 'занято' : 'не хватает времени'}`}
+                            accessibilityState={{ selected: on, disabled: !ok }}
+                            style={({ pressed }) => [st.pill, { width: pillW },
+                              busy ? st.pillBusy : ok ? st.pillFree : st.pillShort,
+                              covered && st.pillCovered,
+                              on && st.pillOn,
+                              pressed && ok && !on && { opacity: 0.8 }]}>
+                            <Text style={[st.pillT,
+                              busy ? st.pillTBusy : ok ? null : st.pillTShort,
+                              on && { color: C.onLime }]}>
+                              {hh(h.hour)}
+                            </Text>
+                            {on && <View style={st.tick}><IconCheck size={10} color={C.onLime} active /></View>}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
                 );
               })}
             </View>
+          );
+        })}
 
+        {/* ── Связь и правила — как в образце, но только то, что правда ── */}
+        <Text style={st.infoH}>Связаться с нами</Text>
+        <Text style={st.infoP}>
+          Бронируем по предоплате через WhatsApp. Можно написать или позвонить —
+          подскажем свободное время и ответим на вопросы.
+        </Text>
+        <SocialButtons />
 
-            <Pressable onPress={book} accessibilityRole="button"
-              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Забронировать · {rub(total)}</Text>
-            </Pressable>
-            <Text style={st.payNote}>
-              Бронь подтверждается предоплатой {club.prepayPercent} % · остальное на месте
-            </Text>
-          </>
-        ) : (
+        <Text style={st.infoH}>Правила</Text>
+        <View style={st.card}>
+          <Rule k="Минимальная бронь" v="1 час" />
+          <Rule k="Подтверждение" v={`предоплата ${club.prepayPercent} %`} />
+          <Rule k="Бесплатная отмена" v={`за ${club.cancelHours} ${plural(club.cancelHours, 'час', 'часа', 'часов')}`} />
+          <Rule k="Опоздание" v={`корт держим ${club.lateMinutes} минут`} last />
+        </View>
+
+        {!!club.rentalsText && (
           <>
-            <Text style={st.empty}>Нажмите свободное время на нужной площадке</Text>
-            <Text style={st.tariffT}>
-              <Text style={{ color: C.lime, fontFamily: DISP_MED }}>{rub(morningPrice)}</Text>
-              {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
-            </Text>
-            <View style={[st.cta, st.ctaOff]}>
-              <Text style={[st.ctaT, { color: C.dim2 }]}>Забронировать</Text>
-            </View>
+            <Text style={st.infoH}>Что входит в аренду</Text>
+            <View style={st.card}><Text style={st.rentals}>{club.rentalsText}</Text></View>
           </>
         )}
-      </View>
+
+        <Text style={st.infoH}>Где мы</Text>
+        <WhereWeAre />
+      </ScrollView>
+
+      {/* ── Выбранное время: сводка и кнопка ────────────────────────── */}
+      {sel && court && (
+        <View style={[st.sheet, { paddingBottom: insets.bottom + 12 }]}>
+          <View style={st.sumRow}>
+            <Text style={st.sumL}>{court.name} · {dayMonth(date)}</Text>
+            <Text style={st.sumR}>
+              {hh(sel.hour)} → {hh(sel.hour + hours)} · <Text style={{ color: C.lime }}>{rub(total)}</Text>
+            </Text>
+          </View>
+
+          {!!problem && <Text style={st.problem}>{problem}</Text>}
+
+          {hasWa ? (
+            <Pressable onPress={bookInWhatsApp} disabled={sending} accessibilityRole="button"
+              accessibilityLabel="Забронировать в WhatsApp"
+              style={({ pressed }) => [st.wa, (pressed || sending) && { opacity: 0.85 }]}>
+              <IconWhatsApp size={20} color="#04240F" />
+              <Text style={st.waT}>{sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={toForm} accessibilityRole="button"
+              style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
+              <Text style={st.ctaT}>Отправить заявку · {rub(total)}</Text>
+            </Pressable>
+          )}
+
+          <Text style={st.payNote}>
+            Бронь подтверждается предоплатой {club.prepayPercent} % · остальное на месте
+          </Text>
+          <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setProblem(null) }}
+            accessibilityRole="button" hitSlop={8}
+            style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
+            <Text style={st.clearT}>сбросить выбор</Text>
+          </Pressable>
+        </View>
+      )}
 
       <CourtPeek court={peeked} onClose={() => setPeek(null)}
         onPick={() => { const id = peeked!.courtId; setPeek(null);
@@ -280,10 +384,30 @@ export default function Schedule() {
   );
 }
 
-/** Фотография площадки поверх сетки. Нужна, потому что корты отличаются
-    покрытием и цветом пола, а по букве «К3» этого не видно. */
+/** Номер шага и подпись — как в образце: «1 Сколько играем». */
+function Step({ n, title, note }: { n: number; title: string; note?: string }) {
+  return (
+    <View style={st.step}>
+      <View style={st.stepN}><Text style={st.stepNT}>{n}</Text></View>
+      <Text style={st.stepT}>{title}</Text>
+      {!!note && <Text style={st.stepNote}>— {note}</Text>}
+    </View>
+  );
+}
+
+function Rule({ k, v, last }: { k: string; v: string; last?: boolean }) {
+  return (
+    <View style={[st.rule, last && { borderBottomWidth: 0 }]}>
+      <Text style={st.ruleK}>{k}</Text>
+      <Text style={st.ruleV}>{v}</Text>
+    </View>
+  );
+}
+
+/** Фотография площадки поверх экрана. Корты отличаются покрытием и цветом
+    пола, а по названию этого не видно. */
 function CourtPeek({ court, onClose, onPick }: {
-  court: ApiGrid['courts'][number] | null; onClose: () => void; onPick: () => void;
+  court: Court | null; onClose: () => void; onPick: () => void;
 }) {
   return (
     <Modal visible={!!court} transparent animationType="fade" onRequestClose={onClose}
@@ -296,7 +420,7 @@ function CourtPeek({ court, onClose, onPick }: {
               <Text style={st.peekN}>{court.name}</Text>
               <Text style={st.peekS}>
                 {court.closed ? 'Закрыта' :
-                  `${court.hours.filter(h => h.status === 'free').length} свободных часов сегодня`}
+                  `${court.hours.filter(h => h.status === 'free').length} свободных часов в этот день`}
               </Text>
               {/* ЗАГЛУШКА: пока это не снимки клуба — см. docs/PHOTO-CREDITS.md */}
               <Text style={st.peekNote}>
@@ -320,114 +444,113 @@ function CourtPeek({ court, onClose, onPick }: {
   );
 }
 
-function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: boolean }) {
-  return (
-    <View style={st.leg}>
-      <View style={[st.legBox,
-        free && { backgroundColor: 'rgba(198,240,51,.09)', borderColor: 'rgba(198,240,51,.46)' },
-        dashed && { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line }]} />
-      <Text style={st.legT}>{label}</Text>
-    </View>
-  );
-}
-
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
-  step: { color: '#839087', fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
-    textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 9 },
-  sub: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 11 },
+
   days: { flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    paddingHorizontal: S.xl, paddingTop: 12, marginBottom: 4 },
+    paddingHorizontal: S.xl, paddingTop: 12 },
   day: { width: 52, height: 52, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   dayOn: { backgroundColor: C.text, borderColor: C.text },
   dayW: { ...EYEBROW, fontSize: 11, letterSpacing: 0.2, color: C.dim2 },
   dayD: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.8, marginTop: 2 },
 
-  headRow: { flexDirection: 'row', paddingTop: 16, paddingBottom: 6 },
-  headCell: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 },
-  headT: { color: C.dim, fontFamily: DISP, fontSize: 11, letterSpacing: -0.2 },
-  headPh: { width: 26, height: 26, borderRadius: 0, marginBottom: 3,
-    borderWidth: 1, borderColor: C.line },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap',
+    paddingHorizontal: S.xl, marginTop: 22, marginBottom: 10 },
+  stepN: { width: 22, height: 22, backgroundColor: C.lime,
+    alignItems: 'center', justifyContent: 'center' },
+  stepNT: { color: C.onLime, fontFamily: DISP, fontSize: 12 },
+  stepT: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.4 },
+  stepNote: { fontFamily: BODY, color: C.dim2, fontSize: 12 },
 
-  tariff: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    marginHorizontal: 20, marginTop: 8, paddingHorizontal: 11, minHeight: HIT,
-    borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 12.5, textAlign: 'center',
-    marginTop: -6, marginBottom: 12 },
+  card: { marginHorizontal: S.xl, marginBottom: 10, padding: CARD_PAD,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
 
-  allPassed: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
-    paddingHorizontal: 30, paddingVertical: 40 },
-  passed: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.2,
-    textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 6 },
+  durRow: { flexDirection: 'row', gap: GAP },
+  dur: { flex: 1, minHeight: HIT, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink2 },
+  durOn: { backgroundColor: C.lime, borderColor: C.lime },
+  durT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3 },
+  durHint: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18,
+    marginTop: 10, textAlign: 'center' },
 
-  toPitch: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-    marginHorizontal: 20, marginTop: 10, paddingVertical: 8, paddingHorizontal: 13,
-    borderRadius: R.md, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  toPitchT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
+  allPassed: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20,
+    textAlign: 'center', paddingHorizontal: 30, paddingVertical: 24 },
+
+  courtHead: { flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingBottom: 11, marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  courtNum: { width: 32, height: 32, backgroundColor: C.surface3,
+    alignItems: 'center', justifyContent: 'center' },
+  courtNumT: { color: C.text, fontFamily: DISP, fontSize: 16 },
+  courtName: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.5,
     textTransform: 'uppercase' },
+  photoT: { ...EYEBROW, color: C.dim2, fontSize: 11, letterSpacing: 1 },
+  closed: { fontFamily: BODY, color: C.dim, fontSize: 13, paddingVertical: 12 },
 
-  clear: { alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, marginTop: 8 },
-  clearT: { fontFamily: BODY, color: C.dim, fontSize: 13.5, fontWeight: '600',
-    textDecorationLine: 'underline' },
+  part: { marginTop: 10 },
+  partHead: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 8 },
+  partT: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.2 },
+  partPrice: { fontFamily: BODY, color: C.dim2, fontSize: 12 },
+  partFree: { fontFamily: DISP_MED, color: C.limeDim, fontSize: 11.5 },
+
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+  pill: { height: HIT, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  pillFree: { backgroundColor: 'rgba(201,242,61,0.07)', borderColor: 'rgba(201,242,61,0.45)' },
+  pillBusy: { backgroundColor: 'rgba(255,85,56,0.07)', borderColor: 'rgba(255,85,56,0.32)' },
+  pillShort: { backgroundColor: 'transparent', borderColor: C.line, borderStyle: 'dashed' },
+  pillCovered: { backgroundColor: 'rgba(201,242,61,0.22)', borderColor: C.lime },
+  pillOn: { backgroundColor: C.lime, borderColor: C.lime },
+  pillT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'] },
+  pillTBusy: { color: '#D98B7C' },
+  pillTShort: { color: C.dim2 },
+  tick: { position: 'absolute', top: -6, right: -6, width: 17, height: 17, borderRadius: 9,
+    backgroundColor: C.lime, borderWidth: 2, borderColor: C.ink,
+    alignItems: 'center', justifyContent: 'center' },
+
+  infoH: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.4,
+    paddingHorizontal: S.xl, marginTop: 24, marginBottom: 8 },
+  infoP: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, paddingHorizontal: S.xl },
+  rule: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  ruleK: { fontFamily: BODY, color: C.dim, fontSize: 13.5 },
+  ruleV: { fontFamily: DISP_MED, color: C.text, fontSize: 13.5, textAlign: 'right', flexShrink: 1 },
+  rentals: { fontFamily: BODY, color: C.text, fontSize: 14, lineHeight: 21 },
+
+  sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: 'rgba(6,18,13,0.98)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+  sumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 10, marginBottom: 12 },
+  sumL: { ...EYEBROW, color: C.dim, fontSize: 11, letterSpacing: 1, flexShrink: 1 },
+  sumR: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'] },
+  problem: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#25D366', minHeight: 52 },
+  waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
+    textTransform: 'uppercase' },
+  cta: { backgroundColor: C.lime, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
+    textTransform: 'uppercase' },
+  payNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  clear: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginTop: 2,
+    minHeight: HIT, justifyContent: 'center' },
+  clearT: { fontFamily: BODY, color: C.dim, fontSize: 13.5, textDecorationLine: 'underline' },
 
   peekBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)',
     alignItems: 'center', justifyContent: 'center', padding: 22 },
-  peek: { width: '100%', maxWidth: 420, borderRadius: 0, overflow: 'hidden',
+  peek: { width: '100%', maxWidth: 420, overflow: 'hidden',
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   peekImg: { width: '100%', height: 230 },
   peekIn: { padding: 16 },
   peekN: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
-  peekS: { fontFamily: BODY, color: C.lime, fontSize: 13, marginTop: 3, fontWeight: '600' },
+  peekS: { fontFamily: BODY, color: C.lime, fontSize: 13, marginTop: 3 },
   peekNote: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 9 },
   peekRow: { flexDirection: 'row', gap: 9, marginTop: 14 },
   peekBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 46,
-    borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface2 },
   peekBtnAcc: { backgroundColor: C.lime, borderColor: C.lime },
   peekBtnT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.4,
-    textTransform: 'uppercase' },
-
-  row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  time: { fontFamily: BODY, color: C.dim2, fontSize: 11, fontVariant: ['tabular-nums'], marginTop: -5 },
-  timeLast: { marginTop: -3 },
-  cell: { flex: 1, height: 46, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'transparent' },
-  cellFree: { backgroundColor: C.surface, borderColor: C.line },
-  cellBusy: { backgroundColor: '#06100B' },
-  cellOff: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.line },
-  cellOn: { backgroundColor: C.lime, borderColor: C.lime, opacity: 1 },
-  dotFree: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.lime },
-  dotOn: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.onLime },
-  barOn: { width: 12, height: 2.5, borderRadius: 0, backgroundColor: 'rgba(11,15,12,.5)' },
-  dashBusy: { width: 10, height: 2, borderRadius: 0, backgroundColor: C.busy },
-
-  legend: { flexDirection: 'row', gap: 16, paddingTop: 14, paddingHorizontal: 6 },
-  leg: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legBox: { width: 14, height: 14, borderRadius: 0, borderWidth: 1,
-    borderColor: C.line, backgroundColor: C.surface },
-  legT: { fontFamily: BODY, color: C.dim2, fontSize: 11.5 },
-  note: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, marginTop: 10, paddingHorizontal: 6 },
-
-  bottom: { paddingHorizontal: S.xl, paddingTop: 12, backgroundColor: 'rgba(6,18,13,0.97)',
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
-  payNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center',
-    marginTop: 9 },
-  empty: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, textAlign: 'center',
-    marginBottom: 10, marginTop: 2 },
-  pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
-  pickPh: { width: 38, height: 38, borderRadius: 0 },
-  pickN: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
-    textTransform: 'uppercase' },
-  pickS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 1, fontVariant: ['tabular-nums'] },
-  durRow: { flexDirection: 'row', gap: 7, marginBottom: 11 },
-  dur: { flex: 1, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderRadius: R.md, paddingVertical: 10, alignItems: 'center', minHeight: 42 },
-  durOn: { backgroundColor: C.lime, borderColor: C.lime },
-  durOff: { opacity: 0.4, borderStyle: 'dashed' },
-  durT: { color: C.text, fontFamily: DISP_MED, fontSize: 12 },
-  cta: { backgroundColor: C.lime, paddingVertical: 15, alignItems: 'center', minHeight: 48,
-    justifyContent: 'center' },
-  ctaOff: { backgroundColor: '#15251B' },
-  ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
 });
