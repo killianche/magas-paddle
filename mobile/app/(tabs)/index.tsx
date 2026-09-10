@@ -105,7 +105,7 @@ export default function Home() {
     <Animated.ScrollView style={st.root} contentContainerStyle={{ paddingBottom: TAB_SPACE }}
       showsVerticalScrollIndicator={false}
       onScroll={scrim.onScroll} scrollEventThrottle={scrim.scrollEventThrottle}
-      refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
+      refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
       {/* Герой во всю высоту первого экрана: снимок, поверх него марка,
           плакатный заголовок и одна кнопка. Так устроен макет. */}

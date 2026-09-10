@@ -98,7 +98,7 @@ export default function Bookings() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
       contentContainerStyle={{ paddingBottom: TAB_SPACE, paddingTop: 8 }}
-      refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
+      refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
       {entries.map(t => (
         <View key={'t' + t.id} style={[s.card, s.cardT]}>

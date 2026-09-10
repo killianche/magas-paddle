@@ -16,8 +16,13 @@ export type Query<T> = {
   refreshing: boolean;
   /** Данные с прошлого раза, свежие ещё едут. */
   stale: boolean;
+  /** Человек сам потянул экран вниз — только тогда крутится индикатор. */
+  pulling: boolean;
   reload: () => void;
+  /** Тихое обновление: при возврате на экран. Индикатор не показывает. */
   refresh: () => void;
+  /** Обновление по жесту «потянуть вниз». */
+  pull: () => void;
 };
 
 const PREFIX = 'magas.cache.';
@@ -37,6 +42,7 @@ export function useApi<T>(
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stale, setStale] = useState(false);
+  const [pulling, setPulling] = useState(false);
 
   // Чтобы поздний ответ по старому ключу не перезаписал новый экран
   const gen = useRef(0);
@@ -95,9 +101,19 @@ export function useApi<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run]);
 
+  // Индикатор обновления привязан только к жесту. Раньше он включался и от
+  // тихого обновления при возврате на вкладку, а на iPhone включённый
+  // индикатор опускает содержимое на свою высоту — экран вздрагивал, будто
+  // его прокрутили.
+  const pull = () => {
+    setPulling(true);
+    run(true).finally(() => setPulling(false));
+  };
+
   return {
-    data, error, loading, refreshing, stale,
+    data, error, loading, refreshing, stale, pulling,
     reload: () => run(false),
     refresh: () => run(true),
+    pull,
   };
 }

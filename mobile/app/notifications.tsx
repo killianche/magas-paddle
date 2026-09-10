@@ -65,7 +65,7 @@ export default function Notifications() {
     <View style={s.root}>
       <Stack.Screen options={{ title: 'Уведомления' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh}
+        refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull}
           tintColor={C.dim} />}>
         <View style={s.head}>
           <Eyebrow>Уведомления</Eyebrow>

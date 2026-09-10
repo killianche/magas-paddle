@@ -37,7 +37,7 @@ export default function Tournaments() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
       contentContainerStyle={{ paddingBottom: TAB_SPACE }}
-      refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
+      refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
       {hero && (
         <Pressable onPress={() => open(hero)}

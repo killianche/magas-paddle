@@ -80,7 +80,7 @@ export default function TabsLayout() {
       }}>
       {/* Расписание больше не отдельная вкладка: сетка стоит на главной */}
       <Tabs.Screen name="index" options={{
-        title: 'Запись', headerShown: false,
+        title: 'Главная', headerShown: false,
         tabBarIcon: ({ color, focused }) => <IconHome color={color as string} active={focused} /> }} />
       <Tabs.Screen name="bookings" options={{
         title: 'Мои записи',
