@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE } from '../../src/theme';
 import { api, rub, ApiError, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -97,7 +97,7 @@ export default function Bookings() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
-      contentContainerStyle={{ paddingBottom: 30, paddingTop: 8 }}
+      contentContainerStyle={{ paddingBottom: TAB_SPACE, paddingTop: 8 }}
       refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
       {entries.map(t => (

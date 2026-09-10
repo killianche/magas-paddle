@@ -9,14 +9,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, TAB_SPACE } from '../../src/theme';
 import { Eyebrow, Ticker, OutlineText } from '../../src/components/velocity';
 import { api, rub, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
-import { Mark, IconChevron, IconCheck, IconBell } from '../../src/components/icons';
+import {
+  Mark, IconChevron, IconCheck, IconBell, IconAccount, IconBall,
+} from '../../src/components/icons';
 import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
 import {
@@ -100,7 +102,7 @@ export default function Home() {
 
   return (
     <View style={st.root}>
-    <Animated.ScrollView style={st.root} contentContainerStyle={{ paddingBottom: 34 }}
+    <Animated.ScrollView style={st.root} contentContainerStyle={{ paddingBottom: TAB_SPACE }}
       showsVerticalScrollIndicator={false}
       onScroll={scrim.onScroll} scrollEventThrottle={scrim.scrollEventThrottle}
       refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
@@ -135,9 +137,9 @@ export default function Home() {
           <Pressable onPress={() => go('/account')} accessibilityRole="button"
             accessibilityLabel={profile ? `Аккаунт: ${profile.name}` : 'Создать аккаунт'}
             style={({ pressed }) => [st.circle, pressed && { opacity: 0.7 }]}>
-            <Text style={st.circleT} allowFontScaling={false}>
-              {profile ? initials(profile) : '+'}
-            </Text>
+            {profile
+              ? <Text style={st.circleT} allowFontScaling={false}>{initials(profile)}</Text>
+              : <IconAccount size={19} color={C.text} />}
           </Pressable>
         </View>
 
@@ -154,6 +156,17 @@ export default function Home() {
             <Text style={st.heroActionT}>Забронировать</Text>
             <Text style={st.heroArrow}>→</Text>
           </Pressable>
+
+          {/* Поле — вторым, кнопкой поменьше: на корт ходят чаще, но и
+              футбол должен быть в один шаг от главной. */}
+          {club.showFootball && (
+            <Pressable onPress={() => go('/football')} accessibilityRole="button"
+              accessibilityLabel="Занять футбольное поле"
+              style={({ pressed }) => [st.heroSecond, pressed && { opacity: 0.85 }]}>
+              <IconBall size={16} color={C.text} />
+              <Text style={st.heroSecondT}>Занять футбольное поле</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -371,6 +384,12 @@ const st = StyleSheet.create({
   circleT: { fontFamily: DISP, color: C.text, fontSize: 13, letterSpacing: -0.2 },
 
   heroCopy: { paddingHorizontal: S.xl, paddingBottom: 24 },
+  heroSecond: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 9, marginTop: 9, paddingVertical: 12, minHeight: HIT,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
+    backgroundColor: 'rgba(2,7,5,0.42)' },
+  heroSecondT: { color: C.text, fontFamily: DISP_MED, fontSize: 11.5,
+    letterSpacing: 1.2, textTransform: 'uppercase' },
   // Плакатный заголовок: очень жирный, прописной, буквы вплотную.
   // Отрицательный трекинг — главная черта макета.
   h1: { ...TITLE.hero, color: C.text, marginTop: 8 },

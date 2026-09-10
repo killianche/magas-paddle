@@ -31,11 +31,18 @@ export default function RootLayout() {
           headerTintColor: C.text,
           headerTitleStyle: { fontFamily: DISP, fontSize: 17 },
           headerShadowVisible: false,
+          // У кнопки «назад» — только стрелка, без подписи.
+          //
+          // iOS подставляет туда заголовок предыдущего экрана, а у группы
+          // вкладок заголовка нет, и во время смахивания на секунду
+          // выглядывало служебное «(tabs)». Заодно так спокойнее: подпись
+          // разной длины дёргала шапку при каждом переходе.
+          headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: C.ink },
           // Смахивание назад с любого места экрана, а не только от левого края
           fullScreenGestureEnabled: true,
         }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Magas Padel' }} />
         <Stack.Screen name="schedule" options={{ title: 'Выберите время' }} />
         <Stack.Screen name="court" options={{ title: 'Площадка' }} />
         <Stack.Screen name="account" options={{ title: 'Аккаунт' }} />

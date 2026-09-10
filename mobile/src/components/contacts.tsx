@@ -4,7 +4,7 @@ import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'rea
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, BODY } from '../theme';
 import { CLUB, pointText, useClub, whatsappUrl } from '../club';
-import { IconPin, IconChevron, IconWhatsApp, IconInstagram } from './icons';
+import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone } from './icons';
 
 /** Открывает ссылку, а если открыть нечем — говорит человеку, что делать руками. */
 async function open(url: string, fallback: string) {
@@ -41,10 +41,17 @@ export function WhereWeAre() {
   );
 }
 
-/** Две кнопки связи. WhatsApp остаётся видимым и без номера — но честно неактивным. */
+/** Связь одной строкой: написать, позвонить, посмотреть.
+ *
+ *  WhatsApp занимает всю ширину — это главный путь к менеджеру. Телефон и
+ *  Instagram стоят рядом квадратными кнопками: подписи им не нужны, значки
+ *  узнаются сами, а места остаётся втрое меньше.
+ *  Кнопки без номера видны, но честно неактивны — выдуманного номера нет. */
 export function SocialButtons() {
   const club = useClub();
   const wa = whatsappUrl();
+  const tel = club.phone ? `tel:${club.phone.replace(/[^\d+]/g, '')}` : null;
+
   return (
     <View style={s.row}>
       <Pressable
@@ -63,16 +70,21 @@ export function SocialButtons() {
       </Pressable>
 
       <Pressable
+        disabled={!tel}
+        onPress={() => tel && open(tel, `Телефон клуба: ${club.phone}`)}
+        accessibilityRole="button"
+        accessibilityLabel={tel ? `Позвонить в клуб, ${club.phone}` : 'Телефон: номер клуб ещё не сообщил'}
+        style={({ pressed }) => [s.sq, tel ? s.sqOn : s.off, pressed && tel && { opacity: 0.85 }]}>
+        <IconPhone size={21} color={tel ? C.text : C.dim2} />
+      </Pressable>
+
+      <Pressable
         disabled={!club.instagram}
         onPress={() => club.instagram && open(club.instagram, 'Мы в Instagram: padel_magas')}
         accessibilityRole="button" accessibilityLabel="Открыть Instagram клуба"
-        style={({ pressed }) => [s.btn, club.instagram ? s.ig : s.off,
+        style={({ pressed }) => [s.sq, club.instagram ? s.sqOn : s.off,
           pressed && { opacity: 0.85 }]}>
-        <IconInstagram size={21} color={C.text} />
-        <View style={{ flex: 1 }}>
-          <Text style={s.btnT}>Instagram</Text>
-          <Text numberOfLines={1} style={s.btnS}>padel_magas</Text>
-        </View>
+        <IconInstagram size={21} color={club.instagram ? C.text : C.dim2} />
       </Pressable>
     </View>
   );
@@ -92,6 +104,8 @@ const s = StyleSheet.create({
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 12, paddingHorizontal: 13, borderRadius: R.lg, minHeight: HIT },
   wa: { backgroundColor: '#4FCE5D' },
+  sq: { width: 54, minHeight: HIT, alignItems: 'center', justifyContent: 'center' },
+  sqOn: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   ig: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   off: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   btnT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,

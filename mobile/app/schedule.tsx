@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
-import { Eyebrow } from '../src/components/velocity';
 import { api, rub, type ApiGrid, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -104,18 +103,10 @@ export default function Schedule() {
 
   return (
     <View style={st.root}>
-      <Stack.Screen options={{ title: 'Запись' }} />
-
-      <View style={st.title}>
-        <Eyebrow>Быстрая запись · 3 шага</Eyebrow>
-        <Text style={st.h1} allowFontScaling={false}>ВЫБЕРИТЕ ВРЕМЯ</Text>
-        {/* Тарифы — просто подпись. Кнопкой она была лишней: прайс-лист
-            открывается с главной, а здесь человек выбирает время. */}
-        <Text style={st.tariffT}>
-          <Text style={{ color: C.lime, fontFamily: DISP_MED }}>{rub(morningPrice)}</Text>
-          {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
-        </Text>
-      </View>
+      {/* Название экрана живёт в шапке: заголовок, надзаголовок и строка
+          тарифов занимали четверть экрана, а нужна здесь сетка. Тарифы
+          переехали вниз, к кнопке — там они и читаются перед выбором. */}
+      <Stack.Screen options={{ title: 'Выберите время' }} />
 
       {/* flexGrow: 0 — иначе вложенная горизонтальная прокрутка растягивается
           по высоте и под чипами остаётся пустая полоса */}
@@ -271,6 +262,10 @@ export default function Schedule() {
         ) : (
           <>
             <Text style={st.empty}>Нажмите свободное время на нужной площадке</Text>
+            <Text style={st.tariffT}>
+              <Text style={{ color: C.lime, fontFamily: DISP_MED }}>{rub(morningPrice)}</Text>
+              {' '}до {hh(grid.morningUntil)}, дальше {rub(standardPrice)}
+            </Text>
             <View style={[st.cta, st.ctaOff]}>
               <Text style={[st.ctaT, { color: C.dim2 }]}>Забронировать</Text>
             </View>
@@ -338,20 +333,18 @@ function Leg({ label, free, dashed }: { label: string; free?: boolean; dashed?: 
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
-  title: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10 },
-  h1: { ...TITLE.card, color: C.text, marginTop: 6 },
   step: { color: '#839087', fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
     textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 9 },
   sub: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 11 },
   days: { flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    paddingHorizontal: S.xl, marginBottom: 4 },
+    paddingHorizontal: S.xl, paddingTop: 12, marginBottom: 4 },
   day: { width: 52, height: 52, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   dayOn: { backgroundColor: C.text, borderColor: C.text },
   dayW: { ...EYEBROW, fontSize: 11, letterSpacing: 0.2, color: C.dim2 },
   dayD: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.8, marginTop: 2 },
 
-  headRow: { flexDirection: 'row', paddingBottom: 10 },
+  headRow: { flexDirection: 'row', paddingTop: 16, paddingBottom: 6 },
   headCell: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 3 },
   headT: { color: C.dim, fontFamily: DISP, fontSize: 11, letterSpacing: -0.2 },
   headPh: { width: 26, height: 26, borderRadius: 0, marginBottom: 3,
@@ -360,12 +353,13 @@ const st = StyleSheet.create({
   tariff: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
     marginHorizontal: 20, marginTop: 8, paddingHorizontal: 11, minHeight: HIT,
     borderRadius: 0, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 6 },
+  tariffT: { fontFamily: BODY, color: C.dim, fontSize: 12.5, textAlign: 'center',
+    marginTop: -6, marginBottom: 12 },
 
   allPassed: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 20, textAlign: 'center',
     paddingHorizontal: 30, paddingVertical: 40 },
-  passed: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase',
-    paddingHorizontal: 20, marginTop: 10, marginBottom: -2 },
+  passed: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.2,
+    textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 6 },
 
   toPitch: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
     marginHorizontal: 20, marginTop: 10, paddingVertical: 8, paddingHorizontal: 13,
@@ -418,7 +412,8 @@ const st = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
   payNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center',
     marginTop: 9 },
-  empty: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, textAlign: 'center', marginBottom: 12, marginTop: 2 },
+  empty: { fontFamily: BODY, color: C.dim2, fontSize: 13.5, textAlign: 'center',
+    marginBottom: 10, marginTop: 2 },
   pick: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
   pickPh: { width: 38, height: 38, borderRadius: 0 },
   pickN: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,

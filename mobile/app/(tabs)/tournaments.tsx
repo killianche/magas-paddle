@@ -5,7 +5,7 @@ import { ScrollView, Text, View, Pressable, StyleSheet, Image, RefreshControl } 
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../../src/theme';
+import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE } from '../../src/theme';
 import { api, rub, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -36,7 +36,7 @@ export default function Tournaments() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
-      contentContainerStyle={{ paddingBottom: 30 }}
+      contentContainerStyle={{ paddingBottom: TAB_SPACE }}
       refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={C.dim} />}>
 
       {hero && (

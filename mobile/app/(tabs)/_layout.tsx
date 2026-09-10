@@ -1,11 +1,33 @@
-import { StyleSheet } from 'react-native';
+// Нижнее меню — плавающей панелью, как в свежей iOS.
+//
+// Раньше это была полоса во всю ширину, приклеенная к низу экрана. В iOS 26
+// панель вкладок отделена от краёв, скруглена и сделана из «стекла»: сквозь
+// неё видно содержимое, размытое и притемнённое. Так и сделано: панель лежит
+// поверх экрана, снизу и по бокам поля, фон — размытие.
+//
+// Раз панель поверх содержимого, каждый экран внутри вкладок оставляет снизу
+// запас (TAB_SPACE), иначе последняя карточка уезжает под неё.
+import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, DISP, DISP_MED } from '../../src/theme';
 import { useClub } from '../../src/club';
 import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
+/** Высота самой панели без отступа снизу.
+ *  62 было мало: контейнер подписи сжимался до трёх пикселей и текст срезало. */
+const BAR = 74;
+/** Поля панели от краёв экрана. */
+const SIDE = 14;
+
 export default function TabsLayout() {
   const club = useClub();
+  const insets = useSafeAreaInsets();
+  // На iPhone с вырезом снизу уже есть полоса жеста — над ней и висим.
+  // На старых и на вебе своего отступа нет, добавляем сами.
+  const bottom = Math.max(insets.bottom, 12);
+
   return (
     <Tabs
       screenOptions={{
@@ -13,21 +35,40 @@ export default function TabsLayout() {
         headerTintColor: C.text,
         headerShadowVisible: false,
         headerTitleStyle: { fontFamily: DISP, fontSize: 18 },
-        // Нижняя панель по макету: почти чёрная, тонкая светлая линия сверху,
-        // подписи мелкие прописные вразрядку, активная — белая.
+
         tabBarStyle: {
-          backgroundColor: 'rgba(3,16,9,0.98)',
-          borderTopColor: C.line,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: 84,
-          paddingTop: 9,
+          position: 'absolute',
+          left: SIDE, right: SIDE, bottom,
+          height: BAR,
+          borderRadius: BAR / 2,
+          borderTopWidth: 0,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+          paddingTop: 10,
+          paddingBottom: 10,
+          // Тень отделяет панель от фотографии под ней
+          shadowColor: '#000', shadowOpacity: 0.45,
+          shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
+          elevation: 12,
         },
+        tabBarBackground: () => (
+          <View style={StyleSheet.absoluteFill}>
+            {Platform.OS === 'web'
+              ? <View style={[StyleSheet.absoluteFill, s.webGlass]} />
+              : <BlurView intensity={44} tint="dark" style={StyleSheet.absoluteFill} />}
+            {/* Притемнение поверх размытия: без него светлая фотография
+                под панелью съедает подписи */}
+            <View style={[StyleSheet.absoluteFill, s.tint]} />
+          </View>
+        ),
+        tabBarItemStyle: { paddingTop: 2 },
+
         tabBarActiveTintColor: C.text,
-        // Светлее, чем в макете: на #68766D подпись давала контраст 4.1 при норме 4.5
+        // Светлее макета: на #68766D подпись давала контраст 4.1 при норме 4.5
         tabBarInactiveTintColor: '#8D9A91',
         tabBarLabelStyle: {
-          fontFamily: DISP_MED, fontSize: 11, letterSpacing: 0.4,
-          textTransform: 'uppercase', marginTop: 4,
+          fontFamily: DISP_MED, fontSize: 11, lineHeight: 14, letterSpacing: 0.3,
+          textTransform: 'uppercase', marginTop: 3,
         },
         sceneStyle: { backgroundColor: C.ink },
       }}>
@@ -46,3 +87,11 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const s = StyleSheet.create({
+  tint: { backgroundColor: 'rgba(6,18,13,0.62)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: BAR / 2 },
+  // На вебе BlurView даёт лишний слой; backdrop-filter делает то же дешевле
+  webGlass: { backgroundColor: 'rgba(6,18,13,0.35)', backdropFilter: 'blur(18px)' } as any,
+});

@@ -55,6 +55,11 @@ export const S = { xs: 4, sm: 8, md: 12, lg: 14, xl: 18, xxl: 26 } as const;
 // Минимальная зона нажатия по требованию Apple
 export const HIT = 44;
 
+/** Запас снизу под плавающей панелью вкладок: сама панель, её отступ от края
+ *  и немного воздуха. Экраны внутри вкладок добавляют его к прокрутке,
+ *  иначе последняя карточка уезжает под панель. */
+export const TAB_SPACE = 108;
+
 /** Плакатное начертание. Подключается в app/_layout.tsx. */
 export const DISP = 'Inter-Black';
 export const DISP_MED = 'Inter-SemiBold';

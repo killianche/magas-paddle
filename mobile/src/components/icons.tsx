@@ -97,6 +97,26 @@ export function Mark({ size = 34 }: { size?: number }) {
   );
 }
 
+/** Трубка — позвонить */
+export function IconPhone({ size = 20, color = C.text }: P) {
+  return (
+    <Svg {...base(size, color)}>
+      <Path d="M6.4 3.6h3l1.5 3.8-1.9 1.4a11 11 0 0 0 5.2 5.2l1.4-1.9 3.8 1.5v3a1.8 1.8 0 0 1-2 1.8C10.9 17.7 6.3 13.1 4.6 5.6a1.8 1.8 0 0 1 1.8-2Z" />
+    </Svg>
+  );
+}
+
+/** Человек — аккаунт. Тот же силуэт, что в системных иконках iOS:
+    голова кружком и плечи дугой. */
+export function IconAccount({ size = 20, color = C.text, active }: P) {
+  return (
+    <Svg {...base(size, color, active)}>
+      <Circle cx="12" cy="8.4" r="3.9" />
+      <Path d="M4.9 20.3c1.2-3.7 3.9-5.7 7.1-5.7s5.9 2 7.1 5.7" />
+    </Svg>
+  );
+}
+
 /** Колокольчик — уведомления клуба */
 export function IconBell({ size = 20, color = C.text }: P) {
   return (
