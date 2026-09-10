@@ -11,7 +11,7 @@
 //
 // Восстановление пароля: через менеджера. Он и так разговаривает с человеком
 // по телефону и может сбросить пароль из админки. Кода по SMS нет — нужен
-// провайдер рассылки и решение клуба (вопрос Q54).
+// провайдер рассылки и решение клуба (вопрос Q57).
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Headers,
   HttpException, Post, Query, UnauthorizedException,

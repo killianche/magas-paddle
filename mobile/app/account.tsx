@@ -5,7 +5,7 @@
 // видел чужое имя и историю посещений.
 //
 // Забытый пароль сбрасывает менеджер из админки — он и так говорит с человеком
-// по телефону. Кода по SMS нет: нужен провайдер рассылки (вопрос Q54).
+// по телефону. Кода по SMS нет: нужен провайдер рассылки (вопрос Q57).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView,

@@ -12,7 +12,7 @@
 // записях». Без аккаунта уходит только сообщение в WhatsApp.
 //
 // Шаг — один час: сервер и цены клуба почасовые. Получасовых слотов и
-// брони на полтора часа, как в образце, нет — это решение клуба (Q55).
+// брони на полтора часа, как в образце, нет — это решение клуба (Q58).
 import { useMemo, useState } from 'react';
 import {
   Alert, Image, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView,
