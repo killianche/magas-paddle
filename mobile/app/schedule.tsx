@@ -27,7 +27,6 @@ import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
 import { IMG } from '../src/images';
 import { IconChevron, IconCheck, IconWhatsApp } from '../src/components/icons';
-import { SocialButtons, WhereWeAre } from '../src/components/contacts';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../src/dates';
 import { useClub } from '../src/club';
 import { useProfile, fullName } from '../src/profile';
@@ -190,6 +189,7 @@ export default function Schedule() {
 
   const peeked = grid.courts.find(c => c.courtId === peek) ?? null;
   const hasWa = !!club.whatsapp;
+  const prepay = Math.ceil(total * club.prepayPercent / 100 / 100) * 100;
 
   return (
     <View style={st.root}>
@@ -313,45 +313,30 @@ export default function Schedule() {
           );
         })}
 
-        {/* ── Связь и правила — как в образце, но только то, что правда ── */}
-        <Text style={st.infoH}>Связаться с нами</Text>
-        <Text style={st.infoP}>
-          Бронируем по предоплате через WhatsApp. Можно написать или позвонить —
-          подскажем свободное время и ответим на вопросы.
-        </Text>
-        <SocialButtons />
-
-        <Text style={st.infoH}>Правила</Text>
-        <View style={st.card}>
-          <Rule k="Минимальная бронь" v="1 час" />
-          <Rule k="Подтверждение" v={`предоплата ${club.prepayPercent} %`} />
-          <Rule k="Бесплатная отмена" v={`за ${club.cancelHours} ${plural(club.cancelHours, 'час', 'часа', 'часов')}`} />
-          <Rule k="Опоздание" v={`корт держим ${club.lateMinutes} минут`} last />
-        </View>
-
-        {!!club.rentalsText && (
-          <>
-            <Text style={st.infoH}>Что входит в аренду</Text>
-            <View style={st.card}><Text style={st.rentals}>{club.rentalsText}</Text></View>
-          </>
-        )}
-
-        <Text style={st.infoH}>Где мы</Text>
-        <WhereWeAre />
       </ScrollView>
 
       {/* ── Выбранное время: сводка и кнопка ────────────────────────── */}
       {sel && court && (
         <View style={[st.sheet, { paddingBottom: insets.bottom + 12 }]}>
+          {/* Сводка — всё, что нужно знать перед нажатием: где, когда,
+              сколько и сколько внести сейчас. Цена здесь, а не на кнопке:
+              на кнопке она повторялась. */}
           <View style={st.sumRow}>
             <Text style={st.sumL}>{court.name} · {dayMonth(date)}</Text>
             <Text style={st.sumR}>
               {hh(sel.hour)} → {hh(sel.hour + hours)} · <Text style={{ color: C.lime }}>{rub(total)}</Text>
             </Text>
           </View>
+          <View style={[st.sumRow, st.sumRow2]}>
+            <Text style={st.prepayL}>Предоплата {club.prepayPercent} %</Text>
+            <Text style={st.prepayR}>{rub(prepay)}</Text>
+          </View>
 
           {!!problem && <Text style={st.problem}>{problem}</Text>}
 
+          {/* Пока номер WhatsApp не указан в админке, кнопка ведёт в форму
+              приложения и называется просто «Забронировать»: надпись
+              «в WhatsApp» над кнопкой, которая открывает форму, была бы враньём. */}
           {hasWa ? (
             <Pressable onPress={bookInWhatsApp} disabled={sending} accessibilityRole="button"
               accessibilityLabel="Забронировать в WhatsApp"
@@ -362,13 +347,10 @@ export default function Schedule() {
           ) : (
             <Pressable onPress={toForm} accessibilityRole="button"
               style={({ pressed }) => [st.cta, pressed && { opacity: 0.9 }]}>
-              <Text style={st.ctaT}>Отправить заявку · {rub(total)}</Text>
+              <Text style={st.ctaT}>Забронировать</Text>
             </Pressable>
           )}
 
-          <Text style={st.payNote}>
-            Бронь подтверждается предоплатой {club.prepayPercent} % · остальное на месте
-          </Text>
           <Pressable onPress={() => { Haptics.selectionAsync(); setSel(null); setProblem(null) }}
             accessibilityRole="button" hitSlop={8}
             style={({ pressed }) => [st.clear, pressed && { opacity: 0.6 }]}>
@@ -391,15 +373,6 @@ function Step({ n, title, note }: { n: number; title: string; note?: string }) {
       <View style={st.stepN}><Text style={st.stepNT}>{n}</Text></View>
       <Text style={st.stepT}>{title}</Text>
       {!!note && <Text style={st.stepNote}>— {note}</Text>}
-    </View>
-  );
-}
-
-function Rule({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <View style={[st.rule, last && { borderBottomWidth: 0 }]}>
-      <Text style={st.ruleK}>{k}</Text>
-      <Text style={st.ruleV}>{v}</Text>
     </View>
   );
 }
@@ -509,19 +482,16 @@ const st = StyleSheet.create({
     backgroundColor: C.lime, borderWidth: 2, borderColor: C.ink,
     alignItems: 'center', justifyContent: 'center' },
 
-  infoH: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.4,
-    paddingHorizontal: S.xl, marginTop: 24, marginBottom: 8 },
-  infoP: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, paddingHorizontal: S.xl },
-  rule: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  ruleK: { fontFamily: BODY, color: C.dim, fontSize: 13.5 },
-  ruleV: { fontFamily: DISP_MED, color: C.text, fontSize: 13.5, textAlign: 'right', flexShrink: 1 },
-  rentals: { fontFamily: BODY, color: C.text, fontSize: 14, lineHeight: 21 },
 
   sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: 'rgba(6,18,13,0.98)',
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
   sumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    gap: 10, marginBottom: 12 },
+    gap: 10, marginBottom: 8 },
+  sumRow2: { marginBottom: 14, paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  prepayL: { fontFamily: DISP_MED, color: C.text, fontSize: 14 },
+  prepayR: { fontFamily: DISP, color: C.lime, fontSize: 16, letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'] },
   sumL: { ...EYEBROW, color: C.dim, fontSize: 11, letterSpacing: 1, flexShrink: 1 },
   sumR: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'] },
@@ -533,7 +503,6 @@ const st = StyleSheet.create({
   cta: { backgroundColor: C.lime, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
-  payNote: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
   clear: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginTop: 2,
     minHeight: HIT, justifyContent: 'center' },
   clearT: { fontFamily: BODY, color: C.dim, fontSize: 13.5, textDecorationLine: 'underline' },
