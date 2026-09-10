@@ -2,14 +2,14 @@
   "expo": {
     "name": "Magas Padel",
     "slug": "magas-padel",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ru.padelmagas.app",
-      "buildNumber": "15",
+      "buildNumber": "16",
       "infoPlist": {
         "CFBundleDisplayName": "Magas Padel",
         "ITSAppUsesNonExemptEncryption": false
