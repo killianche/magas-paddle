@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubService } from '../club';
+import { colorOf } from './look';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 
 @Controller('availability')
@@ -74,7 +75,9 @@ export class AvailabilityController {
         });
       }
       return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours,
-        photo: firstPhoto.get(c.id) ?? null };
+        photo: firstPhoto.get(c.id) ?? null,
+        // Цвет и особенности — для карточек кортов на главной
+        color: colorOf(c.color), tags: c.tags };
     });
 
     return {

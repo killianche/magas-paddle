@@ -44,7 +44,8 @@ export default function RootLayout() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Magas Padel' }} />
         <Stack.Screen name="schedule" options={{ title: 'Выберите время' }} />
-        <Stack.Screen name="court" options={{ title: 'Площадка' }} />
+        <Stack.Screen name="courts" options={{ title: 'Бронирование' }} />
+        <Stack.Screen name="court" options={{ title: 'Корт' }} />
         <Stack.Screen name="account" options={{ title: 'Аккаунт' }} />
         <Stack.Screen name="notifications" options={{ title: 'Уведомления' }} />
         <Stack.Screen name="prices" options={{ title: "Цены" }} />

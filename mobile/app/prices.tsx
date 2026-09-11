@@ -24,8 +24,8 @@ export default function Prices() {
   const padel = courts.find(c => !c.isFootball);
   const football = courts.find(c => c.isFootball);
 
-  // Сетка сама открывается на сегодня; отдельный параметр часа ей не нужен.
-  const go = () => { Haptics.selectionAsync(); router.push('/schedule') };
+  // Запись начинается с выбора корта, как и с главной
+  const go = () => { Haptics.selectionAsync(); router.push('/courts') };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.ink }}

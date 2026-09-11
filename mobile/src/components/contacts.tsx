@@ -7,6 +7,8 @@ import { CLUB, pointText, useClub, whatsappUrl } from '../club';
 import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone } from './icons';
 
 /** Открывает ссылку, а если открыть нечем — говорит человеку, что делать руками. */
+export async function openLink(url: string, fallback: string) { return open(url, fallback) }
+
 async function open(url: string, fallback: string) {
   Haptics.selectionAsync();
   try {

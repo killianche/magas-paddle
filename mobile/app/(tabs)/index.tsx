@@ -1,32 +1,35 @@
-// Главная — витрина клуба на живых данных. Показывает, есть ли сегодня место,
-// и уводит в выбор времени одной большой кнопкой.
+// Главная — витрина клуба на живых данных.
+//
+// Первый экран — только большая фотография клуба и две кнопки записи:
+// падел-корт и мини-футбольное поле. Заголовок «Выходи на корт» и приветствие
+// заказчик попросил убрать совсем.
 import { useCallback } from 'react';
 import {
-  Animated, ScrollView, Text, View, Pressable, StyleSheet, Image,
+  Animated, Text, View, Pressable, StyleSheet, Image,
   useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, TAB_SPACE } from '../../src/theme';
-import { Eyebrow, Ticker, OutlineText } from '../../src/components/velocity';
-import { api, rub, mediaUrl, type ApiGrid, type ApiTournament, type ApiBooking } from '../../src/api';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, EYEBROW, TAB_SPACE } from '../../src/theme';
+import { Ticker } from '../../src/components/velocity';
+import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
 import { IMG, HERO, TOURN_IMG } from '../../src/images';
-import {
-  Mark, IconChevron, IconCheck, IconBell, IconAccount, IconBall,
-} from '../../src/components/icons';
-import { WhereWeAre, SocialButtons } from '../../src/components/contacts';
+import { Mark, IconChevron, IconCheck, IconBell, IconAccount } from '../../src/components/icons';
+import { SocialButtons } from '../../src/components/contacts';
+import { ClubBlock } from '../../src/components/clubblock';
+import { LookLine } from '../../src/components/courtlook';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
-import {
-  today, hh, plural, dayMonth, dateOfIso, hourOfIso,
-} from '../../src/dates';
+import { today, hh, plural, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
+import { upcomingGrid } from '../../src/upcoming';
 
-const CLUB_NAME = 'Magas Padel';
-const CLUB_CITY = 'Магас';
+/** Поверх фотографии текст всегда светлый — в любой теме оформления. */
+const ON_PHOTO = '#F5F8F2';
+const TILE_GAP = 10;
 
 export default function Home() {
   const insets = useSafeAreaInsets();
@@ -44,47 +47,50 @@ export default function Home() {
   const unread = notes.data?.unread ?? 0;
 
   const q = useApi(async () => {
-    const [grid, tournaments, bookings] = await Promise.all([
-      api.grid(today()),
+    const [next, tournaments, bookings, prices] = await Promise.all([
+      upcomingGrid(),
       api.tournaments(phone),
       phone ? api.myBookings(phone) : Promise.resolve([] as ApiBooking[]),
+      api.prices(),
     ]);
-    return { grid, tournaments, bookings };
+    return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices };
   }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
   useFocusEffect(useCallback(() => { q.refresh(); notes.refresh() }, [phone]));
 
-  // Экран рисуется сразу, не дожидаясь сети: фотография, название и кнопка
-  // никаких данных не требуют. Крутилка во весь экран была самой заметной
-  // задержкой, хотя ждать было нечего.
+  // Экран рисуется сразу, не дожидаясь сети: фотография и кнопки никаких
+  // данных не требуют.
   const grid = q.data?.grid ?? null;
   const tournaments = q.data?.tournaments ?? [];
   const bookings = q.data?.bookings ?? [];
   const waiting = !q.data && !q.error;
-  // Герой занимает первый экран почти целиком — так в макете. Снимки клуба
-  // тёмные, поэтому затемняем их слабо и только по краям.
-  const heroH = Math.max(430, Math.min(height * 0.62, 520));
+  // Поздно вечером сегодняшние часы уже прошли — плитки говорят про завтра
+  const tomorrow = q.data?.tomorrow ?? false;
+  const Day = tomorrow ? 'Завтра' : 'Сегодня';
+  const day = tomorrow ? 'завтра' : 'сегодня';
+  // Первый экран — одна большая фотография, кнопки внизу неё
+  const heroH = Math.max(460, Math.min(height * 0.7, 600));
+  const tileW = Math.floor((width - S.xl * 2 - TILE_GAP) / 2);
+  // «Мини-футбольное поле» должно стоять в одну строку и на узком телефоне:
+  // на 360 pt при кегле 19 оно переносилось
+  const ctaSize = width < 340 ? 15 : width < 385 ? 17 : 19;
 
   const courts = grid?.courts ?? [];
-  const freeHours = courts.reduce(
-    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
   const soonest = courts
     .map(c => c.hours.find(h => h.status === 'free')?.hour)
     .filter((h): h is number => h != null)
     .sort((a, b) => a - b)[0] ?? null;
+  const freeHours = courts.reduce(
+    (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
   const freeText = waiting ? 'смотрю, что свободно'
     : q.error ? 'нет связи с клубом'
-    : soonest == null
-      ? 'Сегодня всё занято — посмотрите другие дни'
-      : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
-        + ` · ближайшее в ${hh(soonest)}`;
+    : soonest == null ? `${Day} всё занято — посмотрите другие дни`
+    : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
+      + ` ${day} · ближайшее в ${hh(soonest)}`;
 
-  // Самая низкая цена дня — её и показываем в «от …» на витрине
   const prices = courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0);
   const cheapest = prices.length ? Math.min(...prices) : 0;
 
-  // Футбольное поле живёт по своим правилам: другая игра, другая компания,
-  // другая цена. В общем ряду кортов оно терялось.
   const padel = courts.filter(c => !c.isFootball);
   const pitch = courts.find(c => c.isFootball) ?? null;
   const pitchFree = pitch?.hours.filter(h => h.status === 'free') ?? [];
@@ -107,77 +113,69 @@ export default function Home() {
       onScroll={scrim.onScroll} scrollEventThrottle={scrim.scrollEventThrottle}
       refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
-      {/* Герой во всю высоту первого экрана: снимок, поверх него марка,
-          плакатный заголовок и одна кнопка. Так устроен макет. */}
+      {/* Большая фотография клуба: сверху марка и кнопки аккаунта, внизу —
+          две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
         <Image source={HERO} style={st.fillImg} resizeMode="cover" />
         <LinearGradient
-          colors={['rgba(2,7,5,.75)', 'rgba(2,7,5,.10)', 'rgba(2,7,5,.55)', 'rgba(2,7,5,1)']}
-          locations={[0, 0.24, 0.62, 1]} style={st.fill} />
+          colors={['rgba(2,7,5,.72)', 'rgba(2,7,5,0)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.88)']}
+          locations={[0, 0.22, 0.5, 1]} style={st.fill} />
 
         <View style={[st.brandRow, { paddingTop: insets.top + 12 }]}>
           <Mark size={30} />
-          <Text style={st.brand} allowFontScaling={false}>
-            {CLUB_NAME.toUpperCase().replace(' ', '\n')}
-          </Text>
+          {/* Сначала PADEL, под ним MAGAS — так попросил заказчик */}
+          <Text style={st.brand} allowFontScaling={false}>PADEL{'\n'}MAGAS</Text>
           <View style={{ flex: 1 }} />
-          {/* Уведомления клуба: подтверждение брони, отмена, новости.
-              Точка на колокольчике — есть непрочитанные. */}
           <Pressable onPress={() => go('/notifications')} accessibilityRole="button"
             accessibilityLabel={unread > 0
               ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
             style={({ pressed }) => [st.circle, { marginRight: 8 },
               pressed && { opacity: 0.7 }]}>
-            <IconBell size={18} color={C.text} />
+            <IconBell size={18} color={ON_PHOTO} />
             {unread > 0 && <View style={st.badge} />}
           </Pressable>
-
-          {/* Аккаунт: имя и история посещений. Пока человек не завёл его —
-              кнопка зовёт зарегистрироваться. */}
           <Pressable onPress={() => go('/account')} accessibilityRole="button"
             accessibilityLabel={profile ? `Аккаунт: ${profile.name}` : 'Создать аккаунт'}
             style={({ pressed }) => [st.circle, pressed && { opacity: 0.7 }]}>
             {profile
               ? <Text style={st.circleT} allowFontScaling={false}>{initials(profile)}</Text>
-              : <IconAccount size={19} color={C.text} />}
+              : <IconAccount size={19} color={ON_PHOTO} />}
           </Pressable>
         </View>
 
-        <View style={st.heroCopy}>
-          <Eyebrow>{`Ассаламу алейкум · ${CLUB_CITY}`}</Eyebrow>
-          {/* Вторая строка контуром — приём из макета: заголовок читается
-              как знак, а не просто как крупный текст. */}
-          <Text style={st.h1} allowFontScaling={false}>ВЫХОДИ</Text>
-          <OutlineText size={52} width={width - S.xl * 2}>НА КОРТ</OutlineText>
-
-          {/* Во всю ширину: это главное действие приложения, и оно должно
-              читаться сразу — надпись слева, стрелка у правого края. */}
-          <Pressable onPress={() => go('/schedule')} accessibilityRole="button"
-            accessibilityLabel={`Забронировать корт. ${freeText}`}
-            style={({ pressed }) => [st.heroAction, pressed && { opacity: 0.9 }]}>
-            <Text style={st.heroActionT}>Забронировать корт</Text>
-            <Text style={st.heroArrow}>→</Text>
+        {/* Две кнопки одного вида: корт — залитая, поле — без цвета */}
+        <View style={st.heroActions}>
+          <Pressable onPress={() => go('/courts')} accessibilityRole="button"
+            accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
+            style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[st.ctaEy, { color: 'rgba(7,16,8,.6)' }]}>Забронировать</Text>
+              <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color:C.onLime }]}>Падел-корт</Text>
+            </View>
+            <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
           </Pressable>
 
-          {/* Поле — вторым, кнопкой поменьше: на корт ходят чаще, но и
-              футбол должен быть в один шаг от главной. */}
           {club.showFootball && (
             <Pressable onPress={() => go('/football')} accessibilityRole="button"
-              accessibilityLabel="Занять футбольное поле"
-              style={({ pressed }) => [st.heroSecond, pressed && { opacity: 0.85 }]}>
-              <IconBall size={16} color={C.text} />
-              <Text style={st.heroSecondT}>Занять футбольное поле</Text>
+              accessibilityLabel="Забронировать мини-футбольное поле"
+              style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.85 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[st.ctaEy, { color: 'rgba(245,248,242,.66)' }]}>Забронировать</Text>
+                <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color:ON_PHOTO }]}>Мини-футбольное поле</Text>
+              </View>
+              <Text style={[st.ctaArrow, { color: ON_PHOTO }]}>→</Text>
             </Pressable>
           )}
         </View>
       </View>
 
       <Ticker items={waiting
-        ? ['6 панорамных кортов', 'сегодня до 24:00', 'от 2 000 ₽']
+        ? ['Magas Padel', 'падел-корты', 'мини-футбольное поле']
         : [
             `${padel.length} ${plural(padel.length, 'корт', 'корта', 'кортов')}`,
-            soonest == null ? 'сегодня всё занято' : `ближайшее в ${hh(soonest)}`,
-            cheapest ? `от ${rub(cheapest)}` : 'футбольное поле',
+            soonest == null ? `${day} всё занято`
+              : `ближайшее ${tomorrow ? 'завтра ' : ''}в ${hh(soonest)}`,
+            cheapest ? `от ${rub(cheapest)}` : 'мини-футбольное поле',
           ]} />
 
       {!!q.error && (
@@ -213,76 +211,80 @@ export default function Home() {
         </Pressable>
       )}
 
-      {/* Связь с клубом — сразу под первым экраном: заказчик просил
-          держать WhatsApp и Instagram на виду, а не прятать в «Клуб». */}
       <SocialButtons />
 
-      {(padel.length > 0 || waiting) && (
-        <View style={st.secHead}>
-          <Text style={st.secT}>Падел-корты</Text>
-          <Text style={st.secS}>{waiting ? '' : padel.length}</Text>
-        </View>
-      )}
-      {waiting && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={st.strip} scrollEnabled={false}>
-          {[0, 1, 2].map(i => <View key={i} style={[st.card, st.cardWait]} />)}
-        </ScrollView>
-      )}
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.strip}>
+      {/* Корты плитками по два в ряд: все шесть видны сразу, без прокрутки
+          вбок. Нажатие — страница корта с его временем. */}
+      <View style={st.secHead}>
+        <Text style={st.secT}>Падел-корты</Text>
+        <Pressable onPress={() => go('/courts')} accessibilityRole="button"
+          style={({ pressed }) => [st.secLinkHit, pressed && { opacity: 0.7 }]}>
+          <Text style={st.secLink}>все корты</Text>
+        </Pressable>
+      </View>
+      <View style={st.tiles}>
+        {waiting && [0, 1, 2, 3].map(i => (
+          <View key={i} style={[st.tile, st.tileWait, { width: tileW, height: Math.round(tileW * 0.8) + 58 }]} />
+        ))}
         {padel.map(c => {
-          const free = c.hours.find(h => h.status === 'free');
-          const price = c.hours.find(h => h.hour === (free?.hour ?? grid!.morningUntil))?.price ?? 0;
+          const live = c.hours.filter(h => h.status !== 'past');
+          const free = live.find(h => h.status === 'free');
+          const ps = live.map(h => h.price).filter(p => p > 0);
+          const from = ps.length ? Math.min(...ps) : 0;
           return (
             <Pressable key={c.courtId}
-              onPress={() => go('/court', { id: c.courtId, date: today() })}
+              onPress={() => go('/court', { id: c.courtId })}
               accessibilityRole="button"
-              accessibilityLabel={`${c.name}, ${free ? 'ближайшее время ' + hh(free.hour) : c.closed ? 'закрыт' : 'сегодня занят'}`}
-              style={({ pressed }) => [st.card, pressed && { opacity: 0.85 }]}>
-              <Image source={c.photo ? { uri: mediaUrl(c.photo) } : (IMG[c.courtId] ?? IMG.c1)} style={st.cardImg} resizeMode="cover" />
-              <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.9)']}
-                locations={[0.35, 1]} style={st.fill} />
-              <View style={st.cardIn}>
-                <Text style={st.cardN}>{c.name}</Text>
-                <Text style={[st.cardS, !free && { color: C.dim2 }]}>
-                  {c.closed ? 'закрыт на ремонт' : free ? `свободно с ${hh(free.hour)}` : 'сегодня занят'}
-                </Text>
+              accessibilityLabel={`${c.name}, ${c.closed ? 'закрыт' : free ? `${day} свободно с ${hh(free.hour)}` : `${day} занят`}`}
+              style={({ pressed }) => [st.tile, { width: tileW }, pressed && { opacity: 0.85 }]}>
+              <View style={{ height: Math.round(tileW * 0.8) }}>
+                <Image source={c.photo ? { uri: mediaUrl(c.photo) } : (IMG[c.courtId] ?? IMG.c1)}
+                  style={st.fillImg} resizeMode="cover" />
+                <LinearGradient colors={['rgba(2,7,5,0)', 'rgba(2,7,5,.8)']}
+                  locations={[0.45, 1]} style={st.fill} />
+                <Text style={st.tileN}>{c.name}</Text>
+                {from > 0 && !c.closed && (
+                  <View style={st.tilePrice}><Text style={st.tilePriceT}>{rub(from)}</Text></View>
+                )}
+                {c.color && <View style={[st.tileBar, { backgroundColor: c.color.hex }]} />}
               </View>
-              {!c.closed && (
-                <View style={st.cardPrice}><Text style={st.cardPriceT}>{rub(price)}</Text></View>
-              )}
+              <View style={st.tileBody}>
+                <Text style={[st.tileS, (!free || c.closed) && { color: C.dim2 }]} numberOfLines={1}>
+                  {c.closed ? 'Закрыт'
+                    : free ? `${tomorrow ? 'Завтра' : 'Свободно'} с ${hh(free.hour)}`
+                    : `${Day} занят`}
+                </Text>
+                <LookLine color={c.color} tags={c.tags} />
+              </View>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
-      {/* Футбольное поле — отдельным блоком со своей записью.
+      {/* Мини-футбольное поле — отдельным плакатом со своей записью.
           Клуб может выключить его в админке. */}
       {pitch && club.showFootball && (
         <>
           <View style={st.secHead}>
-            <Text style={st.secT}>Футбольное поле</Text>
-            <Text style={st.secS}>поле целиком</Text>
+            <Text style={st.secT}>Мини-футбольное поле</Text>
           </View>
           <Pressable
             onPress={() => go('/football')}
             accessibilityRole="button"
-            accessibilityLabel={'Футбольное поле. ' + (pitchFree.length > 0
-              ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
-              : 'сегодня занято') + '. Забронировать'}
+            accessibilityLabel={'Мини-футбольное поле. ' + (pitchFree.length > 0
+              ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} ${day}`
+              : `${day} занято`) + '. Забронировать'}
             style={({ pressed }) => [st.pitch, pressed && { opacity: 0.9 }]}>
             <Image source={pitch.photo ? { uri: mediaUrl(pitch.photo) } : (IMG[pitch.courtId] ?? IMG.f1)} style={st.fillImg} resizeMode="cover" />
-            <LinearGradient colors={['rgba(9,13,10,.30)', 'rgba(9,13,10,.62)', 'rgba(9,13,10,.96)']}
+            <LinearGradient colors={['rgba(9,13,10,.25)', 'rgba(9,13,10,.55)', 'rgba(9,13,10,.95)']}
               locations={[0, 0.5, 1]} style={st.fill} />
             <View style={st.pitchIn}>
-              <Text style={st.pitchEyebrow}>ПОЛЕ ЦЕЛИКОМ</Text>
-              <Text style={st.pitchN}>{pitch.name}</Text>
+              <Text style={st.pitchEyebrow}>Поле целиком</Text>
               <Text style={st.pitchS}>
                 {pitch.closed ? 'Закрыто на ремонт'
                   : pitchFree.length > 0
-                    ? `Свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} сегодня`
-                    : 'Сегодня занято — посмотрите другие дни'}
+                    ? `Свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} ${day}`
+                    : `${Day} занято — посмотрите другие дни`}
               </Text>
               <View style={st.pitchRow}>
                 <Text style={st.pitchPrice}>{pitchPrice > 0 ? rub(pitchPrice) : '—'}</Text>
@@ -309,7 +311,7 @@ export default function Home() {
           <Pressable onPress={() => go('/tournament', { id: String(tourn.id) })}
             style={({ pressed }) => [st.tourn, pressed && { opacity: 0.88 }]}>
             <Image source={TOURN_IMG[tourn.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
-              style={st.cardImg} resizeMode="cover" />
+              style={st.fillImg} resizeMode="cover" />
             <LinearGradient colors={['rgba(9,13,10,.15)', 'rgba(9,13,10,.9)']}
               locations={[0.3, 1]} style={st.fill} />
             <View style={st.tournIn}>
@@ -331,37 +333,13 @@ export default function Home() {
           <Text style={st.secLink}>контакты и правила</Text>
         </Pressable>
       </View>
-      <Pressable onPress={() => go('/prices')} accessibilityRole="button"
-        style={({ pressed }) => [st.priceRow, pressed && { opacity: 0.85 }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={st.priceT}>Прайс-лист</Text>
-          <Text style={st.priceS}>от {rub(cheapest)} за час · утром дешевле</Text>
-        </View>
-        <IconChevron size={17} color={C.dim} />
-      </Pressable>
-
-      <WhereWeAre />
-      <View style={[st.info, { marginTop: 10 }]}>
-        <InfoRow k="Работаем" v={`с ${hh(grid?.openHour ?? 9)} до полуночи`} />
-        <InfoRow k="Аренда" v="ровно час, можно два и три подряд" />
-        <InfoRow k="Оплата" v="предоплата 50 %, остальное на месте" />
-        <InfoRow k="Отмена" v="бесплатно за 4 часа" last />
-      </View>
+      <ClubBlock prices={q.data?.prices ?? null} maxHours={grid?.maxHours ?? 3} />
 
       <Text style={st.foot}>
-        Данные в приложении пока учебные. Настоящие цены, часы и фотографии — от клуба.
+        Фотографии кортов пока временные — клуб заменит их своими.
       </Text>
     </Animated.ScrollView>
     <TopScrim scrollY={scrim.scrollY} />
-    </View>
-  );
-}
-
-function InfoRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
-  return (
-    <View style={[st.infoRow, last && { borderBottomWidth: 0 }]}>
-      <Text style={st.infoK}>{k}</Text>
-      <Text style={st.infoV}>{v}</Text>
     </View>
   );
 }
@@ -373,37 +351,30 @@ const st = StyleSheet.create({
   // растягивает их до собственного размера, и виден лишь угол снимка.
   fillImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     width: '100%', height: '100%' },
-  hero: { overflow: 'hidden', backgroundColor: C.surface, justifyContent: 'space-between' },
+  hero: { overflow: 'hidden', backgroundColor: '#0A1D14', justifyContent: 'space-between' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
-  // Марка в две строки, как в макете: MAGAS / PADEL
-  brand: { color: C.text, fontFamily: DISP, fontSize: 15, lineHeight: 15,
+  // Марка в две строки: PADEL / MAGAS
+  brand: { color: ON_PHOTO, fontFamily: DISP, fontSize: 15, lineHeight: 15,
     letterSpacing: -0.6 },
   badge: { position: 'absolute', top: 7, right: 8, width: 9, height: 9, borderRadius: 5,
-    backgroundColor: C.lime, borderWidth: 1.5, borderColor: '#020705' },
+    backgroundColor: '#C9F23D', borderWidth: 1.5, borderColor: '#020705' },
   circle: { width: 38, height: 38, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,.3)', backgroundColor: 'rgba(2,7,5,.65)',
     alignItems: 'center', justifyContent: 'center' },
-  circleT: { fontFamily: DISP, color: C.text, fontSize: 13, letterSpacing: -0.2 },
+  circleT: { fontFamily: DISP, color: ON_PHOTO, fontSize: 13, letterSpacing: -0.2 },
 
-  heroCopy: { paddingHorizontal: S.xl, paddingBottom: 24 },
-  heroSecond: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 9, marginTop: 9, paddingVertical: 12, minHeight: HIT,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.26)',
-    backgroundColor: 'rgba(2,7,5,0.42)' },
-  heroSecondT: { color: C.text, fontFamily: DISP_MED, fontSize: 11.5,
-    letterSpacing: 1.2, textTransform: 'uppercase' },
-  // Плакатный заголовок: очень жирный, прописной, буквы вплотную.
-  // Отрицательный трекинг — главная черта макета.
-  h1: { ...TITLE.hero, color: C.text, marginTop: 8 },
-  // Вторая строка контуром. На iOS это делается обводкой текста.
-  heroAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: C.lime, paddingVertical: 16, paddingHorizontal: 18,
-    marginTop: 16, minHeight: 52 },
-  heroActionT: { color: C.onLime, fontFamily: DISP, fontSize: 13, letterSpacing: 0.8,
-    textTransform: 'uppercase' },
-  heroArrow: { color: C.onLime, fontFamily: DISP, fontSize: 18 },
+  heroActions: { paddingHorizontal: S.xl, paddingBottom: 22, gap: 10 },
+  // Кнопки записи: над крупной надписью — мелкое «Забронировать». Так длинное
+  // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 66,
+    paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1 },
+  ctaLime: { backgroundColor: '#C9F23D', borderColor: '#C9F23D' },
+  ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
+  ctaEy: { ...EYEBROW },
+  ctaT: { fontFamily: DISP, fontSize: 19, lineHeight: 22, letterSpacing: -0.5,
+    textTransform: 'uppercase', marginTop: 3 },
+  ctaArrow: { fontFamily: DISP, fontSize: 22 },
 
-  // Мои записи — узкая полоса с акцентной чертой слева, без скруглений
   mine: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
     marginTop: 16, padding: 13, backgroundColor: C.surface,
     borderLeftWidth: 3, borderLeftColor: C.lime },
@@ -412,29 +383,32 @@ const st = StyleSheet.create({
   mineT: { color: C.text, fontFamily: DISP_MED, fontSize: 13 },
   mineS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 2 },
 
-  // Прайс-лист одной строкой
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
-    paddingVertical: 15, borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
-  priceT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
-    textTransform: 'uppercase' },
-  priceS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 3 },
-
-  // Футбольное поле: крупный плакат со своей записью
-  pitch: { marginHorizontal: S.xl, height: 214, overflow: 'hidden',
-    backgroundColor: C.surface, justifyContent: 'flex-end' },
-  pitchIn: { padding: 16 },
-  pitchEyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
-    textTransform: 'uppercase' },
-  pitchN: { ...TITLE.card, color: C.text, marginTop: 7, textTransform: 'uppercase' },
-  pitchS: { fontFamily: BODY, color: '#D0D9D2', fontSize: 11, marginTop: 5 },
-  pitchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
-  pitchPrice: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.5,
+  // Плитки кортов
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: TILE_GAP, paddingHorizontal: S.xl },
+  tile: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden' },
+  tileWait: { opacity: 0.6 },
+  tileN: { position: 'absolute', left: 10, bottom: 10, right: 10, color: ON_PHOTO,
+    fontFamily: DISP, fontSize: 17, letterSpacing: -0.5, textTransform: 'uppercase' },
+  tilePrice: { position: 'absolute', top: 8, right: 8, backgroundColor: '#C9F23D',
+    paddingVertical: 4, paddingHorizontal: 6 },
+  tilePriceT: { color: '#071008', fontFamily: DISP, fontSize: 11, letterSpacing: -0.2,
     fontVariant: ['tabular-nums'] },
-  pitchUnit: { fontFamily: BODY, color: C.dim2, fontSize: 11 },
+  tileBar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3 },
+  tileBody: { paddingHorizontal: 10, paddingVertical: 10, gap: 5, minHeight: 58 },
+  tileS: { fontFamily: BODY, color: C.limeDim, fontSize: 12, fontWeight: '600' },
+
+  pitch: { marginHorizontal: S.xl, height: 200, overflow: 'hidden',
+    backgroundColor: '#0A1D14', justifyContent: 'flex-end' },
+  pitchIn: { padding: 16 },
+  pitchEyebrow: { ...EYEBROW, color: '#C9F23D' },
+  pitchS: { fontFamily: BODY, color: '#D0D9D2', fontSize: 13, marginTop: 6 },
+  pitchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  pitchPrice: { color: ON_PHOTO, fontFamily: DISP, fontSize: 20, letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'] },
+  pitchUnit: { fontFamily: BODY, color: '#A5B0A8', fontSize: 11 },
   pitchCta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 'auto',
-    backgroundColor: C.lime, paddingVertical: 10, paddingHorizontal: 14 },
-  pitchCtaT: { color: C.onLime, fontFamily: DISP, fontSize: 11, letterSpacing: 0.6,
+    backgroundColor: '#C9F23D', paddingVertical: 10, paddingHorizontal: 14 },
+  pitchCtaT: { color: '#071008', fontFamily: DISP, fontSize: 11, letterSpacing: 0.6,
     textTransform: 'uppercase' },
 
   offline: { marginHorizontal: S.xl, marginTop: 14, padding: 14, borderRadius: R.lg,
@@ -442,45 +416,21 @@ const st = StyleSheet.create({
   offlineT: { fontFamily: BODY, color: C.amber, fontSize: 13, fontWeight: '700', letterSpacing: 1.2,
     textTransform: 'uppercase' },
   offlineS: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 5 },
-  cardWait: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
 
   secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: S.xl, marginTop: 36, marginBottom: 14 },
   secT: { fontFamily: BODY, color: C.text, fontSize: 13, fontWeight: '700', letterSpacing: 2.6,
     textTransform: 'uppercase' },
-  secS: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase',
-    fontVariant: ['tabular-nums'] },
   secLink: { fontFamily: BODY, color: C.limeDim, fontSize: 13, fontWeight: '600', letterSpacing: 0.8,
     textTransform: 'uppercase' },
   secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
     minHeight: HIT, justifyContent: 'center' },
 
-  strip: { paddingHorizontal: S.xl, gap: 8 },
-  card: { width: 224, height: 155, overflow: 'hidden',
-    backgroundColor: C.surface, justifyContent: 'flex-end' },
-  cardImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  cardIn: { padding: 13 },
-  cardN: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
-    textTransform: 'uppercase' },
-  cardS: { fontFamily: BODY, color: C.limeDim, fontSize: 11, marginTop: 3, fontWeight: '600', letterSpacing: 0.3 },
-  // Ярлык поверх плитки — заливка акцентом, прямые углы
-  cardPrice: { position: 'absolute', top: 14, right: 14, backgroundColor: C.lime,
-    paddingVertical: 5, paddingHorizontal: 7 },
-  cardPriceT: { color: C.onLime, fontFamily: DISP, fontSize: 11, letterSpacing: -0.2,
-    fontVariant: ['tabular-nums'] },
-
   tourn: { marginHorizontal: S.xl, height: 188, overflow: 'hidden',
-    justifyContent: 'flex-end', backgroundColor: C.surface },
+    justifyContent: 'flex-end', backgroundColor: '#0A1D14' },
   tournIn: { padding: 15 },
-  tournN: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
+  tournN: { ...TITLE.card, color: ON_PHOTO, textTransform: 'uppercase' },
   tournS: { fontFamily: BODY, color: '#CBD5C2', fontSize: 13, marginTop: 3, fontWeight: '600' },
-
-  // Без рамки: только волосяные линии между строками. Меньше «коробочности».
-  info: { marginHorizontal: S.xl, backgroundColor: C.surface, paddingHorizontal: 16 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  infoK: { fontFamily: BODY, color: C.dim2, fontSize: 13, flex: 1, letterSpacing: 1.2, textTransform: 'uppercase' },
-  infoV: { fontFamily: BODY, color: C.text, fontSize: 15, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
 
   foot: { fontFamily: BODY, color: C.dim2, fontSize: 11, lineHeight: 17, textAlign: 'center',
     marginTop: 22, paddingHorizontal: 30 },

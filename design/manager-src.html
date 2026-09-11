@@ -157,6 +157,10 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .crow input[type=text]{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text)}
 .crow .c-desc{margin-top:6px;font-size:12.5px;color:var(--dim)}
+.crow .c-look{display:flex;gap:6px;margin-top:6px}
+.crow .c-look select{flex:0 0 140px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font:inherit;font-size:12.5px;width:auto}
+.crow .c-look .c-tags{font-size:12.5px}
 .crow .p{width:96px}
 .crow .p input{width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text);text-align:right}
@@ -590,6 +594,9 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div><label for="setRentals">Прокат и раздевалка</label>
         <textarea id="setRentals" rows="3"
           placeholder="Ракетки — 300 ₽, мячи включены, есть душ и шкафчики"></textarea></div>
+      <div><label for="setBookNote">Что входит в бронь — строка на панели брони корта</label>
+        <input type="text" id="setBookNote" maxlength="200"
+          placeholder="Входит только корт. Ракетки и мячи — отдельно. (так по умолчанию)"></div>
       <div><label for="setWaTpl">Сообщение в WhatsApp при записи</label>
         <textarea id="setWaTpl" rows="2" maxlength="500"
           placeholder="Хочу забронировать {корт} на {дата}, {время} ({часы}), {цена}."></textarea></div>
@@ -1446,6 +1453,7 @@ async function openSetup(){
   $('#setPrepay').value = st.prepayPercent; $('#setLate').value = st.lateMinutes;
   $('#setRentals').value = st.rentalsText || '';
   $('#setWaTpl').value = st.waTemplate || '';
+  $('#setBookNote').value = st.bookingNote || '';
   $('#setTourn').checked = st.showTournaments !== false;
   $('#setFoot').checked = st.showFootball !== false;
   $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
@@ -1460,6 +1468,14 @@ async function openSetup(){
         <input type="text" class="c-name" value="${c.name.replace(/"/g,'&quot;')}">
         <input type="text" class="c-desc" placeholder="Описание: покрытие, цвет пола, чем отличается"
                value="${(c.description||'').replace(/"/g,'&quot;')}">
+        ${c.isFootball ? '' : `<div class="c-look">
+          <select class="c-color" title="Цвет покрытия — метка на карточке корта">
+            <option value="">Цвет не указан</option>
+            ${(setup.colors||[]).map(k => `<option value="${esc(k.key)}"${k.key===c.color?' selected':''}>${esc(k.name)}</option>`).join('')}
+          </select>
+          <input type="text" class="c-tags" placeholder="Особенности через запятую: Ультраширокий, Одиночный"
+                 value="${esc((c.tags||[]).join(', '))}">
+        </div>`}
       </div>
       <div class="p"><small>утро, ₽</small><input type="number" class="c-m" min="0" step="100" value="${c.priceMorning/100}"></div>
       <div class="p"><small>дальше, ₽</small><input type="number" class="c-s" min="0" step="100" value="${c.priceStandard/100}"></div>
@@ -1490,6 +1506,10 @@ async function openSetup(){
         await call('/admin/courts/'+id, { method:'POST', body: JSON.stringify({
           name: row.querySelector('.c-name').value,
           description: row.querySelector('.c-desc').value,
+          ...(row.querySelector('.c-color') ? {
+            color: row.querySelector('.c-color').value,
+            tags: row.querySelector('.c-tags').value,
+          } : {}),
           priceMorning: +row.querySelector('.c-m').value,
           priceStandard: +row.querySelector('.c-s').value,
         })});
@@ -1593,6 +1613,7 @@ $('#appSave').onclick = async () => {
     await call('/admin/settings', { method:'POST', body: JSON.stringify({
       prepayPercent: +$('#setPrepay').value, lateMinutes: +$('#setLate').value,
       rentalsText: $('#setRentals').value, waTemplate: $('#setWaTpl').value,
+      bookingNote: $('#setBookNote').value,
       showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
     })});
     ok('#appErr', '#appSave', 'Сохранить');

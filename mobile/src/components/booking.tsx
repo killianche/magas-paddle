@@ -12,13 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY } from '../theme';
-import { api, rub, mediaUrl, ApiError, type ApiGrid, type ApiHour } from '../api';
+import { api, rub, mediaUrl, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp } from './icons';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
-import { useClub } from '../club';
+import { BOOKING_NOTE, useClub } from '../club';
+import Svg, { Circle, Path } from 'react-native-svg';
 import {
   useProfile, fullName, normalizePhone, prettyPhone, saveToken, type Profile,
 } from '../profile';
@@ -42,13 +43,14 @@ export function usePillWidth() {
 export const canStart = (h: ApiHour, hours: number) => h.status === 'free' && h.maxRun >= hours;
 
 /** Фото площадки: загруженные клубом в админке, иначе временные. */
+export function photosOf(c: ApiCourt | undefined, courtId: string): ImageSourcePropType[] {
+  if (c?.photos?.length) return c.photos.map(u => ({ uri: mediaUrl(u) }));
+  return COURT_PHOTOS[courtId] ?? [IMG[courtId] ?? IMG.c1];
+}
+
 export function useCourtPhotos() {
   const q = useApi(() => api.courts(), [], 'courts.photos');
-  return (courtId: string): ImageSourcePropType[] => {
-    const c = q.data?.find(x => x.id === courtId);
-    if (c?.photos?.length) return c.photos.map(u => ({ uri: mediaUrl(u) }));
-    return COURT_PHOTOS[courtId] ?? [IMG[courtId] ?? IMG.c1];
-  };
+  return (courtId: string) => photosOf(q.data?.find(x => x.id === courtId), courtId);
 }
 
 /* ── Дата ──────────────────────────────────────────────────────────────── */
@@ -314,6 +316,7 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
   booking: Booking; onReset: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const club = useClub();
   return (
     <View style={[b.sheet, { paddingBottom: insets.bottom + 12 }]}>
       <View style={b.sumRow}>
@@ -326,6 +329,15 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
         <Text style={b.prepayL}>Предоплата {booking.prepayPercent} %</Text>
         <Text style={b.prepayR}>{rub(booking.prepay)}</Text>
       </View>
+
+      {/* Что входит в бронь — тихой строкой со значком, не подсказкой поверх.
+          Для поля про ракетки говорить нечего, там строки нет. */}
+      {!court.isFootball && (
+        <View style={b.incl}>
+          <PadelMark />
+          <Text style={b.inclT}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
+        </View>
+      )}
 
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}
 
@@ -344,6 +356,23 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
 
       <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />
     </View>
+  );
+}
+
+/** Ракетка и мяч — значок к строке «что входит в бронь». */
+function PadelMark() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.dim}
+      strokeWidth={1.6} strokeLinecap="round">
+      {/* Голова ракетки с отверстиями, ручка по диагонали, рядом мяч */}
+      <Circle cx={9} cy={9} r={6} />
+      <Path d="M13.3 13.3 19.5 19.5" strokeWidth={2.6} />
+      <Circle cx={7} cy={7.6} r={0.7} fill={C.dim} stroke="none" />
+      <Circle cx={10.4} cy={6.8} r={0.7} fill={C.dim} stroke="none" />
+      <Circle cx={8} cy={10.8} r={0.7} fill={C.dim} stroke="none" />
+      <Circle cx={11.2} cy={10.1} r={0.7} fill={C.dim} stroke="none" />
+      <Circle cx={19.2} cy={5.4} r={2.4} />
+    </Svg>
   );
 }
 
@@ -534,13 +563,17 @@ const b = StyleSheet.create({
     gap: 10, marginBottom: 8 },
   sumRow2: { marginBottom: 14, paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
-  sumL: { ...EYEBROW, color: C.dim, fontSize: 11, letterSpacing: 1, flexShrink: 1 },
+  // Время и цена — одной строкой всегда; длинное название площадки
+  // («Футбольное поле · 12 сентября») переносится слева, не ломая их
+  sumL: { ...EYEBROW, color: C.dim, fontSize: 11, letterSpacing: 1, flex: 1 },
   sumR: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3,
-    fontVariant: ['tabular-nums'] },
+    fontVariant: ['tabular-nums'], flexShrink: 0 },
   prepayL: { fontFamily: DISP_MED, color: C.text, fontSize: 14 },
   prepayR: { fontFamily: DISP, color: C.lime, fontSize: 16, letterSpacing: -0.4,
     fontVariant: ['tabular-nums'] },
   problem: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  incl: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: -4, marginBottom: 12 },
+  inclT: { flex: 1, fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#25D366', minHeight: 52 },
   waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,

@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubService } from '../club';
+import { colorOf } from './look';
 
 @Controller('courts')
 export class CourtsController {
@@ -26,6 +27,8 @@ export class CourtsController {
       name: c.name,
       isFootball: c.is_football,
       description: c.description,
+      color: colorOf(c.color),
+      tags: c.tags,
       priceMorning: c.price_morning,
       priceStandard: c.price_standard,
       morningUntil: set.morningUntil,
@@ -99,6 +102,7 @@ export class ClubController {
       showTournaments: s.showTournaments,
       showFootball: s.showFootball,
       waTemplate: s.waTemplate,
+      bookingNote: s.bookingNote,
     };
   }
 }

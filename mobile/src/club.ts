@@ -34,7 +34,13 @@ export type ClubInfoData = {
   showFootball: boolean;
   /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
   waTemplate: string | null;
+  /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
+  bookingNote: string | null;
 };
+
+/** Слова заказчика: в бронь входит только корт, ракетки и мячи — отдельно.
+ *  Менеджер может переписать строку в админке. */
+export const BOOKING_NOTE = 'Входит только корт. Ракетки и мячи — отдельно.';
 
 /** Пока сервер не ответил. Ничего выдуманного: только часы по умолчанию,
  *  которые всё равно приходят с первым же ответом. */
@@ -42,7 +48,7 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, waTemplate: null,
+  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null,
 };
 
 let cache: ClubInfoData = EMPTY;

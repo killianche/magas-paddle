@@ -9,6 +9,7 @@ import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
 import { normalizePhone } from '../phone';
+import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
@@ -1020,11 +1021,14 @@ export class AdminController {
     ]);
     return {
       settings: set,
+      // Цвета покрытия, из которых выбирает менеджер
+      colors: colorList(),
       courts: courts.map(c => ({
         photos: c.court_photos.map(ph => ({ id: Number(ph.id), url: ph.url })),
         id: c.id, name: c.name, isFootball: c.is_football,
         priceMorning: c.price_morning, priceStandard: c.price_standard,
         isActive: c.is_active, sortOrder: c.sort_order, description: c.description,
+        color: c.color, tags: c.tags,
         closedUntil: c.closed_until, closedReason: c.closed_reason,
       })),
     };
@@ -1040,6 +1044,7 @@ export class AdminController {
     mapUrl: string; instagram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
     showTournaments: boolean; showFootball: boolean; waTemplate: string;
+    bookingNote: string;
   }>) {
     const cur = await this.club.get();
     const next = {
@@ -1064,6 +1069,8 @@ export class AdminController {
       show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
       wa_template: body.waTemplate === undefined
         ? cur.waTemplate : (String(body.waTemplate).trim().slice(0, 500) || null),
+      booking_note: body.bookingNote === undefined
+        ? cur.bookingNote : (String(body.bookingNote).trim().slice(0, 200) || null),
     };
     if (next.open_hour >= next.close_hour) {
       throw new BadRequestException('Открытие должно быть раньше закрытия');
@@ -1142,12 +1149,13 @@ export class AdminController {
     return { ok: true };
   }
 
-  /** Название, цены, порядок и включение площадки. */
+  /** Название, цены, цвет, особенности, порядок и включение площадки. */
   @Post('courts/:id')
   @Needs('club')
   async saveCourt(@Param('id') id: string, @Body() body: Partial<{
     name: string; priceMorning: number; priceStandard: number;
     isActive: boolean; sortOrder: number; description: string;
+    color: string; tags: string | string[];
   }>) {
     const court = await this.db.courts.findUnique({ where: { id } });
     if (!court) throw new NotFoundException('Площадка не найдена');
@@ -1166,6 +1174,13 @@ export class AdminController {
     if (body.description != null) {
       data.description = String(body.description).trim().slice(0, 1000) || null;
     }
+    // Пустой цвет — «не указан»; неизвестный ключ не принимаем молча
+    if (body.color != null) {
+      const key = String(body.color);
+      if (key && !colorOf(key)) throw new BadRequestException('Такого цвета в списке нет');
+      data.color = key || null;
+    }
+    if (body.tags != null) data.tags = cleanTags(body.tags);
 
     const c = await this.db.courts.update({ where: { id }, data });
     return { id: c.id, name: c.name, isActive: c.is_active,

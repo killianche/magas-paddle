@@ -73,8 +73,13 @@ function messageFor(status: number) {
 
 export type SlotStatus = 'free' | 'busy' | 'past' | 'closed';
 
+/** Цвет покрытия, выбранный клубом в админке: «Синий» и оттенок для метки. */
+export type CourtColor = { key: string; name: string; hex: string };
+
 export type ApiCourt = {
   id: string; name: string; isFootball: boolean; description: string | null;
+  /** Цвет покрытия и особенности («Ультраширокий»). Пусто — клуб не указал. */
+  color?: CourtColor | null; tags?: string[];
   priceMorning: number; priceStandard: number; morningUntil: number;
   closedUntil: string | null; closedReason: string | null;
   /** Снимки, загруженные клубом: пути вида /uploads/… Пусто — временные фото. */
@@ -100,7 +105,8 @@ export type ApiGrid = {
   date: string; openHour: number; closeHour: number; morningUntil: number; maxHours: number;
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean;
     /** Главное фото корта, загруженное клубом; null — временное. */
-    photo?: string | null; hours: ApiHour[] }[];
+    photo?: string | null; color?: CourtColor | null; tags?: string[];
+    hours: ApiHour[] }[];
 };
 
 export type ApiNote = {
@@ -162,6 +168,7 @@ export const api = {
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
     showTournaments: boolean; showFootball: boolean; waTemplate: string | null;
+    bookingNote?: string | null;
   }>('/club'),
 
   /** Знает ли клуб этот номер и стоит ли на нём пароль. */
