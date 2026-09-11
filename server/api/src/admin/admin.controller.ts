@@ -17,6 +17,29 @@ import { join } from 'path';
 /** Куда складываются загруженные фото. В контейнере это смонтированная
  *  папка сайта: nginx отдаёт её сам, без участия приложения. */
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? '/app/uploads';
+
+/** Фото из строки base64. Тип — по первым байтам файла, а не по тому, что
+ *  прислал браузер: иначе под видом картинки можно положить что угодно.
+ *  Разрешены JPEG, PNG и WebP до 8 МБ. */
+function imageFrom(data?: string): { buf: Buffer; ext: string } {
+  const raw = String(data ?? '').replace(/^data:[^;]+;base64,/, '');
+  const buf = Buffer.from(raw, 'base64');
+  if (buf.length < 100) throw new BadRequestException('Файл пустой или повреждён');
+  if (buf.length > 8 * 1024 * 1024) throw new BadRequestException('Фото больше 8 МБ — уменьшите его');
+  const ext = buf[0] === 0xff && buf[1] === 0xd8 ? 'jpg'
+    : buf.slice(0, 4).toString('hex') === '89504e47' ? 'png'
+    : buf.slice(0, 4).toString() === 'RIFF' && buf.slice(8, 12).toString() === 'WEBP' ? 'webp'
+    : null;
+  if (!ext) throw new BadRequestException('Нужна фотография в формате JPEG, PNG или WebP');
+  return { buf, ext };
+}
+
+/** Убрать загруженный файл с диска; чужие и встроенные пути не трогаем. */
+async function dropUpload(url: string | null | undefined) {
+  if (!url?.startsWith('/uploads/')) return;
+  const rel = url.replace(/^\/uploads\//, '');
+  if (!rel.includes('..')) await unlink(join(UPLOAD_DIR, rel)).catch(() => {});
+}
 import { NotificationsService } from '../notifications/notifications.service';
 
 class StatusDto {
@@ -1098,15 +1121,7 @@ export class AdminController {
   async addPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
     const court = await this.db.courts.findUnique({ where: { id } });
     if (!court) throw new NotFoundException('Площадка не найдена');
-    const raw = String(body.data ?? '').replace(/^data:[^;]+;base64,/, '');
-    const buf = Buffer.from(raw, 'base64');
-    if (buf.length < 100) throw new BadRequestException('Файл пустой или повреждён');
-    if (buf.length > 8 * 1024 * 1024) throw new BadRequestException('Фото больше 8 МБ — уменьшите его');
-    const ext = buf[0] === 0xff && buf[1] === 0xd8 ? 'jpg'
-      : buf.slice(0, 4).toString('hex') === '89504e47' ? 'png'
-      : buf.slice(0, 4).toString() === 'RIFF' && buf.slice(8, 12).toString() === 'WEBP' ? 'webp'
-      : null;
-    if (!ext) throw new BadRequestException('Нужна фотография в формате JPEG, PNG или WebP');
+    const { buf, ext } = imageFrom(body.data);
 
     const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
     const dir = join(UPLOAD_DIR, 'courts', court.id);
@@ -1147,6 +1162,36 @@ export class AdminController {
     await this.db.court_photos.update({ where: { id: ph.id },
       data: { sort: (first?.sort ?? 0) - 1 } });
     return { ok: true };
+  }
+
+  /** Фото первого экрана приложения. Прежнее своё фото удаляется с диска. */
+  @Post('hero')
+  @Needs('club')
+  async setHero(@Req() req: any, @Body() body: { data?: string }) {
+    const { buf, ext } = imageFrom(body.data);
+    const name = `hero-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
+    const dir = join(UPLOAD_DIR, 'club');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, name), buf);
+    const old = (await this.club.get()).heroUrl;
+    const heroUrl = `/uploads/club/${name}`;
+    await this.db.settings.update({ where: { id: 1 }, data: { hero_url: heroUrl, updated_at: new Date() } });
+    this.club.forget();
+    await dropUpload(old);
+    await this.auth.log(req.admin, 'сменил фото главного экрана', name);
+    return { heroUrl };
+  }
+
+  /** Вернуть встроенное в приложение фото первого экрана. */
+  @Post('hero/delete')
+  @Needs('club')
+  async resetHero(@Req() req: any) {
+    const old = (await this.club.get()).heroUrl;
+    await this.db.settings.update({ where: { id: 1 }, data: { hero_url: null, updated_at: new Date() } });
+    this.club.forget();
+    await dropUpload(old);
+    await this.auth.log(req.admin, 'вернул стандартное фото главного экрана', '');
+    return { heroUrl: null };
   }
 
   /** Название, цены, цвет, особенности, порядок и включение площадки. */

@@ -127,7 +127,9 @@ export default function Home() {
       {/* Большая фотография клуба: сверху марка и кнопки аккаунта, внизу —
           две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
-        <Image source={HERO} style={st.fillImg} resizeMode="cover" />
+        {/* Своё фото клуб загружает в админке («Приложение»); иначе встроенное */}
+        <Image source={club.heroUrl ? { uri: mediaUrl(club.heroUrl) } : HERO}
+          style={st.fillImg} resizeMode="cover" />
         <LinearGradient
           colors={['rgba(2,7,5,.72)', 'rgba(2,7,5,0)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.88)']}
           locations={[0, 0.22, 0.5, 1]} style={st.fill} />
@@ -346,9 +348,12 @@ export default function Home() {
       </View>
       <ClubBlock prices={q.data?.prices ?? null} maxHours={grid?.maxHours ?? 3} />
 
-      <Text style={st.foot}>
-        Фотографии кортов пока временные — клуб заменит их своими.
-      </Text>
+      {/* Пропадает сама, когда клуб загрузит фото всех площадок */}
+      {courts.some(c => !c.photo) && (
+        <Text style={st.foot}>
+          Фотографии кортов пока временные — клуб заменит их своими.
+        </Text>
+      )}
     </Animated.ScrollView>
     <TopScrim scrollY={scrim.scrollY} />
     {focused && <StatusBar style={onHero || mode === 'dark' ? 'light' : 'dark'} />}

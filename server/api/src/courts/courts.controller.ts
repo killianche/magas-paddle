@@ -103,6 +103,7 @@ export class ClubController {
       showFootball: s.showFootball,
       waTemplate: s.waTemplate,
       bookingNote: s.bookingNote,
+      heroUrl: s.heroUrl,
     };
   }
 }

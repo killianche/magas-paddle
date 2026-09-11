@@ -169,6 +169,23 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
   background:var(--surface-2);color:var(--text);text-align:right}
 .crow .p small{display:block;font-size:10.5px;color:var(--dim-2);margin-bottom:3px}
 .crow .shut{font-size:11.5px;color:var(--amber);white-space:nowrap}
+.crow .c-ord{display:inline-flex;gap:4px}
+.crow .c-ord .btn[disabled]{opacity:.35;cursor:default}
+/* Фото главного экрана */
+.hero-set{margin-bottom:16px}
+.hero-row{display:flex;gap:14px;align-items:flex-start;margin-top:6px}
+.hero-prev{flex:0 0 200px;height:130px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  background:var(--surface-2);color:var(--dim-2);font-size:12px;line-height:1.4}
+.hero-prev img{width:100%;height:100%;object-fit:cover;display:block}
+/* Прокат таблицей */
+.rent-ed{display:flex;flex-direction:column;gap:10px;align-items:flex-start;margin-top:6px}
+.rent-ed .rg{align-self:stretch;border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--surface)}
+.rent-ed .rg-head{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.rent-ed .rg-title{flex:1;font-weight:700}
+.rent-ed .ri{display:grid;grid-template-columns:1fr 190px 28px;gap:6px;align-items:center;margin-bottom:6px}
+.rent-ed input{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--text)}
 .trow{display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:8px;
   border-radius:11px;border:1px solid var(--line);background:var(--surface)}
 .trow .tn{flex:1;min-width:0}
@@ -594,12 +611,26 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setLate">Держим корт за опоздавшим, минут</label>
           <input id="setLate" type="number" min="0" max="120"></div>
       </div>
-      <div><label for="setRentals">Прокат ракеток и мячи — показывается при бронировании корта</label>
-        <textarea id="setRentals" rows="8"
-          placeholder="Прокат ракеток:&#10;Для начинающих — 100 ₽&#10;Можно свои"></textarea>
-        <small style="display:block;color:var(--dim-2);font-size:11.5px;margin-top:4px">
-          Строка с двоеточием на конце — заголовок. Цена — после тире: «Банка (3 мяча) — 800 ₽».
-          Строка без цены — пометка («Можно свои»).</small></div>
+      <div class="hero-set">
+        <label>Главный экран — большое фото</label>
+        <div class="hero-row">
+          <div class="hero-prev" id="heroPrev"></div>
+          <div>
+            <p class="sub" style="margin:0 0 10px">Первое, что видит человек в приложении. Внизу на
+              фото лежат две кнопки записи, поэтому главное в кадре — в верхней половине.
+              Подойдёт снимок с телефона: он сам уменьшится.</p>
+            <label class="btn small" id="heroAdd">Загрузить своё фото<input type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
+            <button type="button" class="btn small" id="heroReset" hidden>Вернуть стандартное</button>
+          </div>
+        </div>
+      </div>
+      <div><label>Прокат ракеток и мячи — показывается при бронировании корта</label>
+        <div id="rentEd" class="rent-ed"></div>
+        <textarea id="setRentals" hidden></textarea>
+        <small style="display:block;color:var(--dim-2);font-size:11.5px;margin-top:6px">
+          Цену пишите так, как её увидит клиент: «100 ₽ за игру». Строка без цены — пометка,
+          например «Можно свои». Изменения попадут в приложение после «Сохранить» внизу.</small></div>
       <div><label for="setBookNote">Что входит в бронь — строка на панели брони корта</label>
         <input type="text" id="setBookNote" maxlength="200"
           placeholder="Входит только корт. Ракетки и мячи — отдельно. (так по умолчанию)"></div>
@@ -1435,6 +1466,90 @@ $('#pendBtn').onclick = () => $('#pendModal').classList.add('on');
 let setup = null;
 
 $('#setupBtn').onclick = () => openSetup();
+
+/* ── Фото главного экрана ─────────────────────────────────────────────── */
+function heroShow(url){
+  $('#heroPrev').innerHTML = url ? `<img src="${esc(url)}" alt="">`
+    : '<span>Стандартное фото<br>из приложения</span>';
+  $('#heroReset').hidden = !url;
+}
+$('#heroAdd input').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const lab = $('#heroAdd'), was = lab.firstChild.textContent;
+  lab.firstChild.textContent = 'Загружаю…';
+  try {
+    const data = await shrink(f);
+    const r = await call('/admin/hero', { method:'POST', body: JSON.stringify({ data }) });
+    heroShow(r.heroUrl);
+  } catch(err){ alert(err.message) }
+  lab.firstChild.textContent = was; e.target.value = '';
+};
+$('#heroReset').onclick = async () => {
+  if(!await ask('Вернуть стандартное фото?', 'Ваше фото удалится, в приложении снова будет встроенное.')) return;
+  try { await call('/admin/hero/delete', { method:'POST' }); heroShow(null) }
+  catch(err){ alert(err.message) }
+};
+
+/* ── Прокат: таблица вместо текста по правилам ─────────────────────────
+   Хранится тем же текстом, что читает приложение: «Заголовок:», строки
+   «Название — цена» и пометки без цены. Здесь — только удобный вид. */
+let rent = [];
+function rentParse(text){
+  const groups = []; let cur = null;
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.replace(/^[\s•·*\-–—]+/, '').trim(); if (!line) continue;
+    if (line.endsWith(':')) { cur = { title: line.slice(0, -1).trim(), items: [] }; groups.push(cur); continue }
+    if (!cur) { cur = { title: '', items: [] }; groups.push(cur) }
+    const m = line.match(/^(.*?)\s+[—–-]\s+(.*\d.*)$/);
+    cur.items.push(m ? { name: m[1].trim(), price: m[2].trim() } : { name: line, price: '' });
+  }
+  return groups;
+}
+function rentText(groups){
+  const out = [];
+  for (const g of groups) {
+    const items = g.items.filter(i => i.name.trim());
+    if (!items.length && !g.title.trim()) continue;
+    if (g.title.trim()) out.push(g.title.trim().replace(/:+$/, '') + ':');
+    for (const i of items) out.push(i.price.trim() ? `${i.name.trim()} — ${i.price.trim()}` : i.name.trim());
+  }
+  return out.join('\n');
+}
+function rentSync(){ $('#setRentals').value = rentText(rent) }
+function rentRender(){
+  const ed = $('#rentEd');
+  ed.innerHTML = rent.map((g, gi) => `<div class="rg" data-g="${gi}">
+      <div class="rg-head">
+        <input type="text" class="rg-title" placeholder="Заголовок группы, например «Прокат ракеток»" value="${esc(g.title)}">
+        <button type="button" class="copy" data-delg>удалить группу</button>
+      </div>
+      ${g.items.map((it, ii) => `<div class="ri" data-i="${ii}">
+        <input type="text" class="ri-name" placeholder="Что: «Для начинающих» или пометка «Можно свои»" value="${esc(it.name)}">
+        <input type="text" class="ri-price" placeholder="Цена: «100 ₽ за игру»" value="${esc(it.price)}">
+        <button type="button" class="copy" data-deli title="Убрать строку">✕</button>
+      </div>`).join('')}
+      <button type="button" class="btn small" data-addi>+ строка</button>
+    </div>`).join('') + '<button type="button" class="btn small" id="rentAddG">+ группа</button>';
+  ed.querySelectorAll('.rg').forEach(el => {
+    const g = rent[+el.dataset.g];
+    el.querySelector('.rg-title').oninput = e => { g.title = e.target.value; rentSync() };
+    el.querySelectorAll('.ri').forEach(r => {
+      const it = g.items[+r.dataset.i];
+      r.querySelector('.ri-name').oninput = e => { it.name = e.target.value; rentSync() };
+      r.querySelector('.ri-price').oninput = e => { it.price = e.target.value; rentSync() };
+      r.querySelector('[data-deli]').onclick = () => { g.items.splice(+r.dataset.i, 1); rentRender(); rentSync() };
+    });
+    el.querySelector('[data-addi]').onclick = () => {
+      const gi = el.dataset.g;
+      g.items.push({ name: '', price: '' }); rentRender();
+      // После перерисовки старый блок уже не в документе — ищем заново
+      const names = $('#rentEd').querySelectorAll(`.rg[data-g="${gi}"] .ri-name`);
+      names[names.length - 1]?.focus();
+    };
+    el.querySelector('[data-delg]').onclick = () => { rent.splice(+el.dataset.g, 1); rentRender(); rentSync() };
+  });
+  $('#rentAddG').onclick = () => { rent.push({ title: '', items: [{ name: '', price: '' }] }); rentRender() };
+}
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x===t));
   document.querySelectorAll('.pane').forEach(x => x.classList.remove('on'));
@@ -1458,6 +1573,10 @@ async function openSetup(){
   $('#setInsta').value = st.instagram || '';
   $('#setPrepay').value = st.prepayPercent; $('#setLate').value = st.lateMinutes;
   $('#setRentals').value = st.rentalsText || '';
+  rent = rentParse(st.rentalsText);
+  if (!rent.length) rent = [{ title: '', items: [{ name: '', price: '' }] }];
+  rentRender();
+  heroShow(st.heroUrl);
   $('#setWaTpl').value = st.waTemplate || '';
   $('#setBookNote').value = st.bookingNote || '';
   $('#setTourn').checked = st.showTournaments !== false;
@@ -1467,7 +1586,7 @@ async function openSetup(){
   $('#setCancel').value = st.cancelHours;
   $('#setHold').value = st.holdMinutes;
 
-  $('#courtRows').innerHTML = setup.courts.map(c => {
+  $('#courtRows').innerHTML = setup.courts.map((c, ci, all) => {
     const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
     return `<div class="crow${c.isActive?'':' off'}" data-id="${c.id}">
       <div class="nm">
@@ -1488,6 +1607,10 @@ async function openSetup(){
       <button class="btn small c-save">Сохранить</button>
       <button class="btn small c-act">${c.isActive?'Выключить':'Включить'}</button>
       <button class="btn small c-shut">${shut?'Открыть':'На ремонт'}</button>
+      <span class="c-ord" title="Порядок площадок в приложении">
+        <button class="btn small c-up"${ci===0?' disabled':''} aria-label="Выше">↑</button>
+        <button class="btn small c-down"${ci===all.length-1?' disabled':''} aria-label="Ниже">↓</button>
+      </span>
       ${shut?`<span class="shut">до ${new Date(c.closedUntil).toLocaleDateString('ru-RU')}</span>`:''}
       <span class="saved" hidden>сохранено</span>
       <div class="c-photos">
@@ -1555,6 +1678,23 @@ async function openSetup(){
         openSetup(); load();
       } catch(e){ alert(e.message) }
     };
+    // Порядок: меняем местами с соседом и нумеруем все площадки подряд
+    const move = async (d) => {
+      const order = setup.courts.map(x => x.id);
+      const i = order.indexOf(id), j = i + d;
+      if (j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]];
+      try {
+        for (const [k, cid] of order.entries()) {
+          const c = setup.courts.find(x => x.id === cid);
+          if (c.sortOrder !== k + 1)
+            await call('/admin/courts/' + cid, { method:'POST', body: JSON.stringify({ sortOrder: k + 1 }) });
+        }
+        openSetup(); load();
+      } catch(e){ alert(e.message) }
+    };
+    row.querySelector('.c-up').onclick = () => move(-1);
+    row.querySelector('.c-down').onclick = () => move(1);
     row.querySelector('.c-shut').onclick = async () => {
       const c = setup.courts.find(x => x.id===id);
       const shut = c.closedUntil && new Date(c.closedUntil) > new Date();

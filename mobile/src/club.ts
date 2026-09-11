@@ -36,6 +36,8 @@ export type ClubInfoData = {
   waTemplate: string | null;
   /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
   bookingNote: string | null;
+  /** Фото первого экрана, загруженное клубом; null — встроенное. */
+  heroUrl: string | null;
 };
 
 /** Слова заказчика: в бронь входит только корт, ракетки и мячи — отдельно.
@@ -48,7 +50,7 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null,
+  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null,
 };
 
 let cache: ClubInfoData = EMPTY;

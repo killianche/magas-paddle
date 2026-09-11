@@ -168,7 +168,7 @@ export const api = {
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
     showTournaments: boolean; showFootball: boolean; waTemplate: string | null;
-    bookingNote?: string | null;
+    bookingNote?: string | null; heroUrl?: string | null;
   }>('/club'),
 
   /** Знает ли клуб этот номер и стоит ли на нём пароль. */

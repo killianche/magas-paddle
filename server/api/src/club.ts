@@ -42,6 +42,8 @@ export type ClubSettings = {
   waTemplate: string | null;
   /** Что входит в бронь — строка на панели брони; null — текст по умолчанию. */
   bookingNote: string | null;
+  /** Фото первого экрана, загруженное клубом; null — встроенное в приложение. */
+  heroUrl: string | null;
 };
 
 /** Значения на случай, если строки настроек в базе почему-то нет.
@@ -51,7 +53,7 @@ export const FALLBACK: ClubSettings = {
   holdMinutes: 60,
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null,
+  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -100,6 +102,7 @@ export class ClubService {
       showFootball: row.show_football,
       waTemplate: row.wa_template ?? null,
       bookingNote: row.booking_note ?? null,
+      heroUrl: row.hero_url ?? null,
     } : FALLBACK;
     this.readAt = Date.now();
     return this.cache;
