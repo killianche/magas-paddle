@@ -15,7 +15,7 @@ import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY } from '../theme';
 import { api, rub, mediaUrl, ApiError, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
-import { IconCheck, IconWhatsApp } from './icons';
+import { IconWhatsApp } from './icons';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { useClub } from '../club';
@@ -152,22 +152,24 @@ export function Slots({ court, hours, sel, pillW, onPick }: {
               const covered = !!sel && sel.courtId === court.courtId
                 && h.hour > sel.hour && h.hour < sel.hour + hours;
               const busy = h.status !== 'free';
+              // Все часы брони подсвечены одинаково — одним блоком, а не
+              // «первый залит, остальные обведены»: так видно, что взято
+              // именно три часа подряд.
+              const picked = on || covered;
               return (
                 <Pressable key={h.hour} disabled={!ok} onPress={() => onPick(court.courtId, h)}
                   accessibilityRole="button"
                   accessibilityLabel={`${court.name}, ${hh(h.hour)}, ${
-                    on ? 'выбрано' : ok ? 'свободно' : busy ? 'занято' : 'не хватает времени'}`}
-                  accessibilityState={{ selected: on, disabled: !ok }}
+                    picked ? 'входит в бронь' : ok ? 'свободно' : busy ? 'занято' : 'не хватает времени'}`}
+                  accessibilityState={{ selected: picked, disabled: !ok }}
                   style={({ pressed }) => [b.pill, { width: pillW },
                     busy ? b.pillBusy : ok ? b.pillFree : b.pillShort,
-                    covered && b.pillCovered,
-                    on && b.pillOn,
-                    pressed && ok && !on && { opacity: 0.8 }]}>
+                    picked && b.pillOn,
+                    pressed && ok && !picked && { opacity: 0.8 }]}>
                   <Text style={[b.pillT, busy ? b.pillTBusy : ok ? null : b.pillTShort,
-                    on && { color: C.onLime }]}>
+                    picked && { color: C.onLime }]}>
                     {hh(h.hour)}
                   </Text>
-                  {on && <View style={b.tick}><IconCheck size={10} color={C.onLime} active /></View>}
                 </Pressable>
               );
             })}
@@ -520,15 +522,11 @@ const b = StyleSheet.create({
   pillFree: { backgroundColor: 'transparent', borderColor: 'rgba(201,242,61,0.5)' },
   pillBusy: { backgroundColor: 'transparent', borderColor: 'rgba(255,85,56,0.3)' },
   pillShort: { backgroundColor: 'transparent', borderColor: C.line, borderStyle: 'dashed' },
-  pillCovered: { backgroundColor: 'transparent', borderColor: C.lime },
-  pillOn: { backgroundColor: C.lime, borderColor: C.lime },
+  pillOn: { backgroundColor: C.lime, borderColor: C.lime, borderStyle: 'solid' },
   pillT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'] },
   pillTBusy: { color: '#D98B7C' },
   pillTShort: { color: C.dim2 },
-  tick: { position: 'absolute', top: -6, right: -6, width: 17, height: 17, borderRadius: 9,
-    backgroundColor: C.lime, borderWidth: 2, borderColor: C.ink,
-    alignItems: 'center', justifyContent: 'center' },
 
   sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: 'rgba(6,18,13,0.98)',
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
