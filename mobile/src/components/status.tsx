@@ -1,11 +1,11 @@
 // Состояния экрана, пока данных нет: ждём или не вышло.
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { C, R, S, HIT, DISP, TITLE, BODY } from '../theme';
+import { C, R, S, HIT, DISP, TITLE, BODY, sheet } from '../theme';
 
 export function Loading({ note }: { note?: string }) {
   return (
     <View style={s.center}>
-      <ActivityIndicator color={C.lime} size="large" />
+      <ActivityIndicator color={C.accent} size="large" />
       {!!note && <Text style={s.note}>{note}</Text>}
     </View>
   );
@@ -24,7 +24,7 @@ export function Failed({ message, onRetry }: { message: string; onRetry: () => v
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 34, backgroundColor: C.ink },
   title: { ...TITLE.card, color: C.text, textAlign: 'center' },
@@ -33,4 +33,4 @@ const s = StyleSheet.create({
     paddingVertical: 15, paddingHorizontal: 26, minHeight: HIT, justifyContent: 'center' },
   btnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
-});
+}));

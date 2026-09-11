@@ -4,7 +4,7 @@ import { ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle } from 'react-native-svg';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, discountPercent } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -14,6 +14,7 @@ import { useHydrated } from '../src/hydrated';
 
 
 export default function Prices() {
+  useTheme();
   const hydrated = useHydrated();
   const q = useApi(() => api.prices(), [], 'prices');
 
@@ -154,7 +155,7 @@ function Band({ from, to, price, share, badge, note, onBook, best }: {
             {hours} {plural(hours, 'час', 'часа', 'часов')} в сутках
           </Text>
           <View style={s.priceRow}>
-            <Text style={[s.price, best && { color: C.lime }]} allowFontScaling={false}>
+            <Text style={[s.price, best && { color: C.accent }]} allowFontScaling={false}>
               {rub(price)}
             </Text>
             {!!badge && <View style={s.badge}><Text style={s.badgeT}>{badge}</Text></View>}
@@ -180,14 +181,14 @@ function Donut({ share, accent }: { share: number; accent: boolean }) {
   return (
     <Svg width={size} height={size}>
       <Circle cx={cx} cy={cx} r={r} stroke={C.line} strokeWidth={10} fill="none" />
-      <Circle cx={cx} cy={cx} r={r} stroke={accent ? C.lime : C.greenMid} strokeWidth={10}
+      <Circle cx={cx} cy={cx} r={r} stroke={accent ? C.accent : C.greenMid} strokeWidth={10}
         fill="none" strokeDasharray={`${len * share} ${len}`}
         strokeLinecap="butt" transform={`rotate(-90 ${cx} ${cx})`} />
     </Svg>
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   head: { paddingHorizontal: S.xl, paddingTop: 14 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   slash: { width: 22, height: 9, backgroundColor: C.lime,
@@ -206,8 +207,8 @@ const s = StyleSheet.create({
 
   band: { marginHorizontal: S.xl, marginBottom: 10, padding: 16, borderRadius: R.xl,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  bandBest: { borderColor: 'rgba(198,240,51,.42)', backgroundColor: 'rgba(198,240,51,.05)' },
-  bandAlt: { borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.06)' },
+  bandBest: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
+  bandAlt: { borderColor: C.warnBorder, backgroundColor: C.warnSoft },
   bandTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   bandTime: { ...TITLE.section, color: C.text, textTransform: 'uppercase' },
   bandHours: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2 },
@@ -227,4 +228,4 @@ const s = StyleSheet.create({
 
   small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 6 },
   foot: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, marginHorizontal: S.xl, marginTop: 24 },
-});
+}));

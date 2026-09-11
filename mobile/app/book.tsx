@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError, type Alternatives } from '../src/api';
 import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
 import { useClub } from '../src/club';
@@ -20,6 +20,7 @@ import { hh, longDate, plural } from '../src/dates';
 
 
 export default function Book() {
+  useTheme();
   const club = useClub();
   const p = useLocalSearchParams<{
     courtId: string; name: string; date: string; hour: string; hours: string; price: string }>();
@@ -149,9 +150,9 @@ export default function Book() {
           <View style={s.problem}><Text style={s.problemT}>{problem}</Text></View>
         )}
 
-        <View style={[s.note, { borderColor: 'rgba(240,169,59,.38)',
-          backgroundColor: 'rgba(240,169,59,.08)' }]}>
-          <Text style={[s.noteT, { color: '#DFCCA8' }]}>
+        <View style={[s.note, { borderColor: C.warnBorder,
+          backgroundColor: C.warnSoft }]}>
+          <Text style={[s.noteT, { color: C.warnText }]}>
             Это <Text style={{ fontFamily: DISP_MED }}>заявка</Text>: менеджер свяжется и
             скажет, как внести предоплату — {club.prepayPercent} % стоимости.
           </Text>
@@ -257,7 +258,7 @@ function TakenSheet({ alternatives, date, hours, onPick, onClose }: {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   card: { backgroundColor: C.surface, borderColor: C.line, borderWidth: 1,
     borderRadius: R.xl, padding: S.lg, marginHorizontal: S.xl, marginBottom: S.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -265,7 +266,7 @@ const s = StyleSheet.create({
   rowTotal: { borderTopColor: C.line, borderTopWidth: 1, marginTop: 4, paddingTop: 12 },
   rowK: { fontFamily: BODY, color: C.dim2, fontSize: 14 },
   rowV: { fontFamily: BODY, color: C.text, fontSize: 14, fontWeight: '600', textAlign: 'right', flexShrink: 1 },
-  rowVTotal: { color: C.lime, fontFamily: DISP, fontSize: 22, letterSpacing: -1 },
+  rowVTotal: { color: C.accent, fontFamily: DISP, fontSize: 22, letterSpacing: -1 },
 
   label: { ...EYEBROW, color: C.dim2,
     paddingHorizontal: S.xl, marginBottom: 8, marginTop: 10 },
@@ -276,12 +277,12 @@ const s = StyleSheet.create({
   hint: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, paddingHorizontal: S.xl, marginTop: 6 },
 
   problem: { marginHorizontal: S.xl, marginTop: 14, padding: 13, borderRadius: R.md,
-    backgroundColor: 'rgba(229,100,75,.1)', borderWidth: 1, borderColor: 'rgba(229,100,75,.35)' },
-  problemT: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 19 },
+    backgroundColor: C.dangerSoft, borderWidth: 1, borderColor: C.dangerBorder },
+  problemT: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 19 },
 
   note: { marginHorizontal: S.xl, marginTop: 16, padding: 12, borderRadius: R.md,
-    backgroundColor: 'rgba(240,169,59,.08)', borderWidth: 1, borderColor: 'rgba(240,169,59,.26)' },
-  noteT: { fontFamily: BODY, color: '#DFCCA8', fontSize: 12.5, lineHeight: 18 },
+    backgroundColor: C.warnSoft, borderWidth: 1, borderColor: C.warnBorder },
+  noteT: { fontFamily: BODY, color: C.warnText, fontSize: 12.5, lineHeight: 18 },
 
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: S.xl,
     paddingTop: 14, paddingBottom: 34, backgroundColor: C.ink2,
@@ -293,7 +294,7 @@ const s = StyleSheet.create({
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
 
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(4,7,5,.7)' },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.scrim },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: { backgroundColor: C.ink2,
     borderTopWidth: 1, borderColor: C.line, paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 30 },
@@ -309,10 +310,10 @@ const s = StyleSheet.create({
     textTransform: 'uppercase' },
   altS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2, fontVariant: ['tabular-nums'] },
   none: { marginTop: 16, padding: 13, borderRadius: R.md,
-    backgroundColor: 'rgba(240,169,59,.08)', borderWidth: 1, borderColor: 'rgba(240,169,59,.26)' },
-  noneT: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19 },
+    backgroundColor: C.warnSoft, borderWidth: 1, borderColor: C.warnBorder },
+  noneT: { fontFamily: BODY, color: C.warnText, fontSize: 13, lineHeight: 19 },
   ghost: { marginTop: 14, paddingVertical: 15, borderRadius: R.lg, alignItems: 'center',
     borderWidth: 1, borderColor: C.lineStrong, minHeight: HIT },
   ghostT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
-});
+}));

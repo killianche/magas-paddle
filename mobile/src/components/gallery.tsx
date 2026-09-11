@@ -4,7 +4,7 @@
 // названию. Поэтому кадр занимает почти половину экрана.
 import { useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { C, EYEBROW } from '../theme';
+import { C, EYEBROW, sheet } from '../theme';
 
 const W = Dimensions.get('window').width;
 
@@ -44,12 +44,12 @@ export function Gallery({ photos, height = Math.round(W * 0.86) }: {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   dots: { position: 'absolute', left: 0, right: 0, bottom: 14, flexDirection: 'row',
     justifyContent: 'center', gap: 6 },
   dot: { width: 16, height: 3, backgroundColor: 'rgba(255,255,255,.38)' },
   dotOn: { backgroundColor: C.lime },
   count: { position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(2,7,5,.66)',
     paddingHorizontal: 8, paddingVertical: 4 },
-  countT: { ...EYEBROW, color: C.text },
-});
+  countT: { ...EYEBROW, color: '#F5F8F2' },   // поверх фото
+}));

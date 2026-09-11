@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { C, S, DISP, DISP_MED, BODY, EYEBROW } from '../theme';
+import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet } from '../theme';
 import { rub, type ApiPrices } from '../api';
 import { CLUB, pointText, useClub } from '../club';
 import { hh } from '../dates';
@@ -98,7 +98,7 @@ function PriceRow({ k, v, accent }: { k: string; v: string; accent?: boolean }) 
   return (
     <View style={s.row}>
       <Text style={s.rowK}>{k}</Text>
-      <Text style={[s.rowV, accent && { color: C.lime }]}>{v}</Text>
+      <Text style={[s.rowV, accent && { color: C.accent }]}>{v}</Text>
     </View>
   );
 }
@@ -127,17 +127,17 @@ function MapArt() {
       <Path d="M320 -10 L300 160" stroke={C.lineSoft} strokeWidth="3" />
       <Rect x="160" y="18" width="46" height="30" fill={C.surface2} />
       <Rect x="262" y="88" width="40" height="34" fill={C.surface2} />
-      <Circle cx="196" cy="83" r="30" fill={C.lime} opacity="0.10" />
-      <Circle cx="196" cy="83" r="17" fill={C.lime} opacity="0.22" />
-      <Circle cx="196" cy="83" r="8" fill={C.lime} />
+      <Circle cx="196" cy="83" r="30" fill={C.accent} opacity="0.10" />
+      <Circle cx="196" cy="83" r="17" fill={C.accent} opacity="0.22" />
+      <Circle cx="196" cy="83" r="8" fill={C.accent} />
       <Circle cx="196" cy="83" r="3" fill={C.onLime} />
     </Svg>
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   wrap: { marginHorizontal: S.xl, gap: 12 },
-  eyebrow: { ...EYEBROW, color: C.lime },
+  eyebrow: { ...EYEBROW, color: C.accent },
   eyebrowDim: { ...EYEBROW, color: C.dim2, letterSpacing: 1.2 },
 
   price: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
@@ -156,7 +156,7 @@ const s = StyleSheet.create({
     marginTop: 12, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineStrong },
   moreT: { fontFamily: DISP_MED, color: C.text, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
-  moreA: { fontFamily: DISP, color: C.lime, fontSize: 18 },
+  moreA: { fontFamily: DISP, color: C.accent, fontSize: 18 },
 
   map: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden' },
   mapBody: { padding: 16, paddingTop: 14 },
@@ -175,4 +175,4 @@ const s = StyleSheet.create({
   factBig: { color: C.text, fontFamily: DISP, fontSize: 30, lineHeight: 33, letterSpacing: -1.2,
     fontVariant: ['tabular-nums'] },
   factL: { ...EYEBROW, color: C.dim2, letterSpacing: 1, marginTop: 8 },
-});
+}));

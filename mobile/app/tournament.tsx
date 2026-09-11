@@ -8,7 +8,7 @@ import {
 import { router, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useProfile, normalizePhone } from '../src/profile';
@@ -19,6 +19,7 @@ import { NotFound } from '../src/components/state';
 import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
+  useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile, save } = useProfile();
   const [ask, setAsk] = useState(false);
@@ -230,9 +231,10 @@ function Flag({ text, ok, warn, muted }: { text: string; ok?: boolean; warn?: bo
   return (
     <View style={[s.flag,
       ok && { backgroundColor: C.lime, borderColor: C.lime },
+      // Плашка стоит на фотографии — цвета как в тёмной теме, в любой теме
       warn && { borderColor: 'rgba(240,169,59,.5)', backgroundColor: 'rgba(240,169,59,.14)' },
-      muted && { borderColor: C.lineStrong, backgroundColor: 'rgba(23,30,22,.8)' }]}>
-      <Text style={[s.flagT, ok && { color: C.onLime }, warn && { color: C.amber }, muted && { color: C.dim }]}>
+      muted && { borderColor: 'rgba(255,255,255,.24)', backgroundColor: 'rgba(23,30,22,.8)' }]}>
+      <Text style={[s.flagT, ok && { color: C.onLime }, warn && { color: '#F0A93B' }, muted && { color: '#A5B0A8' }]}>
         {text}
       </Text>
     </View>
@@ -248,8 +250,8 @@ function Fact({ k, v, last }: { k: string; v: string; last?: boolean }) {
   );
 }
 
-const s = StyleSheet.create({
-  askBack: { flex: 1, backgroundColor: 'rgba(6,9,7,.88)', justifyContent: 'center', padding: 22 },
+const s = sheet(() => ({
+  askBack: { flex: 1, backgroundColor: C.scrim, justifyContent: 'center', padding: 22 },
   ask: { backgroundColor: C.ink2, borderRadius: 0, padding: 20,
     borderWidth: 1, borderColor: C.line },
   askT: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
@@ -267,11 +269,11 @@ const s = StyleSheet.create({
   cover: { height: 230, justifyContent: 'flex-end', overflow: 'hidden' },
   coverImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   coverIn: { padding: S.xl },
-  name: { ...TITLE.page, color: C.text, marginTop: 12, textTransform: 'uppercase',
+  name: { ...TITLE.page, color: '#F5F8F2', marginTop: 12, textTransform: 'uppercase',   // поверх фото
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
   flag: { alignSelf: 'flex-start', borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10,
     borderWidth: 1, borderColor: 'transparent' },
-  flagT: { ...EYEBROW, color: C.text },
+  flagT: { ...EYEBROW, color: '#F5F8F2' },
 
   when: { flexDirection: 'row', marginHorizontal: S.xl, marginTop: 16,
     borderWidth: 1, borderColor: C.line, borderRadius: R.xl, backgroundColor: C.surface },
@@ -282,7 +284,7 @@ const s = StyleSheet.create({
   whenS: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, marginTop: 2 },
 
   resultCard: { marginHorizontal: S.xl, marginTop: 12, padding: 15, borderRadius: R.xl,
-    borderWidth: 1, borderColor: 'rgba(198,240,51,.28)', backgroundColor: 'rgba(198,240,51,.06)' },
+    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   resultK: { ...EYEBROW, color: C.limeDim },
   resultT: { fontFamily: BODY, color: C.text, fontSize: 15, lineHeight: 22, marginTop: 7 },
 
@@ -316,4 +318,4 @@ const s = StyleSheet.create({
   barOkT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
     textTransform: 'uppercase' },
   barOkS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 1 },
-});
+}));

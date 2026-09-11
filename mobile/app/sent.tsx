@@ -1,7 +1,7 @@
 // Заявка отправлена. Экран должен успокоить: что записано, когда и что дальше.
 import { Text, View, StyleSheet, Pressable, Linking, Platform, Alert } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
@@ -14,6 +14,7 @@ import { CLUB, useClub, whatsappUrl } from '../src/club';
 /** Сколько осталось до конца удержания, словами. */
 
 export default function Sent() {
+  useTheme();
   const club = useClub();
   const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
     hours: string; price: string; holdUntil?: string }>();
@@ -44,7 +45,7 @@ export default function Sent() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
       <View style={s.done}>
-        <View style={s.tick}><IconCheck size={34} color={C.lime} active /></View>
+        <View style={s.tick}><IconCheck size={34} color={C.accent} active /></View>
         <Text style={s.h}>Заявка отправлена</Text>
         <Text style={s.p}>
           <Text style={{ color: C.text, fontWeight: '700' }}>{String(p.name)}</Text>
@@ -72,7 +73,7 @@ export default function Sent() {
         </View>
         <View style={[s.row, s.rowLast]}>
           <Text style={s.rowK}>Предоплата</Text>
-          <Text style={[s.rowV, { color: C.lime, fontSize: 20 }]}>{rub(prepay)}</Text>
+          <Text style={[s.rowV, { color: C.accent, fontSize: 20 }]}>{rub(prepay)}</Text>
         </View>
         <Text style={s.note}>
           С вами свяжется менеджер: подскажет, как внести предоплату —
@@ -119,7 +120,7 @@ export default function Sent() {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19,
     paddingTop: 13, paddingBottom: 15,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
@@ -127,12 +128,12 @@ const s = StyleSheet.create({
   step: { ...EYEBROW, color: C.dim2, marginBottom: 10, textAlign: 'center' },
   root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
   done: { alignItems: 'center', paddingHorizontal: 30 },
-  tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.lime,
-    backgroundColor: 'rgba(198,240,51,.08)', alignItems: 'center', justifyContent: 'center' },
+  tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.accent,
+    backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
   h: { ...TITLE.page, color: C.text, marginTop: 20, textAlign: 'center' },
   p: { fontFamily: BODY, color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center', marginTop: 10 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 18,
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.4)', backgroundColor: 'rgba(240,169,59,.1)',
+    borderWidth: 1, borderColor: C.warnBorder, backgroundColor: C.warnSoft,
     borderRadius: 0, paddingVertical: 6, paddingHorizontal: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
   pillT: { ...EYEBROW, color: C.amber },
@@ -157,4 +158,4 @@ const s = StyleSheet.create({
     textTransform: 'uppercase' },
   link: { paddingVertical: 12, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   linkT: { fontFamily: BODY, color: C.dim, fontSize: 14.5, fontWeight: '600' },
-});
+}));

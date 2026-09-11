@@ -11,7 +11,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C, DISP, DISP_MED } from '../../src/theme';
+import { C, DISP, DISP_MED, sheet, useTheme } from '../../src/theme';
 import { useClub } from '../../src/club';
 import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
 
@@ -29,6 +29,7 @@ const PAD_BOTTOM = 7;
 const SIDE = 14;
 
 export default function TabsLayout() {
+  useTheme();
   const club = useClub();
   const insets = useSafeAreaInsets();
   // На iPhone с вырезом снизу уже есть полоса жеста — над ней и висим.
@@ -54,7 +55,7 @@ export default function TabsLayout() {
           paddingTop: PAD_TOP,
           paddingBottom: PAD_BOTTOM,
           // Тень отделяет панель от фотографии под ней
-          shadowColor: '#000', shadowOpacity: 0.45,
+          shadowColor: '#000', shadowOpacity: C.shadow,
           shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
           elevation: 12,
         },
@@ -62,7 +63,7 @@ export default function TabsLayout() {
           <View style={StyleSheet.absoluteFill}>
             {Platform.OS === 'web'
               ? <View style={[StyleSheet.absoluteFill, s.webGlass]} />
-              : <BlurView intensity={44} tint="dark" style={StyleSheet.absoluteFill} />}
+              : <BlurView intensity={44} tint={C.blur} style={StyleSheet.absoluteFill} />}
             {/* Притемнение поверх размытия: без него светлая фотография
                 под панелью съедает подписи */}
             <View style={[StyleSheet.absoluteFill, s.tint]} />
@@ -71,7 +72,7 @@ export default function TabsLayout() {
 
         tabBarActiveTintColor: C.text,
         // Светлее макета: на #68766D подпись давала контраст 4.1 при норме 4.5
-        tabBarInactiveTintColor: '#8D9A91',
+        tabBarInactiveTintColor: C.tabInactive,
         tabBarLabelStyle: {
           fontFamily: DISP_MED, fontSize: 11, lineHeight: 13, letterSpacing: 0.3,
           textTransform: 'uppercase', marginTop: 2,
@@ -94,10 +95,10 @@ export default function TabsLayout() {
   );
 }
 
-const s = StyleSheet.create({
-  tint: { backgroundColor: 'rgba(6,18,13,0.62)',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)',
+const s = sheet(() => ({
+  tint: { backgroundColor: C.glass,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: C.glassLine,
     borderRadius: BAR / 2 },
   // На вебе BlurView даёт лишний слой; backdrop-filter делает то же дешевле
-  webGlass: { backgroundColor: 'rgba(6,18,13,0.35)', backdropFilter: 'blur(18px)' } as any,
-});
+  webGlass: { backgroundColor: C.glassWeb, backdropFilter: 'blur(18px)' } as any,
+}));

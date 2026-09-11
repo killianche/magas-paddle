@@ -1,7 +1,7 @@
 // Общие части оформления «Velocity»: их использует больше одного экрана.
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Text as SvgText } from 'react-native-svg';
-import { C, S, HIT, TITLE, DISP, DISP_MED } from '../theme';
+import { C, S, HIT, TITLE, DISP, DISP_MED, sheet } from '../theme';
 
 /** Слово контуром — приём из макета: вторая строка заголовка не залита,
  *  а обведена. В React Native обводки текста нет вовсе, поэтому рисуем
@@ -75,29 +75,29 @@ export function Action({ label, note, onPress, disabled }: {
   );
 }
 
-export const v = StyleSheet.create({
-  eyebrow: { color: C.lime, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
+export const v = sheet(() => ({
+  eyebrow: { color: C.accent, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.6,
     textTransform: 'uppercase' },
 
   head: { paddingHorizontal: S.xl, paddingTop: 26, paddingBottom: 12,
     flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   headT: { ...TITLE.section, color: C.text, textTransform: 'uppercase', flex: 1 },
-  headA: { color: C.lime, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.3,
+  headA: { color: C.accent, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.3,
     textTransform: 'uppercase' },
 
   ticker: { height: 37, flexDirection: 'row', alignItems: 'center', gap: 18,
     paddingHorizontal: S.xl, borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   tickerItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  dot: { width: 4, height: 4, backgroundColor: C.lime },
-  tickerT: { color: '#C1CAC3', fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.1,
+  dot: { width: 4, height: 4, backgroundColor: C.accent },
+  tickerT: { color: C.ticker, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.1,
     textTransform: 'uppercase' },
 
   action: { backgroundColor: C.lime, paddingVertical: 15, paddingHorizontal: 18,
     minHeight: HIT, justifyContent: 'center' },
-  actionOff: { backgroundColor: '#15251B' },
+  actionOff: { backgroundColor: C.off },
   actionT: { color: C.onLime, fontFamily: DISP, fontSize: 15, letterSpacing: 0.4,
     textTransform: 'uppercase' },
   actionN: { color: 'rgba(7,16,8,.62)', fontFamily: DISP_MED, fontSize: 11,
     letterSpacing: 0.6, marginTop: 3 },
-});
+}));

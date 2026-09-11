@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import {
@@ -21,6 +21,7 @@ import {
 } from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
+import { ThemePicker } from '../src/components/themepicker';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
 
 /** Записи, которые уже прошли: их и показываем историей. */
@@ -31,6 +32,7 @@ const LABEL: Record<string, string> = {
 };
 
 export default function Account() {
+  useTheme();
   const { profile, ready, save, forget } = useProfile();
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
 
@@ -202,6 +204,10 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
               : 'Пароль не короче 6 знаков'}
           </Text>
         )}
+
+        {/* Тему можно выбрать и без аккаунта */}
+        <Text style={s.group}>Оформление</Text>
+        <ThemePicker />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -480,6 +486,9 @@ function Card({ profile, onEdit, onPassword, onForget }: {
           </View>
         ))}
 
+        <Text style={s.group}>Оформление</Text>
+        <ThemePicker />
+
         <Text style={s.group}>Клуб и настройки</Text>
         <ClubInfo />
       </ScrollView>
@@ -496,7 +505,7 @@ function Stat({ n, label }: { n: number; label: string }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   head: { paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 6 },
   h1: { ...TITLE.page, color: C.text, marginTop: 8 },
@@ -505,9 +514,9 @@ const s = StyleSheet.create({
     marginTop: 6, fontVariant: ['tabular-nums'] },
 
   warn: { marginTop: 16, padding: 14, borderWidth: 1,
-    borderColor: 'rgba(240,169,59,.38)', backgroundColor: 'rgba(240,169,59,.08)' },
-  warnT: { color: '#F0A93B', fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
-  warnS: { fontFamily: BODY, color: '#DFCCA8', fontSize: 13, lineHeight: 19, marginTop: 6 },
+    borderColor: C.warnBorder, backgroundColor: C.warnSoft },
+  warnT: { color: C.amber, fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
+  warnS: { fontFamily: BODY, color: C.warnText, fontSize: 13, lineHeight: 19, marginTop: 6 },
 
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 16,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, padding: 15 },
@@ -552,13 +561,13 @@ const s = StyleSheet.create({
 
   cta: { backgroundColor: C.lime, marginHorizontal: S.xl, marginTop: 22,
     paddingVertical: 15, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
-  ctaOff: { backgroundColor: '#15251B' },
+  ctaOff: { backgroundColor: C.off },
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
-  problem: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 19,
+  problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 19,
     marginHorizontal: S.xl, marginTop: 14 },
   link: { paddingVertical: 14, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   linkT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
-});
+}));

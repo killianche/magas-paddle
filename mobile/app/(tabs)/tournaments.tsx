@@ -5,7 +5,7 @@ import { ScrollView, Text, View, Pressable, StyleSheet, Image, RefreshControl } 
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE } from '../../src/theme';
+import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -16,6 +16,7 @@ import { IconCheck } from '../../src/components/icons';
 import { hh, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
 
 export default function Tournaments() {
+  useTheme();
   const { profile } = useProfile();
   const phone = profile?.phone;
   const q = useApi(() => api.tournaments(phone), [phone], `tourn.${phone ?? 'гость'}`);
@@ -107,7 +108,7 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   hero: { marginHorizontal: S.xl, height: 200, borderRadius: 0, padding: S.lg,
     backgroundColor: '#1D4526', overflow: 'hidden', marginTop: 8 },
@@ -116,7 +117,7 @@ const s = StyleSheet.create({
   okFlag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: C.lime, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 },
   flagT: { ...EYEBROW, color: C.onLime },
-  heroName: { ...TITLE.card, color: C.text, textTransform: 'uppercase',
+  heroName: { ...TITLE.card, color: '#F5F8F2', textTransform: 'uppercase',   // поверх фото
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
   heroMeta: { fontFamily: BODY, color: '#D6DECF', fontSize: 12.5, marginTop: 6, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 8 },
@@ -135,4 +136,4 @@ const s = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
   emptyS: { fontFamily: BODY, color: C.dim, fontSize: 13.5, marginTop: 8, textAlign: 'center' },
-});
+}));

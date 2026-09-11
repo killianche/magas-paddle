@@ -7,7 +7,7 @@
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY } from '../src/theme';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useProfile } from '../src/profile';
@@ -27,6 +27,7 @@ function whenText(iso: string): string {
 }
 
 export default function Notifications() {
+  useTheme();
   const { profile, ready } = useProfile();
   const phone = profile?.phone ?? '';
 
@@ -96,7 +97,7 @@ export default function Notifications() {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   head: { paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 16 },
   h1: { ...TITLE.page, color: C.text, marginTop: 8 },
@@ -106,11 +107,11 @@ const s = StyleSheet.create({
 
   card: { marginHorizontal: S.xl, marginBottom: 9, padding: 15,
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  cardNew: { borderColor: 'rgba(198,240,51,.32)', backgroundColor: 'rgba(198,240,51,.05)' },
+  cardNew: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: -0.5,
     textTransform: 'uppercase' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.lime },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent },
   body: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 7 },
   when: { ...EYEBROW, color: C.dim2, marginTop: 9 },
-});
+}));

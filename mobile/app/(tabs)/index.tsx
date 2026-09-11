@@ -3,7 +3,8 @@
 // Первый экран — только большая фотография клуба и две кнопки записи:
 // падел-корт и мини-футбольное поле. Заголовок «Выходи на корт» и приветствие
 // заказчик попросил убрать совсем.
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import {
   Animated, Text, View, Pressable, StyleSheet, Image,
   useWindowDimensions, RefreshControl,
@@ -12,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, EYEBROW, TAB_SPACE } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { Ticker } from '../../src/components/velocity';
 import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
@@ -38,6 +39,16 @@ export default function Home() {
   const club = useClub();
   const phone = profile?.phone;
   const scrim = useTopScrim();
+  const mode = useTheme();
+  // Часы и заряд над фотографией всегда светлые; в светлой теме, когда
+  // фото уехало вверх, — тёмные, иначе их не видно на светлом фоне.
+  const [onHero, setOnHero] = useState(true);
+  useEffect(() => {
+    const id = scrim.scrollY.addListener(({ value }) => setOnHero(value < 60));
+    return () => scrim.scrollY.removeListener(id);
+  }, []);
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false) }, []));
 
   // Непрочитанные уведомления: отдельным лёгким запросом, чтобы главная не
   // ждала его и рисовалась сразу.
@@ -174,7 +185,7 @@ export default function Home() {
         : [
             `${padel.length} ${plural(padel.length, 'корт', 'корта', 'кортов')}`,
             soonest == null ? `${day} всё занято`
-              : `ближайшее ${tomorrow ? 'завтра ' : ''}в ${hh(soonest)}`,
+              : tomorrow ? `завтра с ${hh(soonest)}` : `ближайшее в ${hh(soonest)}`,
             cheapest ? `от ${rub(cheapest)}` : 'мини-футбольное поле',
           ]} />
 
@@ -340,11 +351,12 @@ export default function Home() {
       </Text>
     </Animated.ScrollView>
     <TopScrim scrollY={scrim.scrollY} />
+    {focused && <StatusBar style={onHero || mode === 'dark' ? 'light' : 'dark'} />}
     </View>
   );
 }
 
-const st = StyleSheet.create({
+const st = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Для картинок мало одних краёв: без ширины и высоты React Native Web
@@ -412,7 +424,7 @@ const st = StyleSheet.create({
     textTransform: 'uppercase' },
 
   offline: { marginHorizontal: S.xl, marginTop: 14, padding: 14, borderRadius: R.lg,
-    borderWidth: 1, borderColor: 'rgba(240,169,59,.35)', backgroundColor: 'rgba(240,169,59,.07)' },
+    borderWidth: 1, borderColor: C.warnBorder, backgroundColor: C.warnSoft },
   offlineT: { fontFamily: BODY, color: C.amber, fontSize: 13, fontWeight: '700', letterSpacing: 1.2,
     textTransform: 'uppercase' },
   offlineS: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 5 },
@@ -434,4 +446,4 @@ const st = StyleSheet.create({
 
   foot: { fontFamily: BODY, color: C.dim2, fontSize: 11, lineHeight: 17, textAlign: 'center',
     marginTop: 22, paddingHorizontal: 30 },
-});
+}));

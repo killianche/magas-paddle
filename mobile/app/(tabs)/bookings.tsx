@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, ApiError, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
@@ -18,7 +18,7 @@ import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
 function NeedLogin({ note }: { note: string }) {
   return (
     <View style={s.empty}>
-      <View style={s.emptyIcon}><IconRacket size={26} color={C.lime} /></View>
+      <View style={s.emptyIcon}><IconRacket size={26} color={C.accent} /></View>
       <Text style={s.emptyT}>Нужен вход</Text>
       <Text style={s.emptyS}>{note}</Text>
       <Pressable onPress={() => router.push('/account')} accessibilityRole="button"
@@ -30,6 +30,7 @@ function NeedLogin({ note }: { note: string }) {
 }
 
 export default function Bookings() {
+  useTheme();
   const { profile, ready } = useProfile();
   const phone = profile?.phone ?? '';
 
@@ -107,7 +108,7 @@ export default function Bookings() {
               <Text style={s.name}>{t.name}</Text>
               <Text style={s.date}>{longDate(dateOfIso(t.startsAt))}</Text>
             </View>
-            <View style={s.tIcon}><IconTrophy size={17} color={C.lime} /></View>
+            <View style={s.tIcon}><IconTrophy size={17} color={C.accent} /></View>
           </View>
           <View style={s.foot}>
             <Text style={s.time}>Начало {hh(hourOfIso(t.startsAt))}</Text>
@@ -170,12 +171,13 @@ export default function Bookings() {
 function Empty() {
   return (
     <View style={s.empty}>
-      <View style={s.emptyIcon}><IconRacket size={30} color={C.lime} /></View>
+      <View style={s.emptyIcon}><IconRacket size={30} color={C.accent} /></View>
       <Text style={s.emptyT}>Записей пока нет</Text>
       <Text style={s.emptyS}>Запишитесь на корт — запись появится здесь.</Text>
-      <Pressable onPress={() => router.replace('/')}
+      {/* Запись начинается с выбора корта — как с главной */}
+      <Pressable onPress={() => router.push('/courts')}
         style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.85 }]}>
-        <Text style={s.emptyBtnT}>Выбрать время</Text>
+        <Text style={s.emptyBtnT}>Забронировать корт</Text>
       </Pressable>
     </View>
   );
@@ -219,7 +221,7 @@ function stateOf(b: ApiBooking) {
   };
   // pending
   return {
-    label: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ', bg: 'rgba(240,169,59,.18)', fg: C.amber,
+    label: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ', bg: C.warnSoft, fg: C.amber,
     note: left == null
       ? 'Менеджер подтвердит запись и свяжется с вами.'
       : left > 0
@@ -229,14 +231,14 @@ function stateOf(b: ApiBooking) {
   };
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   band: { paddingVertical: 7, paddingHorizontal: 14 },
   bandT: { ...EYEBROW },
   body: { padding: 14 },
   note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
   emptyIcon: { width: 62, height: 62, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(198,240,51,.26)', backgroundColor: 'rgba(198,240,51,.07)',
+    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft,
     marginBottom: 18 },
   emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
   emptyS: { fontFamily: BODY, color: C.dim, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
@@ -245,9 +247,9 @@ const s = StyleSheet.create({
   emptyBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
 
-  cardT: { borderColor: 'rgba(198,240,51,.3)', backgroundColor: 'rgba(198,240,51,.05)' },
+  cardT: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   tIcon: { width: 34, height: 34, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(198,240,51,.28)', backgroundColor: 'rgba(198,240,51,.08)' },
+    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.xl,
     marginHorizontal: S.xl, marginBottom: 10, overflow: 'hidden' },
   head: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
@@ -261,7 +263,7 @@ const s = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   mini: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: R.md,
     paddingVertical: 11, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
-  miniDg: { borderColor: 'rgba(229,100,75,.45)' },
+  miniDg: { borderColor: C.dangerBorder },
   miniT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
-});
+}));

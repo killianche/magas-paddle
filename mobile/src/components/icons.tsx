@@ -148,7 +148,7 @@ export function IconCheck({ size = 14, color = C.onLime, active }: P) {
 }
 
 /** Метка на карте — «мы здесь» */
-export function IconPin({ size = 20, color = C.lime }: P) {
+export function IconPin({ size = 20, color = C.accent }: P) {
   return (
     <Svg {...base(size, color)}>
       <Path d="M12 21.2c4.1-4.4 6.2-7.8 6.2-10.4a6.2 6.2 0 1 0-12.4 0c0 2.6 2.1 6 6.2 10.4Z" />

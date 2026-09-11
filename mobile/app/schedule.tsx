@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, DISP, DISP_MED, BODY } from '../src/theme';
+import { C, S, DISP, DISP_MED, BODY, sheet, useTheme } from '../src/theme';
 import { api, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -25,6 +25,7 @@ import {
 } from '../src/components/booking';
 
 export default function Schedule() {
+  useTheme();
   const [date, setDate] = useState(today());
   const [hours, setHours] = useState(1);
   const [sel, setSel] = useState<Sel>(null);
@@ -119,7 +120,7 @@ export default function Schedule() {
   );
 }
 
-const st = StyleSheet.create({
+const st = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   allPassed: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20,
     textAlign: 'center', paddingHorizontal: 30, paddingVertical: 24 },
@@ -133,4 +134,4 @@ const st = StyleSheet.create({
     minHeight: 34, borderWidth: 1, borderColor: C.lineStrong },
   photoT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
-});
+}));

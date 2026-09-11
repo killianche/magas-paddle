@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, TITLE, BODY } from '../theme';
+import { C, S, TITLE, BODY, sheet, useTheme } from '../theme';
 import { api, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { Loading, Failed } from './status';
@@ -18,6 +18,7 @@ import { NotFound } from './state';
 import { Eyebrow } from './velocity';
 import { Gallery } from './gallery';
 import { Look } from './courtlook';
+import { RentalsSection } from './extras';
 import { addDays, today } from '../dates';
 import {
   BookingSheet, Card, DateStrip, Durations, Slots, Step,
@@ -26,6 +27,7 @@ import {
 
 /** courtId — какой корт; football — найти футбольное поле, какой бы у него ни был id. */
 export function CourtPage({ courtId, football }: { courtId?: string; football?: boolean }) {
+  useTheme();
   const { width } = useWindowDimensions();
   const [date, setDate] = useState(today());
   const [hours, setHours] = useState(1);
@@ -115,6 +117,9 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
         <Card>
           <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
         </Card>
+
+        {/* Ракетки и мячи — в бронь не входят; свёрнуто, чтобы не отвлекать */}
+        {!row.isFootball && <View style={{ marginTop: 18 }}><RentalsSection /></View>}
       </ScrollView>
 
       {sel && (
@@ -125,9 +130,9 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   head: { paddingHorizontal: S.xl, paddingTop: 16 },
   name: { ...TITLE.card, color: C.text, marginTop: 6 },
   about: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 12 },
-});
+}));

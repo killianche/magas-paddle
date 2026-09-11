@@ -11,12 +11,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY } from '../theme';
+import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet } from '../theme';
 import { api, rub, mediaUrl, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp } from './icons';
 import { Gallery } from './gallery';
+import { RentalsSheet, useRentals } from './extras';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { BOOKING_NOTE, useClub } from '../club';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -68,7 +69,7 @@ export function DateStrip({ date, onPick }: { date: string; onPick: (d: string) 
           <Pressable key={d} onPress={() => onPick(d)}
             accessibilityRole="button" accessibilityState={{ selected: on }}
             style={[b.day, on && b.dayOn]}>
-            <Text style={[b.dayW, on && { color: '#647068' }]}>{weekdayShort(d)}</Text>
+            <Text style={[b.dayW, on && { color: C.dayOnW }]}>{weekdayShort(d)}</Text>
             <Text style={[b.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
           </Pressable>
         );
@@ -317,12 +318,14 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
 }) {
   const insets = useSafeAreaInsets();
   const club = useClub();
+  const rentals = useRentals();
+  const [showRentals, setShowRentals] = useState(false);
   return (
     <View style={[b.sheet, { paddingBottom: insets.bottom + 12 }]}>
       <View style={b.sumRow}>
         <Text style={b.sumL}>{court.name} · {dayMonth(date)}</Text>
         <Text style={b.sumR}>
-          {hh(sel.hour)} → {hh(sel.hour + hours)} · <Text style={{ color: C.lime }}>{rub(booking.total)}</Text>
+          {hh(sel.hour)} → {hh(sel.hour + hours)} · <Text style={{ color: C.accent }}>{rub(booking.total)}</Text>
         </Text>
       </View>
       <View style={[b.sumRow, b.sumRow2]}>
@@ -333,10 +336,17 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
       {/* Что входит в бронь — тихой строкой со значком, не подсказкой поверх.
           Для поля про ракетки говорить нечего, там строки нет. */}
       {!court.isFootball && (
-        <View style={b.incl}>
+        <Pressable disabled={rentals.length === 0}
+          onPress={() => { Haptics.selectionAsync(); setShowRentals(true) }}
+          accessibilityRole={rentals.length ? 'button' : undefined}
+          accessibilityLabel={`${club.bookingNote?.trim() || BOOKING_NOTE}${rentals.length ? ' Цены на прокат и мячи' : ''}`}
+          hitSlop={6} style={({ pressed }) => [b.incl, pressed && { opacity: 0.6 }]}>
           <PadelMark />
-          <Text style={b.inclT}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
-        </View>
+          <View style={{ flex: 1 }}>
+            <Text style={b.inclT}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
+            {rentals.length > 0 && <Text style={b.inclMore}>Цены на прокат и мячи ›</Text>}
+          </View>
+        </Pressable>
       )}
 
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}
@@ -355,6 +365,7 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
       </Pressable>
 
       <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />
+      <RentalsSheet visible={showRentals} groups={rentals} onClose={() => setShowRentals(false)} />
     </View>
   );
 }
@@ -511,7 +522,7 @@ export function GalleryModal({ title, photos, onClose }: {
   );
 }
 
-const b = StyleSheet.create({
+const b = sheet(() => ({
   days: { flexDirection: 'row', alignItems: 'flex-start', gap: 6,
     paddingHorizontal: S.xl, paddingTop: 12 },
   // 58, а не 52: «СЕГОДНЯ» не влезало и обрезалось — заметно было на белой
@@ -548,16 +559,16 @@ const b = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   pill: { height: HIT, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   // Плитки без заливки: свободную выделяет рамка, занятую — цвет цифр
-  pillFree: { backgroundColor: 'transparent', borderColor: 'rgba(201,242,61,0.5)' },
-  pillBusy: { backgroundColor: 'transparent', borderColor: 'rgba(255,85,56,0.3)' },
+  pillFree: { backgroundColor: 'transparent', borderColor: C.accentLine },
+  pillBusy: { backgroundColor: 'transparent', borderColor: C.busyLine },
   pillShort: { backgroundColor: 'transparent', borderColor: C.line, borderStyle: 'dashed' },
   pillOn: { backgroundColor: C.lime, borderColor: C.lime, borderStyle: 'solid' },
   pillT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'] },
-  pillTBusy: { color: '#D98B7C' },
+  pillTBusy: { color: C.busyText },
   pillTShort: { color: C.dim2 },
 
-  sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: 'rgba(6,18,13,0.98)',
+  sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: C.sheet,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
   sumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: 10, marginBottom: 8 },
@@ -569,11 +580,12 @@ const b = StyleSheet.create({
   sumR: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'], flexShrink: 0 },
   prepayL: { fontFamily: DISP_MED, color: C.text, fontSize: 14 },
-  prepayR: { fontFamily: DISP, color: C.lime, fontSize: 16, letterSpacing: -0.4,
+  prepayR: { fontFamily: DISP, color: C.accent, fontSize: 16, letterSpacing: -0.4,
     fontVariant: ['tabular-nums'] },
-  problem: { fontFamily: BODY, color: '#F0B6A8', fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 18, marginBottom: 10 },
   incl: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: -4, marginBottom: 12 },
-  inclT: { flex: 1, fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
+  inclT: { fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
+  inclMore: { fontFamily: DISP_MED, color: C.accent, fontSize: 11.5, marginTop: 2 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#25D366', minHeight: 52 },
   waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
@@ -585,7 +597,7 @@ const b = StyleSheet.create({
   // Сплошной фон: сквозь полупрозрачный просвечивали плитки записи
   galBack: { flex: 1, backgroundColor: C.ink },
 
-  whoBack: { flex: 1, backgroundColor: 'rgba(2,7,5,0.72)' },
+  whoBack: { flex: 1, backgroundColor: C.scrim },
   who: { backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 20,
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
   whoT: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: -0.6,
@@ -595,11 +607,11 @@ const b = StyleSheet.create({
   whoIn: { borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink,
     paddingVertical: 14, paddingHorizontal: 14, minHeight: 52,
     color: C.text, fontFamily: BODY, fontSize: 16 },
-  waOff: { backgroundColor: '#15251B' },
+  waOff: { backgroundColor: C.off },
   galT: { color: C.text, fontFamily: DISP, fontSize: 20, letterSpacing: -0.5,
     textTransform: 'uppercase', paddingHorizontal: S.xl },
   galClose: { marginHorizontal: S.xl, minHeight: 50, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface },
   galCloseT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
-});
+}));

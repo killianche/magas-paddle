@@ -150,10 +150,13 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .tab.on{color:var(--lime);border-bottom-color:var(--lime);font-weight:700}
 .pane{display:none}.pane.on{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
-.crow{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;
+/* Строка корта в три яруса: название, описание, цвет и особенности — во всю
+   ширину; ниже цены и кнопки; ниже фото. Без переноса блок фото сжимал всё
+   остальное в одну строку, и цены читались как «2». */
+.crow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;
   border-radius:11px;border:1px solid var(--line);background:var(--surface)}
 .crow.off{opacity:.55}
-.crow .nm{flex:1 1 150px;min-width:0}
+.crow .nm{flex:1 1 100%;min-width:0}
 .crow input[type=text]{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text)}
 .crow .c-desc{margin-top:6px;font-size:12.5px;color:var(--dim)}
@@ -161,7 +164,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .crow .c-look select{flex:0 0 140px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);font:inherit;font-size:12.5px;width:auto}
 .crow .c-look .c-tags{font-size:12.5px}
-.crow .p{width:96px}
+.crow .p{flex:0 0 110px}
 .crow .p input{width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface-2);color:var(--text);text-align:right}
 .crow .p small{display:block;font-size:10.5px;color:var(--dim-2);margin-bottom:3px}
@@ -591,9 +594,12 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="setLate">Держим корт за опоздавшим, минут</label>
           <input id="setLate" type="number" min="0" max="120"></div>
       </div>
-      <div><label for="setRentals">Прокат и раздевалка</label>
-        <textarea id="setRentals" rows="3"
-          placeholder="Ракетки — 300 ₽, мячи включены, есть душ и шкафчики"></textarea></div>
+      <div><label for="setRentals">Прокат ракеток и мячи — показывается при бронировании корта</label>
+        <textarea id="setRentals" rows="8"
+          placeholder="Прокат ракеток:&#10;Для начинающих — 100 ₽&#10;Можно свои"></textarea>
+        <small style="display:block;color:var(--dim-2);font-size:11.5px;margin-top:4px">
+          Строка с двоеточием на конце — заголовок. Цена — после тире: «Банка (3 мяча) — 800 ₽».
+          Строка без цены — пометка («Можно свои»).</small></div>
       <div><label for="setBookNote">Что входит в бронь — строка на панели брони корта</label>
         <input type="text" id="setBookNote" maxlength="200"
           placeholder="Входит только корт. Ракетки и мячи — отдельно. (так по умолчанию)"></div>

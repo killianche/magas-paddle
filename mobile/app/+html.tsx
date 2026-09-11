@@ -18,7 +18,7 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Открывается как приложение, а не как вкладка браузера */}
         <link rel="manifest" href="/v1/manifest.webmanifest" />
         <meta name="theme-color" content="#020705" />
-        <meta name="color-scheme" content="dark" />
+        <meta name="color-scheme" content="dark light" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

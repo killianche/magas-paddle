@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { C, sheet } from '../theme';
 /** На какой прокрутке стекло становится полностью непрозрачным. */
 const FADE_OVER = 60;
 
@@ -38,16 +39,16 @@ export function TopScrim({ scrollY }: { scrollY: Animated.Value }) {
       style={[s.wrap, { height: insets.top, opacity }]}>
       {Platform.OS === 'web'
         ? <View style={[StyleSheet.absoluteFill, s.webGlass]} />
-        : <BlurView intensity={38} tint="dark" style={StyleSheet.absoluteFill} />}
+        : <BlurView intensity={38} tint={C.blur} style={StyleSheet.absoluteFill} />}
       {/* Плотнее у самого края и мягко сходит на нет — чтобы не было видно границы */}
-      <LinearGradient colors={['rgba(9,13,10,.72)', 'rgba(9,13,10,.34)']}
+      <LinearGradient colors={[C.topGlassA, C.topGlassB]}
         style={StyleSheet.absoluteFill} />
     </Animated.View>
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   wrap: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   // На вебе BlurView даёт лишний слой; backdrop-filter делает то же самое дешевле
-  webGlass: { backgroundColor: 'rgba(9,13,10,.4)', backdropFilter: 'blur(14px)' } as any,
-});
+  webGlass: { backgroundColor: C.topGlassB, backdropFilter: 'blur(14px)' } as any,
+}));

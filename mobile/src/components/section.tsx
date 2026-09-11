@@ -4,7 +4,7 @@
 import { useState, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP_MED, TITLE, BODY } from '../theme';
+import { C, R, S, HIT, DISP_MED, TITLE, BODY, sheet } from '../theme';
 import { IconChevron } from './icons';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,7 +50,7 @@ export function Section({ title, summary, children, open: initial = false, locke
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   wrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line,
     paddingHorizontal: S.xl },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -60,21 +60,21 @@ const s = StyleSheet.create({
   chev: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   body: { paddingBottom: 20 },
-});
+}));
 
 /** Строка «ключ — значение» внутри секции. */
 export function Line({ k, v, accent }: { k: string; v: string; accent?: boolean }) {
   return (
     <View style={l.row}>
       <Text style={l.k}>{k}</Text>
-      <Text style={[l.v, accent && { color: C.lime }]}>{v}</Text>
+      <Text style={[l.v, accent && { color: C.accent }]}>{v}</Text>
     </View>
   );
 }
 
-const l = StyleSheet.create({
+const l = sheet(() => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 9 },
   k: { fontFamily: BODY, color: C.dim, fontSize: 14, flex: 1 },
   v: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2,
     textAlign: 'right', flexShrink: 1 },
-});
+}));

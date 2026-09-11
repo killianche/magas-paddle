@@ -2,7 +2,7 @@
 // Ссылки и координаты лежат в src/club.ts — здесь только вид и открытие ссылок.
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, BODY } from '../theme';
+import { C, R, S, HIT, DISP, DISP_MED, BODY, sheet } from '../theme';
 import { CLUB, pointText, useClub, whatsappUrl } from '../club';
 import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone } from './icons';
 
@@ -31,7 +31,7 @@ export function WhereWeAre() {
       accessibilityRole="button"
       accessibilityLabel="Открыть расположение клуба в Яндекс.Картах"
       style={({ pressed }) => [s.map, pressed && { opacity: 0.85 }]}>
-      <View style={s.pin}><IconPin size={22} color={C.lime} /></View>
+      <View style={s.pin}><IconPin size={22} color={C.accent} /></View>
       <View style={{ flex: 1 }}>
         <Text style={s.mapT}>{CLUB.city}, {CLUB.region}</Text>
         <Text style={s.mapS}>
@@ -92,12 +92,12 @@ export function SocialButtons() {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   map: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
     padding: 14, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
     backgroundColor: C.surface, minHeight: 72 },
   pin: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(198,240,51,.10)', borderWidth: 1, borderColor: 'rgba(198,240,51,.3)' },
+    backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder },
   mapT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
     textTransform: 'uppercase' },
   mapS: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 2 },
@@ -113,4 +113,4 @@ const s = StyleSheet.create({
   btnT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
   btnS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 1 },
-});
+}));

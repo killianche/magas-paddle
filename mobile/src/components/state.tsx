@@ -1,7 +1,7 @@
 // Общие состояния экранов: загрузка каркаса и «ничего не найдено».
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { C, R, S, HIT, DISP, TITLE, BODY } from '../theme';
+import { C, R, S, HIT, DISP, TITLE, BODY, sheet } from '../theme';
 
 /** Нейтральный каркас на время, пока экран не получил параметры адреса. */
 export function ScreenSkeleton() {
@@ -30,7 +30,7 @@ export function NotFound({ title, note }: { title: string; note: string }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   wrap: { flex: 1, backgroundColor: C.ink },
   sk: { backgroundColor: C.surface2, borderRadius: R.lg, marginHorizontal: S.xl },
   nf: { flex: 1, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center',
@@ -41,4 +41,4 @@ const s = StyleSheet.create({
     paddingVertical: 15, paddingHorizontal: 26, minHeight: HIT, justifyContent: 'center' },
   btnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
-});
+}));

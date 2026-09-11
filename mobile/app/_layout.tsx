@@ -1,15 +1,33 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import { loadClub } from '../src/club';
-import { View } from 'react-native';
-import { C, DISP } from '../src/theme';
+import { Appearance, View, useColorScheme } from 'react-native';
+import { C, DISP, applyTheme, useTheme, type Mode } from '../src/theme';
+import { loadThemePref, useThemePref, type ThemePref } from '../src/themepref';
+
+const modeOf = (pref: ThemePref, system: string | null | undefined): Mode =>
+  pref === 'system' ? (system === 'light' ? 'light' : 'dark') : pref;
 
 export default function RootLayout() {
   // Контакты клуба: сохранённые показываем сразу, свежие подтягиваем фоном
   useEffect(() => { loadClub() }, []);
+
+  // Тема: выбор человека («как в телефоне» — по настройке iPhone).
+  // Сохранённый выбор читаем до первой отрисовки, чтобы не мигнуть тёмной.
+  const pref = useThemePref();
+  const system = useColorScheme();
+  const mode = modeOf(pref, system);
+  const [themeReady, setThemeReady] = useState(false);
+  useEffect(() => {
+    loadThemePref()
+      .then(p => applyTheme(modeOf(p, Appearance.getColorScheme())))
+      .finally(() => setThemeReady(true));
+  }, []);
+  useLayoutEffect(() => { if (themeReady) applyTheme(mode) }, [mode, themeReady]);
+  useTheme();
 
   // Inter, лицензия OFL. Начертания собраны из переменного шрифта и урезаны
   // до латиницы с кириллицей — по 53 КБ вместо 876 КБ исходника.
@@ -20,11 +38,11 @@ export default function RootLayout() {
     'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
   });
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
+  if (!ready || !themeReady) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: C.ink },

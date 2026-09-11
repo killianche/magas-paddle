@@ -10,7 +10,7 @@ import {
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, S, DISP, TITLE, BODY } from '../src/theme';
+import { C, S, DISP, TITLE, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -21,6 +21,7 @@ import { today, hh } from '../src/dates';
 import { upcomingGrid } from '../src/upcoming';
 
 export default function Courts() {
+  useTheme();
   const { width } = useWindowDimensions();
   const cardW = Math.min(width, 520) - S.xl * 2;
 
@@ -97,7 +98,7 @@ export default function Courts() {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
   head: { paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 18 },
   h1: { ...TITLE.page, color: C.text, marginTop: 8 },
@@ -106,7 +107,8 @@ const s = StyleSheet.create({
     overflow: 'hidden' },
   img: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  name: { ...TITLE.card, color: C.text, textTransform: 'uppercase',
+  // Поверх фото — светлым в любой теме
+  name: { ...TITLE.card, color: '#F5F8F2', textTransform: 'uppercase',
     position: 'absolute', left: 14, bottom: 14 },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 4 },
 
@@ -118,4 +120,4 @@ const s = StyleSheet.create({
   unit: { fontFamily: BODY, color: C.dim2, fontSize: 12, letterSpacing: 0 },
   go: { width: 48, height: 48, backgroundColor: C.lime, alignItems: 'center', justifyContent: 'center' },
   goT: { color: C.onLime, fontFamily: DISP, fontSize: 20 },
-});
+}));

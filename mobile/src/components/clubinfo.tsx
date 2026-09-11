@@ -8,12 +8,14 @@
 // выдумано — правило «не додумывать» в CLAUDE.md.
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, BODY } from '../theme';
+import { C, S, HIT, DISP, DISP_MED, BODY, sheet } from '../theme';
 import { CLUB, useClub, whatsappUrl } from '../club';
 import { hh } from '../dates';
 import { Section, Line } from './section';
 import { WhereWeAre } from './contacts';
 import { IconChevron } from './icons';
+import { RentalsList } from './extras';
+import { parseRentals } from '../rentals';
 
 /** Номер в базе лежит цифрами — человеку показываем привычно. */
 const pretty = (digits: string) => {
@@ -109,7 +111,7 @@ export function ClubInfo() {
       <Section title="Прокат и раздевалка"
         summary={club.rentalsText ? 'что есть в клубе' : 'сведений пока нет'}>
         {club.rentalsText
-          ? <Text style={s.rentals}>{club.rentalsText}</Text>
+          ? <RentalsList groups={parseRentals(club.rentalsText)} />
           : (
             <View style={s.empty}>
               <Text style={s.emptyT}>Эти сведения ещё не заполнены</Text>
@@ -141,7 +143,7 @@ export function ClubInfo() {
   );
 }
 
-const s = StyleSheet.create({
+const s = sheet(() => ({
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: S.xl, paddingBottom: 18 },
   act: { flex: 1, paddingVertical: 14, paddingHorizontal: 14,
     borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12 },
@@ -163,4 +165,4 @@ const s = StyleSheet.create({
     minHeight: HIT },
   docT: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2 },
   docS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 2 },
-});
+}));
