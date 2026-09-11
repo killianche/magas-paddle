@@ -316,7 +316,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <option value="app">Из приложения</option>
         <option value="admin">Записал менеджер</option>
       </select>
-      <input id="hSearch" placeholder="Имя или телефон">
+      <input id="hSearch" placeholder="Имя, телефон или № заявки">
       <button class="btn acc small" id="hGo">Показать</button>
       <button class="btn small" id="hCsv">Выгрузить</button>
     </div>
@@ -1063,7 +1063,10 @@ async function openBooking(id){
   if(!b) return;
   const court = day.courts.find(c => c.id===b.courtId);
   $('#bkTitle').textContent = who(b);
-  $('#bkSub').textContent = court.name+' · '+pretty(date);
+  // Номер заявки и номер аккаунта — те же, что приходят в сообщении WhatsApp:
+  // по ним менеджер сверяет, чья это бронь
+  $('#bkSub').textContent = court.name+' · '+pretty(date)+' · заявка №'+b.id
+    + (b.client ? ' · аккаунт №'+b.client.id : '');
   $('#bkRows').innerHTML = `
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
     <div class="row"><span>К оплате</span><b>${rub(b.price - (b.discount||0))}${
@@ -1612,7 +1615,7 @@ async function loadClients(){
         c.noShows ? `не пришёл: ${c.noShows}` : '',
       ].filter(Boolean).join(' · ');
       return `<div class="ntRow"><div>
-          <b>${name}</b>
+          <b>${name}</b> <span style="color:var(--dim-2);font-size:12px">аккаунт №${c.id}</span>
           <span>${phoneNice(c.phone)}${c.whatsapp && c.whatsapp !== c.phone
             ? ' · WhatsApp ' + phoneNice(c.whatsapp) : ''}</span><br>
           <span style="font-size:12px">записей: ${c.bookings} · последняя: ${last} · ${esc(flags)}</span>

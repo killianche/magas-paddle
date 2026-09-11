@@ -122,6 +122,8 @@ export type ApiBooking = {
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
   /** До какого времени клуб держит неподтверждённую заявку. */
   holdUntil?: string | null;
+  /** Номер аккаунта клиента — приходит в ответ на создание брони. */
+  clientId?: number;
 };
 
 export type ApiTournament = {

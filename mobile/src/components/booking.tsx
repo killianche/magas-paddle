@@ -3,10 +3,10 @@
 // Раньше у поля был свой экран со своей логикой, и каждая правка записи
 // кортов до него не доходила. Теперь выбор даты, длительности, плитки времени,
 // нижняя панель с кнопкой WhatsApp и галерея — здесь, в одном месте.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
-  useWindowDimensions, type ImageSourcePropType,
+  Alert, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView,
+  StyleSheet, Text, TextInput, View, useWindowDimensions, type ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,7 +19,9 @@ import { IconCheck, IconWhatsApp } from './icons';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { useClub } from '../club';
-import { useProfile, fullName } from '../profile';
+import {
+  useProfile, fullName, normalizePhone, prettyPhone, saveToken, type Profile,
+} from '../profile';
 
 export const DAYS_AHEAD = 14;   // две недели: на прошлых пяти днях нельзя было занять следующие выходные
 const COLS = 4;                 // плиток в ряду, как в образце
@@ -29,10 +31,11 @@ export const CARD_PAD = 12;
 export type Court = ApiGrid['courts'][number];
 export type Sel = { courtId: string; hour: number } | null;
 
-/** Ширина плитки: четыре в ряд без дыр справа. Минус 2 — рамка карточки. */
+/** Ширина плитки: четыре в ряд ровно по полям страницы. Карточек с
+ *  внутренними полями больше нет — плитки стоят прямо на фоне экрана. */
 export function usePillWidth() {
   const { width } = useWindowDimensions();
-  return Math.floor((Math.min(width, 520) - S.xl * 2 - CARD_PAD * 2 - 2 - GAP * (COLS - 1)) / COLS);
+  return Math.floor((Math.min(width, 520) - S.xl * 2 - GAP * (COLS - 1)) / COLS);
 }
 
 /** Можно ли начать в этот час на выбранную длительность. */
@@ -181,16 +184,18 @@ export type Booking = ReturnType<typeof useBooking>;
 
 /** Всё про отправку брони: сумма, предоплата, сообщение в WhatsApp, заявка.
  *
- *  Если человек заходил в аккаунт, заявка заодно заводится в приложении:
- *  время держится за ним, менеджер видит её в админке, в сообщении — номер.
- *  Без аккаунта уходит только сообщение. */
+ *  Заявка всегда заводится в приложении на конкретного человека: иначе её не
+ *  к кому привязать — ни истории, ни «Моих записей», ни уведомления, когда
+ *  менеджер подтвердит. У кого аккаунта нет, сначала спрашиваем телефон и
+ *  имя (окно «Кто бронирует»), пароль не нужен. */
 export function useBooking({ date, hours, sel, court, onTaken }: {
   date: string; hours: number; sel: Sel; court: Court | null; onTaken: () => void;
 }) {
   const club = useClub();
-  const { profile } = useProfile();
+  const { profile, save } = useProfile();
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
   // Цена складывается по часам: утро и вечер стоят по-разному
   const total = useMemo(() => {
@@ -207,7 +212,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   /** Сразу к делу, без приветствия — так попросил заказчик. Клуб может
    *  поменять формулировку в админке; подстановки: {корт} {дата} {время}
    *  {часы} {цена}. Имя и номер заявки добавляются сами. */
-  const message = (bookingId?: number) => {
+  const message = (who: Profile | null, bookingId?: number, clientId?: number) => {
     if (!sel || !court) return '';
     const tpl = club.waTemplate?.trim()
       || 'Хочу забронировать {корт} на {дата}, {время} ({часы}), {цена}.';
@@ -217,7 +222,12 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       .replace(/\{время\}/g, `${hh(sel.hour)} → ${hh(sel.hour + hours)}`)
       .replace(/\{часы\}/g, `${hours} ${plural(hours, 'час', 'часа', 'часов')}`)
       .replace(/\{цена\}/g, rub(total))];
-    if (profile) lines.push(`Меня зовут ${fullName(profile)}.`);
+    // Кто и с какого аккаунта: если две заявки придут одновременно, менеджер
+    // различит их по номеру аккаунта и найдёт в админке по номеру заявки
+    if (who) {
+      lines.push(`Меня зовут ${fullName(who)}.`);
+      lines.push(`Аккаунт${clientId ? ` №${clientId}` : ''}: ${prettyPhone(who.phone)}.`);
+    }
     if (bookingId) lines.push(`Заявка №${bookingId} в приложении.`);
     return lines.join('\n');
   };
@@ -239,9 +249,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       hour: String(sel.hour), hours: String(hours), price: String(total) } });
   };
 
-  // ЗАГЛУШКА: номер WhatsApp клуб ещё не дал (Q46, задаётся в админке,
-  // раздел «Контакты»). Кнопка уже выглядит как надо, а нажатие объясняет,
-  // что WhatsApp скоро подключат, и предлагает отправить заявку в приложении.
+  // На случай, если номер WhatsApp в админке сотрут: кнопка не мёртвая, а
+  // предлагает отправить заявку через приложение.
   const stub = () => {
     const title = 'WhatsApp клуба скоро подключим';
     const text = 'Пока можно отправить заявку через приложение — менеджер увидит её и свяжется с вами.';
@@ -252,20 +261,18 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     ]);
   };
 
-  const bookInWhatsApp = async () => {
+  const bookInWhatsApp = async (who: Profile | null = profile) => {
     if (!sel || !court || sending) return;
+    if (!who) { setAsking(true); return }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setProblem(null);
-    if (!profile) { await openWhatsApp(message()); return }
-
     setSending(true);
     try {
       const res = await api.book({
         courtId: sel.courtId, date, hour: sel.hour, hours,
-        name: profile.name, surname: profile.surname, phone: profile.phone,
-        whatsapp: profile.whatsapp,
+        name: who.name, surname: who.surname, phone: who.phone, whatsapp: who.whatsapp,
       });
-      await openWhatsApp(message(res.id));
+      await openWhatsApp(message(who, res.id, res.clientId));
       // Вернётся из WhatsApp — увидит, что заявка принята и что дальше
       router.replace({ pathname: '/sent', params: {
         id: String(res.id), name: res.courtName, date,
@@ -283,8 +290,17 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     }
   };
 
+  /** Ответ из окна «Кто бронирует»: запоминаем человека и сразу бронируем. */
+  const withWho = async (p: Profile, token?: string) => {
+    if (token) await saveToken(token);
+    await save(p);
+    setAsking(false);
+    await bookInWhatsApp(p);
+  };
+
   return {
-    total, prepay, sending, problem, setProblem,
+    total, prepay, sending, problem, setProblem, asking, withWho,
+    cancelAsk: () => setAsking(false),
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,
   };
@@ -323,7 +339,119 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
         style={({ pressed }) => [b.clear, pressed && { opacity: 0.6 }]}>
         <Text style={b.clearT}>сбросить выбор</Text>
       </Pressable>
+
+      <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />
     </View>
+  );
+}
+
+/** «Кто бронирует» — для тех, у кого ещё нет аккаунта.
+ *
+ *  Два поля: телефон и имя. Пароль не нужен — его можно задать позже в
+ *  аккаунте. Если номер уже защищён паролем, окно просит пароль, иначе бронь
+ *  привязалась бы к чужому аккаунту без его ведома. */
+function WhoSheet({ visible, onCancel, onDone }: {
+  visible: boolean; onCancel: () => void; onDone: (p: Profile, token?: string) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [state, setState] = useState<'unknown' | 'new' | 'known' | 'protected'>('unknown');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const clean = normalizePhone(phone);
+  // Ключ уже спрошенного номера — в ref: состояние перезапускало бы эффект
+  const asked = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!clean || clean === asked.current) return;
+    asked.current = clean;
+    api.checkPhone(clean).then(r => {
+      setState(!r.known ? 'new' : r.hasPassword ? 'protected' : 'known');
+      const p = r.profile;
+      if (p) setName(n => n.trim() ? n : p.name);
+    }).catch(() => setState('new'));
+  }, [clean]);
+
+  const login = state === 'protected';
+  const ok = !!clean && (login ? password.length >= 6 : name.trim().length >= 2);
+
+  const submit = async () => {
+    if (!ok || !clean || busy) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBusy(true); setProblem(null);
+    try {
+      if (login) {
+        const res = await api.login(clean, password);
+        onDone({
+          name: res.profile.name, surname: res.profile.surname ?? undefined,
+          phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
+          hasPassword: true,
+        }, res.token);
+      } else {
+        onDone({ name: name.trim(), phone: clean, hasPassword: false });
+      }
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}
+      statusBarTranslucent>
+      <KeyboardAvoidingView style={b.whoBack} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Pressable style={{ flex: 1 }} onPress={onCancel} accessibilityLabel="Закрыть" />
+        <View style={[b.who, { paddingBottom: insets.bottom + 14 }]}>
+          <Text style={b.whoT}>Кто бронирует</Text>
+          <Text style={b.whoP}>
+            Номер нужен, чтобы клуб подтвердил бронь, а вы видели её в «Моих записях».
+          </Text>
+
+          <Text style={b.whoL}>Телефон</Text>
+          <TextInput style={b.whoIn} value={phone} onChangeText={setPhone}
+            placeholder="+7 928 000-00-00" placeholderTextColor={C.busy}
+            keyboardType="phone-pad" textContentType="telephoneNumber" autoFocus
+            accessibilityLabel="Номер телефона" />
+
+          {login ? (
+            <>
+              <Text style={b.whoL}>Пароль</Text>
+              <TextInput style={b.whoIn} value={password} onChangeText={setPassword}
+                placeholder="Номер защищён паролем" placeholderTextColor={C.busy}
+                secureTextEntry autoCapitalize="none" autoCorrect={false}
+                textContentType="password" accessibilityLabel="Пароль" />
+            </>
+          ) : (
+            <>
+              <Text style={b.whoL}>Имя</Text>
+              <TextInput style={b.whoIn} value={name} onChangeText={setName}
+                placeholder="Как к вам обращаться" placeholderTextColor={C.busy}
+                autoCapitalize="words" textContentType="givenName"
+                accessibilityLabel="Имя" />
+            </>
+          )}
+
+          {!!problem && <Text style={b.problem}>{problem}</Text>}
+
+          <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+            accessibilityLabel="Продолжить в WhatsApp"
+            style={({ pressed }) => [b.wa, { marginTop: 16 }, (!ok || busy) && b.waOff,
+              pressed && ok && { opacity: 0.85 }]}>
+            <IconWhatsApp size={20} color={ok ? '#04240F' : C.dim2} />
+            <Text style={[b.waT, !ok && { color: C.dim2 }]}>
+              {busy ? 'Минуту…' : 'Продолжить в WhatsApp'}
+            </Text>
+          </Pressable>
+          <Pressable onPress={onCancel} accessibilityRole="button"
+            style={({ pressed }) => [b.clear, pressed && { opacity: 0.6 }]}>
+            <Text style={b.clearT}>отмена</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -371,8 +499,8 @@ const b = StyleSheet.create({
   stepT: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.4 },
   stepNote: { fontFamily: BODY, color: C.dim2, fontSize: 12 },
 
-  card: { marginHorizontal: S.xl, marginBottom: 10, padding: CARD_PAD,
-    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  // Без фона и рамки: заказчик просил убрать лишние заливки
+  card: { marginHorizontal: S.xl, marginBottom: 10 },
 
   durRow: { flexDirection: 'row', gap: GAP },
   dur: { flex: 1, minHeight: HIT, alignItems: 'center', justifyContent: 'center',
@@ -388,10 +516,11 @@ const b = StyleSheet.create({
     fontVariant: ['tabular-nums'], marginBottom: 8 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   pill: { height: HIT, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  pillFree: { backgroundColor: 'rgba(201,242,61,0.07)', borderColor: 'rgba(201,242,61,0.45)' },
-  pillBusy: { backgroundColor: 'rgba(255,85,56,0.07)', borderColor: 'rgba(255,85,56,0.32)' },
+  // Плитки без заливки: свободную выделяет рамка, занятую — цвет цифр
+  pillFree: { backgroundColor: 'transparent', borderColor: 'rgba(201,242,61,0.5)' },
+  pillBusy: { backgroundColor: 'transparent', borderColor: 'rgba(255,85,56,0.3)' },
   pillShort: { backgroundColor: 'transparent', borderColor: C.line, borderStyle: 'dashed' },
-  pillCovered: { backgroundColor: 'rgba(201,242,61,0.22)', borderColor: C.lime },
+  pillCovered: { backgroundColor: 'transparent', borderColor: C.lime },
   pillOn: { backgroundColor: C.lime, borderColor: C.lime },
   pillT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'] },
@@ -424,6 +553,18 @@ const b = StyleSheet.create({
 
   // Сплошной фон: сквозь полупрозрачный просвечивали плитки записи
   galBack: { flex: 1, backgroundColor: C.ink },
+
+  whoBack: { flex: 1, backgroundColor: 'rgba(2,7,5,0.72)' },
+  who: { backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+  whoT: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: -0.6,
+    textTransform: 'uppercase' },
+  whoP: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 6 },
+  whoL: { ...EYEBROW, color: C.dim2, marginTop: 16, marginBottom: 8 },
+  whoIn: { borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink,
+    paddingVertical: 14, paddingHorizontal: 14, minHeight: 52,
+    color: C.text, fontFamily: BODY, fontSize: 16 },
+  waOff: { backgroundColor: '#15251B' },
   galT: { color: C.text, fontFamily: DISP, fontSize: 20, letterSpacing: -0.5,
     textTransform: 'uppercase', paddingHorizontal: S.xl },
   galClose: { marginHorizontal: S.xl, minHeight: 50, alignItems: 'center', justifyContent: 'center',

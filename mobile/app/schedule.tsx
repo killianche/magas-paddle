@@ -20,7 +20,7 @@ import { Loading, Failed } from '../src/components/status';
 import { IconChevron } from '../src/components/icons';
 import { today } from '../src/dates';
 import {
-  BookingSheet, Card, CARD_PAD, DateStrip, Durations, GalleryModal, Slots, Step,
+  BookingSheet, Card, DateStrip, Durations, GalleryModal, Slots, Step,
   canStart, useBooking, useCourtPhotos, usePillWidth, type Sel,
 } from '../src/components/booking';
 
@@ -90,14 +90,11 @@ export default function Schedule() {
           </Text>
         )}
 
-        {/* Каждый корт — отдельный блок с цветной шапкой: номер на салатовом,
-            название крупно. Раньше корты сливались в одну ленту плиток. */}
-        {!nothingLeft && shown.map(c => (
-          <View key={c.courtId} style={st.court}>
+        {/* Корты разделены чертой и воздухом, без цветных подложек и без
+            цифр рядом с названием — «Корт 1» и так написано. */}
+        {!nothingLeft && shown.map((c, i) => (
+          <View key={c.courtId} style={[st.court, i > 0 && st.courtSep]}>
             <View style={st.courtHead}>
-              <View style={st.courtNum}>
-                <Text style={st.courtNumT}>{c.name.replace(/\D/g, '') || '·'}</Text>
-              </View>
               <Text style={st.courtName}>{c.name}</Text>
               <Pressable onPress={() => { Haptics.selectionAsync(); setGallery(c.courtId) }}
                 accessibilityRole="button" accessibilityLabel={`${c.name}: фотографии площадки`}
@@ -106,9 +103,7 @@ export default function Schedule() {
                 <IconChevron size={13} color={C.text} />
               </Pressable>
             </View>
-            <View style={st.courtBody}>
-              <Slots court={c} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
-            </View>
+            <Slots court={c} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
           </View>
         ))}
       </ScrollView>
@@ -129,19 +124,13 @@ const st = StyleSheet.create({
   allPassed: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20,
     textAlign: 'center', paddingHorizontal: 30, paddingVertical: 24 },
 
-  court: { marginHorizontal: S.xl, marginBottom: 18,
-    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
-  courtHead: { flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: CARD_PAD, paddingVertical: 11, backgroundColor: C.surface3,
-    borderBottomWidth: 2, borderBottomColor: 'rgba(201,242,61,0.55)' },
-  courtNum: { width: 34, height: 34, backgroundColor: C.lime,
-    alignItems: 'center', justifyContent: 'center' },
-  courtNumT: { color: C.onLime, fontFamily: DISP, fontSize: 17 },
-  courtName: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 20, letterSpacing: -0.6,
+  court: { marginHorizontal: S.xl, paddingTop: 18, paddingBottom: 20 },
+  courtSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+  courtHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 },
+  courtName: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 24, letterSpacing: -0.8,
     textTransform: 'uppercase' },
   photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11,
     minHeight: 34, borderWidth: 1, borderColor: C.lineStrong },
   photoT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
-  courtBody: { padding: CARD_PAD, paddingTop: 6 },
 });

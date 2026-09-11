@@ -424,11 +424,15 @@ export class AdminController {
       take: 40,
     });
 
+    // «65» или «№65» — это номер заявки из сообщения WhatsApp: менеджер
+    // вбивает его в поиск и сразу видит, чья бронь
+    const asNumber = /^\D*\d{1,9}\D*$/.test(text) ? BigInt(digits) : null;
     const rows = await this.db.bookings.findMany({
       where: {
         OR: [
           ...(clients.length ? [{ client_id: { in: clients.map(c => c.id) } }] : []),
           { guest_name: { contains: text, mode: 'insensitive' as const } },
+          ...(asNumber != null ? [{ id: asNumber }] : []),
         ],
       },
       orderBy: { starts_at: 'desc' },
@@ -437,7 +441,10 @@ export class AdminController {
 
     const courts = await this.db.courts.findMany();
     const courtName = new Map(courts.map(c => [c.id, c.name]));
-    const byId = new Map(clients.map(c => [String(c.id), c]));
+    const extra = await this.db.clients.findMany({ where: { id: {
+      in: rows.map(r => r.client_id).filter((x): x is bigint => x != null
+        && !clients.some(c => c.id === x)) } } });
+    const byId = new Map([...clients, ...extra].map(c => [String(c.id), c]));
 
     return rows.map(b => {
       const cl = b.client_id ? byId.get(String(b.client_id)) : null;

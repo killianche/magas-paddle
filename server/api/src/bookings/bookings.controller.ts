@@ -129,6 +129,9 @@ export class BookingsController {
         id: Number(b.id), courtId: court.id, courtName: court.name,
         startsAt: b.starts_at, endsAt: b.ends_at, price, status: b.status,
         holdUntil: b.hold_until, holdMinutes: set.holdMinutes,
+        // Номер аккаунта: приложение пишет его в сообщение WhatsApp, чтобы
+        // менеджер отличал заявки разных людей, пришедшие одновременно
+        clientId: Number(client.id),
       };
     } catch (e: any) {
       // База не дала создать пересекающуюся бронь — значит время увели,
