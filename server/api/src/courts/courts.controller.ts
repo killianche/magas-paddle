@@ -104,6 +104,7 @@ export class ClubController {
       waTemplate: s.waTemplate,
       bookingNote: s.bookingNote,
       heroUrl: s.heroUrl,
+      heroLightUrl: s.heroLightUrl,
     };
   }
 }

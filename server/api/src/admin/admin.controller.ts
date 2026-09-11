@@ -1164,34 +1164,43 @@ export class AdminController {
     return { ok: true };
   }
 
-  /** Фото первого экрана приложения. Прежнее своё фото удаляется с диска. */
+  /** Фото первого экрана приложения. Своих фото два: для тёмной темы и для
+   *  светлой — клубные снимки тёмные, на белом фоне они смотрятся чужеродно.
+   *  Прежнее фото удаляется с диска. */
   @Post('hero')
   @Needs('club')
-  async setHero(@Req() req: any, @Body() body: { data?: string }) {
+  async setHero(@Req() req: any, @Body() body: { data?: string; light?: boolean }) {
+    const light = !!body.light;
     const { buf, ext } = imageFrom(body.data);
-    const name = `hero-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
+    const name = `hero${light ? '-light' : ''}-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
     const dir = join(UPLOAD_DIR, 'club');
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, name), buf);
-    const old = (await this.club.get()).heroUrl;
-    const heroUrl = `/uploads/club/${name}`;
-    await this.db.settings.update({ where: { id: 1 }, data: { hero_url: heroUrl, updated_at: new Date() } });
+    const cur = await this.club.get();
+    const url = `/uploads/club/${name}`;
+    await this.db.settings.update({ where: { id: 1 },
+      data: { [light ? 'hero_light_url' : 'hero_url']: url, updated_at: new Date() } });
     this.club.forget();
-    await dropUpload(old);
-    await this.auth.log(req.admin, 'сменил фото главного экрана', name);
-    return { heroUrl };
+    await dropUpload(light ? cur.heroLightUrl : cur.heroUrl);
+    await this.auth.log(req.admin,
+      light ? 'сменил фото главного экрана (светлая тема)' : 'сменил фото главного экрана', name);
+    return { heroUrl: light ? null : url, heroLightUrl: light ? url : null };
   }
 
   /** Вернуть встроенное в приложение фото первого экрана. */
   @Post('hero/delete')
   @Needs('club')
-  async resetHero(@Req() req: any) {
-    const old = (await this.club.get()).heroUrl;
-    await this.db.settings.update({ where: { id: 1 }, data: { hero_url: null, updated_at: new Date() } });
+  async resetHero(@Req() req: any, @Body() body: { light?: boolean }) {
+    const light = !!body.light;
+    const cur = await this.club.get();
+    await this.db.settings.update({ where: { id: 1 },
+      data: { [light ? 'hero_light_url' : 'hero_url']: null, updated_at: new Date() } });
     this.club.forget();
-    await dropUpload(old);
-    await this.auth.log(req.admin, 'вернул стандартное фото главного экрана', '');
-    return { heroUrl: null };
+    await dropUpload(light ? cur.heroLightUrl : cur.heroUrl);
+    await this.auth.log(req.admin,
+      light ? 'вернул стандартное фото главного экрана (светлая тема)'
+            : 'вернул стандартное фото главного экрана', '');
+    return { heroUrl: null, heroLightUrl: null };
   }
 
   /** Название, цены, цвет, особенности, порядок и включение площадки. */

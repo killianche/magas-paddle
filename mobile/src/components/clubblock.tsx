@@ -1,41 +1,53 @@
-// Блок «Клуб» внизу главной: прайс-лист, где мы, главное о правилах.
+// Блок «Клуб» внизу главной: цены целиком, ракетки и мячи, где мы, правила.
 //
-// Заказчик просил сделать эту часть «очень качественной и мощной». Поэтому
-// здесь не строки списка, а три крупных блока в плакатном стиле макета:
-// цена крупно, карточка «где мы» с картинкой-схемой и четыре цифры правил.
-// Все числа — из админки (цены, часы, предоплата, отмена), не вписаны в код.
+// Заказчик просил сделать эту часть «очень качественной и мощной» и держать
+// все цены прямо на главной: отдельной страницы с ценами нет, перехода
+// никуда нет. Поэтому здесь весь прайс-лист — тарифы корта, поле, особые
+// цены — и отдельным блоком прокат ракеток и мячей.
+// Все числа берутся из админки, ничего не вписано в код.
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet } from '../theme';
 import { rub, type ApiPrices } from '../api';
 import { CLUB, pointText, useClub } from '../club';
 import { hh } from '../dates';
 import { openLink } from './contacts';
+import { RentalsList, useRentals } from './extras';
+
+const DAYS = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+/** Дни недели человеческим языком: «выходные» вместо «Сб, Вс». */
+function daysText(d: number[] | null): string {
+  if (!d || d.length === 0 || d.length === 7) return 'Каждый день';
+  const k = [...d].sort().join(',');
+  if (k === '6,7') return 'Выходные';
+  if (k === '1,2,3,4,5') return 'Будни';
+  return [...d].sort().map(x => DAYS[x]).join(', ');
+}
 
 export function ClubBlock({ prices, maxHours }: { prices: ApiPrices | null; maxHours: number }) {
   const club = useClub();
+  const rentals = useRentals();
   const padel = prices?.courts.filter(c => !c.isFootball) ?? [];
   const pitch = prices?.courts.find(c => c.isFootball);
+  const name = new Map((prices?.courts ?? []).map(c => [c.id, c.name]));
   // У кортов могут быть разные цены — тогда показываем самую низкую с «от»
   const morning = padel.length ? Math.min(...padel.map(c => c.priceMorning)) : 0;
   const standard = padel.length ? Math.min(...padel.map(c => c.priceStandard)) : 0;
   const varies = padel.some(c => c.priceMorning !== padel[0].priceMorning
     || c.priceStandard !== padel[0].priceStandard);
+  const from = varies ? 'от ' : '';
   const cheapest = Math.min(morning, standard);
   const until = prices?.morningUntil ?? 0;
   const pitchPrice = pitch ? Math.min(pitch.priceMorning, pitch.priceStandard) : 0;
+  const rules = prices?.rules ?? [];
 
   const two = (n: number) => String(n).padStart(2, '0');
 
   return (
     <View style={s.wrap}>
-      {/* Цена — крупно, как на афише. Нажатие ведёт в полный прайс-лист. */}
-      <Pressable onPress={() => { Haptics.selectionAsync(); router.push('/prices') }}
-        accessibilityRole="button"
-        accessibilityLabel={`Прайс-лист. Падел-корт от ${rub(cheapest)} за час`}
-        style={({ pressed }) => [s.price, pressed && { opacity: 0.9 }]}>
+      {/* Цена — крупно, как на афише. Ниже все тарифы: больше их смотреть негде. */}
+      <View style={s.price}>
         <View style={s.priceHead}>
           <Text style={s.eyebrow}>Прайс-лист</Text>
           <Text style={s.eyebrowDim}>падел-корт · час</Text>
@@ -44,24 +56,43 @@ export function ClubBlock({ prices, maxHours }: { prices: ApiPrices | null; maxH
           {prices ? `${varies || morning !== standard ? 'от ' : ''}${rub(cheapest)}` : '—'}
         </Text>
 
-        <View style={s.rows}>
-          {prices && morning !== standard && (
-            <>
-              <PriceRow k={`Утро · до ${hh(until)}`} v={`${varies ? 'от ' : ''}${rub(morning)}`} accent />
-              <PriceRow k={`День и вечер · с ${hh(until)}`} v={`${varies ? 'от ' : ''}${rub(standard)}`} />
-            </>
-          )}
-          {pitch && <PriceRow k="Мини-футбольное поле" v={rub(pitchPrice)} />}
-          {!!prices?.rules.length && (
-            <Text style={s.special}>В отдельные дни цена другая — в прайс-листе</Text>
-          )}
-        </View>
+        {!!prices && (
+          <View style={s.rows}>
+            {morning !== standard ? (
+              <>
+                <PriceRow k={`Утро · до ${hh(until)}`} v={`${from}${rub(morning)}`} accent />
+                <PriceRow k={`День и вечер · с ${hh(until)}`} v={`${from}${rub(standard)}`} />
+              </>
+            ) : (
+              <PriceRow k="Весь день" v={`${from}${rub(standard)}`} accent />
+            )}
+            {!!pitch && <PriceRow k="Мини-футбольное поле" v={rub(pitchPrice)} />}
+            {rules.map(r => (
+              <PriceRow key={r.id}
+                k={`${daysText(r.days)} · ${hh(r.fromHour)}–${hh(r.toHour)}`
+                  + (r.courtId ? ` · ${name.get(r.courtId) ?? r.courtId}` : '')}
+                v={rub(r.price)} />
+            ))}
+          </View>
+        )}
 
-        <View style={s.more}>
-          <Text style={s.moreT}>Весь прайс-лист</Text>
-          <Text style={s.moreA}>→</Text>
+        <Text style={s.note}>
+          {morning !== standard
+            ? `Каждый час считается по своему тарифу: игра с ${hh(until - 1)} на два часа — `
+              + `${rub(morning)} за первый час и ${rub(standard)} за второй. `
+            : ''}
+          Бронь подтверждается предоплатой {club.prepayPercent} %, остальное — на месте.
+        </Text>
+      </View>
+
+      {/* Ракетки и мячи — свой прайс-лист: в аренду корта они не входят */}
+      {rentals.length > 0 && (
+        <View style={s.rent}>
+          <Text style={s.eyebrow}>Ракетки и мячи</Text>
+          <Text style={s.rentNote}>В бронь корта не входят — оплачиваются отдельно</Text>
+          <View style={{ marginTop: 16 }}><RentalsList groups={rentals} /></View>
         </View>
-      </Pressable>
+      )}
 
       {/* Где мы: схема — картинка, а не карта; настоящая открывается нажатием */}
       <Pressable
@@ -151,14 +182,14 @@ const s = sheet(() => ({
   rowK: { fontFamily: BODY, color: C.dim, fontSize: 13.5, flexShrink: 1 },
   rowV: { fontFamily: DISP, color: C.text, fontSize: 15, letterSpacing: -0.3,
     fontVariant: ['tabular-nums'] },
-  special: { fontFamily: BODY, color: C.amber, fontSize: 12, marginTop: 8 },
-  more: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 12, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineStrong },
-  moreT: { fontFamily: DISP_MED, color: C.text, fontSize: 12, letterSpacing: 1.4,
-    textTransform: 'uppercase' },
-  moreA: { fontFamily: DISP, color: C.accent, fontSize: 18 },
+  note: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 14,
+    paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineStrong },
 
-  map: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden' },
+  rent: { marginTop: 6 },
+  rentNote: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 5 },
+
+  map: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden',
+    marginTop: 6 },
   mapBody: { padding: 16, paddingTop: 14 },
   mapT: { color: C.text, fontFamily: DISP, fontSize: 24, letterSpacing: -0.8,
     textTransform: 'uppercase', marginTop: 6 },

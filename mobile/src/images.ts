@@ -26,6 +26,10 @@ export const COURT_PHOTOS: Record<string, any[]> = {
 
 // Снимки клуба, присланные заказчиком. В отличие от остальных — настоящие.
 export const HERO = require('../assets/img/club-hero.webp');
+/** Первый экран в светлой теме. ЗАГЛУШКА: присланные клубом снимки тёмные
+ *  (яркость 47 из 255), на белом фоне такой кадр выглядит чужеродно. Здесь
+ *  светлый снимок корта, пока клуб не загрузит свой в админке. */
+export const HERO_LIGHT = require('../assets/img/c1.webp');
 export const CLUB_BAND = require('../assets/img/club-band.webp');
 export const TOURN = require('../assets/img/tourn.webp');
 

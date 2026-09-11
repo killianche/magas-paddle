@@ -175,7 +175,9 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .hero-set{margin-bottom:16px}
 /* Метки формы на этой вкладке растягиваются во всю ширину — кнопке это не нужно */
 .hero-set label.btn{display:inline-flex;align-items:center;width:auto;margin:0 6px 0 0;cursor:pointer}
-.hero-row{display:flex;gap:14px;align-items:flex-start;margin-top:6px}
+.hero-row{display:flex;gap:16px;align-items:flex-start;margin-top:10px;flex-wrap:wrap}
+.hero-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.hero-cap{font-size:11.5px;color:var(--dim-2);letter-spacing:.6px;text-transform:uppercase}
 .hero-prev{flex:0 0 200px;height:130px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
   display:flex;align-items:center;justify-content:center;text-align:center;
   background:var(--surface-2);color:var(--dim-2);font-size:12px;line-height:1.4}
@@ -615,15 +617,24 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
       <div class="hero-set">
         <label>Главный экран — большое фото</label>
+        <p class="sub" style="margin:2px 0 0">Первое, что видит человек в приложении. Внизу на фото
+          лежат две кнопки записи, поэтому главное в кадре — в верхней половине. Подойдёт снимок
+          с телефона: он сам уменьшится. Фото два, потому что человек выбирает тёмное или светлое
+          оформление: для светлого нужен светлый кадр.</p>
         <div class="hero-row">
-          <div class="hero-prev" id="heroPrev"></div>
-          <div>
-            <p class="sub" style="margin:0 0 10px">Первое, что видит человек в приложении. Внизу на
-              фото лежат две кнопки записи, поэтому главное в кадре — в верхней половине.
-              Подойдёт снимок с телефона: он сам уменьшится.</p>
-            <label class="btn small" id="heroAdd">Загрузить своё фото<input type="file"
+          <div class="hero-card">
+            <div class="hero-prev" id="heroPrev"></div>
+            <div class="hero-cap">Тёмное оформление</div>
+            <label class="btn small" id="heroAdd">Загрузить фото<input type="file"
               accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
             <button type="button" class="btn small" id="heroReset" hidden>Вернуть стандартное</button>
+          </div>
+          <div class="hero-card">
+            <div class="hero-prev" id="heroPrevLight"></div>
+            <div class="hero-cap">Светлое оформление</div>
+            <label class="btn small" id="heroAddLight">Загрузить фото<input type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
+            <button type="button" class="btn small" id="heroResetLight" hidden>Вернуть стандартное</button>
           </div>
         </div>
       </div>
@@ -1469,28 +1480,32 @@ let setup = null;
 
 $('#setupBtn').onclick = () => openSetup();
 
-/* ── Фото главного экрана ─────────────────────────────────────────────── */
-function heroShow(url){
-  $('#heroPrev').innerHTML = url ? `<img src="${esc(url)}" alt="">`
+/* ── Фото главного экрана: для тёмного и светлого оформления ──────────── */
+function heroShow(url, light){
+  $(light ? '#heroPrevLight' : '#heroPrev').innerHTML = url ? `<img src="${esc(url)}" alt="">`
     : '<span>Стандартное фото<br>из приложения</span>';
-  $('#heroReset').hidden = !url;
+  $(light ? '#heroResetLight' : '#heroReset').hidden = !url;
 }
-$('#heroAdd input').onchange = async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  const lab = $('#heroAdd'), was = lab.firstChild.textContent;
-  lab.firstChild.textContent = 'Загружаю…';
-  try {
-    const data = await shrink(f);
-    const r = await call('/admin/hero', { method:'POST', body: JSON.stringify({ data }) });
-    heroShow(r.heroUrl);
-  } catch(err){ alert(err.message) }
-  lab.firstChild.textContent = was; e.target.value = '';
-};
-$('#heroReset').onclick = async () => {
-  if(!await ask('Вернуть стандартное фото?', 'Ваше фото удалится, в приложении снова будет встроенное.')) return;
-  try { await call('/admin/hero/delete', { method:'POST' }); heroShow(null) }
-  catch(err){ alert(err.message) }
-};
+function heroBind(light){
+  const addId = light ? '#heroAddLight' : '#heroAdd';
+  $(addId + ' input').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const lab = $(addId), was = lab.firstChild.textContent;
+    lab.firstChild.textContent = 'Загружаю…';
+    try {
+      const data = await shrink(f);
+      const r = await call('/admin/hero', { method:'POST', body: JSON.stringify({ data, light }) });
+      heroShow(light ? r.heroLightUrl : r.heroUrl, light);
+    } catch(err){ alert(err.message) }
+    lab.firstChild.textContent = was; e.target.value = '';
+  };
+  $(light ? '#heroResetLight' : '#heroReset').onclick = async () => {
+    if(!await ask('Вернуть стандартное фото?', 'Ваше фото удалится, в приложении снова будет встроенное.')) return;
+    try { await call('/admin/hero/delete', { method:'POST', body: JSON.stringify({ light }) }); heroShow(null, light) }
+    catch(err){ alert(err.message) }
+  };
+}
+heroBind(false); heroBind(true);
 
 /* ── Прокат: таблица вместо текста по правилам ─────────────────────────
    Хранится тем же текстом, что читает приложение: «Заголовок:», строки
@@ -1578,7 +1593,8 @@ async function openSetup(){
   rent = rentParse(st.rentalsText);
   if (!rent.length) rent = [{ title: '', items: [{ name: '', price: '' }] }];
   rentRender();
-  heroShow(st.heroUrl);
+  heroShow(st.heroUrl, false);
+  heroShow(st.heroLightUrl, true);
   $('#setWaTpl').value = st.waTemplate || '';
   $('#setBookNote').value = st.bookingNote || '';
   $('#setTourn').checked = st.showTournaments !== false;

@@ -19,7 +19,7 @@ import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
-import { IMG, HERO, TOURN_IMG } from '../../src/images';
+import { IMG, HERO, HERO_LIGHT, TOURN_IMG } from '../../src/images';
 import { Mark, IconChevron, IconCheck, IconBell, IconAccount } from '../../src/components/icons';
 import { SocialButtons } from '../../src/components/contacts';
 import { ClubBlock } from '../../src/components/clubblock';
@@ -85,6 +85,11 @@ export default function Home() {
   // «Мини-футбольное поле» должно стоять в одну строку и на узком телефоне:
   // на 360 pt при кегле 19 оно переносилось
   const ctaSize = width < 340 ? 15 : width < 385 ? 17 : 19;
+  // Фото первого экрана: своё из админки, иначе встроенное. В светлой теме —
+  // светлый кадр: тёмный снимок на белом фоне выглядит чужеродно.
+  const hero = mode === 'light'
+    ? (club.heroLightUrl ? { uri: mediaUrl(club.heroLightUrl) } : HERO_LIGHT)
+    : (club.heroUrl ? { uri: mediaUrl(club.heroUrl) } : HERO);
 
   const courts = grid?.courts ?? [];
   const soonest = courts
@@ -127,9 +132,7 @@ export default function Home() {
       {/* Большая фотография клуба: сверху марка и кнопки аккаунта, внизу —
           две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
-        {/* Своё фото клуб загружает в админке («Приложение»); иначе встроенное */}
-        <Image source={club.heroUrl ? { uri: mediaUrl(club.heroUrl) } : HERO}
-          style={st.fillImg} resizeMode="cover" />
+        <Image source={hero} style={st.fillImg} resizeMode="cover" />
         <LinearGradient
           colors={['rgba(2,7,5,.72)', 'rgba(2,7,5,0)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.88)']}
           locations={[0, 0.22, 0.5, 1]} style={st.fill} />

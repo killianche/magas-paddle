@@ -312,9 +312,9 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
 }
 
 /** Панель выбранного времени: где, когда, сколько, сколько внести сейчас. */
-export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
+export function BookingSheet({ court, date, sel, hours, booking }: {
   court: Court; date: string; sel: NonNullable<Sel>; hours: number;
-  booking: Booking; onReset: () => void;
+  booking: Booking;
 }) {
   const insets = useSafeAreaInsets();
   const club = useClub();
@@ -356,12 +356,6 @@ export function BookingSheet({ court, date, sel, hours, booking, onReset }: {
         style={({ pressed }) => [b.wa, (pressed || booking.sending) && { opacity: 0.85 }]}>
         <IconWhatsApp size={20} color="#04240F" />
         <Text style={b.waT}>{booking.sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
-      </Pressable>
-
-      <Pressable onPress={() => { Haptics.selectionAsync(); onReset() }}
-        accessibilityRole="button" hitSlop={8}
-        style={({ pressed }) => [b.clear, pressed && { opacity: 0.6 }]}>
-        <Text style={b.clearT}>сбросить выбор</Text>
       </Pressable>
 
       <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />

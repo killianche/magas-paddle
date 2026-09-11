@@ -110,8 +110,7 @@ export default function Schedule() {
       </ScrollView>
 
       {sel && court && (
-        <BookingSheet court={court} date={date} sel={sel} hours={hours} booking={booking}
-          onReset={() => { setSel(null); booking.setProblem(null) }} />
+        <BookingSheet court={court} date={date} sel={sel} hours={hours} booking={booking} />
       )}
 
       <GalleryModal title={galleryCourt?.name ?? null}

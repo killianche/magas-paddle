@@ -123,8 +123,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
       </ScrollView>
 
       {sel && (
-        <BookingSheet court={row} date={date} sel={sel} hours={hours} booking={booking}
-          onReset={() => { setSel(null); booking.setProblem(null) }} />
+        <BookingSheet court={row} date={date} sel={sel} hours={hours} booking={booking} />
       )}
     </View>
   );

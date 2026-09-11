@@ -1,21 +1,27 @@
-// Заявка отправлена. Экран должен успокоить: что записано, когда и что дальше.
-import { Text, View, StyleSheet, Pressable, Linking, Platform, Alert } from 'react-native';
+// Заявка отправлена.
+//
+// Человек попадает сюда, вернувшись из WhatsApp, где уже написал менеджеру.
+// Значит, всё главное он сделал, и экран должен только подтвердить: что
+// записано, когда и что место придержано. Заказчик просил убрать отсюда
+// кнопки («написать в WhatsApp», «позвонить», «мои записи») и объяснение про
+// менеджера: это повтор того, что уже произошло. Деньги и номер заявки нужны,
+// но мелкой строкой — их смотрят, только если что-то пошло не так.
+import { Text, View, Pressable, Linking, Platform, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, HIT, DISP, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
+import { prettyPhone } from '../src/profile';
 import { hh, longDate, plural } from '../src/dates';
-
-import { CLUB, useClub, whatsappUrl } from '../src/club';
-
-
-/** Сколько осталось до конца удержания, словами. */
+import { useClub } from '../src/club';
 
 export default function Sent() {
   useTheme();
   const club = useClub();
+  const insets = useSafeAreaInsets();
   const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
     hours: string; price: string; holdUntil?: string }>();
   const hydrated = useHydrated();
@@ -24,6 +30,8 @@ export default function Sent() {
   // Доля предоплаты задана в админке; округляем до рубля вверх —
   // так менеджеру называть сумму проще
   const prepay = Math.ceil(price * club.prepayPercent / 100 / 100) * 100;
+  // Телефон клуба; пока его нет — номер WhatsApp, по нему тоже звонят
+  const phone = club.phone ?? club.whatsapp;
 
   if (!hydrated) return <ScreenSkeleton />;
   if (!p.name || !p.hour) return (
@@ -31,12 +39,15 @@ export default function Sent() {
       note="Похоже, вы открыли ссылку напрямую. Отправленные заявки лежат в «Моих записях»." />
   );
 
-  const open = async (url: string, fallback: string) => {
+  const call = async () => {
+    if (!phone) return;
+    const url = `tel:${phone.replace(/[^\d+]/g, '')}`;
     try {
       if (await Linking.canOpenURL(url)) return Linking.openURL(url);
       throw new Error();
     } catch {
-      Platform.OS === 'web' ? alert(fallback) : Alert.alert('Не получилось', fallback);
+      const msg = `Телефон клуба: ${prettyPhone(phone)}`;
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('Не получилось позвонить', msg);
     }
   };
 
@@ -44,118 +55,74 @@ export default function Sent() {
     <View style={s.root}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
 
+      {/* Выход — крупный крестик слева вверху: заявка уже отправлена */}
+      <Pressable onPress={() => router.replace('/')} accessibilityRole="button"
+        accessibilityLabel="Закрыть" hitSlop={10}
+        style={({ pressed }) => [s.close, { top: insets.top + 8 }, pressed && { opacity: 0.6 }]}>
+        <Text style={s.closeT} allowFontScaling={false}>✕</Text>
+      </Pressable>
+
       <View style={s.done}>
         <View style={s.tick}><IconCheck size={34} color={C.accent} active /></View>
         <Text style={s.h}>Заявка отправлена</Text>
         <Text style={s.p}>
-          <Text style={{ color: C.text, fontWeight: '700' }}>{String(p.name)}</Text>
+          <Text style={s.strong}>{String(p.name)}</Text>
           {'\n'}{longDate(String(p.date))}
-          {'\n'}<Text style={{ color: C.text, fontWeight: '700' }}>{hh(hour)} – {hh(hour + hours)}</Text>
+          {'\n'}<Text style={s.strong}>{hh(hour)} – {hh(hour + hours)}</Text>
           {' '}· {hours} {plural(hours, 'час', 'часа', 'часов')}
         </Text>
+
         <View style={s.pill}>
           <View style={s.dot} />
           <Text style={s.pillT}>МЕСТО ЗАДЕРЖАНО</Text>
         </View>
-      </View>
 
-      {/* Один блок на всё, что человеку сейчас нужно знать: сколько стоит,
-          что будет дальше и сколько внести. Обратный отсчёт убран: он торопил
-          и пугал, а решает всё равно менеджер. */}
-      <View style={s.card}>
-        <View style={s.row}>
-          <Text style={s.rowK}>Номер записи</Text>
-          <Text style={s.rowV}>№ {String(p.id ?? '—')}</Text>
-        </View>
-        <View style={s.row}>
-          <Text style={s.rowK}>Стоимость</Text>
-          <Text style={[s.rowV, { color: C.text }]}>{rub(price)}</Text>
-        </View>
-        <View style={[s.row, s.rowLast]}>
-          <Text style={s.rowK}>Предоплата</Text>
-          <Text style={[s.rowV, { color: C.accent, fontSize: 20 }]}>{rub(prepay)}</Text>
-        </View>
-        <Text style={s.note}>
-          С вами свяжется менеджер: подскажет, как внести предоплату —
-          {' '}{club.prepayPercent} % стоимости. После неё бронь подтверждается,
-          остальное платится на месте.
-        </Text>
+        {!!phone && (
+          <Pressable onPress={call} accessibilityRole="button"
+            accessibilityLabel={`Позвонить в клуб, ${prettyPhone(phone)}`}
+            style={({ pressed }) => [s.phoneBtn, pressed && { opacity: 0.7 }]}>
+            <Text style={s.phone}>{prettyPhone(phone)}</Text>
+            {/* Телефона клуб ещё не дал — тогда это номер WhatsApp, так и подписываем */}
+            <Text style={s.phoneL}>{club.phone ? 'телефон клуба' : 'номер клуба в WhatsApp'}</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={{ flex: 1 }} />
 
-      <View style={s.bottom}>
-        <Text style={s.step}>Можно связаться самому</Text>
-
-        {/* ЗАГЛУШКИ: номеров клуб ещё не дал (вопрос Q46). Выдумывать нельзя —
-            человек позвонит незнакомому, — поэтому кнопки честно неактивны. */}
-        <Pressable disabled={!whatsappUrl()}
-          onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
-          accessibilityRole="button"
-          accessibilityLabel="Написать менеджеру в WhatsApp"
-          style={({ pressed }) => [s.wa, !whatsappUrl() && s.waOff, pressed && { opacity: 0.9 }]}>
-          <Text style={[s.waT, !whatsappUrl() && { color: C.dim }]}>
-            {whatsappUrl() ? 'Написать в WhatsApp' : 'WhatsApp: номер скоро появится'}
-          </Text>
-        </Pressable>
-
-        <Pressable disabled={!club.phone}
-          onPress={() => club.phone && open(`tel:${club.phone.replace(/[^\d+]/g, '')}`,
-            `Телефон клуба: ${club.phone}`)}
-          accessibilityRole="button"
-          accessibilityLabel={club.phone ? 'Позвонить менеджеру' : 'Телефон клуба ещё не известен'}
-          style={({ pressed }) => [s.ghost, pressed && { opacity: 0.8 }]}>
-          <Text style={[s.ghostT, !club.phone && { color: C.dim }]}>
-            {club.phone ? 'Позвонить менеджеру' : 'Телефон: номер скоро появится'}
-          </Text>
-        </Pressable>
-
-        <Pressable onPress={() => router.replace('/bookings')}
-          accessibilityRole="button"
-          style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
-          <Text style={s.linkT}>Открыть мои записи</Text>
-        </Pressable>
-      </View>
+      {/* Мелким внизу: пригодится, только если что-то пойдёт не так */}
+      <Text style={[s.small, { paddingBottom: insets.bottom + 20 }]}>
+        Заявка № {String(p.id ?? '—')} · {rub(price)} · предоплата {club.prepayPercent} % —
+        {' '}{rub(prepay)}. Остальное на месте.
+      </Text>
     </View>
   );
 }
 
 const s = sheet(() => ({
-  note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19,
-    paddingTop: 13, paddingBottom: 15,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
-  waOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  step: { ...EYEBROW, color: C.dim2, marginBottom: 10, textAlign: 'center' },
-  root: { flex: 1, backgroundColor: C.ink, paddingTop: 74 },
+  root: { flex: 1, backgroundColor: C.ink, paddingTop: 84 },
+  close: { position: 'absolute', left: 10, width: HIT, height: HIT,
+    alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  closeT: { color: C.text, fontFamily: DISP, fontSize: 26, lineHeight: 30 },
+
   done: { alignItems: 'center', paddingHorizontal: 30 },
   tick: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: C.accent,
     backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
   h: { ...TITLE.page, color: C.text, marginTop: 20, textAlign: 'center' },
-  p: { fontFamily: BODY, color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center', marginTop: 10 },
+  p: { fontFamily: BODY, color: C.dim, fontSize: 14.5, lineHeight: 22, textAlign: 'center',
+    marginTop: 10 },
+  strong: { color: C.text, fontWeight: '700' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 18,
     borderWidth: 1, borderColor: C.warnBorder, backgroundColor: C.warnSoft,
-    borderRadius: 0, paddingVertical: 6, paddingHorizontal: 12 },
+    paddingVertical: 6, paddingHorizontal: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
   pillT: { ...EYEBROW, color: C.amber },
 
-  card: { marginTop: 26, marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1,
-    borderColor: C.line, backgroundColor: C.surface, paddingHorizontal: 15 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  rowLast: { borderBottomWidth: 0 },
-  rowK: { fontFamily: BODY, color: C.dim2, fontSize: 14 },
-  rowV: { color: C.text, fontFamily: DISP_MED, fontSize: 15, letterSpacing: -0.3,
+  phoneBtn: { alignItems: 'center', marginTop: 22, paddingVertical: 6, minHeight: HIT },
+  phone: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: -0.6,
     fontVariant: ['tabular-nums'] },
+  phoneL: { ...EYEBROW, color: C.dim2, marginTop: 4 },
 
-  bottom: { paddingHorizontal: S.xl, paddingBottom: 34, gap: 10 },
-  wa: { backgroundColor: '#25D366', borderRadius: R.lg, paddingVertical: 16,
-    alignItems: 'center', minHeight: HIT },
-  waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
-    textTransform: 'uppercase' },
-  ghost: { borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.lg,
-    paddingVertical: 15, alignItems: 'center', minHeight: HIT },
-  ghostT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
-    textTransform: 'uppercase' },
-  link: { paddingVertical: 12, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
-  linkT: { fontFamily: BODY, color: C.dim, fontSize: 14.5, fontWeight: '600' },
+  small: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 18, textAlign: 'center',
+    paddingHorizontal: S.xl },
 }));
