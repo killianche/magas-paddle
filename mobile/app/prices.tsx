@@ -108,7 +108,7 @@ export default function Prices() {
 
       {football && (
         <>
-          <Text style={s.group}>Футбольное поле</Text>
+          <Text style={s.group}>Мини-футбольное поле</Text>
           <View style={[s.band, { paddingBottom: 18 }]}>
             <Text style={s.bandTime}>Поле целиком, за час</Text>
             <Text style={s.bandHours}>С {hh(openHour)} до {hh(closeHour)}, цена одна весь день</Text>

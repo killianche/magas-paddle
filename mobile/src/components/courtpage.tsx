@@ -44,7 +44,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
   const booking = useBooking({ date, hours, sel, court: sel ? row : null,
     onTaken: () => { setSel(null); q.refresh() } });
 
-  const title = row?.name ?? (football ? 'Футбольное поле' : 'Корт');
+  const title = row?.name ?? (football ? 'Мини-футбольное поле' : 'Корт');
 
   // Сегодня у корта всё прошло (поздний вечер) — сразу открываем завтра,
   // а не «время закончилось». Один раз: если человек сам вернётся на
