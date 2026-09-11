@@ -133,9 +133,11 @@ export default function Home() {
           две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
         <Image source={hero} style={st.fillImg} resizeMode="cover" />
+        {/* Затемнение сверху и снизу: марка и кнопки белые, а фото бывает
+            светлым — на нём белое иначе не читается */}
         <LinearGradient
-          colors={['rgba(2,7,5,.72)', 'rgba(2,7,5,0)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.88)']}
-          locations={[0, 0.22, 0.5, 1]} style={st.fill} />
+          colors={['rgba(2,7,5,.9)', 'rgba(2,7,5,.35)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.92)']}
+          locations={[0, 0.16, 0.45, 1]} style={st.fill} />
 
         <View style={[st.brandRow, { paddingTop: insets.top + 12 }]}>
           <Mark size={30} />
