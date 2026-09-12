@@ -226,11 +226,12 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       .replace(/\{время\}/g, `${hh(sel.hour)} → ${hh(sel.hour + hours)}`)
       .replace(/\{часы\}/g, `${hours} ${plural(hours, 'час', 'часа', 'часов')}`)
       .replace(/\{цена\}/g, rub(total))];
-    // Кто и с какого аккаунта: если две заявки придут одновременно, менеджер
-    // различит их по номеру аккаунта и найдёт в админке по номеру заявки
+    // Кто: имя и ID аккаунта, без телефона — заказчик попросил. Номер
+    // менеджер и так видит в WhatsApp, а по ID находит человека в админке.
     if (who) {
       lines.push(`Меня зовут ${fullName(who)}.`);
-      lines.push(`Аккаунт${clientId ? ` №${clientId}` : ''}: ${prettyPhone(who.phone)}.`);
+      const id = clientId ?? who.id;
+      if (id) lines.push(`ID ${id}.`);
     }
     if (bookingId) lines.push(`Заявка №${bookingId} в приложении.`);
     return lines.join('\n');
@@ -276,6 +277,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
         courtId: sel.courtId, date, hour: sel.hour, hours,
         name: who.name, surname: who.surname, phone: who.phone, whatsapp: who.whatsapp,
       });
+      // ID аккаунта становится известен с первой заявкой — запоминаем
+      if (res.clientId && who.id !== res.clientId) await save({ ...who, id: res.clientId });
       await openWhatsApp(message(who, res.id, res.clientId));
       // Вернётся из WhatsApp — увидит, что заявка принята и что дальше
       router.replace({ pathname: '/sent', params: {
@@ -420,7 +423,7 @@ function WhoSheet({ visible, onCancel, onDone }: {
       if (login) {
         const res = await api.login(clean, password);
         onDone({
-          name: res.profile.name, surname: res.profile.surname ?? undefined,
+          id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
           phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
           hasPassword: true,
         }, res.token);

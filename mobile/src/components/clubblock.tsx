@@ -25,7 +25,7 @@ function daysText(d: number[] | null): string {
   return [...d].sort().map(x => DAYS[x]).join(', ');
 }
 
-export function ClubBlock({ prices, maxHours }: { prices: ApiPrices | null; maxHours: number }) {
+export function ClubBlock({ prices }: { prices: ApiPrices | null }) {
   const club = useClub();
   const rentals = useRentals();
   const padel = prices?.courts.filter(c => !c.isFootball) ?? [];
@@ -112,12 +112,11 @@ export function ClubBlock({ prices, maxHours }: { prices: ApiPrices | null; maxH
         </View>
       </Pressable>
 
-      {/* Правила четырьмя цифрами: их запоминают, а абзацы — пролистывают */}
+      {/* Правила цифрами: их запоминают, а абзацы — пролистывают. Аренду
+          подряд и срок отмены заказчик попросил нигде не писать. */}
       <View style={s.facts}>
         <Fact big={`${two(club.openHour)}–${two(club.closeHour)}`} label="часы работы" />
-        <Fact big={maxHours > 1 ? `1–${maxHours} ч` : '1 ч'} label="аренда подряд" />
         <Fact big={`${club.prepayPercent} %`} label="предоплата" />
-        <Fact big={`${club.cancelHours} ч`} label="бесплатная отмена до начала" />
       </View>
     </View>
   );

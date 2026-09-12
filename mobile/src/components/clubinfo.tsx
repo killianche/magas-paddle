@@ -74,37 +74,22 @@ export function ClubInfo() {
         </Text>
       </Section>
 
-      <Section title="Как добраться" summary={club.address ?? 'адрес ещё не указан'}>
-        {club.address
-          ? <Line k="Адрес" v={club.address} />
-          : (
-            <View style={s.empty}>
-              <Text style={s.emptyT}>Адрес ещё не указан</Text>
-              <Text style={s.emptyS}>
-                Придумывать его мы не стали: человек поедет не туда. Менеджер
-                задаёт адрес в админке — он появится здесь сам.
-              </Text>
-            </View>
-          )}
-        <WhereWeAre />
+      {/* Пока адреса нет — только город и кнопка карты, без пояснений */}
+      <Section title="Как добраться" summary={club.address ?? `${CLUB.city}, ${CLUB.region}`}>
+        {!!club.address && <Line k="Адрес" v={club.address} />}
+        {/* У карточки свои поля от краёв экрана, а секция уже с полями */}
+        <View style={{ marginHorizontal: -S.xl }}><WhereWeAre /></View>
       </Section>
 
-      <Section title="Оплата и правила"
-        summary={`Предоплата ${club.prepayPercent} % · отмена за ${club.cancelHours} часа`}>
-        <Line k="Аренда" v="ровно час, можно два и три подряд" />
+      {/* Заказчик убрал длительность аренды, остаток, срок отмены и опоздание:
+          здесь только предоплата и то, что отменяют через WhatsApp */}
+      <Section title="Оплата и правила" summary={`Предоплата ${club.prepayPercent} %`}>
         <Line k="Подтверждение" v={`предоплата ${club.prepayPercent} % менеджеру`} />
-        <Line k="Остаток" v="на месте, в клубе" />
-        <Line k="Отмена" v={`за ${club.cancelHours} часа — бесплатно`} />
-        <Line k="Как отменить" v="звонок, WhatsApp или «Мои записи»" />
-        <Line k="Опоздание" v={`корт держим ${club.lateMinutes} минут`} />
+        <Line k="Как отменить" v="написать менеджеру в WhatsApp" />
         <Text style={s.small}>
           После заявки менеджер связывается по телефону или в WhatsApp и говорит,
           как внести предоплату — {club.prepayPercent} % стоимости. Как только она
           получена, бронь становится подтверждённой. Остальное платится на месте.
-        </Text>
-        <Text style={s.small}>
-          Отменить можно у менеджера — по телефону или в WhatsApp, — а также
-          самому в разделе «Мои записи».
         </Text>
       </Section>
 

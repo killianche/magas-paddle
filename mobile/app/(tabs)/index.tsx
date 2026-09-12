@@ -354,7 +354,7 @@ export default function Home() {
           <Text style={st.secLink}>контакты и правила</Text>
         </Pressable>
       </View>
-      <ClubBlock prices={q.data?.prices ?? null} maxHours={grid?.maxHours ?? 3} />
+      <ClubBlock prices={q.data?.prices ?? null} />
     </Animated.ScrollView>
     <TopScrim scrollY={scrim.scrollY} />
     {focused && <StatusBar style={onHero || mode === 'dark' ? 'light' : 'dark'} />}

@@ -69,11 +69,13 @@ export class UpdateDto {
 }
 
 type ClientRow = {
-  name: string; surname: string | null; phone: string;
+  id: bigint; name: string; surname: string | null; phone: string;
   whatsapp: string | null; pass_hash: string | null;
 };
 
 const card = (c: ClientRow) => ({
+  // ID аккаунта: его человек отправляет клубу в WhatsApp вместо телефона
+  id: Number(c.id),
   name: c.name, surname: c.surname ?? null,
   phone: c.phone, whatsapp: c.whatsapp ?? null,
   hasPassword: !!c.pass_hash,

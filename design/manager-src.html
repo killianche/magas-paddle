@@ -300,7 +300,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <button class="vw" data-view="stats">Аналитика</button>
   </div>
   <input id="search" class="search" type="search" autocomplete="off"
-         placeholder="Поиск по имени или телефону" aria-label="Поиск клиента по имени или телефону">
+         placeholder="Имя, телефон или ID" aria-label="Поиск клиента по имени, телефону или ID">
   <div class="spacer"></div>
   <button class="btn pend" id="pendBtn" hidden>Новых заявок: <b id="pendN">0</b></button>
   <div class="day-nav">
@@ -345,7 +345,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <option value="app">Из приложения</option>
         <option value="admin">Записал менеджер</option>
       </select>
-      <input id="hSearch" placeholder="Имя, телефон или № заявки">
+      <input id="hSearch" placeholder="Имя, телефон, № заявки или ID">
       <button class="btn acc small" id="hGo">Показать</button>
       <button class="btn small" id="hCsv">Выгрузить</button>
     </div>
@@ -1124,7 +1124,7 @@ async function openBooking(id){
   // Номер заявки и номер аккаунта — те же, что приходят в сообщении WhatsApp:
   // по ним менеджер сверяет, чья это бронь
   $('#bkSub').textContent = court.name+' · '+pretty(date)+' · заявка №'+b.id
-    + (b.client ? ' · аккаунт №'+b.client.id : '');
+    + (b.client ? ' · ID '+b.client.id : '');
   $('#bkRows').innerHTML = `
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
     <div class="row"><span>К оплате</span><b>${rub(b.price - (b.discount||0))}${
@@ -1801,7 +1801,7 @@ async function loadClients(){
         c.noShows ? `не пришёл: ${c.noShows}` : '',
       ].filter(Boolean).join(' · ');
       return `<div class="ntRow"><div>
-          <b>${name}</b> <span style="color:var(--dim-2);font-size:12px">аккаунт №${c.id}</span>
+          <b>${name}</b> <span style="color:var(--dim-2);font-size:12px">ID ${c.id}</span>
           <span>${phoneNice(c.phone)}${c.whatsapp && c.whatsapp !== c.phone
             ? ' · WhatsApp ' + phoneNice(c.whatsapp) : ''}</span><br>
           <span style="font-size:12px">записей: ${c.bookings} · последняя: ${last} · ${esc(flags)}</span>

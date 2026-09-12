@@ -115,6 +115,8 @@ export type ApiNote = {
 };
 
 export type ClientCard = {
+  /** ID аккаунта — его человек сообщает клубу вместо телефона. */
+  id?: number;
   name: string; surname: string | null; phone: string;
   whatsapp: string | null; hasPassword: boolean;
 };

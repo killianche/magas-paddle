@@ -14,7 +14,7 @@ import {
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
-import { api, rub, ApiError, type ApiBooking } from '../src/api';
+import { api, rub, ApiError, getToken, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import {
   useProfile, normalizePhone, prettyPhone, plainPhone, fullName, saveToken, type Profile,
@@ -52,7 +52,8 @@ export default function Account() {
       onCancel={() => setMode('view')} />;
   }
   return <Card profile={profile} onEdit={() => setMode('edit')}
-    onPassword={() => setMode('password')} onForget={forget} />;
+    onPassword={() => setMode('password')} onForget={forget}
+    onId={id => save({ ...profile, id })} />;
 }
 
 /* ── Вход и регистрация ────────────────────────────────────────────────── */
@@ -108,7 +109,7 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
             password,
           });
       onDone({
-        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
         phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
         hasPassword: res.profile.hasPassword,
       }, res.token);
@@ -230,7 +231,7 @@ function EditForm({ profile, onDone, onCancel }: {
         whatsapp: normalizePhone(wa) ?? undefined,
       });
       onDone({
-        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
         phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
         hasPassword: res.profile.hasPassword,
       });
@@ -306,7 +307,7 @@ function PasswordForm({ profile, onDone, onCancel }: {
       // Смена пароля закрывает прежние входы; своё устройство остаётся с новым токеном
       if (res.token) await saveToken(res.token);
       onDone({
-        name: res.profile.name, surname: res.profile.surname ?? undefined,
+        id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
         phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
         hasPassword: res.profile.hasPassword,
       });
@@ -373,10 +374,18 @@ function PasswordForm({ profile, onDone, onCancel }: {
 
 /* ── Карточка человека, история и настройки ────────────────────────────── */
 
-function Card({ profile, onEdit, onPassword, onForget }: {
+function Card({ profile, onEdit, onPassword, onForget, onId }: {
   profile: Profile; onEdit: () => void; onPassword: () => void;
-  onForget: () => Promise<void>;
+  onForget: () => Promise<void>; onId: (id: number) => void;
 }) {
+  // ID аккаунта у тех, кто вошёл до его появления в приложении, подтягиваем
+  // с сервера: с паролем — по входу, без пароля — по номеру
+  useEffect(() => {
+    if (profile.id) return;
+    const ask = getToken() ? api.me() : api.checkPhone(profile.phone).then(r => r.profile);
+    ask.then(c => { if (c?.id) onId(c.id) }).catch(() => {});
+  }, [profile.id, profile.phone]);
+
   const q = useApi(() => api.myBookings(profile.phone), [profile.phone],
     `account.${profile.phone}`);
   useFocusEffect(useCallback(() => { q.refresh() }, [profile.phone]));
@@ -408,6 +417,7 @@ function Card({ profile, onEdit, onPassword, onForget }: {
         <View style={s.head}>
           <Eyebrow>Аккаунт</Eyebrow>
           <Text style={s.h1} allowFontScaling={false}>{fullName(profile).toUpperCase()}</Text>
+          {!!profile.id && <Text style={s.id}>ID {profile.id}</Text>}
           <Text style={s.phone}>{prettyPhone(profile.phone)}</Text>
           {!!profile.whatsapp && (
             <Text style={s.phone}>WhatsApp · {prettyPhone(profile.whatsapp)}</Text>
@@ -505,6 +515,8 @@ const s = sheet(() => ({
   head: { paddingHorizontal: S.xl, paddingTop: 12, paddingBottom: 6 },
   h1: { ...TITLE.page, color: C.text, marginTop: 8 },
   lede: { fontFamily: BODY, color: C.dim, fontSize: 14.5, lineHeight: 21, marginTop: 10 },
+  id: { fontFamily: DISP, color: C.accent, fontSize: 17, letterSpacing: -0.2, marginTop: 8,
+    fontVariant: ['tabular-nums'] },
   phone: { fontFamily: DISP_MED, color: C.dim, fontSize: 15, letterSpacing: -0.2,
     marginTop: 6, fontVariant: ['tabular-nums'] },
 

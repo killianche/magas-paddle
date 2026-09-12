@@ -29,3 +29,10 @@ export function prettyPhone(normalized: string): string {
   if (d.length !== 11) return d;
   return `+${d[0]} ${d.slice(1, 4)} ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9)}`;
 }
+
+/** «ID 12», «id12», «ID: 12» — ID аккаунта из сообщения WhatsApp.
+ *  Просто «12» — это номер заявки, поэтому без «ID» не считается. */
+export function accountIdOf(raw: string | null | undefined): bigint | null {
+  const m = String(raw ?? '').trim().match(/^id\s*[:№#]?\s*(\d{1,12})$/i);
+  return m ? BigInt(m[1]) : null;
+}

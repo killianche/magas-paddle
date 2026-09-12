@@ -8,7 +8,7 @@ import { AdminGuard, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
-import { normalizePhone, searchDigits } from '../phone';
+import { accountIdOf, normalizePhone, searchDigits } from '../phone';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -438,8 +438,10 @@ export class AdminController {
     if (text.length < 2) throw new BadRequestException('Нужно хотя бы две буквы или цифры');
 
     const digits = searchDigits(text);
+    // «ID 12» — аккаунт из сообщения WhatsApp: все брони этого человека
+    const accountId = accountIdOf(text);
     const clients = await this.db.clients.findMany({
-      where: {
+      where: accountId != null ? { id: accountId } : {
         OR: [
           { name: { contains: text, mode: 'insensitive' } },
           ...(digits.length >= 3 ? [{ phone: { contains: digits } }] : []),
@@ -450,12 +452,12 @@ export class AdminController {
 
     // «65» или «№65» — это номер заявки из сообщения WhatsApp: менеджер
     // вбивает его в поиск и сразу видит, чья бронь
-    const asNumber = /^\D*\d{1,9}\D*$/.test(text) ? BigInt(digits) : null;
+    const asNumber = accountId == null && /^\D*\d{1,9}\D*$/.test(text) ? BigInt(digits) : null;
     const rows = await this.db.bookings.findMany({
       where: {
         OR: [
           ...(clients.length ? [{ client_id: { in: clients.map(c => c.id) } }] : []),
-          { guest_name: { contains: text, mode: 'insensitive' as const } },
+          ...(accountId == null ? [{ guest_name: { contains: text, mode: 'insensitive' as const } }] : []),
           ...(asNumber != null ? [{ id: asNumber }] : []),
         ],
       },
@@ -584,17 +586,20 @@ export class AdminController {
     const text = (q.search ?? '').trim();
     if (text.length >= 2) {
       const digits = searchDigits(text);
+      const accountId = accountIdOf(text);
       const clients = await this.db.clients.findMany({
-        where: { OR: [
+        where: accountId != null ? { id: accountId } : { OR: [
           { name: { contains: text, mode: 'insensitive' } },
           ...(digits.length >= 3 ? [{ phone: { contains: digits } }] : []),
         ]},
         select: { id: true },
       });
-      where.OR = [
-        ...(clients.length ? [{ client_id: { in: clients.map(c => c.id) } }] : []),
-        { guest_name: { contains: text, mode: 'insensitive' as const } },
-      ];
+      where.OR = accountId != null
+        ? [{ client_id: { in: clients.map(c => c.id) } }]
+        : [
+            ...(clients.length ? [{ client_id: { in: clients.map(c => c.id) } }] : []),
+            { guest_name: { contains: text, mode: 'insensitive' as const } },
+          ];
     }
 
     const take = Math.min(500, Math.max(1, Number(q.limit) || 100));
@@ -1590,7 +1595,8 @@ export class AdminController {
   async clientsList(@Query('q') q?: string) {
     const text = String(q ?? '').trim();
     const digits = searchDigits(text);
-    const where: any = text ? { OR: [
+    const accountId = accountIdOf(text);
+    const where: any = accountId != null ? { id: accountId } : text ? { OR: [
       { name: { contains: text, mode: 'insensitive' } },
       { surname: { contains: text, mode: 'insensitive' } },
       ...(digits.length >= 3

@@ -11,6 +11,8 @@ const TOKEN_KEY = 'magas.token.v1';
  *  whatsapp — второй номер, если он другой. Обязателен хотя бы один: если
  *  дан только WhatsApp, он и становится основным. */
 export type Profile = {
+  /** ID аккаунта в клубе. Известен после входа или первой заявки. */
+  id?: number;
   name: string; surname?: string; phone: string; whatsapp?: string;
   /** Стоит ли на аккаунте пароль. Пока нет — приложение зовёт его завести. */
   hasPassword?: boolean;
