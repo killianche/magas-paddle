@@ -85,13 +85,11 @@ export function ClubBlock({ prices, maxHours }: { prices: ApiPrices | null; maxH
         </Text>
       </View>
 
-      {/* Ракетки и мячи — свой прайс-лист: в аренду корта они не входят */}
+      {/* Ракетки и мячи — свой прайс-лист: в аренду корта они не входят.
+          Без заголовка и пояснений: заказчик просил оставить только сам прайс —
+          крупные «Прокат ракеток», «Мячи» и строки с ценами. */}
       {rentals.length > 0 && (
-        <View style={s.rent}>
-          <Text style={s.eyebrow}>Ракетки и мячи</Text>
-          <Text style={s.rentNote}>В бронь корта не входят — оплачиваются отдельно</Text>
-          <View style={{ marginTop: 16 }}><RentalsList groups={rentals} /></View>
-        </View>
+        <View style={s.rent}><RentalsList groups={rentals} /></View>
       )}
 
       {/* Где мы: схема — картинка, а не карта; настоящая открывается нажатием */}
@@ -185,8 +183,7 @@ const s = sheet(() => ({
   note: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17, marginTop: 14,
     paddingTop: 13, borderTopWidth: 1, borderTopColor: C.lineStrong },
 
-  rent: { marginTop: 6 },
-  rentNote: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 5 },
+  rent: { marginTop: 10 },
 
   map: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden',
     marginTop: 6 },
