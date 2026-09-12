@@ -113,6 +113,13 @@ export default function Home() {
   const pitchPrice = pitch?.hours.find(h => h.status === 'free')?.price
     ?? pitch?.hours.find(h => h.hour >= (grid?.morningUntil ?? 13))?.price ?? 0;
 
+  // «сегодня» вместо даты: так короче и понятнее
+  const mineDay = (() => {
+    const b = bookings.filter(x => x.status !== 'cancelled')[0];
+    if (!b) return '';
+    const d = dateOfIso(b.startsAt);
+    return d === today() ? 'сегодня' : dayMonth(d);
+  })();
   const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
   const mine = bookings.filter(b => b.status !== 'cancelled');
   const entered = tournaments.filter(t => t.entered);
@@ -167,7 +174,7 @@ export default function Home() {
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
             style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[st.ctaEy, { color: 'rgba(7,16,8,.6)' }]}>Забронировать</Text>
+              <Text style={[st.ctaEy, { color: C.onLime, opacity: 0.65 }]}>Забронировать</Text>
               <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color:C.onLime }]}>Падел-корт</Text>
             </View>
             <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
@@ -210,22 +217,22 @@ export default function Home() {
       {(mine.length > 0 || entered.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
           style={({ pressed }) => [st.mine, pressed && { opacity: 0.8 }]}>
-          <View style={st.mineIcon}><IconCheck size={14} color={C.onLime} /></View>
+          <View style={st.mineIcon}><IconCheck size={17} color={C.onLime} /></View>
           <View style={{ flex: 1 }}>
+            <Text style={st.mineEy}>{mine.length > 0 ? 'Ваша запись' : 'Турнир'}</Text>
             <Text style={st.mineT}>
               {mine.length > 0
-                ? `${mine[0].courtName}, ${hh(mine[0].hour)} – ${hh(mine[0].hour + mine[0].hours)}`
+                ? `${mine[0].courtName} · ${hh(mine[0].hour)} – ${hh(mine[0].hour + mine[0].hours)}`
                 : 'Вы записаны на турнир'}
             </Text>
             <Text style={st.mineS}>
-              {mine.length + entered.length > 1
-                ? `и ещё ${mine.length + entered.length - 1}`
-                : mine.length > 0
-                  ? (mine[0].status === 'confirmed' ? 'подтверждено' : 'ждёт подтверждения')
-                  : 'смотреть в моих записях'}
+              {mine.length > 0
+                ? `${mineDay} · ${mine[0].status === 'confirmed' ? 'подтверждено' : 'ждёт подтверждения'}`
+                    + (mine.length + entered.length > 1 ? ` · и ещё ${mine.length + entered.length - 1}` : '')
+                : 'смотреть в моих записях'}
             </Text>
           </View>
-          <IconChevron size={15} color={C.dim2} />
+          <IconChevron size={18} color={C.dim2} />
         </Pressable>
       )}
 
@@ -242,7 +249,7 @@ export default function Home() {
       </View>
       <View style={st.tiles}>
         {waiting && [0, 1, 2, 3].map(i => (
-          <View key={i} style={[st.tile, st.tileWait, { width: tileW, height: Math.round(tileW * 0.8) + 58 }]} />
+          <View key={i} style={[st.tile, st.tileWait, { width: tileW, height: Math.round(tileW * 0.8) + 74 }]} />
         ))}
         {padel.map(c => {
           const live = c.hours.filter(h => h.status !== 'past');
@@ -261,9 +268,6 @@ export default function Home() {
                 <LinearGradient colors={['rgba(2,7,5,0)', 'rgba(2,7,5,.8)']}
                   locations={[0.45, 1]} style={st.fill} />
                 <Text style={st.tileN}>{c.name}</Text>
-                {from > 0 && !c.closed && (
-                  <View style={st.tilePrice}><Text style={st.tilePriceT}>{rub(from)}</Text></View>
-                )}
                 {c.color && <View style={[st.tileBar, { backgroundColor: c.color.hex }]} />}
               </View>
               <View style={st.tileBody}>
@@ -272,6 +276,7 @@ export default function Home() {
                     : free ? `${tomorrow ? 'Завтра' : 'Свободно'} с ${hh(free.hour)}`
                     : `${Day} занят`}
                 </Text>
+                {from > 0 && !c.closed && <Text style={st.tileP}>{rub(from)}</Text>}
                 <LookLine color={c.color} tags={c.tags} />
               </View>
             </Pressable>
@@ -390,20 +395,21 @@ const st = sheet(() => ({
   // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
   cta: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 66,
     paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1 },
-  ctaLime: { backgroundColor: '#C9F23D', borderColor: '#C9F23D' },
+  ctaLime: { backgroundColor: C.lime, borderColor: C.lime },
   ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
   ctaEy: { ...EYEBROW },
   ctaT: { fontFamily: DISP, fontSize: 19, lineHeight: 22, letterSpacing: -0.5,
     textTransform: 'uppercase', marginTop: 3 },
   ctaArrow: { fontFamily: DISP, fontSize: 22 },
 
-  mine: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
-    marginTop: 16, padding: 13, backgroundColor: C.surface,
-    borderLeftWidth: 3, borderLeftColor: C.lime },
-  mineIcon: { width: 26, height: 26, backgroundColor: C.lime,
+  mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
+    marginTop: 16, padding: 16, backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.line, borderLeftWidth: 4, borderLeftColor: C.lime },
+  mineIcon: { width: 36, height: 36, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
-  mineT: { color: C.text, fontFamily: DISP_MED, fontSize: 13 },
-  mineS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 2 },
+  mineEy: { ...EYEBROW, color: C.accent, fontSize: 10.5, letterSpacing: 1.4 },
+  mineT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: -0.4, marginTop: 4 },
+  mineS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 3 },
 
   // Плитки кортов
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: TILE_GAP, paddingHorizontal: S.xl },
@@ -411,26 +417,24 @@ const st = sheet(() => ({
   tileWait: { opacity: 0.6 },
   tileN: { position: 'absolute', left: 10, bottom: 10, right: 10, color: ON_PHOTO,
     fontFamily: DISP, fontSize: 17, letterSpacing: -0.5, textTransform: 'uppercase' },
-  tilePrice: { position: 'absolute', top: 8, right: 8, backgroundColor: '#C9F23D',
-    paddingVertical: 4, paddingHorizontal: 6 },
-  tilePriceT: { color: '#071008', fontFamily: DISP, fontSize: 11, letterSpacing: -0.2,
-    fontVariant: ['tabular-nums'] },
   tileBar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3 },
-  tileBody: { paddingHorizontal: 10, paddingVertical: 10, gap: 5, minHeight: 58 },
+  tileBody: { paddingHorizontal: 11, paddingVertical: 11, gap: 4, minHeight: 74 },
   tileS: { fontFamily: BODY, color: C.limeDim, fontSize: 12, fontWeight: '600' },
+  tileP: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'] },
 
-  pitch: { marginHorizontal: S.xl, height: 200, overflow: 'hidden',
+  pitch: { marginHorizontal: S.xl, height: 252, overflow: 'hidden',
     backgroundColor: '#0A1D14', justifyContent: 'flex-end' },
-  pitchIn: { padding: 16 },
+  pitchIn: { padding: 18 },
   pitchEyebrow: { ...EYEBROW, color: '#C9F23D' },
-  pitchS: { fontFamily: BODY, color: '#D0D9D2', fontSize: 13, marginTop: 6 },
+  pitchS: { fontFamily: BODY, color: '#D0D9D2', fontSize: 14, marginTop: 7 },
   pitchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
-  pitchPrice: { color: ON_PHOTO, fontFamily: DISP, fontSize: 20, letterSpacing: -0.5,
+  pitchPrice: { color: ON_PHOTO, fontFamily: DISP, fontSize: 24, letterSpacing: -0.6,
     fontVariant: ['tabular-nums'] },
   pitchUnit: { fontFamily: BODY, color: '#A5B0A8', fontSize: 11 },
   pitchCta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 'auto',
-    backgroundColor: '#C9F23D', paddingVertical: 10, paddingHorizontal: 14 },
-  pitchCtaT: { color: '#071008', fontFamily: DISP, fontSize: 11, letterSpacing: 0.6,
+    backgroundColor: C.lime, paddingVertical: 13, paddingHorizontal: 15 },
+  pitchCtaT: { color: C.onLime, fontFamily: DISP, fontSize: 12, letterSpacing: 0.6,
     textTransform: 'uppercase' },
 
   offline: { marginHorizontal: S.xl, marginTop: 14, padding: 14, borderRadius: R.lg,

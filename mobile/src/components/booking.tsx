@@ -354,7 +354,7 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
       <Pressable onPress={booking.submit} disabled={booking.sending}
         accessibilityRole="button" accessibilityLabel="Забронировать в WhatsApp"
         style={({ pressed }) => [b.wa, (pressed || booking.sending) && { opacity: 0.85 }]}>
-        <IconWhatsApp size={20} color="#04240F" />
+        <IconWhatsApp size={20} color={C.onWa} />
         <Text style={b.waT}>{booking.sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
       </Pressable>
 
@@ -476,7 +476,7 @@ function WhoSheet({ visible, onCancel, onDone }: {
             accessibilityLabel="Продолжить в WhatsApp"
             style={({ pressed }) => [b.wa, { marginTop: 16 }, (!ok || busy) && b.waOff,
               pressed && ok && { opacity: 0.85 }]}>
-            <IconWhatsApp size={20} color={ok ? '#04240F' : C.dim2} />
+            <IconWhatsApp size={20} color={ok ? C.onWa : C.dim2} />
             <Text style={[b.waT, !ok && { color: C.dim2 }]}>
               {busy ? 'Минуту…' : 'Продолжить в WhatsApp'}
             </Text>
@@ -581,8 +581,8 @@ const b = sheet(() => ({
   inclT: { fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
   inclMore: { fontFamily: DISP_MED, color: C.accent, fontSize: 11.5, marginTop: 2 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: '#25D366', minHeight: 52 },
-  waT: { color: '#04240F', fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
+    backgroundColor: C.wa, minHeight: 52 },
+  waT: { color: C.onWa, fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
     textTransform: 'uppercase' },
   clear: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginTop: 2,
     minHeight: HIT, justifyContent: 'center' },

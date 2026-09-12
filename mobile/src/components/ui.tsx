@@ -6,8 +6,8 @@ export function Btn({ title, onPress, kind = 'primary', style }: {
   title: string; onPress?: () => void;
   kind?: 'primary' | 'ghost' | 'danger' | 'wa'; style?: ViewStyle;
 }) {
-  const bg = kind === 'primary' ? C.lime : kind === 'wa' ? '#25D366' : 'transparent';
-  const fg = kind === 'primary' ? C.onLime : kind === 'wa' ? '#04240F'
+  const bg = kind === 'primary' ? C.lime : kind === 'wa' ? C.wa : 'transparent';
+  const fg = kind === 'primary' ? C.onLime : kind === 'wa' ? C.onWa
     : kind === 'danger' ? C.red : C.text;
   const border = kind === 'ghost' ? C.lineStrong : kind === 'danger' ? C.dangerBorder : 'transparent';
   return (

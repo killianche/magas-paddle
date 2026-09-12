@@ -62,10 +62,10 @@ export function SocialButtons() {
         accessibilityRole="button"
         accessibilityLabel={wa ? 'Написать в WhatsApp' : 'WhatsApp: номер клуб ещё не сообщил'}
         style={({ pressed }) => [s.btn, s.wa, !wa && s.off, pressed && wa && { opacity: 0.85 }]}>
-        <IconWhatsApp size={21} color={wa ? '#04240F' : C.dim2} />
+        <IconWhatsApp size={21} color={wa ? C.onWa : C.dim2} />
         <View style={{ flex: 1 }}>
-          <Text style={[s.btnT, { color: wa ? '#04240F' : C.dim }]}>WhatsApp</Text>
-          <Text numberOfLines={1} style={[s.btnS, { color: wa ? 'rgba(4,36,15,.7)' : C.dim2 }]}>
+          <Text style={[s.btnT, { color: wa ? C.onWa : C.dim }]}>WhatsApp</Text>
+          <Text numberOfLines={1} style={[s.btnS, { color: wa ? C.onWa : C.dim2, opacity: wa ? 0.75 : 1 }]}>
             {wa ? 'написать менеджеру' : 'скоро'}
           </Text>
         </View>
@@ -105,7 +105,7 @@ const s = sheet(() => ({
   row: { flexDirection: 'row', gap: 10, marginHorizontal: S.xl, marginTop: 10 },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 12, paddingHorizontal: 13, borderRadius: R.lg, minHeight: HIT },
-  wa: { backgroundColor: '#4FCE5D' },
+  wa: { backgroundColor: C.waSoft },
   sq: { width: 54, minHeight: HIT, alignItems: 'center', justifyContent: 'center' },
   sqOn: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   ig: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },

@@ -57,8 +57,8 @@ export function ClubInfo() {
           accessibilityRole="button" accessibilityLabel="Написать в WhatsApp"
           style={({ pressed }) => [s.act, whatsappUrl() ? s.actWa : s.actOff,
             pressed && { opacity: 0.85 }]}>
-          <Text style={[s.actT, whatsappUrl() ? { color: '#04240F' } : { color: C.dim }]}>WhatsApp</Text>
-          <Text style={[s.actS, whatsappUrl() && { color: 'rgba(4,36,15,.7)' }]}>
+          <Text style={[s.actT, whatsappUrl() ? { color: C.onWa } : { color: C.dim }]}>WhatsApp</Text>
+          <Text style={[s.actS, whatsappUrl() && { color: C.onWa, opacity: 0.75 }]}>
             {whatsappUrl() ? 'написать менеджеру' : 'номер скоро появится'}
           </Text>
         </Pressable>
@@ -148,7 +148,7 @@ const s = sheet(() => ({
   act: { flex: 1, paddingVertical: 14, paddingHorizontal: 14,
     borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12 },
   actOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  actWa: { backgroundColor: '#25D366', borderColor: '#25D366' },
+  actWa: { backgroundColor: C.wa, borderColor: C.wa },
   actT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.4,
     textTransform: 'uppercase' },
   actS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 3 },

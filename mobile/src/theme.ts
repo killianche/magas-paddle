@@ -97,6 +97,12 @@ const DARK = {
   ticker: '#C1CAC3',
   /** День недели на выбранной (инверсной) плашке даты */
   dayOnW: '#647068',
+
+  /** Кнопки WhatsApp. В тёмной теме — фирменный зелёный, в светлой он
+   *  спорит с тёмно-зелёным акцентом, поэтому там акцентный. */
+  wa: '#25D366',
+  waSoft: '#4FCE5D',
+  onWa: '#04240F',
 };
 
 export type Palette = typeof DARK;
@@ -117,13 +123,15 @@ const LIGHT: Palette = {
   lineSoft: 'rgba(7,16,8,0.06)',
   lineStrong: 'rgba(7,16,8,0.24)',
 
-  lime: '#C9F23D',
-  limeDim: '#4A7300',
-  onLime: '#071008',
-  accent: '#4A7300',
-  accentLine: 'rgba(74,115,0,0.5)',
-  accentSoft: 'rgba(150,200,20,0.13)',
-  accentBorder: 'rgba(74,115,0,0.32)',
+  // Акцент светлой темы — тёмно-зелёный со щита логотипа, а не салатовый:
+  // салатовая заливка на белом выглядит кислотно, а салатовый текст не читается
+  lime: '#1B5E20',
+  limeDim: '#1B5E20',
+  onLime: '#FFFFFF',
+  accent: '#1B5E20',
+  accentLine: 'rgba(27,94,32,0.45)',
+  accentSoft: 'rgba(27,94,32,0.09)',
+  accentBorder: 'rgba(27,94,32,0.30)',
 
   greenDeep: '#0A1D14',
   greenMid: '#2F8A3C',
@@ -160,6 +168,10 @@ const LIGHT: Palette = {
 
   ticker: '#3B473F',
   dayOnW: '#A5B0A8',
+
+  wa: '#1B5E20',
+  waSoft: '#1B5E20',
+  onWa: '#FFFFFF',
 };
 
 /** Текущие цвета. Объект один и тот же, при смене темы переписывается. */
