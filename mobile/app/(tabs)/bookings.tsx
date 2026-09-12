@@ -5,11 +5,12 @@ import {
   ScrollView, Text, View, Pressable, StyleSheet, Alert, Platform, RefreshControl,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
-import { api, rub, ApiError, type ApiBooking, type ApiTournament } from '../../src/api';
+import { api, rub, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
-import { useProfile } from '../../src/profile';
+import { fullName, useProfile, type Profile } from '../../src/profile';
+import { whatsappUrl } from '../../src/club';
+import { openLink } from '../../src/components/contacts';
 import { Loading, Failed } from '../../src/components/status';
 
 import { IconRacket, IconTrophy } from '../../src/components/icons';
@@ -46,41 +47,31 @@ export default function Bookings() {
   // Вернулись на вкладку — подтянуть свежее: бронь могли подтвердить
   useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone]));
 
-  const cancelBooking = (b: ApiBooking) => {
-    const title = `Отменить бронь на ${b.courtName}?`;
-    const msg = 'Ничего платить не нужно. Время сразу освободится для других игроков.';
-    const go = async () => {
-      try {
-        await api.cancel(b.id, phone);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        q.refresh();
-      } catch (e) {
-        const m = e instanceof ApiError ? e.message : 'Не получилось отменить.';
-        Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
-      }
-    };
-    if (Platform.OS === 'web') { if (confirm(title + '\n\n' + msg)) go(); return }
-    Alert.alert(title, msg, [
-      { text: 'Оставить', style: 'cancel' },
-      { text: 'Отменить бронь', style: 'destructive', onPress: go },
-    ]);
+  // Отменяют только через менеджера в WhatsApp — так решил заказчик. Кнопка
+  // открывает WhatsApp с готовым текстом: что отменить, кто и с какого ID.
+  const writeManager = (text: string) => {
+    const wa = whatsappUrl();
+    if (!wa) {
+      const m = 'WhatsApp клуба пока не указан.';
+      Platform.OS === 'web' ? alert(m) : Alert.alert('Не получилось', m);
+      return;
+    }
+    openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp вручную.');
   };
+  const who = (p: Profile | null) =>
+    p ? [`Меня зовут ${fullName(p)}.`, p.id ? `ID ${p.id}.` : ''].filter(Boolean) : [];
 
-  const leaveTournament = (t: ApiTournament) => {
-    const title = `Отменить запись на «${t.name}»?`;
-    const go = async () => {
-      try { await api.leaveTournament(t.id, phone); q.refresh() }
-      catch (e) {
-        const m = e instanceof ApiError ? e.message : 'Не получилось отменить.';
-        Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
-      }
-    };
-    if (Platform.OS === 'web') { if (confirm(title)) go(); return }
-    Alert.alert(title, 'Место освободится для других игроков.', [
-      { text: 'Оставить', style: 'cancel' },
-      { text: 'Отменить запись', style: 'destructive', onPress: go },
-    ]);
-  };
+  const aboutBooking = (b: ApiBooking) => writeManager([
+    `Хочу отменить бронь: ${b.courtName}, ${longDate(dateOfIso(b.startsAt))}, `
+      + `${hh(b.hour)} – ${hh(b.hour + b.hours)}.`,
+    `Заявка №${b.id}.`,
+    ...who(profile),
+  ].join('\n'));
+
+  const aboutTournament = (t: ApiTournament) => writeManager([
+    `Хочу отменить запись на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
+    ...who(profile),
+  ].join('\n'));
 
   if (!ready) return <Loading />;
 
@@ -120,8 +111,9 @@ export default function Bookings() {
               onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id) } })}>
               <Text style={s.miniT}>О турнире</Text>
             </Pressable>
-            <Pressable style={[s.mini, s.miniDg]} onPress={() => leaveTournament(t)}>
-              <Text style={[s.miniT, { color: C.red }]}>Отменить</Text>
+            <Pressable style={s.mini} onPress={() => aboutTournament(t)}
+              accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
+              <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
             </Pressable>
           </View>
         </View>
@@ -153,12 +145,13 @@ export default function Bookings() {
               <Text style={[s.note, st.warn && { color: C.amber }]}>{st.note}</Text>
 
               <View style={s.actions}>
-                <View style={s.mini}>
+                <View style={[s.mini, s.miniFit]}>
                   <Text style={s.miniT}>{b.hours} {plural(b.hours, 'час', 'часа', 'часов')}</Text>
                 </View>
                 {st.canCancel && (
-                  <Pressable style={[s.mini, s.miniDg]} onPress={() => cancelBooking(b)}>
-                    <Text style={[s.miniT, { color: C.red }]}>Отменить</Text>
+                  <Pressable style={s.mini} onPress={() => aboutBooking(b)}
+                    accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
+                    <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
                   </Pressable>
                 )}
               </View>
@@ -219,6 +212,10 @@ const s = sheet(() => ({
   mini: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: R.md,
     paddingVertical: 11, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   miniDg: { borderColor: C.dangerBorder },
+  // Плитка с часами — по содержимому: место отдаём кнопке рядом
+  miniFit: { flex: 0, flexGrow: 0, flexShrink: 0, flexBasis: 'auto', paddingHorizontal: 16 },
+  // «Написать менеджеру» длиннее прочих подписей — плотнее, чтобы в одну строку
+  miniWa: { color: C.accent, letterSpacing: 0.3, textAlign: 'center', paddingHorizontal: 6 },
   miniT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
 }));
