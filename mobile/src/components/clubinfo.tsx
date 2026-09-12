@@ -9,8 +9,8 @@
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, BODY, sheet, R } from '../theme';
-import { CLUB, useClub, whatsappUrl } from '../club';
-import { hh } from '../dates';
+import { CLUB, hoursOnDate, sameEveryDay, useClub, weekLines, whatsappUrl } from '../club';
+import { hh, today } from '../dates';
 import { Section, Line } from './section';
 import { WhereWeAre } from './contacts';
 import { IconChevron } from './icons';
@@ -64,10 +64,16 @@ export function ClubInfo() {
         </Pressable>
       </View>
 
+      {/* Часы по дням недели задаёт менеджер в админке. Одинаковые соседние
+          дни — одной строкой, чтобы не читать семь одинаковых строк. */}
       <Section title="Часы работы"
-        summary={`Каждый день с ${hh(club.openHour)} до ${hh(club.closeHour)}`}>
-        <Line k="Будни" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
-        <Line k="Выходные" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
+        summary={sameEveryDay(club)
+          ? `Каждый день с ${hh(club.openHour)} до ${hh(club.closeHour)}`
+          : (() => { const d = hoursOnDate(club, today());
+              return d.closed ? 'Сегодня не работаем' : `Сегодня с ${hh(d.open)} до ${hh(d.close)}` })()}>
+        {sameEveryDay(club)
+          ? <Line k="Каждый день" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
+          : weekLines(club).map(l => <Line key={l.days} k={l.days} v={l.hours} />)}
         <Text style={s.q}>
           ВОПРОС К ЗАКАЗЧИКУ: часы взяты как рабочее предположение. Если в выходные
           или праздники режим другой — пришлите, поправим.

@@ -100,6 +100,7 @@ model settings {
   booking_note     String?
   hero_url         String?
   hero_light_url   String?
+  week_hours       Json?
   updated_at       DateTime @default(now()) @db.Timestamptz(6)
 }
 

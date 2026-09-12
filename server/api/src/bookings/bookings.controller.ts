@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
-import { ClubService } from '../club';
+import { ClubService, hoursOn } from '../club';
 import { normalizePhone } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
@@ -76,8 +76,10 @@ export class BookingsController {
     await this.club.releaseExpired();
     const pricing = await this.club.pricing();
     const set = pricing.settings;
-    if (dto.hour < set.openHour || dto.hour + dto.hours > set.closeHour) {
-      throw new BadRequestException(`Клуб работает с ${set.openHour}:00 до ${set.closeHour}:00`);
+    const dh = hoursOn(set, dto.date);
+    if (dh.closed) throw new BadRequestException('В этот день клуб не работает');
+    if (dto.hour < dh.open || dto.hour + dto.hours > dh.close) {
+      throw new BadRequestException(`В этот день клуб работает с ${dh.open}:00 до ${dh.close}:00`);
     }
     if (dto.hours > set.maxHours) {
       throw new BadRequestException(`Больше ${set.maxHours} часов подряд занять нельзя`);
@@ -140,7 +142,7 @@ export class BookingsController {
         throw new ConflictException({
           code: 'slot_taken',
           message: 'Это время только что заняли',
-          alternatives: await this.alternatives(dto.date, dto.hour, dto.hours, court.id, set.closeHour),
+          alternatives: await this.alternatives(dto.date, dto.hour, dto.hours, court.id, dh.close),
         });
       }
       throw e;

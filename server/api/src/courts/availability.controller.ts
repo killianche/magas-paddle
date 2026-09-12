@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ClubService } from '../club';
+import { ClubService, hoursOn } from '../club';
 import { colorOf } from './look';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
 
@@ -26,6 +26,10 @@ export class AvailabilityController {
     const pricing = await this.club.pricing();
     const set = pricing.settings;
     const dow = weekdayOf(day);
+    // У каждого дня недели свои часы; в выходной клуба часов нет вовсе
+    const dh = hoursOn(set, day);
+    const open = dh.closed ? 0 : dh.open;
+    const close = dh.closed ? 0 : dh.close;
     const [courts, bookings] = await Promise.all([
       this.db.courts.findMany({ where: { is_active: true }, orderBy: { sort_order: 'asc' } }),
       this.db.bookings.findMany({
@@ -60,7 +64,7 @@ export class AvailabilityController {
       const closed = c.closed_until != null && c.closed_until > new Date();
 
       const hours = [];
-      for (let h = set.openHour; h < set.closeHour; h++) {
+      for (let h = open; h < close; h++) {
         const started = day === clubToday() && clubHour(day, h) <= now;
         const status = closed ? 'closed'
           : started ? 'past'
@@ -71,7 +75,7 @@ export class AvailabilityController {
           status,
           price: pricing.hour(c, dow, h),
           // Сколько часов подряд можно взять начиная с этого
-          maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, set.closeHour, set.maxHours),
+          maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, close, set.maxHours),
         });
       }
       return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours,
@@ -82,8 +86,10 @@ export class AvailabilityController {
 
     return {
       date: day,
-      openHour: set.openHour,
-      closeHour: set.closeHour,
+      openHour: open,
+      closeHour: close,
+      /** Клуб в этот день не работает. */
+      dayOff: dh.closed,
       morningUntil: set.morningUntil,
       maxHours: set.maxHours,
       courts: rows,

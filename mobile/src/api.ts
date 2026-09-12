@@ -103,6 +103,8 @@ export type ApiHour = { hour: number; status: SlotStatus; price: number; maxRun:
 
 export type ApiGrid = {
   date: string; openHour: number; closeHour: number; morningUntil: number; maxHours: number;
+  /** Клуб в этот день не работает (часы по дням задаются в админке). */
+  dayOff?: boolean;
   courts: { courtId: string; name: string; isFootball: boolean; closed: boolean;
     /** Главное фото корта, загруженное клубом; null — временное. */
     photo?: string | null; color?: CourtColor | null; tags?: string[];

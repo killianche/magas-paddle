@@ -22,6 +22,8 @@ export type ClubInfoData = {
   instagram: string | null;
   openHour: number;
   closeHour: number;
+  /** Часы по дням недели, с понедельника. Старый сервер не присылает. */
+  week?: DayHours[] | null;
   cancelHours: number;
   /** Доля предоплаты, проценты: после неё бронь подтверждают. */
   prepayPercent: number;
@@ -41,6 +43,46 @@ export type ClubInfoData = {
   /** Своё фото для светлой темы; null — встроенное светлое. */
   heroLightUrl: string | null;
 };
+
+/** Часы одного дня недели. closed — клуб не работает. */
+export type DayHours = { open: number; close: number; closed: boolean };
+
+const SHORT_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const two = (h: number) => String(h).padStart(2, '0') + ':00';
+
+/** Неделя с понедельника; без данных — все дни по общим часам. */
+export function weekOf(c: ClubInfoData): DayHours[] {
+  if (Array.isArray(c.week) && c.week.length === 7) return c.week;
+  return SHORT_DAYS.map(() => ({ open: c.openHour, close: c.closeHour, closed: false }));
+}
+
+/** Все дни работают одинаково. */
+export function sameEveryDay(c: ClubInfoData): boolean {
+  const w = weekOf(c);
+  return w.every(d => !d.closed && d.open === w[0].open && d.close === w[0].close);
+}
+
+/** Часы на дату ГГГГ-ММ-ДД. */
+export function hoursOnDate(c: ClubInfoData, date: string): DayHours {
+  const d = new Date(date + 'T00:00:00Z').getUTCDay();
+  return weekOf(c)[d === 0 ? 6 : d - 1];
+}
+
+/** Одинаковые соседние дни — одной строкой: «Пн–Пт · 09:00 – 24:00». */
+export function weekLines(c: ClubInfoData): { days: string; hours: string }[] {
+  const w = weekOf(c);
+  const key = (d: DayHours) => d.closed ? 'off' : `${d.open}-${d.close}`;
+  const out: { days: string; hours: string }[] = [];
+  for (let i = 0; i < 7;) {
+    let j = i;
+    while (j + 1 < 7 && key(w[j + 1]) === key(w[i])) j++;
+    const days = i === j ? SHORT_DAYS[i]
+      : j === i + 1 ? `${SHORT_DAYS[i]}, ${SHORT_DAYS[j]}` : `${SHORT_DAYS[i]}–${SHORT_DAYS[j]}`;
+    out.push({ days, hours: w[i].closed ? 'не работаем' : `${two(w[i].open)} – ${two(w[i].close)}` });
+    i = j + 1;
+  }
+  return out;
+}
 
 /** Слова заказчика: в бронь входит только корт, ракетки и мячи — отдельно.
  *  Менеджер может переписать строку в админке. */

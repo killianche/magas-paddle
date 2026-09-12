@@ -271,6 +271,7 @@ export default function Home() {
               <View style={st.tileBody}>
                 <Text style={[st.tileS, (!free || c.closed) && { color: C.dim2 }]} numberOfLines={1}>
                   {c.closed ? 'Закрыт'
+                    : grid?.dayOff ? `${Day} не работаем`
                     : free ? `${tomorrow ? 'Завтра' : 'Свободно'} с ${hh(free.hour)}`
                     : `${Day} занят`}
                 </Text>
@@ -303,6 +304,7 @@ export default function Home() {
               <Text style={st.pitchEyebrow}>Поле целиком</Text>
               <Text style={st.pitchS}>
                 {pitch.closed ? 'Закрыто на ремонт'
+                  : grid?.dayOff ? `${Day} не работаем`
                   : pitchFree.length > 0
                     ? `Свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} ${day}`
                     : `${Day} занято — посмотрите другие дни`}

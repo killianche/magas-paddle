@@ -7,10 +7,37 @@
  */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
+import { weekdayOf } from './time';
+
+/** Часы одного дня недели. closed — клуб в этот день не работает. */
+export type DayHours = { open: number; close: number; closed: boolean };
+
+/** Названия дней с понедельника — для ошибок и подписей. */
+export const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
+/** Неделя из базы. Пусто или испорчено — все дни по общей паре часов. */
+export function parseWeek(raw: unknown, open: number, close: number): DayHours[] {
+  const base = (): DayHours => ({ open, close, closed: false });
+  if (!Array.isArray(raw) || raw.length !== 7) return Array.from({ length: 7 }, base);
+  return raw.map(d => {
+    const o = Number((d as any)?.open), c = Number((d as any)?.close);
+    const ok = Number.isInteger(o) && Number.isInteger(c) && o >= 0 && c <= 24 && o < c;
+    return ok ? { open: o, close: c, closed: !!(d as any)?.closed } : base();
+  });
+}
+
+/** Часы работы на конкретную дату. */
+export function hoursOn(set: ClubSettings, date: string): DayHours {
+  return set.week[weekdayOf(date) - 1];
+}
 
 export type ClubSettings = {
+  /** Самое раннее открытие и самое позднее закрытие за неделю. Для сетки
+   *  и записи на конкретную дату — hoursOn(): дни бывают разными. */
   openHour: number;
   closeHour: number;
+  /** Часы по дням недели, с понедельника. */
+  week: DayHours[];
   /** До этого часа действует утренний тариф, дальше — основной. */
   morningUntil: number;
   /** Предельная длительность одной брони, часов. */
@@ -51,7 +78,7 @@ export type ClubSettings = {
 /** Значения на случай, если строки настроек в базе почему-то нет.
  *  Совпадают с умолчаниями в sql/004_settings.sql. */
 export const FALLBACK: ClubSettings = {
-  openHour: 9, closeHour: 24, morningUntil: 13, maxHours: 3, cancelHours: 4,
+  openHour: 9, closeHour: 24, week: parseWeek(null, 9, 24), morningUntil: 13, maxHours: 3, cancelHours: 4,
   holdMinutes: 60,
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
@@ -85,9 +112,12 @@ export class ClubService {
   async get(): Promise<ClubSettings> {
     if (this.cache && Date.now() - this.readAt < CACHE_MS) return this.cache;
     const row = await this.db.settings.findUnique({ where: { id: 1 } });
+    const week = row ? parseWeek(row.week_hours, row.open_hour, row.close_hour) : FALLBACK.week;
+    const working = week.filter(d => !d.closed);
     this.cache = row ? {
-      openHour: row.open_hour,
-      closeHour: row.close_hour,
+      openHour: working.length ? Math.min(...working.map(d => d.open)) : row.open_hour,
+      closeHour: working.length ? Math.max(...working.map(d => d.close)) : row.close_hour,
+      week,
       morningUntil: row.morning_until,
       maxHours: row.max_hours,
       cancelHours: row.cancel_hours,

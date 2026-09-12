@@ -53,7 +53,8 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
   useEffect(() => {
     if (advanced.current || !row || date !== today()) return;
     advanced.current = true;
-    if (!row.closed && row.hours.length > 0 && row.hours.every(h => h.status === 'past')) {
+    // …или клуб сегодня не работает по расписанию
+    if (grid?.dayOff || (!row.closed && row.hours.length > 0 && row.hours.every(h => h.status === 'past'))) {
       setDate(addDays(today(), 1));
     }
   }, [row, date]);
@@ -115,7 +116,8 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
 
         <Step n={2} title="Выбери время" />
         <Card>
-          <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
+          <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot}
+            dayOff={grid.dayOff} />
         </Card>
 
         {/* Ракетки и мячи — в бронь не входят; свёрнуто, чтобы не отвлекать */}

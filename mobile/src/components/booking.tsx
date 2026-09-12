@@ -133,12 +133,15 @@ function bands(hs: ApiHour[]) {
   return out;
 }
 
-export function Slots({ court, hours, sel, pillW, onPick }: {
+export function Slots({ court, hours, sel, pillW, onPick, dayOff }: {
   court: Court; hours: number; sel: Sel; pillW: number;
   onPick: (courtId: string, h: ApiHour) => void;
+  /** Клуб в этот день не работает. */
+  dayOff?: boolean;
 }) {
   // Прошедшие часы не показываем: занять их нельзя
   const live = court.hours.filter(h => h.status !== 'past');
+  if (dayOff) return <Text style={b.note}>В этот день клуб не работает</Text>;
   if (court.closed) return <Text style={b.note}>Закрыто — записаться нельзя</Text>;
   if (live.length === 0) return <Text style={b.note}>На этот день время закончилось</Text>;
 

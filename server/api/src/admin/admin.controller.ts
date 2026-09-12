@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
-import { ClubService } from '../club';
+import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
 import { accountIdOf, normalizePhone, searchDigits } from '../phone';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
@@ -233,10 +233,28 @@ export class AdminController {
     const byId = new Map(clients.map(c => [String(c.id), c]));
     const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
 
+    // Часы этого дня недели. Сетку растягиваем на уже существующие брони:
+    // если день сократили или сделали выходным, записи не должны пропасть
+    // с экрана менеджера.
+    const dh = hoursOn(set, d);
+    const alive = rows.filter(b => b.status !== 'cancelled' && b.status !== 'expired');
+    let gridOpen = dh.closed ? 24 : dh.open;
+    let gridClose = dh.closed ? 0 : dh.close;
+    for (const b of alive) {
+      gridOpen = Math.min(gridOpen, hourOf(b.starts_at));
+      const end = hourOf(b.ends_at) === 0 ? 24 : hourOf(b.ends_at);
+      gridClose = Math.max(gridClose, end);
+    }
+    if (gridOpen >= gridClose) { gridOpen = 0; gridClose = 0 }
+
     return {
       date: d,
-      openHour: set.openHour,
-      closeHour: set.closeHour,
+      openHour: gridOpen,
+      closeHour: gridClose,
+      /** Рабочие часы клуба в этот день; вне их запись закрыта. */
+      workOpen: dh.closed ? 0 : dh.open,
+      workClose: dh.closed ? 0 : dh.close,
+      dayOff: dh.closed,
       courts: courts.map(c => ({
         id: c.id, name: c.name, isActive: c.is_active,
         closedUntil: c.closed_until, closedReason: c.closed_reason,
@@ -537,7 +555,9 @@ export class AdminController {
     const set = pricing.settings;
     const hoursCount = Math.trunc(
       body.hours ?? Math.round((+b.ends_at - +b.starts_at) / 3600_000));
-    if (body.hour < set.openHour || hoursCount < 1 || body.hour + hoursCount > set.closeHour) {
+    const dh = hoursOn(set, body.date);
+    if (dh.closed) throw new BadRequestException('В этот день клуб не работает — часы меняются в настройках');
+    if (body.hour < dh.open || hoursCount < 1 || body.hour + hoursCount > dh.close) {
       throw new BadRequestException('Время не помещается в рабочий день');
     }
 
@@ -1067,6 +1087,7 @@ export class AdminController {
   @Needs('club')
   async saveSettings(@Body() body: Partial<{
     openHour: number; closeHour: number; morningUntil: number;
+    week: { open: number; close: number; closed?: boolean }[];
     maxHours: number; cancelHours: number; holdMinutes: number;
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string;
@@ -1075,9 +1096,29 @@ export class AdminController {
     bookingNote: string;
   }>) {
     const cur = await this.club.get();
+
+    // Часы по дням. Старый вид — одна пара на все дни — тоже понимаем.
+    let week = cur.week;
+    if (Array.isArray(body.week)) {
+      if (body.week.length !== 7) throw new BadRequestException('Нужны часы на все 7 дней');
+      week = body.week.map((d, i) => {
+        const closed = !!d?.closed;
+        const open = int(d?.open, -1, 0, 23);
+        const close = int(d?.close, -1, 1, 24);
+        if (open < 0 || close < 0) throw new BadRequestException(`${WEEKDAYS[i]}: часы от 0 до 24`);
+        if (open >= close) throw new BadRequestException(`${WEEKDAYS[i]}: открытие должно быть раньше закрытия`);
+        return { open, close, closed };
+      });
+    } else if (body.openHour !== undefined || body.closeHour !== undefined) {
+      week = parseWeek(null, int(body.openHour, cur.openHour, 0, 23), int(body.closeHour, cur.closeHour, 1, 24));
+    }
+    const working = week.filter(d => !d.closed);
+    if (!working.length) throw new BadRequestException('Хотя бы один день клуб должен работать');
+
     const next = {
-      open_hour: int(body.openHour, cur.openHour, 0, 23),
-      close_hour: int(body.closeHour, cur.closeHour, 1, 24),
+      week_hours: week,
+      open_hour: Math.min(...working.map(d => d.open)),
+      close_hour: Math.max(...working.map(d => d.close)),
       morning_until: int(body.morningUntil, cur.morningUntil, 0, 24),
       max_hours: int(body.maxHours, cur.maxHours, 1, 12),
       cancel_hours: int(body.cancelHours, cur.cancelHours, 0, 48),
@@ -1457,10 +1498,12 @@ export class AdminController {
     const pricing = await this.club.pricing();
     const set = pricing.settings;
     const hoursCount = Math.trunc(body.hours);
-    if (!Number.isFinite(body.hour) || body.hour < set.openHour || body.hour >= set.closeHour) {
-      throw new BadRequestException(`Час должен быть от ${set.openHour} до ${set.closeHour - 1}`);
+    const dh = hoursOn(set, body.date);
+    if (dh.closed) throw new BadRequestException('В этот день клуб не работает — часы меняются в настройках');
+    if (!Number.isFinite(body.hour) || body.hour < dh.open || body.hour >= dh.close) {
+      throw new BadRequestException(`Час должен быть от ${dh.open} до ${dh.close - 1}`);
     }
-    if (hoursCount < 1 || body.hour + hoursCount > set.closeHour) {
+    if (hoursCount < 1 || body.hour + hoursCount > dh.close) {
       throw new BadRequestException('Игра не помещается до закрытия клуба');
     }
 

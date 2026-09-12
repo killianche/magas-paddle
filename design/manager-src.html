@@ -150,6 +150,15 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .tab.on{color:var(--lime);border-bottom-color:var(--lime);font-weight:700}
 .pane{display:none}.pane.on{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+/* Часы работы по дням недели */
+.week{display:grid;gap:6px;margin:6px 0 10px}
+.wd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wd b{flex:0 0 120px;font-weight:600}
+.wd select{flex:0 0 92px;width:auto}
+.wd .dash{color:var(--dim-2)}
+.wd .chk{padding:4px 0;margin-left:6px}
+.wd.off select,.wd.off .dash{opacity:.35}
+.week-tools{display:flex;gap:8px;margin-bottom:18px}
 /* Строка корта в три яруса: название, описание, цвет и особенности — во всю
    ширину; ниже цены и кнопки; ниже фото. Без переноса блок фото сжимал всё
    остальное в одну строку, и цены читались как «2». */
@@ -574,9 +583,12 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
     <div class="pane" id="paneClub">
       <p class="sub">Меняется сразу и в приложении, и в этой сетке.</p>
+      <label>Часы работы</label>
+      <div class="week" id="setWeek"></div>
+      <div class="week-tools">
+        <button type="button" class="btn small" id="weekCopy">Как в понедельник — на все дни</button>
+      </div>
       <div class="grid2">
-        <div><label for="setOpen">Открытие</label><input id="setOpen" type="number" min="0" max="23"></div>
-        <div><label for="setClose">Закрытие</label><input id="setClose" type="number" min="1" max="24"></div>
         <div><label for="setMorning">Утренний тариф до</label><input id="setMorning" type="number" min="0" max="24"></div>
         <div><label for="setMax">Часов подряд, не больше</label><input id="setMax" type="number" min="1" max="12"></div>
         <div><label for="setCancel">Бесплатная отмена, часов</label><input id="setCancel" type="number" min="0" max="48"></div>
@@ -1051,7 +1063,7 @@ function render(){
   const open = day.courts.filter(c =>
     c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date())).length || 1;
   const EVENING = 18;
-  const evSlots = open * (day.closeHour - EVENING);
+  const evSlots = Math.max(1, open * (day.closeHour - EVENING));
   const evBusy = alive.reduce((n,b) => {
     let k=0; for(let h=b.hour; h<b.hour+b.hours; h++) if(h>=EVENING) k++;
     return n+k;
@@ -1069,7 +1081,12 @@ function render(){
   const courts = day.courts;
   const isToday = date === todayStr();
   const cur = nowHour();
-  let html = '<table><thead><tr><th></th>';
+  // Выходной по расписанию: запись закрыта, но уже сделанные брони видны
+  const off = day.dayOff
+    ? `<div class="center" style="padding:14px 0 18px">Выходной по расписанию — запись закрыта.
+        Часы работы меняются в настройках клуба.</div>` : '';
+  if (day.closeHour <= day.openHour) { $('#board').innerHTML = off || '<div class="center">Нет рабочих часов</div>'; return }
+  let html = off + '<table><thead><tr><th></th>';
   for(const c of courts){
     // Значок ремонта только пока закрытие действует: раньше он оставался
     // навсегда, а корт при этом спокойно бронировался.
@@ -1100,6 +1117,8 @@ function render(){
         }
       } else if(c.closedUntil && new Date(c.closedUntil) > new Date()){
         html += `<td><div class="slot closed" title="${c.closedReason||'Закрыт'}"></div></td>`;
+      } else if(day.dayOff || h < wOpen() || h >= wClose()){
+        html += `<td><div class="slot closed" title="Клуб в это время не работает"></div></td>`;
       } else {
         html += `<td><button class="slot" data-court="${c.id}" data-hour="${h}">+</button></td>`;
       }
@@ -1338,15 +1357,19 @@ function openCourtsOptions(selected){
     .filter(c => c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date()))
     .map(c => `<option value="${c.id}"${c.id===selected?' selected':''}>${esc(c.name)}</option>`).join('');
 }
+/** Рабочие часы открытого дня. Сетка бывает шире — если на сокращённый
+ *  день уже есть брони, — но записать можно только в рабочие часы. */
+const wOpen = () => day.workOpen ?? day.openHour;
+const wClose = () => day.workClose ?? day.closeHour;
 function hourOptions(selected){
   let o = '';
-  for(let h=day.openHour; h<day.closeHour; h++) o += `<option value="${h}"${h===selected?' selected':''}>${hh(h)}</option>`;
+  for(let h=wOpen(); h<wClose(); h++) o += `<option value="${h}"${h===selected?' selected':''}>${hh(h)}</option>`;
   return o;
 }
 /** Длительность ограничена закрытием клуба: «23:00 – 26:00» больше не собрать. */
 function hoursOptions(hour, selected){
   let o = '';
-  for(let n=1; hour+n<=day.closeHour; n++){
+  for(let n=1; hour+n<=wClose(); n++){
     o += `<option value="${n}"${n===selected?' selected':''}>${n} ${plural(n,'час','часа','часов')}</option>`;
   }
   return o;
@@ -1354,8 +1377,8 @@ function hoursOptions(hour, selected){
 
 /** Ближайший свободный час: раньше форма всегда открывалась на 18:00. */
 function suggestHour(){
-  if(date !== todayStr()) return day.openHour;
-  return Math.min(day.closeHour - 1, Math.max(day.openHour, nowHour() + 1));
+  if(date !== todayStr()) return wOpen();
+  return Math.min(wClose() - 1, Math.max(wOpen(), nowHour() + 1));
 }
 
 $('#addBtn').onclick = () => openAdd(null, suggestHour());
@@ -1600,7 +1623,7 @@ async function openSetup(){
   $('#setBookNote').value = st.bookingNote || '';
   $('#setTourn').checked = st.showTournaments !== false;
   $('#setFoot').checked = st.showFootball !== false;
-  $('#setOpen').value = st.openHour; $('#setClose').value = st.closeHour;
+  weekRender(st.week);
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
   $('#setHold').value = st.holdMinutes;
@@ -1742,10 +1765,41 @@ function shrink(file){
   });
 }
 
+/* ── часы работы по дням ─────────────────────────────── */
+const WEEK_NAMES = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+function hourOpts(from, to, sel){
+  let o=''; for(let h=from; h<=to; h++) o += `<option value="${h}"${h===sel?' selected':''}>${hh(h)}</option>`;
+  return o;
+}
+function weekRender(week){
+  const w = Array.isArray(week) && week.length===7 ? week
+    : WEEK_NAMES.map(() => ({ open: 9, close: 24, closed: false }));
+  $('#setWeek').innerHTML = w.map((d,i) => `
+    <div class="wd${d.closed?' off':''}" data-i="${i}">
+      <b>${WEEK_NAMES[i]}</b>
+      <select class="w-open" aria-label="${WEEK_NAMES[i]}: открытие">${hourOpts(0,23,d.open)}</select>
+      <span class="dash">—</span>
+      <select class="w-close" aria-label="${WEEK_NAMES[i]}: закрытие">${hourOpts(1,24,d.close)}</select>
+      <label class="chk"><input type="checkbox" class="w-off"${d.closed?' checked':''}> Не работаем</label>
+    </div>`).join('');
+  document.querySelectorAll('#setWeek .w-off').forEach(el => el.onchange = () =>
+    el.closest('.wd').classList.toggle('off', el.checked));
+}
+function weekRead(){
+  return [...document.querySelectorAll('#setWeek .wd')].map(r => ({
+    open: +r.querySelector('.w-open').value,
+    close: +r.querySelector('.w-close').value,
+    closed: r.querySelector('.w-off').checked,
+  }));
+}
+$('#weekCopy').onclick = () => {
+  const w = weekRead(); weekRender(w.map(() => ({ ...w[0] })));
+};
+
 $('#setSave').onclick = async () => {
   try {
     await call('/admin/settings', { method:'POST', body: JSON.stringify({
-      openHour: +$('#setOpen').value, closeHour: +$('#setClose').value,
+      week: weekRead(),
       morningUntil: +$('#setMorning').value, maxHours: +$('#setMax').value,
       cancelHours: +$('#setCancel').value, holdMinutes: +$('#setHold').value,
     })});

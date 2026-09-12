@@ -9,8 +9,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet, R } from '../theme';
 import { rub, type ApiPrices } from '../api';
-import { CLUB, pointText, useClub } from '../club';
-import { hh } from '../dates';
+import { CLUB, hoursOnDate, pointText, sameEveryDay, useClub } from '../club';
+import { hh, today } from '../dates';
 import { openLink } from './contacts';
 import { RentalsList, useRentals } from './extras';
 
@@ -115,7 +115,13 @@ export function ClubBlock({ prices }: { prices: ApiPrices | null }) {
       {/* Правила цифрами: их запоминают, а абзацы — пролистывают. Аренду
           подряд и срок отмены заказчик попросил нигде не писать. */}
       <View style={s.facts}>
-        <Fact big={`${two(club.openHour)}–${two(club.closeHour)}`} label="часы работы" />
+        {/* Дни разные — показываем сегодняшние часы, а не общий размах недели */}
+        {sameEveryDay(club)
+          ? <Fact big={`${two(club.openHour)}–${two(club.closeHour)}`} label="часы работы" />
+          : (() => { const d = hoursOnDate(club, today());
+              return d.closed
+                ? <Fact big="—" label="сегодня не работаем" />
+                : <Fact big={`${two(d.open)}–${two(d.close)}`} label="часы сегодня" /> })()}
         <Fact big={`${club.prepayPercent} %`} label="предоплата" />
       </View>
     </View>

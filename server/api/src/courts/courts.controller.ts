@@ -89,6 +89,8 @@ export class ClubController {
     return {
       openHour: s.openHour,
       closeHour: s.closeHour,
+      /** Часы по дням недели, с понедельника: { open, close, closed }. */
+      week: s.week,
       cancelHours: s.cancelHours,
       holdMinutes: s.holdMinutes,
       phone: s.phone,

@@ -104,7 +104,7 @@ export default function Schedule() {
                 <IconChevron size={13} color={C.text} />
               </Pressable>
             </View>
-            <Slots court={c} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
+            <Slots court={c} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} dayOff={grid.dayOff} />
           </View>
         ))}
       </ScrollView>
