@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ru.padelmagas.app",
-      "buildNumber": "31",
+      "buildNumber": "32",
       "infoPlist": {
         "CFBundleDisplayName": "Magas Padel",
         "ITSAppUsesNonExemptEncryption": false

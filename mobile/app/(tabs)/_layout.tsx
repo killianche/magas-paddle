@@ -5,9 +5,13 @@
 // неё видно содержимое, размытое и притемнённое. Так и сделано: панель лежит
 // поверх экрана, снизу и по бокам поля, фон — размытие.
 //
+// Панель не тянется во всю ширину: она ровно по своим пунктам и стоит по
+// центру, поэтому читается как отдельный плавающий элемент, а не как полоса.
+// На узком экране упирается в минимальные поля от краёв.
+//
 // Раз панель поверх содержимого, каждый экран внутри вкладок оставляет снизу
 // запас (TAB_SPACE), иначе последняя карточка уезжает под неё.
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,19 +26,28 @@ import { IconHome, IconTrophy, IconRacket } from '../../src/components/icons';
  *  снизу на глаз выходили неравными: над значком пусто, под подписью тесно.
  *  Отступы подобраны так, чтобы видимые поля совпали: у значка в коробке
  *  28 pt ещё свои ~5 pt пустоты сверху, у прописной подписи — ~3 pt снизу. */
-const BAR = 63;
+const BAR = 62;
 const PAD_TOP = 3;
 const PAD_BOTTOM = 7;
-/** Поля панели от краёв экрана. */
-const SIDE = 14;
+/** Ширина одного пункта. По самой длинной подписи — «МОИ ЗАПИСИ». */
+const TAB_W = 99;
+/** Минимальное поле от краёв экрана: до него панель сжимается на узких. */
+const SIDE_MIN = 16;
 
 export default function TabsLayout() {
   useTheme();
   const club = useClub();
   const insets = useSafeAreaInsets();
-  // На iPhone с вырезом снизу уже есть полоса жеста — над ней и висим.
-  // На старых и на вебе своего отступа нет, добавляем сами.
-  const bottom = Math.max(insets.bottom, 12);
+  const { width } = useWindowDimensions();
+
+  // Панель ровно по своим пунктам и по центру экрана
+  const count = club.showTournaments ? 3 : 2;
+  const barW = Math.min(width - SIDE_MIN * 2, count * TAB_W + 10);
+  const side = Math.max(SIDE_MIN, Math.round((width - barW) / 2));
+
+  // На iPhone с полосой жеста висим прямо над ней, не отступая на всю
+  // безопасную зону, — иначе панель уезжает слишком высоко.
+  const bottom = insets.bottom > 0 ? Math.max(insets.bottom - 14, 8) : 12;
 
   return (
     <Tabs
@@ -46,7 +59,7 @@ export default function TabsLayout() {
 
         tabBarStyle: {
           position: 'absolute',
-          left: SIDE, right: SIDE, bottom,
+          left: side, right: side, bottom,
           height: BAR,
           borderRadius: BAR / 2,
           borderTopWidth: 0,
@@ -54,27 +67,30 @@ export default function TabsLayout() {
           overflow: 'hidden',
           paddingTop: PAD_TOP,
           paddingBottom: PAD_BOTTOM,
+          paddingHorizontal: 5,
           // Тень отделяет панель от фотографии под ней
           shadowColor: '#000', shadowOpacity: C.shadow,
-          shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
-          elevation: 12,
+          shadowRadius: 22, shadowOffset: { width: 0, height: 10 },
+          elevation: 14,
         },
+        tabBarItemStyle: { paddingHorizontal: 0, borderRadius: BAR / 2 },
         tabBarBackground: () => (
           <View style={StyleSheet.absoluteFill}>
             {Platform.OS === 'web'
               ? <View style={[StyleSheet.absoluteFill, s.webGlass]} />
-              : <BlurView intensity={44} tint={C.blur} style={StyleSheet.absoluteFill} />}
+              : <BlurView intensity={58} tint={C.blur} style={StyleSheet.absoluteFill} />}
             {/* Притемнение поверх размытия: без него светлая фотография
                 под панелью съедает подписи */}
             <View style={[StyleSheet.absoluteFill, s.tint]} />
           </View>
         ),
 
-        tabBarActiveTintColor: C.text,
+        // Выбранная вкладка — акцентом клуба, как принято в iOS
+        tabBarActiveTintColor: C.accent,
         // Светлее макета: на #68766D подпись давала контраст 4.1 при норме 4.5
         tabBarInactiveTintColor: C.tabInactive,
         tabBarLabelStyle: {
-          fontFamily: DISP_MED, fontSize: 11, lineHeight: 13, letterSpacing: 0.3,
+          fontFamily: DISP_MED, fontSize: 10.5, lineHeight: 13, letterSpacing: 0.2,
           textTransform: 'uppercase', marginTop: 2,
         },
         sceneStyle: { backgroundColor: C.ink },
@@ -100,5 +116,5 @@ const s = sheet(() => ({
     borderWidth: StyleSheet.hairlineWidth, borderColor: C.glassLine,
     borderRadius: BAR / 2 },
   // На вебе BlurView даёт лишний слой; backdrop-filter делает то же дешевле
-  webGlass: { backgroundColor: C.glassWeb, backdropFilter: 'blur(18px)' } as any,
+  webGlass: { backgroundColor: C.glassWeb, backdropFilter: 'blur(20px)' } as any,
 }));

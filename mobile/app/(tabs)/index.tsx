@@ -367,13 +367,6 @@ export default function Home() {
         </Pressable>
       </View>
       <ClubBlock prices={q.data?.prices ?? null} maxHours={grid?.maxHours ?? 3} />
-
-      {/* Пропадает сама, когда клуб загрузит фото всех площадок */}
-      {courts.some(c => !c.photo) && (
-        <Text style={st.foot}>
-          Фотографии кортов пока временные — клуб заменит их своими.
-        </Text>
-      )}
     </Animated.ScrollView>
     <TopScrim scrollY={scrim.scrollY} />
     {focused && <StatusBar style={onHero || mode === 'dark' ? 'light' : 'dark'} />}
@@ -468,7 +461,4 @@ const st = sheet(() => ({
   tournIn: { padding: 15 },
   tournN: { ...TITLE.card, color: ON_PHOTO, textTransform: 'uppercase' },
   tournS: { fontFamily: BODY, color: '#CBD5C2', fontSize: 13, marginTop: 3, fontWeight: '600' },
-
-  foot: { fontFamily: BODY, color: C.dim2, fontSize: 11, lineHeight: 17, textAlign: 'center',
-    marginTop: 22, paddingHorizontal: 30 },
 }));
