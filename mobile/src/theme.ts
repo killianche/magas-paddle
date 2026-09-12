@@ -225,8 +225,11 @@ export function sheet<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyl
   });
 }
 
-/** Углы. В макете почти всё прямое; pill остался для круглых кнопок. */
-export const R = { sm: 0, md: 0, lg: 0, xl: 0, pill: 999 } as const;
+/** Углы — небольшие скругления, как в свежей iOS.
+ *  sm — метки и значки, md — поля ввода, мелкие кнопки и плитки времени,
+ *  lg — кнопки, xl — карточки, фотографии и панели.
+ *  Раньше всё было прямым (метка git before-rounded): вернуть — поставить нули. */
+export const R = { sm: 8, md: 12, lg: 14, xl: 20, pill: 999 } as const;
 
 export const S = { xs: 4, sm: 8, md: 12, lg: 14, xl: 18, xxl: 26 } as const;
 

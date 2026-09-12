@@ -13,7 +13,7 @@
 // Текст пишет клуб в админке («Приложение» → «Прокат ракеток и мячи»).
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet } from '../theme';
+import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet, R } from '../theme';
 import { useClub } from '../club';
 import { cheapest, ownAllowed, parseRentals, type RentalGroup } from '../rentals';
 import { Section } from './section';
@@ -101,12 +101,13 @@ const s = sheet(() => ({
 
   back: { flex: 1, backgroundColor: C.scrim },
   box: { backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 20,
-    borderTopWidth: 1, borderTopColor: C.lineStrong },
+    borderTopWidth: 1, borderTopColor: C.lineStrong,
+    borderTopLeftRadius: R.xl + 4, borderTopRightRadius: R.xl + 4 },
   eyebrow: { ...EYEBROW, color: C.accent },
   title: { color: C.text, fontFamily: DISP, fontSize: 24, letterSpacing: -0.7,
     textTransform: 'uppercase', marginTop: 6 },
   ok: { marginTop: 24, minHeight: 50, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.lineStrong },
+    borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.lg },
   okT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
 }));

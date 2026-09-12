@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { api, rub, ApiError, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import {
@@ -508,20 +508,21 @@ const s = sheet(() => ({
   phone: { fontFamily: DISP_MED, color: C.dim, fontSize: 15, letterSpacing: -0.2,
     marginTop: 6, fontVariant: ['tabular-nums'] },
 
-  warn: { marginTop: 16, padding: 14, borderWidth: 1,
+  warn: { marginTop: 16, padding: 14, borderWidth: 1, borderRadius: R.xl,
     borderColor: C.warnBorder, backgroundColor: C.warnSoft },
   warnT: { color: C.amber, fontFamily: DISP, fontSize: 15, letterSpacing: -0.4 },
   warnS: { fontFamily: BODY, color: C.warnText, fontSize: 13, lineHeight: 19, marginTop: 6 },
 
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 16,
-    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, padding: 15 },
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, padding: 15,
+    borderRadius: R.xl },
   statDiv: { width: 1, alignSelf: 'stretch', backgroundColor: C.line, marginHorizontal: 14 },
   statN: { fontFamily: DISP, color: C.text, fontSize: 30, letterSpacing: -1.4,
     fontVariant: ['tabular-nums'] },
   statL: { ...EYEBROW, color: C.dim2, marginTop: 3 },
 
   actions: { flexDirection: 'row', gap: 9, marginTop: 10 },
-  ghost: { flex: 1, borderWidth: 1, borderColor: C.lineStrong, minHeight: HIT,
+  ghost: { flex: 1, borderWidth: 1, borderColor: C.lineStrong, minHeight: HIT, borderRadius: R.md,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   ghostT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
@@ -532,7 +533,7 @@ const s = sheet(() => ({
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: S.xl,
     marginBottom: 8, padding: 13, borderWidth: 1, borderColor: C.line,
-    backgroundColor: C.surface },
+    backgroundColor: C.surface, borderRadius: R.xl },
   rowN: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
     textTransform: 'uppercase' },
   rowS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 3 },
@@ -547,14 +548,14 @@ const s = sheet(() => ({
   showT: { color: C.limeDim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
   input: { marginHorizontal: S.xl, backgroundColor: C.surface, borderWidth: 1,
-    borderColor: C.lineStrong, paddingVertical: 14, paddingHorizontal: 14,
+    borderColor: C.lineStrong, paddingVertical: 14, paddingHorizontal: 14, borderRadius: R.md,
     minHeight: 52, color: C.text, fontFamily: BODY, fontSize: 16 },
   hint: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 17,
     paddingHorizontal: S.xl, marginTop: 8 },
   found: { fontFamily: BODY, color: C.limeDim, fontSize: 12.5, lineHeight: 18,
     paddingHorizontal: S.xl, marginTop: 8 },
 
-  cta: { backgroundColor: C.lime, marginHorizontal: S.xl, marginTop: 22,
+  cta: { backgroundColor: C.lime, marginHorizontal: S.xl, marginTop: 22, borderRadius: R.lg,
     paddingVertical: 15, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
   ctaOff: { backgroundColor: C.off },
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,

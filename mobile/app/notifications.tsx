@@ -7,7 +7,7 @@
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { api } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useProfile } from '../src/profile';
@@ -106,7 +106,7 @@ const s = sheet(() => ({
     marginHorizontal: S.xl },
 
   card: { marginHorizontal: S.xl, marginBottom: 9, padding: 15,
-    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, borderRadius: R.xl },
   cardNew: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: -0.5,

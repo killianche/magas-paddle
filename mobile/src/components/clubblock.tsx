@@ -7,7 +7,7 @@
 // Все числа берутся из админки, ничего не вписано в код.
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet } from '../theme';
+import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet, R } from '../theme';
 import { rub, type ApiPrices } from '../api';
 import { CLUB, pointText, useClub } from '../club';
 import { hh } from '../dates';
@@ -170,7 +170,7 @@ const s = sheet(() => ({
   eyebrowDim: { ...EYEBROW, color: C.dim2, letterSpacing: 1.2 },
 
   price: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
-    borderLeftWidth: 4, borderLeftColor: C.lime, padding: 18 },
+    borderLeftWidth: 4, borderLeftColor: C.lime, padding: 18, borderRadius: R.xl },
   priceHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   big: { color: C.text, fontFamily: DISP, fontSize: 46, lineHeight: 50, letterSpacing: -1.8,
     marginTop: 10, fontVariant: ['tabular-nums'] },
@@ -186,20 +186,21 @@ const s = sheet(() => ({
   rent: { marginTop: 10 },
 
   map: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden',
-    marginTop: 6 },
+    marginTop: 6, borderRadius: R.xl },
   mapBody: { padding: 16, paddingTop: 14 },
   mapT: { color: C.text, fontFamily: DISP, fontSize: 24, letterSpacing: -0.8,
     textTransform: 'uppercase', marginTop: 6 },
   mapS: { fontFamily: BODY, color: C.dim, fontSize: 13.5, lineHeight: 19, marginTop: 3 },
   route: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 14, minHeight: 46, paddingHorizontal: 14, backgroundColor: C.lime },
+    marginTop: 14, minHeight: 46, paddingHorizontal: 14, backgroundColor: C.lime,
+    borderRadius: R.md },
   routeT: { fontFamily: DISP, color: C.onLime, fontSize: 12.5, letterSpacing: 0.8,
     textTransform: 'uppercase' },
   routeA: { fontFamily: DISP, color: C.onLime, fontSize: 18 },
 
   facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   fact: { flexGrow: 1, flexBasis: '45%', minHeight: 96, padding: 14, justifyContent: 'space-between',
-    borderWidth: 1, borderColor: C.line },
+    borderWidth: 1, borderColor: C.line, borderRadius: R.xl },
   factBig: { color: C.text, fontFamily: DISP, fontSize: 30, lineHeight: 33, letterSpacing: -1.2,
     fontVariant: ['tabular-nums'] },
   factL: { ...EYEBROW, color: C.dim2, letterSpacing: 1, marginTop: 8 },

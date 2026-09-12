@@ -62,7 +62,10 @@ export default function TabsLayout() {
 
         tabBarStyle: {
           position: 'absolute',
-          left: side, right: side, bottom,
+          // Библиотека сама ставит панели start: 0 и end: 0, а на iPhone
+          // start/end важнее left/right — без них панель тянулась во всю
+          // ширину. В браузере наоборот, поэтому там ошибки видно не было.
+          left: side, right: side, start: side, end: side, bottom,
           height: BAR,
           borderRadius: BAR / 2,
           borderTopWidth: 0,

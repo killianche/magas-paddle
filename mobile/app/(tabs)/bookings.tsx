@@ -192,7 +192,7 @@ const s = sheet(() => ({
   body: { padding: 14 },
   note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
-  emptyIcon: { width: 62, height: 62, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
+  emptyIcon: { width: 62, height: 62, borderRadius: R.xl, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft,
     marginBottom: 18 },
   emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
@@ -203,7 +203,7 @@ const s = sheet(() => ({
     textTransform: 'uppercase' },
 
   cardT: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
-  tIcon: { width: 34, height: 34, borderRadius: 0, alignItems: 'center', justifyContent: 'center',
+  tIcon: { width: 34, height: 34, borderRadius: R.md, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.xl,
     marginHorizontal: S.xl, marginBottom: 10, overflow: 'hidden' },

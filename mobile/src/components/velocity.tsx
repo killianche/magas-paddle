@@ -1,7 +1,7 @@
 // Общие части оформления «Velocity»: их использует больше одного экрана.
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Text as SvgText } from 'react-native-svg';
-import { C, S, HIT, TITLE, DISP, DISP_MED, sheet } from '../theme';
+import { C, S, HIT, TITLE, DISP, DISP_MED, sheet, R } from '../theme';
 
 /** Слово контуром — приём из макета: вторая строка заголовка не залита,
  *  а обведена. В React Native обводки текста нет вовсе, поэтому рисуем
@@ -89,11 +89,11 @@ export const v = sheet(() => ({
     paddingHorizontal: S.xl, borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   tickerItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  dot: { width: 4, height: 4, backgroundColor: C.accent },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.accent },
   tickerT: { color: C.ticker, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.1,
     textTransform: 'uppercase' },
 
-  action: { backgroundColor: C.lime, paddingVertical: 15, paddingHorizontal: 18,
+  action: { backgroundColor: C.lime, paddingVertical: 15, paddingHorizontal: 18, borderRadius: R.lg,
     minHeight: HIT, justifyContent: 'center' },
   actionOff: { backgroundColor: C.off },
   actionT: { color: C.onLime, fontFamily: DISP, fontSize: 15, letterSpacing: 0.4,

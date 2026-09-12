@@ -50,7 +50,7 @@ export function Pill({ text, kind }: { text: string; kind: 'wait' | 'ok' | 'past
   }[kind];
   return (
     <View style={{ backgroundColor: map.bg, borderColor: map.bd, borderWidth: 1,
-      borderRadius: 0, paddingVertical: 4, paddingHorizontal: 9 }}>
+      borderRadius: R.sm, paddingVertical: 4, paddingHorizontal: 9 }}>
       <Text style={{ color: map.fg, ...EYEBROW }}>
         {text.toUpperCase()}
       </Text>

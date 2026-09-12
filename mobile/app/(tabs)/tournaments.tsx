@@ -110,12 +110,12 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
 
 const s = sheet(() => ({
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  hero: { marginHorizontal: S.xl, height: 200, borderRadius: 0, padding: S.lg,
+  hero: { marginHorizontal: S.xl, height: 200, borderRadius: R.xl, padding: S.lg,
     backgroundColor: '#1D4526', overflow: 'hidden', marginTop: 8 },
   heroImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  flag: { alignSelf: 'flex-start', backgroundColor: C.lime, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 },
+  flag: { alignSelf: 'flex-start', backgroundColor: C.lime, borderRadius: R.sm, paddingVertical: 5, paddingHorizontal: 10 },
   okFlag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: C.lime, borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10 },
+    backgroundColor: C.lime, borderRadius: R.sm, paddingVertical: 5, paddingHorizontal: 10 },
   flagT: { ...EYEBROW, color: C.onLime },
   heroName: { ...TITLE.card, color: '#F5F8F2', textTransform: 'uppercase',   // поверх фото
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
@@ -130,7 +130,7 @@ const s = sheet(() => ({
   rowName: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
     textTransform: 'uppercase' },
   rowMeta: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, marginTop: 2 },
-  rowOk: { width: 26, height: 26, borderRadius: 0, backgroundColor: C.lime,
+  rowOk: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
 
   empty: { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },

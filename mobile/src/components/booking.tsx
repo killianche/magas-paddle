@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet } from '../theme';
+import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet, R } from '../theme';
 import { api, rub, mediaUrl, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
@@ -518,14 +518,14 @@ const b = sheet(() => ({
   // 58, а не 52: «СЕГОДНЯ» не влезало и обрезалось — заметно было на белой
   // плашке выбранного дня
   day: { width: 58, height: 52, borderWidth: 1, borderColor: C.line,
-    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', borderRadius: R.md },
   dayOn: { backgroundColor: C.text, borderColor: C.text },
   dayW: { ...EYEBROW, fontSize: 11, letterSpacing: 0.2, color: C.dim2 },
   dayD: { color: C.text, fontFamily: DISP, fontSize: 18, letterSpacing: -0.8, marginTop: 2 },
 
   step: { flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap',
     paddingHorizontal: S.xl, marginTop: 22, marginBottom: 10 },
-  stepN: { width: 22, height: 22, backgroundColor: C.lime,
+  stepN: { width: 22, height: 22, borderRadius: 11, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
   stepNT: { color: C.onLime, fontFamily: DISP, fontSize: 12 },
   stepT: { ...EYEBROW, color: C.text, fontSize: 12, letterSpacing: 1.4 },
@@ -536,7 +536,7 @@ const b = sheet(() => ({
 
   durRow: { flexDirection: 'row', gap: GAP },
   dur: { flex: 1, minHeight: HIT, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink2 },
+    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink2, borderRadius: R.md },
   durOn: { backgroundColor: C.lime, borderColor: C.lime },
   durT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.3 },
   durHint: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18,
@@ -547,7 +547,8 @@ const b = sheet(() => ({
   partT: { color: C.text, fontFamily: DISP, fontSize: 16, letterSpacing: -0.4,
     fontVariant: ['tabular-nums'], marginBottom: 8 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-  pill: { height: HIT, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  pill: { height: HIT, alignItems: 'center', justifyContent: 'center', borderWidth: 1,
+    borderRadius: R.md },
   // Плитки без заливки: свободную выделяет рамка, занятую — цвет цифр
   pillFree: { backgroundColor: 'transparent', borderColor: C.accentLine },
   pillBusy: { backgroundColor: 'transparent', borderColor: C.busyLine },
@@ -558,8 +559,10 @@ const b = sheet(() => ({
   pillTBusy: { color: C.busyText },
   pillTShort: { color: C.dim2 },
 
-  sheet: { paddingHorizontal: S.xl, paddingTop: 14, backgroundColor: C.sheet,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+  // Панель снизу — со скруглёнными верхними углами, как лист в iOS
+  sheet: { paddingHorizontal: S.xl, paddingTop: 16, backgroundColor: C.sheet,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong,
+    borderTopLeftRadius: R.xl + 4, borderTopRightRadius: R.xl + 4 },
   sumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: 10, marginBottom: 8 },
   sumRow2: { marginBottom: 14, paddingTop: 8,
@@ -577,7 +580,7 @@ const b = sheet(() => ({
   inclT: { fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
   inclMore: { fontFamily: DISP_MED, color: C.accent, fontSize: 11.5, marginTop: 2 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: C.wa, minHeight: 52 },
+    backgroundColor: C.wa, minHeight: 52, borderRadius: R.lg },
   waT: { color: C.onWa, fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
     textTransform: 'uppercase' },
   clear: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginTop: 2,
@@ -589,19 +592,20 @@ const b = sheet(() => ({
 
   whoBack: { flex: 1, backgroundColor: C.scrim },
   who: { backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 20,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong },
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineStrong,
+    borderTopLeftRadius: R.xl + 4, borderTopRightRadius: R.xl + 4 },
   whoT: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: -0.6,
     textTransform: 'uppercase' },
   whoP: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 6 },
   whoL: { ...EYEBROW, color: C.dim2, marginTop: 16, marginBottom: 8 },
   whoIn: { borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.ink,
-    paddingVertical: 14, paddingHorizontal: 14, minHeight: 52,
+    paddingVertical: 14, paddingHorizontal: 14, minHeight: 52, borderRadius: R.md,
     color: C.text, fontFamily: BODY, fontSize: 16 },
   waOff: { backgroundColor: C.off },
   galT: { color: C.text, fontFamily: DISP, fontSize: 20, letterSpacing: -0.5,
     textTransform: 'uppercase', paddingHorizontal: S.xl },
   galClose: { marginHorizontal: S.xl, minHeight: 50, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface },
+    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, borderRadius: R.lg },
   galCloseT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
     textTransform: 'uppercase' },
 }));

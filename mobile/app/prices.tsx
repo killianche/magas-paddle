@@ -198,7 +198,7 @@ const s = sheet(() => ({
   lede: { fontFamily: BODY, color: C.dim, fontSize: 15, lineHeight: 21, marginTop: 10 },
 
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: C.lime, borderRadius: R.xl, marginHorizontal: S.xl, marginTop: 18,
+    backgroundColor: C.lime, borderRadius: R.lg, marginHorizontal: S.xl, marginTop: 18,
     paddingVertical: 16, minHeight: HIT },
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
@@ -215,7 +215,7 @@ const s = sheet(() => ({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 8 },
   price: { color: C.text, fontFamily: DISP, fontSize: 40, lineHeight: 42,
     letterSpacing: -2, fontVariant: ['tabular-nums'] },
-  badge: { backgroundColor: C.lime, borderRadius: 0, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: { backgroundColor: C.lime, borderRadius: R.sm, paddingHorizontal: 8, paddingVertical: 3 },
   badgeT: { color: C.onLime, fontFamily: DISP, fontSize: 12, letterSpacing: -0.2 },
   bandNote: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 10, lineHeight: 18 },
   soon: { ...TITLE.card, color: C.dim, marginTop: 8 },

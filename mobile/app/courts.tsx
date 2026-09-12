@@ -11,7 +11,7 @@ import {
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, S, DISP, DISP_MED, TITLE, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, DISP, DISP_MED, TITLE, BODY, sheet, useTheme, R } from '../src/theme';
 import { api, rub } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -106,7 +106,7 @@ const s = sheet(() => ({
   h1: { ...TITLE.page, color: C.text, marginTop: 8 },
 
   card: { marginHorizontal: S.xl, marginBottom: 12, borderWidth: 1, borderColor: C.line,
-    backgroundColor: C.surface, overflow: 'hidden' },
+    backgroundColor: C.surface, overflow: 'hidden', borderRadius: R.xl },
   img: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Поверх фото — светлым в любой теме

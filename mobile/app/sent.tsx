@@ -9,7 +9,7 @@
 import { Text, View, Pressable, Linking, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { C, S, HIT, DISP, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, HIT, DISP, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { rub } from '../src/api';
 import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
@@ -114,7 +114,7 @@ const s = sheet(() => ({
   strong: { color: C.text, fontWeight: '700' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 18,
     borderWidth: 1, borderColor: C.warnBorder, backgroundColor: C.warnSoft,
-    paddingVertical: 6, paddingHorizontal: 12 },
+    paddingVertical: 6, paddingHorizontal: 12, borderRadius: R.pill },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
   pillT: { ...EYEBROW, color: C.amber },
 

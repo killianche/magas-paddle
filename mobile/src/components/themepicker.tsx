@@ -4,7 +4,7 @@
 // Переключается мгновенно, экран остаётся тем же.
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, S, DISP_MED, sheet } from '../theme';
+import { C, S, DISP_MED, sheet, R } from '../theme';
 import { setThemePref, useThemePref, type ThemePref } from '../themepref';
 
 const OPTIONS: { key: ThemePref; label: string }[] = [
@@ -48,11 +48,11 @@ const s = sheet(() => ({
   row: { flexDirection: 'row', gap: 8, marginHorizontal: S.xl },
   opt: { flex: 1, minHeight: 78, alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 10, paddingHorizontal: 6, borderWidth: 1, borderColor: C.lineStrong,
-    backgroundColor: C.surface },
+    backgroundColor: C.surface, borderRadius: R.lg },
   optOn: { backgroundColor: C.lime, borderColor: C.lime },
   t: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 0.8,
     textTransform: 'uppercase', textAlign: 'center' },
   sw: { width: 26, height: 18, flexDirection: 'row', overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(128,128,128,0.55)' },
+    borderWidth: 1, borderColor: 'rgba(128,128,128,0.55)', borderRadius: 5 },
   half: { flex: 1 },
 }));

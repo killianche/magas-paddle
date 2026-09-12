@@ -8,7 +8,7 @@
 // выдумано — правило «не додумывать» в CLAUDE.md.
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { C, S, HIT, DISP, DISP_MED, BODY, sheet } from '../theme';
+import { C, S, HIT, DISP, DISP_MED, BODY, sheet, R } from '../theme';
 import { CLUB, useClub, whatsappUrl } from '../club';
 import { hh } from '../dates';
 import { Section, Line } from './section';
@@ -146,14 +146,16 @@ export function ClubInfo() {
 const s = sheet(() => ({
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: S.xl, paddingBottom: 18 },
   act: { flex: 1, paddingVertical: 14, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12 },
+    borderWidth: 1, borderColor: C.lineStrong, backgroundColor: C.surface, minHeight: HIT + 12,
+    borderRadius: R.lg },
   actOff: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   actWa: { backgroundColor: C.wa, borderColor: C.wa },
   actT: { color: C.text, fontFamily: DISP, fontSize: 14, letterSpacing: -0.4,
     textTransform: 'uppercase' },
   actS: { fontFamily: BODY, color: C.dim2, fontSize: 12, marginTop: 3 },
 
-  empty: { padding: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  empty: { padding: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface,
+    borderRadius: R.xl },
   emptyT: { color: C.text, fontFamily: DISP_MED, fontSize: 14, letterSpacing: -0.2 },
   emptyS: { fontFamily: BODY, color: C.dim, fontSize: 12.5, lineHeight: 18, marginTop: 5 },
 

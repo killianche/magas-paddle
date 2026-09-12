@@ -252,14 +252,14 @@ function Fact({ k, v, last }: { k: string; v: string; last?: boolean }) {
 
 const s = sheet(() => ({
   askBack: { flex: 1, backgroundColor: C.scrim, justifyContent: 'center', padding: 22 },
-  ask: { backgroundColor: C.ink2, borderRadius: 0, padding: 20,
+  ask: { backgroundColor: C.ink2, borderRadius: R.xl + 4, padding: 20,
     borderWidth: 1, borderColor: C.line },
   askT: { ...TITLE.card, color: C.text, textTransform: 'uppercase' },
   askS: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 8 },
   askL: { ...EYEBROW, color: C.dim2, marginTop: 18, marginBottom: 7 },
   askIn: { fontFamily: BODY, backgroundColor: C.surface, borderWidth: 1, borderColor: C.lineStrong,
     borderRadius: R.md, paddingHorizontal: 14, minHeight: HIT, color: C.text, fontSize: 15 },
-  askBtn: { backgroundColor: C.lime, marginTop: 20, minHeight: HIT,
+  askBtn: { backgroundColor: C.lime, marginTop: 20, minHeight: HIT, borderRadius: R.lg,
     alignItems: 'center', justifyContent: 'center' },
   askBtnOff: { backgroundColor: C.surface2 },
   askBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
@@ -271,7 +271,7 @@ const s = sheet(() => ({
   coverIn: { padding: S.xl },
   name: { ...TITLE.page, color: '#F5F8F2', marginTop: 12, textTransform: 'uppercase',   // поверх фото
     textShadowColor: 'rgba(0,0,0,.6)', textShadowRadius: 12 },
-  flag: { alignSelf: 'flex-start', borderRadius: 0, paddingVertical: 5, paddingHorizontal: 10,
+  flag: { alignSelf: 'flex-start', borderRadius: R.sm, paddingVertical: 5, paddingHorizontal: 10,
     borderWidth: 1, borderColor: 'transparent' },
   flagT: { ...EYEBROW, color: '#F5F8F2' },
 
@@ -313,7 +313,7 @@ const s = sheet(() => ({
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
   barOk: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 4 },
-  barOkIcon: { width: 30, height: 30, borderRadius: 0, backgroundColor: C.lime,
+  barOkIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
   barOkT: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.5,
     textTransform: 'uppercase' },

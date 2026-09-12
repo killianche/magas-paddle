@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
-import { Ticker } from '../../src/components/velocity';
 import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
@@ -105,8 +104,6 @@ export default function Home() {
     : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
       + ` ${day} · ближайшее в ${hh(soonest)}`;
 
-  const prices = courts.flatMap(c => c.hours.map(h => h.price)).filter(p => p > 0);
-  const cheapest = prices.length ? Math.min(...prices) : 0;
 
   const padel = courts.filter(c => !c.isFootball);
   const pitch = courts.find(c => c.isFootball) ?? null;
@@ -199,15 +196,6 @@ export default function Home() {
           )}
         </View>
       </View>
-
-      <Ticker items={waiting
-        ? ['Magas Padel', 'падел-корты', 'мини-футбольное поле']
-        : [
-            `${padel.length} ${plural(padel.length, 'корт', 'корта', 'кортов')}`,
-            soonest == null ? `${day} всё занято`
-              : tomorrow ? `завтра с ${hh(soonest)}` : `ближайшее в ${hh(soonest)}`,
-            cheapest ? `от ${rub(cheapest)}` : 'мини-футбольное поле',
-          ]} />
 
       {!!q.error && (
         <Pressable onPress={q.reload} accessibilityRole="button"
@@ -397,7 +385,7 @@ const st = sheet(() => ({
   // Кнопки записи: над крупной надписью — мелкое «Забронировать». Так длинное
   // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
   cta: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 66,
-    paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1 },
+    paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1, borderRadius: R.lg },
   ctaLime: { backgroundColor: C.lime, borderColor: C.lime },
   ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
   ctaEy: { ...EYEBROW },
@@ -407,9 +395,10 @@ const st = sheet(() => ({
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
     marginTop: 16, padding: 16, backgroundColor: C.surface,
-    borderWidth: 1, borderColor: C.line, borderLeftWidth: 4, borderLeftColor: C.lime },
+    borderWidth: 1, borderColor: C.line, borderLeftWidth: 4, borderLeftColor: C.lime,
+    borderRadius: R.xl },
   // Цвет полосы и значка берётся из состояния записи
-  mineIcon: { width: 36, height: 36, backgroundColor: C.lime,
+  mineIcon: { width: 36, height: 36, borderRadius: R.md, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
   mineEy: { ...EYEBROW, color: C.accent, fontSize: 10.5, letterSpacing: 1.4 },
   mineT: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: -0.4, marginTop: 4 },
@@ -417,7 +406,8 @@ const st = sheet(() => ({
 
   // Плитки кортов
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: TILE_GAP, paddingHorizontal: S.xl },
-  tile: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden' },
+  tile: { borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, overflow: 'hidden',
+    borderRadius: R.xl },
   tileWait: { opacity: 0.6 },
   tileN: { position: 'absolute', left: 10, bottom: 10, right: 10, color: ON_PHOTO,
     fontFamily: DISP, fontSize: 17, letterSpacing: -0.5, textTransform: 'uppercase' },
@@ -427,7 +417,7 @@ const st = sheet(() => ({
   tileP: { color: C.text, fontFamily: DISP, fontSize: 15, letterSpacing: -0.4,
     fontVariant: ['tabular-nums'] },
 
-  pitch: { marginHorizontal: S.xl, height: 252, overflow: 'hidden',
+  pitch: { marginHorizontal: S.xl, height: 252, overflow: 'hidden', borderRadius: R.xl,
     backgroundColor: '#0A1D14', justifyContent: 'flex-end' },
   pitchIn: { padding: 18 },
   pitchEyebrow: { ...EYEBROW, color: '#C9F23D' },
@@ -437,7 +427,7 @@ const st = sheet(() => ({
     fontVariant: ['tabular-nums'] },
   pitchUnit: { fontFamily: BODY, color: '#A5B0A8', fontSize: 11 },
   pitchCta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginLeft: 'auto',
-    backgroundColor: C.lime, paddingVertical: 13, paddingHorizontal: 15 },
+    backgroundColor: C.lime, paddingVertical: 13, paddingHorizontal: 15, borderRadius: R.md },
   pitchCtaT: { color: C.onLime, fontFamily: DISP, fontSize: 12, letterSpacing: 0.6,
     textTransform: 'uppercase' },
 
@@ -456,7 +446,7 @@ const st = sheet(() => ({
   secLinkHit: { paddingVertical: 12, paddingHorizontal: 10, marginVertical: -12, marginRight: -10,
     minHeight: HIT, justifyContent: 'center' },
 
-  tourn: { marginHorizontal: S.xl, height: 188, overflow: 'hidden',
+  tourn: { marginHorizontal: S.xl, height: 188, overflow: 'hidden', borderRadius: R.xl,
     justifyContent: 'flex-end', backgroundColor: '#0A1D14' },
   tournIn: { padding: 15 },
   tournN: { ...TITLE.card, color: ON_PHOTO, textTransform: 'uppercase' },

@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, S, DISP, DISP_MED, BODY, sheet, useTheme } from '../src/theme';
+import { C, S, DISP, DISP_MED, BODY, sheet, useTheme, R } from '../src/theme';
 import { api, type ApiHour } from '../src/api';
 import { useApi } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
@@ -130,7 +130,7 @@ const st = sheet(() => ({
   courtName: { flex: 1, color: C.text, fontFamily: DISP, fontSize: 24, letterSpacing: -0.8,
     textTransform: 'uppercase' },
   photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11,
-    minHeight: 34, borderWidth: 1, borderColor: C.lineStrong },
+    minHeight: 34, borderWidth: 1, borderColor: C.lineStrong, borderRadius: R.md },
   photoT: { color: C.text, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
 }));
