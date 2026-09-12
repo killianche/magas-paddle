@@ -10,7 +10,7 @@ import { Appearance, Platform } from 'react-native';
 export type ThemePref = 'dark' | 'light' | 'system';
 
 const KEY = 'magas.theme.v1';
-let pref: ThemePref = 'dark';
+let pref: ThemePref = 'light';
 const subs = new Set<() => void>();
 
 function tellSystem() {

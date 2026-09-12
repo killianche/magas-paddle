@@ -31,8 +31,10 @@ const PAD_TOP = 3;
 const PAD_BOTTOM = 7;
 /** Ширина одного пункта. По самой длинной подписи — «МОИ ЗАПИСИ». */
 const TAB_W = 99;
-/** Минимальное поле от краёв экрана: до него панель сжимается на узких. */
-const SIDE_MIN = 16;
+/** Поля от краёв — доля ширины экрана. Фиксированный минимум не годится:
+ *  на узком экране панель упиралась в него и снова выглядела полосой во всю
+ *  ширину. Пусть лучше сжимаются сами пункты. */
+const SIDE_PART = 0.1;
 
 export default function TabsLayout() {
   useTheme();
@@ -40,10 +42,11 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  // Панель ровно по своим пунктам и по центру экрана
+  // Панель ровно по своим пунктам и по центру экрана, но всегда с полями
   const count = club.showTournaments ? 3 : 2;
-  const barW = Math.min(width - SIDE_MIN * 2, count * TAB_W + 10);
-  const side = Math.max(SIDE_MIN, Math.round((width - barW) / 2));
+  const room = width - Math.round(width * SIDE_PART) * 2;
+  const barW = Math.min(room, count * TAB_W + 10);
+  const side = Math.round((width - barW) / 2);
 
   // На iPhone с полосой жеста висим прямо над ней, не отступая на всю
   // безопасную зону, — иначе панель уезжает слишком высоко.
@@ -90,7 +93,8 @@ export default function TabsLayout() {
         // Светлее макета: на #68766D подпись давала контраст 4.1 при норме 4.5
         tabBarInactiveTintColor: C.tabInactive,
         tabBarLabelStyle: {
-          fontFamily: DISP_MED, fontSize: 10.5, lineHeight: 13, letterSpacing: 0.2,
+          fontFamily: DISP_MED, fontSize: width < 360 ? 9.5 : 10.5,
+          lineHeight: 13, letterSpacing: 0.2,
           textTransform: 'uppercase', marginTop: 2,
         },
         sceneStyle: { backgroundColor: C.ink },

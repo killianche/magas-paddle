@@ -174,11 +174,14 @@ const LIGHT: Palette = {
   onWa: '#FFFFFF',
 };
 
-/** Текущие цвета. Объект один и тот же, при смене темы переписывается. */
-export const C: Palette = { ...DARK };
+/** Текущие цвета. Объект один и тот же, при смене темы переписывается.
+ *  По умолчанию приложение светлое — тёмную человек включает сам. */
+export const C: Palette = { ...LIGHT };
 
-let current: Mode = 'dark';
+let current: Mode = 'light';
 let version = 0;
+// Веб: фон страницы за приложением — сразу, а не только при смене темы
+if (typeof document !== 'undefined') document.body.style.backgroundColor = C.ink;
 const subs = new Set<() => void>();
 
 /** Включить тему. Экраны с useTheme() перерисуются сами. */

@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ru.padelmagas.app",
-      "buildNumber": "32",
+      "buildNumber": "33",
       "infoPlist": {
         "CFBundleDisplayName": "Magas Padel",
         "ITSAppUsesNonExemptEncryption": false
@@ -38,16 +38,16 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 170,
           "resizeMode": "contain",
-          "backgroundColor": "#0B0F0C",
+          "backgroundColor": "#F2F4EF",
           "dark": {
             "image": "./assets/splash-icon.png",
-            "backgroundColor": "#0B0F0C"
+            "backgroundColor": "#F2F4EF"
           }
         }
       ]
     ],
     "scheme": "magaspadel",
-    "backgroundColor": "#0B0F0C",
+    "backgroundColor": "#F2F4EF",
     "newArchEnabled": true,
     "experiments": {
       "baseUrl": "/v1"
