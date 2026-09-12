@@ -17,7 +17,7 @@ import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from
 import { api, rub, ApiError, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import {
-  useProfile, normalizePhone, prettyPhone, fullName, saveToken, type Profile,
+  useProfile, normalizePhone, prettyPhone, plainPhone, fullName, saveToken, type Profile,
 } from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
@@ -86,7 +86,7 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
       if (p) {
         setName(n => n.trim() ? n : p.name);
         setSurname(x => x.trim() ? x : (p.surname ?? ''));
-        if (p.whatsapp) setWa(x => x.trim() ? x : prettyPhone(p.whatsapp!));
+        if (p.whatsapp) setWa(x => x.trim() ? x : plainPhone(p.whatsapp!));
       }
     }).catch(() => {});
   }, [clean]);
@@ -137,7 +137,7 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
 
         <Text style={s.label}>Телефон</Text>
         <TextInput style={s.input} value={phone} onChangeText={setPhone}
-          placeholder="+7 928 000-00-00" placeholderTextColor={C.busy}
+          placeholder="89289204029" placeholderTextColor={C.busy}
           keyboardType="phone-pad" textContentType="telephoneNumber"
           accessibilityLabel="Номер телефона" />
 
@@ -177,11 +177,6 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
           textContentType={login ? 'password' : 'newPassword'}
           accessibilityLabel="Пароль" />
 
-        <Text style={s.hint}>
-          {login
-            ? 'Забыли пароль — скажите менеджеру, он сбросит его, и вы зададите новый.'
-            : 'Пароль хранится у клуба только в зашифрованном виде: подсмотреть его нельзя, а забытый задаётся заново через менеджера.'}
-        </Text>
 
         {state === 'known' && (
           <Text style={s.found}>
@@ -220,7 +215,7 @@ function EditForm({ profile, onDone, onCancel }: {
 }) {
   const [name, setName] = useState(profile.name);
   const [surname, setSurname] = useState(profile.surname ?? '');
-  const [wa, setWa] = useState(profile.whatsapp ? prettyPhone(profile.whatsapp) : '');
+  const [wa, setWa] = useState(profile.whatsapp ? plainPhone(profile.whatsapp) : '');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 

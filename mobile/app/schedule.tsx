@@ -83,7 +83,7 @@ export default function Schedule() {
         <Step n={1} title="Сколько играем" />
         <Card><Durations max={grid.maxHours} hours={hours} onPick={pickHours} /></Card>
 
-        <Step n={2} title="Выбери время" note="нажми на свободный час" />
+        <Step n={2} title="Выбери время" />
 
         {nothingLeft && (
           <Text style={st.allPassed}>

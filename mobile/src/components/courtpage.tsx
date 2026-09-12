@@ -113,7 +113,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
         <Step n={1} title="Сколько играем" />
         <Card><Durations max={grid.maxHours} hours={hours} onPick={pickHours} /></Card>
 
-        <Step n={2} title="Выбери время" note="нажми на свободный час" />
+        <Step n={2} title="Выбери время" />
         <Card>
           <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot} />
         </Card>

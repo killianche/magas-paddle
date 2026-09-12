@@ -13,6 +13,16 @@ export function normalizePhone(raw: string | null | undefined): string | null {
   return d.length === 11 && d.startsWith('7') ? d : null;
 }
 
+/** Цифры для поиска по номеру: «89289204029» и «79289204029» — один и тот же
+ *  человек, и у стойки набирают как привыкли. Частичный ввод («9204») остаётся
+ *  как есть: по нему ищут кусок номера. */
+export function searchDigits(raw: string | null | undefined): string {
+  const d = String(raw ?? '').replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('8')) return '7' + d.slice(1);
+  if (d.length === 10) return '7' + d;
+  return d;
+}
+
 /** Читаемый вид для экрана: +7 928 000-11-22. */
 export function prettyPhone(normalized: string): string {
   const d = normalized;

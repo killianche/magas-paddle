@@ -10,7 +10,7 @@ import { router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError, type Alternatives } from '../src/api';
-import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
+import { useProfile, normalizePhone, plainPhone } from '../src/profile';
 import { useClub } from '../src/club';
 import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
@@ -38,7 +38,7 @@ export default function Book() {
     if (profile) {
       setName(profile.name);
       setSurname(profile.surname ?? '');
-      setPhone(prettyPhone(profile.phone));
+      setPhone(plainPhone(profile.phone));
     }
   }, [profile]);
 
@@ -139,7 +139,7 @@ export default function Book() {
 
         <Text style={s.label}>Телефон</Text>
         <TextInput style={s.input} value={phone} onChangeText={setPhone}
-          placeholder="+7 928 000-00-00" placeholderTextColor={C.dim2}
+          placeholder="89289204029" placeholderTextColor={C.dim2}
           keyboardType="phone-pad" maxLength={20}
           accessibilityLabel="Номер телефона" />
         <Text style={s.hint}>

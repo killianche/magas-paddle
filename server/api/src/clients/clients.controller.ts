@@ -28,10 +28,12 @@ export class RegisterDto {
   @IsOptional() @IsString() @MaxLength(80)
   surname?: string;
 
-  @Matches(/^\+?\d{10,15}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
+  // Пробелы, скобки и чёрточки не ошибка: номер приводится к общему виду
+  // дальше, в normalizePhone. «8 928…» и «+7 928…» — один и тот же человек.
+  @Matches(/^[\d\s()+-]{10,20}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
   phone: string;
 
-  @IsOptional() @Matches(/^\+?\d{10,15}$/, { message: 'Номер WhatsApp: 10–15 цифр' })
+  @IsOptional() @Matches(/^[\d\s()+-]{10,20}$/, { message: 'Номер WhatsApp: 10–15 цифр' })
   whatsapp?: string;
 
   @IsString() @MaxLength(200)
@@ -39,7 +41,9 @@ export class RegisterDto {
 }
 
 export class LoginDto {
-  @Matches(/^\+?\d{10,15}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
+  // Пробелы, скобки и чёрточки не ошибка: номер приводится к общему виду
+  // дальше, в normalizePhone. «8 928…» и «+7 928…» — один и тот же человек.
+  @Matches(/^[\d\s()+-]{10,20}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
   phone: string;
 
   @IsString() @MaxLength(200)
@@ -53,7 +57,7 @@ export class UpdateDto {
   @IsOptional() @IsString() @MaxLength(80)
   surname?: string;
 
-  @IsOptional() @Matches(/^\+?\d{10,15}$/, { message: 'Номер WhatsApp: 10–15 цифр' })
+  @IsOptional() @Matches(/^[\d\s()+-]{10,20}$/, { message: 'Номер WhatsApp: 10–15 цифр' })
   whatsapp?: string;
 
   /** Смена пароля: нужен и старый, иначе чужой телефон в руках — чужой аккаунт. */

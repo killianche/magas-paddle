@@ -69,6 +69,12 @@ export function normalizePhone(input: string): string | null {
   return null;
 }
 
+/** Номер подряд, без пробелов и чёрточек — так его набирают и вставляют
+ *  в поля. Приложение одинаково понимает 8… и 7…, поэтому вид один. */
+export function plainPhone(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
 /** Показываем номер так, как человек привык его видеть. */
 export function prettyPhone(phone: string): string {
   const d = phone.replace(/\D/g, '');

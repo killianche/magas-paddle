@@ -8,7 +8,7 @@ import { AdminGuard, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService } from '../club';
-import { normalizePhone } from '../phone';
+import { normalizePhone, searchDigits } from '../phone';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -437,7 +437,7 @@ export class AdminController {
     const text = (q ?? '').trim();
     if (text.length < 2) throw new BadRequestException('Нужно хотя бы две буквы или цифры');
 
-    const digits = text.replace(/\D/g, '');
+    const digits = searchDigits(text);
     const clients = await this.db.clients.findMany({
       where: {
         OR: [
@@ -583,7 +583,7 @@ export class AdminController {
 
     const text = (q.search ?? '').trim();
     if (text.length >= 2) {
-      const digits = text.replace(/\D/g, '');
+      const digits = searchDigits(text);
       const clients = await this.db.clients.findMany({
         where: { OR: [
           { name: { contains: text, mode: 'insensitive' } },
@@ -1589,7 +1589,7 @@ export class AdminController {
   @Get('clients')
   async clientsList(@Query('q') q?: string) {
     const text = String(q ?? '').trim();
-    const digits = text.replace(/\D/g, '');
+    const digits = searchDigits(text);
     const where: any = text ? { OR: [
       { name: { contains: text, mode: 'insensitive' } },
       { surname: { contains: text, mode: 'insensitive' } },

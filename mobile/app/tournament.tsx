@@ -212,7 +212,7 @@ function AskWho({ open, fee, busy, onClose, onSend }: {
 
           <Text style={s.askL}>Телефон</Text>
           <TextInput style={s.askIn} value={phone} onChangeText={setPhone}
-            placeholder="+7 928 000-00-00" placeholderTextColor={C.dim2}
+            placeholder="89289204029" placeholderTextColor={C.dim2}
             keyboardType="phone-pad" maxLength={20} accessibilityLabel="Номер телефона" />
 
           <Pressable disabled={!ready} onPress={() => onSend(name.trim(), clean!)}

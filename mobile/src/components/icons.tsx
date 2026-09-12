@@ -147,6 +147,25 @@ export function IconCheck({ size = 14, color = C.onLime, active }: P) {
   );
 }
 
+/** Часы — ждём подтверждения */
+export function IconClock({ size = 14, color = C.amber, active }: P) {
+  return (
+    <Svg {...base(size, color, active)} strokeWidth={active ? 2.2 : 1.9}>
+      <Circle cx={12} cy={12} r={8.4} />
+      <Path d="M12 7.2V12l3.2 2" />
+    </Svg>
+  );
+}
+
+/** Крестик — бронь не состоялась */
+export function IconCross({ size = 14, color = C.dangerText, active }: P) {
+  return (
+    <Svg {...base(size, color, active)} strokeWidth={active ? 2.4 : 2.1}>
+      <Path d="M6.6 6.6 17.4 17.4M17.4 6.6 6.6 17.4" />
+    </Svg>
+  );
+}
+
 /** Метка на карте — «мы здесь» */
 export function IconPin({ size = 20, color = C.accent }: P) {
   return (

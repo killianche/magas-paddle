@@ -114,7 +114,6 @@ export function Durations({ max, hours, onPick }: {
           );
         })}
       </View>
-      <Text style={b.durHint}>Минимальная бронь — 1 час</Text>
     </>
   );
 }
@@ -442,13 +441,10 @@ function WhoSheet({ visible, onCancel, onDone }: {
         <Pressable style={{ flex: 1 }} onPress={onCancel} accessibilityLabel="Закрыть" />
         <View style={[b.who, { paddingBottom: insets.bottom + 14 }]}>
           <Text style={b.whoT}>Кто бронирует</Text>
-          <Text style={b.whoP}>
-            Номер нужен, чтобы клуб подтвердил бронь, а вы видели её в «Моих записях».
-          </Text>
 
           <Text style={b.whoL}>Телефон</Text>
           <TextInput style={b.whoIn} value={phone} onChangeText={setPhone}
-            placeholder="+7 928 000-00-00" placeholderTextColor={C.busy}
+            placeholder="89289204029" placeholderTextColor={C.busy}
             keyboardType="phone-pad" textContentType="telephoneNumber" autoFocus
             accessibilityLabel="Номер телефона" />
 

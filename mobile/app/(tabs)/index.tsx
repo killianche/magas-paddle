@@ -20,7 +20,8 @@ import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
 import { IMG, HERO, HERO_LIGHT, TOURN_IMG } from '../../src/images';
-import { Mark, IconChevron, IconCheck, IconBell, IconAccount } from '../../src/components/icons';
+import { Mark, IconChevron, IconBell, IconAccount } from '../../src/components/icons';
+import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
 import { SocialButtons } from '../../src/components/contacts';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
@@ -115,13 +116,18 @@ export default function Home() {
 
   // «сегодня» вместо даты: так короче и понятнее
   const mineDay = (() => {
-    const b = bookings.filter(x => x.status !== 'cancelled')[0];
+    const b = bookings.filter(isUpcoming)
+      .sort((a, x) => a.startsAt.localeCompare(x.startsAt))[0];
     if (!b) return '';
     const d = dateOfIso(b.startsAt);
     return d === today() ? 'сегодня' : dayMonth(d);
   })();
   const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
-  const mine = bookings.filter(b => b.status !== 'cancelled');
+  // Только то, что ещё впереди: просроченную заявку показывать «ждёт
+  // подтверждения» нельзя — внутри она значится как несостоявшаяся
+  const mine = bookings.filter(isUpcoming)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const mineState = mine.length > 0 ? bookingState(mine[0]) : null;
   const entered = tournaments.filter(t => t.entered);
 
   const go = (path: string, params?: Record<string, string>) => {
@@ -216,8 +222,12 @@ export default function Home() {
 
       {(mine.length > 0 || entered.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
-          style={({ pressed }) => [st.mine, pressed && { opacity: 0.8 }]}>
-          <View style={st.mineIcon}><IconCheck size={17} color={C.onLime} /></View>
+          style={({ pressed }) => [st.mine,
+            mineState && { borderLeftColor: mineState.key === 'pending' ? C.amber : C.lime },
+            pressed && { opacity: 0.8 }]}>
+          <View style={[st.mineIcon, mineState && { backgroundColor: mineState.bg }]}>
+            {mineState && <StateIcon state={mineState} size={18} />}
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={st.mineEy}>{mine.length > 0 ? 'Ваша запись' : 'Турнир'}</Text>
             <Text style={st.mineT}>
@@ -226,8 +236,8 @@ export default function Home() {
                 : 'Вы записаны на турнир'}
             </Text>
             <Text style={st.mineS}>
-              {mine.length > 0
-                ? `${mineDay} · ${mine[0].status === 'confirmed' ? 'подтверждено' : 'ждёт подтверждения'}`
+              {mineState
+                ? `${mineDay} · ${mineState.short}`
                     + (mine.length + entered.length > 1 ? ` · и ещё ${mine.length + entered.length - 1}` : '')
                 : 'смотреть в моих записях'}
             </Text>
@@ -405,6 +415,7 @@ const st = sheet(() => ({
   mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
     marginTop: 16, padding: 16, backgroundColor: C.surface,
     borderWidth: 1, borderColor: C.line, borderLeftWidth: 4, borderLeftColor: C.lime },
+  // Цвет полосы и значка берётся из состояния записи
   mineIcon: { width: 36, height: 36, backgroundColor: C.lime,
     alignItems: 'center', justifyContent: 'center' },
   mineEy: { ...EYEBROW, color: C.accent, fontSize: 10.5, letterSpacing: 1.4 },

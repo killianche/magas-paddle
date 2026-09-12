@@ -12,7 +12,8 @@ import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
 
-import { IconRacket, IconTrophy, IconCheck } from '../../src/components/icons';
+import { IconRacket, IconTrophy } from '../../src/components/icons';
+import { bookingState, StateIcon } from '../../src/components/bookingstate';
 import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
 function NeedLogin({ note }: { note: string }) {
@@ -127,12 +128,13 @@ export default function Bookings() {
       ))}
 
       {bookings.map(b => {
-        const st = stateOf(b);
+        const st = bookingState(b);
         return (
           <View key={'b' + b.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
             {/* Состояние — первое, что видит человек. Заявка и подтверждённая
                 бронь это разные вещи, и разница должна читаться сразу. */}
             <View style={[s.band, { backgroundColor: st.bg }]}>
+              <StateIcon state={st} size={13} />
               <Text style={[s.bandT, { color: st.fg }]}>{st.label}</Text>
             </View>
 
@@ -183,56 +185,9 @@ function Empty() {
   );
 }
 
-/** Сколько минут осталось держать заявку. null — удержания нет. */
-function holdLeft(b: { status: string; holdUntil?: string | null }): number | null {
-  if (b.status !== 'pending' || !b.holdUntil) return null;
-  return Math.max(0, Math.round((new Date(b.holdUntil).getTime() - Date.now()) / 60000));
-}
-
-/** Что показать человеку про состояние его записи.
- *
- *  Заявка и подтверждённая бронь — разные вещи. Пока менеджер не подтвердил,
- *  время держится за человеком лишь на срок удержания; после подтверждения
- *  оно закреплено, и его ждут. Раньше разница сводилась к слову
- *  «Ожидает» мелким шрифтом, и её не замечали. */
-function stateOf(b: ApiBooking) {
-  const left = holdLeft(b);
-  const past = new Date(b.endsAt).getTime() < Date.now();
-
-  if (b.status === 'expired') return {
-    label: 'ВРЕМЯ ОСВОБОДИЛОСЬ', bg: C.surface2, fg: C.dim,
-    note: 'Заявку не успели подтвердить, и время вернулось в расписание. Выберите другое.',
-    warn: false, dim: true, canCancel: false,
-  };
-  if (b.status === 'no_show') return {
-    label: 'НЕ СОСТОЯЛАСЬ', bg: C.surface2, fg: C.dim,
-    note: 'Клуб отметил, что вы не пришли.',
-    warn: false, dim: true, canCancel: false,
-  };
-  if (past) return {
-    label: 'СЫГРАНО', bg: C.surface2, fg: C.dim,
-    note: 'Спасибо за игру. Ждём снова.',
-    warn: false, dim: true, canCancel: false,
-  };
-  if (b.status === 'confirmed') return {
-    label: 'ЗАБРОНИРОВАНО', bg: C.lime, fg: C.onLime,
-    note: 'Менеджер подтвердил запись. Время закреплено за вами — вас ждут в клубе.',
-    warn: false, dim: false, canCancel: true,
-  };
-  // pending
-  return {
-    label: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ', bg: C.warnSoft, fg: C.amber,
-    note: left == null
-      ? 'Менеджер подтвердит запись и свяжется с вами.'
-      : left > 0
-        ? `Менеджер подтвердит запись и свяжется с вами. Место держим ещё ${left} ${plural(left, 'минуту', 'минуты', 'минут')}.`
-        : 'Срок удержания вышел — место могло освободиться. Свяжитесь с менеджером.',
-    warn: left === 0, dim: false, canCancel: true,
-  };
-}
-
 const s = sheet(() => ({
-  band: { paddingVertical: 7, paddingHorizontal: 14 },
+  band: { flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingVertical: 8, paddingHorizontal: 14 },
   bandT: { ...EYEBROW },
   body: { padding: 14 },
   note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
