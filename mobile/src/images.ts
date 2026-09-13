@@ -1,45 +1,38 @@
-// Фотографии площадок. Свободные лицензии Pexels и Unsplash — docs/PHOTO-CREDITS.md.
-// ЗАГЛУШКИ: это чужие корты. Заменяются на снимки клуба без изменения кода.
+// Фотографии клуба — прислал заказчик (f1–f8), разрешил использовать в
+// приложении. Карточки и галереи кортов, обложка главной, обложки турниров.
+// Своё фото площадки, загруженное в админке, показывается вместо этих.
+const F1 = require('../assets/img/club-f1.webp');
+const F2 = require('../assets/img/club-f2.webp');
+const F3 = require('../assets/img/club-f3.webp');
+const F4 = require('../assets/img/club-f4.webp');
+const F5 = require('../assets/img/club-f5.webp');
+const F6 = require('../assets/img/club-f6.webp');
+const F8 = require('../assets/img/club-f8.webp');
+
 export const IMG: Record<string, any> = {
-  c1: require('../assets/img/c1.webp'),
-  c2: require('../assets/img/c2.webp'),
-  c3: require('../assets/img/c3.webp'),
-  c4: require('../assets/img/c4.webp'),
-  c5: require('../assets/img/c5.webp'),
-  c6: require('../assets/img/c1.webp'),
+  c1: F1, c2: F2, c3: F3, c4: F4, c5: F5, c6: F6,
+  // Мини-футбольное поле: среди присланных снимков поля нет — прежнее фото
   f1: require('../assets/img/f1.webp'),
 };
-/** Фотографии для галереи на экране площадки.
- *  ЗАГЛУШКИ: у клуба пока по одному кадру на корт, и те чужие. Как только
- *  придут настоящие снимки — правится только этот список, код не трогается.
- *  ВОПРОС К ЗАКАЗЧИКУ: нужны 3–5 фотографий каждого корта. */
+/** Фотографии для галереи на экране площадки: первый кадр — карточка корта. */
 export const COURT_PHOTOS: Record<string, any[]> = {
-  c1: [require('../assets/img/c1.webp'), require('../assets/img/club-hero.webp'),
-       require('../assets/img/club-band.webp')],
-  c2: [require('../assets/img/c2.webp'), require('../assets/img/club-band.webp')],
-  c3: [require('../assets/img/c3.webp'), require('../assets/img/club-hero.webp')],
-  c4: [require('../assets/img/c4.webp'), require('../assets/img/club-band.webp')],
-  c5: [require('../assets/img/c5.webp'), require('../assets/img/club-hero.webp')],
-  c6: [require('../assets/img/c1.webp'), require('../assets/img/club-band.webp')],
+  c1: [F1, F8, F3],
+  c2: [F2, F5, F4],
+  c3: [F3, F1, F6],
+  c4: [F4, F2, F5],
+  c5: [F5, F6, F8],
+  c6: [F6, F3, F1],
   f1: [require('../assets/img/f1.webp')],
 };
 
-// Снимки клуба, присланные заказчиком. В отличие от остальных — настоящие.
-export const HERO = require('../assets/img/club-hero.webp');
-/** Первый экран в светлой теме. ЗАГЛУШКА: присланные клубом снимки тёмные
- *  (яркость 47 из 255), на белом фоне такой кадр выглядит чужеродно. Здесь
- *  светлый падел-кадр с Unsplash (лицензия свободная, docs/PHOTO-CREDITS.md),
- *  пока клуб не загрузит своё светлое фото в админке. */
-export const HERO_LIGHT = require('../assets/img/hero-light.webp');
-export const CLUB_BAND = require('../assets/img/club-band.webp');
-export const TOURN = require('../assets/img/tourn.webp');
+/** Обложка главной — f8, как попросил заказчик. Одна для обеих тем:
+ *  снимок светлый, а белую марку сверху держит затемнение. */
+export const HERO = F8;
+export const HERO_LIGHT = F8;
 
-// Обложки турниров. Менеджер меняет их из админки — здесь это просто ключ в данных.
+// Обложки турниров. Менеджер выбирает их в админке — здесь это ключ в данных.
 export const TOURN_IMG: Record<string, any> = {
-  t1: require('../assets/img/t1.webp'),
-  t2: require('../assets/img/t2.webp'),
-  t3: require('../assets/img/t3.webp'),
-  t4: require('../assets/img/t4.webp'),
+  t1: F6, t2: F2, t3: F1, t4: F5,
 };
 
 // Логотип клуба. Из него же собраны иконки приложения — scripts/brand/make-icons.py.
