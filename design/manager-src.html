@@ -105,7 +105,7 @@ input,select{width:100%;background:var(--surface);border:1px solid var(--line-st
 .search:focus{outline:none;border-color:var(--line-strong)}
 .dpick{padding:7px 9px;border-radius:9px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);color-scheme:dark}
-.btn.pend{background:var(--amber);color:#231502;border-color:var(--amber);font-weight:700}
+.btn.pend{background:var(--amber);color:#231502;border-color:var(--amber);font-weight:700;white-space:nowrap}
 .btn.pend b{font-variant-numeric:tabular-nums}
 
 /* Шапка таблицы и сводка не должны уезжать: к вечеру колонки оставались
@@ -321,7 +321,9 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   <input id="search" class="search" type="search" autocomplete="off"
          placeholder="Имя, телефон или ID" aria-label="Поиск клиента по имени, телефону или ID">
   <div class="spacer"></div>
-  <button class="btn pend" id="pendBtn" hidden>Новых заявок: <b id="pendN">0</b></button>
+  <!-- Новые заявки раздельно: брони кортов и заявки на турниры -->
+  <button class="btn pend" id="pendBtn" hidden title="Новые брони кортов, ждут подтверждения">Брони: <b id="pendN">0</b></button>
+  <button class="btn pend" id="pendTnBtn" hidden title="Новые заявки на турниры, ждут подтверждения">Турниры: <b id="pendTnN">0</b></button>
   <div class="day-nav">
     <button id="prev" title="Предыдущий день">‹</button>
     <div class="day-cur"><span id="dayTitle">—</span><small id="daySub"></small></div>
@@ -438,8 +440,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 <!-- новые заявки со всех дат -->
 <div class="modal" id="pendModal">
   <div class="sheet wide">
-    <h3>Новые заявки</h3>
-    <p class="sub">Из приложения, по всем датам. Ждут подтверждения.</p>
+    <h3 id="pendTitle">Новые брони</h3>
+    <p class="sub" id="pendSub">Из приложения, по всем датам. Ждут подтверждения.</p>
     <div class="list" id="pendList"></div>
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
   </div>
@@ -1491,32 +1493,48 @@ async function runSearch(q){
 }
 
 /* ── новые заявки со всех дат ─────────────────────────── */
+// Брони кортов и заявки на турниры — раздельно: у каждых своя кнопка
+// в шапке и свой список. Турнирная заявка открывает карточку турнира.
+let pendRows = [];
 async function loadPending(){
   try {
-    const rows = await call('/admin/pending');
-    $('#pendN').textContent = rows.length;
-    $('#pendBtn').hidden = rows.length === 0;
-    $('#pendList').innerHTML = rows.length ? rows.map(r => `
-      <button class="it" data-date="${r.date}" data-id="${r.id}" data-kind="${r.kind||'booking'}" data-t="${r.tournamentId||''}">
-        <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${rub(r.price)}</span></div>
-        <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
-      </button>`).join('') : '<div class="empty">Новых заявок нет.</div>';
-    $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
-      $('#pendModal').classList.remove('on');
-      // Заявка на турнир открывает карточку турнира со списком заявок
-      if (el.dataset.kind === 'tournament') {
-        const ts = await call('/admin/tournaments');
-        const t = ts.find(x => x.id === +el.dataset.t);
-        if (t) { await openTournament(t); $('#tnEntries').scrollIntoView({ block: 'start' }) }
-        return;
-      }
-      date = el.dataset.date;
-      await load();
-      openBooking(+el.dataset.id);
-    });
+    pendRows = await call('/admin/pending');
+    const books = pendRows.filter(r => (r.kind||'booking') === 'booking');
+    const tours = pendRows.filter(r => r.kind === 'tournament');
+    $('#pendN').textContent = books.length;
+    $('#pendBtn').hidden = books.length === 0;
+    $('#pendTnN').textContent = tours.length;
+    $('#pendTnBtn').hidden = tours.length === 0;
   } catch {}
 }
-$('#pendBtn').onclick = () => $('#pendModal').classList.add('on');
+function openPending(kind){
+  const tour = kind === 'tournament';
+  const rows = pendRows.filter(r => (r.kind||'booking') === kind);
+  $('#pendTitle').textContent = tour ? 'Заявки на турниры' : 'Новые брони';
+  $('#pendSub').textContent = tour
+    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим.'
+    : 'Из приложения, по всем датам. Ждут подтверждения.';
+  $('#pendList').innerHTML = rows.length ? rows.map(r => `
+    <button class="it" data-date="${r.date}" data-id="${r.id}" data-t="${r.tournamentId||''}">
+      <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${rub(r.price)}</span></div>
+      <div class="when">${pretty(r.date)}<br>${tour ? 'начало ' + hh(r.hour) : hh(r.hour)+'–'+hh(r.hour+r.hours)}</div>
+    </button>`).join('') : `<div class="empty">${tour ? 'Новых заявок на турниры нет.' : 'Новых броней нет.'}</div>`;
+  $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
+    $('#pendModal').classList.remove('on');
+    if (tour) {
+      const ts = await call('/admin/tournaments');
+      const t = ts.find(x => x.id === +el.dataset.t);
+      if (t) { await openTournament(t); $('#tnEntries').scrollIntoView({ block: 'start' }) }
+      return;
+    }
+    date = el.dataset.date;
+    await load();
+    openBooking(+el.dataset.id);
+  });
+  $('#pendModal').classList.add('on');
+}
+$('#pendBtn').onclick = () => openPending('booking');
+$('#pendTnBtn').onclick = () => openPending('tournament');
 
 /* ── управление клубом ────────────────────────────────── */
 let setup = null;
