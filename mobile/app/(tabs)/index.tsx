@@ -79,14 +79,20 @@ export default function Home() {
   const Day = tomorrow ? 'Завтра' : 'Сегодня';
   const day = tomorrow ? 'завтра' : 'сегодня';
   // Первый экран — одна большая фотография, кнопки внизу неё
-  // Обложка почти на весь первый экран: снизу скругление и две кнопки в ряд
-  const heroH = Math.max(520, Math.min(height * 0.8, 700));
+  // Высота обложки прежняя — 80 % экрана заказчик счёл слишком вытянутой
+  const heroH = Math.max(460, Math.min(height * 0.7, 600));
   const tileW = Math.floor((width - S.xl * 2 - TILE_GAP) / 2);
   // «Мини-футбольное поле» должно стоять в одну строку и на узком телефоне:
   // на 360 pt при кегле 19 оно переносилось
   // Кнопки стоят в ряд, на каждую — половина ширины: «Мини-футбольное»
   // должно поместиться одним словом на строку и на узком телефоне
-  const ctaSize = width < 340 ? 13 : width < 385 ? 15 : 16.5;
+  // Размер названия — от ширины кнопки: «МИНИ-ФУТБОЛЬНОЕ» должно уместиться
+  // в строку, иначе название ломается на три строки и кнопка вытягивается
+  // Замер шрифта Inter Black: слово в 10,94 раза шире кегля, минус трекинг
+  // −0,5 на букву; поля кнопки 12 + 12 и рамка. Берём с запасом 4 %.
+  const ctaW = (Math.min(width, 520) - S.xl * 2 - 10) / 2;
+  const ctaSize = Math.min(16, Math.max(10.5, Math.floor((ctaW - 26 + 7.5) / 11.4 * 2) / 2));
+  const narrow = width < 340;
   // Фото первого экрана: своё из админки, иначе встроенное. В светлой теме —
   // светлый кадр: тёмный снимок на белом фоне выглядит чужеродно.
   const hero = mode === 'light'
@@ -179,20 +185,26 @@ export default function Home() {
           <Pressable onPress={() => go('/courts')} accessibilityRole="button"
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
             style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
-            <Text style={[st.ctaEy, { color: C.onLime, opacity: 0.65 }]}>Забронировать</Text>
+            <View style={st.ctaTop}>
+              <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: C.onLime, opacity: 0.65 }]}
+                numberOfLines={1}>Забронировать</Text>
+              <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
+            </View>
             <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: C.onLime }]}
               allowFontScaling={false}>Падел-{'\n'}корт</Text>
-            <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
           </Pressable>
 
           {club.showFootball && (
             <Pressable onPress={() => go('/football')} accessibilityRole="button"
               accessibilityLabel="Забронировать мини-футбольное поле"
               style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.85 }]}>
-              <Text style={[st.ctaEy, { color: 'rgba(245,248,242,.66)' }]}>Забронировать</Text>
+              <View style={st.ctaTop}>
+                <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: 'rgba(245,248,242,.66)' }]}
+                  numberOfLines={1}>Забронировать</Text>
+                <Text style={[st.ctaArrow, { color: ON_PHOTO }]}>→</Text>
+              </View>
               <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: ON_PHOTO }]}
                 allowFontScaling={false}>Мини-футбольное{'\n'}поле</Text>
-              <Text style={[st.ctaArrow, { color: ON_PHOTO }]}>→</Text>
             </Pressable>
           )}
         </View>
@@ -388,15 +400,17 @@ const st = sheet(() => ({
     paddingBottom: 20, gap: 10 },
   // Кнопки записи: над крупной надписью — мелкое «Забронировать». Так длинное
   // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
-  // Кнопка в половину ширины: подпись, крупное название, стрелка внизу
-  cta: { flex: 1, minHeight: 118, paddingTop: 13, paddingBottom: 12, paddingHorizontal: 14,
-    borderWidth: 1, borderRadius: R.xl },
+  // Кнопка в половину ширины, компактная: сверху «Забронировать» и стрелка,
+  // под ними крупное название
+  cta: { flex: 1, paddingVertical: 11, paddingHorizontal: 12, borderWidth: 1, borderRadius: R.lg },
+  ctaTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   ctaLime: { backgroundColor: C.lime, borderColor: C.lime },
   ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
-  ctaEy: { ...EYEBROW, fontSize: 10, letterSpacing: 1.1 },
+  ctaEy: { ...EYEBROW, fontSize: 10, letterSpacing: 1.1, flexShrink: 1 },
+  ctaEyNarrow: { fontSize: 8.5, letterSpacing: 0.6 },
   ctaT: { fontFamily: DISP, fontSize: 19, lineHeight: 22, letterSpacing: -0.5,
     textTransform: 'uppercase', marginTop: 3 },
-  ctaArrow: { fontFamily: DISP, fontSize: 22, marginTop: 'auto', alignSelf: 'flex-end' },
+  ctaArrow: { fontFamily: DISP, fontSize: 18, lineHeight: 20 },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
     marginTop: 16, padding: 16, backgroundColor: C.surface,
