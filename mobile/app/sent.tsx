@@ -23,7 +23,9 @@ export default function Sent() {
   const club = useClub();
   const insets = useSafeAreaInsets();
   const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
-    hours: string; price: string; holdUntil?: string }>();
+    hours: string; price: string; holdUntil?: string; kind?: string }>();
+  // Заявка на турнир показывается тем же экраном: турнир, дата, начало
+  const tournament = p.kind === 'tournament';
   const hydrated = useHydrated();
   const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
   const price = Number(p.price ?? 0);
@@ -65,12 +67,20 @@ export default function Sent() {
       <View style={s.done}>
         <View style={s.tick}><IconCheck size={34} color={C.accent} active /></View>
         <Text style={s.h}>Заявка отправлена</Text>
-        <Text style={s.p}>
-          <Text style={s.strong}>{String(p.name)}</Text>
-          {'\n'}{longDate(String(p.date))}
-          {'\n'}<Text style={s.strong}>{hh(hour)} – {hh(hour + hours)}</Text>
-          {' '}· {hours} {plural(hours, 'час', 'часа', 'часов')}
-        </Text>
+        {tournament ? (
+          <Text style={s.p}>
+            Турнир <Text style={s.strong}>«{String(p.name)}»</Text>
+            {'\n'}{longDate(String(p.date))}
+            {'\n'}начало в <Text style={s.strong}>{hh(hour)}</Text>
+          </Text>
+        ) : (
+          <Text style={s.p}>
+            <Text style={s.strong}>{String(p.name)}</Text>
+            {'\n'}{longDate(String(p.date))}
+            {'\n'}<Text style={s.strong}>{hh(hour)} – {hh(hour + hours)}</Text>
+            {' '}· {hours} {plural(hours, 'час', 'часа', 'часов')}
+          </Text>
+        )}
 
         <View style={s.pill}>
           <View style={s.dot} />
@@ -92,8 +102,10 @@ export default function Sent() {
 
       {/* Мелким внизу: пригодится, только если что-то пойдёт не так */}
       <Text style={[s.small, { paddingBottom: insets.bottom + 20 }]}>
-        Заявка № {String(p.id ?? '—')} · {rub(price)} · предоплата {club.prepayPercent} % —
-        {' '}{rub(prepay)}. Остальное на месте.
+        {tournament
+          ? `Заявка на турнир № ${String(p.id ?? '—')} · взнос ${rub(price)} — оплачивается в клубе.`
+          : <>Заявка № {String(p.id ?? '—')} · {rub(price)} · предоплата {club.prepayPercent} % —
+            {' '}{rub(prepay)}. Остальное на месте.</>}
       </Text>
     </View>
   );

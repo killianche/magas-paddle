@@ -48,7 +48,10 @@ export default function Tournaments() {
             style={s.heroImg} resizeMode="cover" />
           <LinearGradient colors={['rgba(9,13,10,.10)', 'rgba(9,13,10,.55)', 'rgba(9,13,10,.92)']}
             locations={[0, 0.5, 1]} style={s.fill} />
-          {hero.entered
+          {hero.entry?.status === 'pending'
+            ? <View style={[s.okFlag, { backgroundColor: 'rgba(240,169,59,.9)' }]}>
+                <Text style={[s.flagT, { color: '#241500' }]}>ЖДЁТ ПОДТВЕРЖДЕНИЯ</Text></View>
+            : hero.entered
             ? <View style={s.okFlag}><IconCheck size={12} color={C.onLime} />
                 <Text style={s.flagT}>ВЫ ЗАПИСАНЫ</Text></View>
             : <View style={s.flag}><Text style={s.flagT}>
@@ -100,7 +103,9 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
                 : `${hh(hourOfIso(t.startsAt))} · ${t.format} · взнос ${rub(t.fee)}`}
         </Text>
       </View>
-      {t.entered && !past
+      {t.entry?.status === 'pending' && !past
+        ? <Pill text="Ждёт" kind="wait" />
+        : t.entered && !past
         ? <View style={s.rowOk}><IconCheck size={12} color={C.onLime} /></View>
         : <Pill text={past ? 'Завершён' : t.state === 'open' ? 'Открыт' : 'Скоро'}
             kind={past ? 'past' : t.state === 'open' ? 'ok' : 'wait'} />}

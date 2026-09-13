@@ -41,7 +41,10 @@ export default function Bookings() {
     const [bookings, tournaments] = await Promise.all([
       api.myBookings(phone), api.tournaments(phone),
     ]);
-    return { bookings, tournaments: tournaments.filter(t => t.entered) };
+    // Заявки на турниры — как брони: и ждущие, и подтверждённые, и те, у
+    // которых вышел срок (чтобы человек видел, что место не за ним)
+    return { bookings, tournaments: tournaments.filter(t =>
+      t.entry ? t.entry.status !== 'cancelled' : t.entered) };
   }, [phone], phone ? `mine.${phone}` : undefined);
 
   // Вернулись на вкладку — подтянуть свежее: бронь могли подтвердить
@@ -93,8 +96,17 @@ export default function Bookings() {
       contentContainerStyle={{ paddingBottom: TAB_SPACE, paddingTop: 8 }}
       refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
-      {entries.map(t => (
-        <View key={'t' + t.id} style={[s.card, s.cardT]}>
+      {entries.map(t => {
+        // Состояние заявки на турнир — теми же словами и цветами, что у брони
+        const st = bookingState({ status: t.entry?.status ?? 'confirmed', holdUntil: t.entry?.holdUntil ?? null,
+          endsAt: new Date(new Date(t.startsAt).getTime() + (t.hours ?? 1) * 3600_000).toISOString() } as ApiBooking);
+        return (
+        <View key={'t' + t.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
+          <View style={[s.band, { backgroundColor: st.bg }]}>
+            <StateIcon state={st} size={13} />
+            <Text style={[s.bandT, { color: st.fg }]}>{st.label} · ТУРНИР</Text>
+          </View>
+          <View style={s.body}>
           <View style={s.head}>
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{t.name}</Text>
@@ -111,13 +123,17 @@ export default function Bookings() {
               onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id) } })}>
               <Text style={s.miniT}>О турнире</Text>
             </Pressable>
-            <Pressable style={s.mini} onPress={() => aboutTournament(t)}
-              accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
-              <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
-            </Pressable>
+            {st.canCancel && (
+              <Pressable style={s.mini} onPress={() => aboutTournament(t)}
+                accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
+                <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
+              </Pressable>
+            )}
+          </View>
           </View>
         </View>
-      ))}
+        );
+      })}
 
       {bookings.map(b => {
         const st = bookingState(b);

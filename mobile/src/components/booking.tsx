@@ -391,8 +391,10 @@ function PadelMark() {
  *  Два поля: телефон и имя. Пароль не нужен — его можно задать позже в
  *  аккаунте. Если номер уже защищён паролем, окно просит пароль, иначе бронь
  *  привязалась бы к чужому аккаунту без его ведома. */
-function WhoSheet({ visible, onCancel, onDone }: {
+export function WhoSheet({ visible, onCancel, onDone, title = 'Кто бронирует' }: {
   visible: boolean; onCancel: () => void; onDone: (p: Profile, token?: string) => void;
+  /** Заголовок окна: на турнире — «Кто записывается». */
+  title?: string;
 }) {
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
@@ -446,7 +448,7 @@ function WhoSheet({ visible, onCancel, onDone }: {
       <KeyboardAvoidingView style={b.whoBack} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={{ flex: 1 }} onPress={onCancel} accessibilityLabel="Закрыть" />
         <View style={[b.who, { paddingBottom: insets.bottom + 14 }]}>
-          <Text style={b.whoT}>Кто бронирует</Text>
+          <Text style={b.whoT}>{title}</Text>
 
           <Text style={b.whoL}>Телефон</Text>
           <TextInput style={b.whoIn} value={phone} onChangeText={setPhone}

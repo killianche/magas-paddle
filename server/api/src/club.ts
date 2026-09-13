@@ -164,7 +164,12 @@ export class ClubService {
       where: { status: 'pending', hold_until: { lt: new Date() } },
       data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
     });
-    return r.count;
+    // Заявки на турниры держат место так же и так же его отпускают
+    const t = await this.db.tournament_entries.updateMany({
+      where: { status: 'pending', hold_until: { lt: new Date() } },
+      data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
+    });
+    return r.count + t.count;
   }
 
   /** Позвать после изменения настроек, чтобы не ждать истечения кэша. */

@@ -210,6 +210,16 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .ent{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .ent .h{font-size:12px;color:var(--dim-2);margin-bottom:6px}
 .ent div.e{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+/* Заявки на турнир: имя, телефон, состояние и кнопки — как у брони */
+.ent div.er{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;padding:7px 0;
+  border-bottom:1px solid var(--line)}
+.ent div.er:last-child{border-bottom:0}
+.ent .er .who{flex:1 1 180px;display:flex;flex-direction:column;gap:2px}
+.ent .er .who span{color:var(--dim-2);font-size:12px}
+.ent .er .stt{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line)}
+.ent .er .stt.pending{color:var(--amber);border-color:var(--amber)}
+.ent .er .stt.confirmed{color:var(--lime);border-color:var(--lime)}
+.ent .er .stt.cancelled,.ent .er .stt.expired{color:var(--dim-2)}
 .saved{color:var(--lime);font-size:12px;margin-left:8px}
 .days{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .days button{padding:7px 12px;border-radius:9px;border:1px solid var(--line);
@@ -1487,12 +1497,19 @@ async function loadPending(){
     $('#pendN').textContent = rows.length;
     $('#pendBtn').hidden = rows.length === 0;
     $('#pendList').innerHTML = rows.length ? rows.map(r => `
-      <button class="it" data-date="${r.date}" data-id="${r.id}">
+      <button class="it" data-date="${r.date}" data-id="${r.id}" data-kind="${r.kind||'booking'}" data-t="${r.tournamentId||''}">
         <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${rub(r.price)}</span></div>
         <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
       </button>`).join('') : '<div class="empty">Новых заявок нет.</div>';
     $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
       $('#pendModal').classList.remove('on');
+      // Заявка на турнир открывает карточку турнира со списком заявок
+      if (el.dataset.kind === 'tournament') {
+        const ts = await call('/admin/tournaments');
+        const t = ts.find(x => x.id === +el.dataset.t);
+        if (t) { await openTournament(t); $('#tnEntries').scrollIntoView({ block: 'start' }) }
+        return;
+      }
       date = el.dataset.date;
       await load();
       openBooking(+el.dataset.id);
@@ -2095,14 +2112,35 @@ async function openTournament(t){
   $('#tnErr').classList.remove('on');
   $('#tnModal').classList.add('on');
 
-  if(t){
-    try {
-      const es = await call(`/admin/tournaments/${t.id}/entries`);
-      $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Записались: ${es.length}</div>` +
-        (es.length ? es.map(e => `<div class="e"><span>${e.name}</span><span>${phoneNice(e.phone)}</span></div>`).join('')
-                   : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
-    } catch {}
-  }
+  if(t) await loadEntries(t);
+}
+
+/** Заявки на турнир. Из приложения они приходят «ждут подтверждения» и
+ *  держат место, как бронь корта; менеджер подтверждает или отменяет. */
+const ENTRY_STATE = { pending:'ждёт подтверждения', confirmed:'участвует', cancelled:'отменена', expired:'срок вышел' };
+async function loadEntries(t){
+  try {
+    const es = await call(`/admin/tournaments/${t.id}/entries`);
+    const active = es.filter(e => e.status==='pending' || e.status==='confirmed');
+    $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Заявок: ${active.length} из ${t.seats}` +
+      ` · подтверждено ${es.filter(e => e.status==='confirmed').length}</div>` +
+      (es.length ? es.map(e => {
+        const left = holdLeft(e);
+        return `<div class="er" data-id="${e.id}">
+          <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}</span></div>
+          <span class="stt ${e.status}">${ENTRY_STATE[e.status]||e.status}${left!==null?' · '+holdText(left):''}</span>
+          ${e.status!=='confirmed' ? `<button type="button" class="btn small acc" data-st="confirmed">Подтвердить</button>` : ''}
+          ${e.status==='pending'||e.status==='confirmed' ? `<button type="button" class="btn small" data-st="cancelled">Отменить</button>` : ''}
+        </div>`}).join('')
+      : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
+    $('#tnEntries').querySelectorAll('button[data-st]').forEach(b => b.onclick = async () => {
+      const id = b.closest('.er').dataset.id;
+      try {
+        await call(`/admin/entries/${id}/status`, { method:'POST', body: JSON.stringify({ status: b.dataset.st }) });
+        loadEntries(t); loadTournaments(); loadPending();
+      } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
+    });
+  } catch {}
 }
 
 $('#tnSave').onclick = async () => {

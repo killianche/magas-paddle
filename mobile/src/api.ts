@@ -141,6 +141,19 @@ export type ApiTournament = {
   fee: number; seats: number; taken: number;
   state: 'soon' | 'open' | 'done';
   coverUrl: string | null; result: string | null; entered: boolean;
+  /** Сколько часов идёт турнир. */
+  hours?: number;
+  /** Своя заявка на турнир — как бронь: ждёт подтверждения, подтверждена,
+   *  отменена или срок удержания вышел. null — не подавал. */
+  entry?: { id: number; status: 'pending' | 'confirmed' | 'cancelled' | 'expired';
+    holdUntil: string | null } | null;
+};
+
+/** Ответ на заявку на турнир. */
+export type ApiEntry = {
+  id: number; tournamentId: number; tournamentName: string; startsAt: string;
+  fee: number; status: string; holdUntil: string | null; holdMinutes: number;
+  clientId: number;
 };
 
 export type Alternatives = {
@@ -211,9 +224,9 @@ export const api = {
   tournaments: (phone?: string) =>
     call<ApiTournament[]>(`/tournaments${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),
 
-  enterTournament: (id: number, name: string, phone: string) =>
-    call<{ entered: boolean; left: number }>(`/tournaments/${id}/entries`,
-      { method: 'POST', body: JSON.stringify({ name, phone }) }),
+  enterTournament: (id: number, who: { name: string; surname?: string; phone: string }) =>
+    call<ApiEntry>(`/tournaments/${id}/entries`,
+      { method: 'POST', body: JSON.stringify(who) }),
 
   leaveTournament: (id: number, phone: string) =>
     call<{ entered: boolean }>(`/tournaments/${id}/entries?phone=${encodeURIComponent(phone)}`,

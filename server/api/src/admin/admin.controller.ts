@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, ForbiddenException, Get, HttpException,
+  BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, HttpException,
   NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards,
 } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
@@ -520,9 +520,10 @@ export class AdminController {
     const courtName = new Map(courts.map(c => [c.id, c.name]));
     const byId = new Map(clients.map(c => [String(c.id), c]));
 
-    return rows.map(b => {
+    const list: any[] = rows.map(b => {
       const cl = b.client_id ? byId.get(String(b.client_id)) : null;
       return {
+        kind: 'booking',
         id: Number(b.id), courtId: b.court_id, courtName: courtName.get(b.court_id) ?? b.court_id,
         date: this.dateOf(b.starts_at), hour: hourOf(b.starts_at),
         hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
@@ -531,6 +532,20 @@ export class AdminController {
         phone: cl?.phone ?? null,
       };
     });
+
+    // Заявки на турниры ждут подтверждения так же, как брони
+    const entries = await this.db.tournament_entries.findMany({
+      where: { status: 'pending', tournaments: { starts_at: { gte: new Date() } } },
+      include: { tournaments: true, clients: true }, orderBy: { created_at: 'asc' }, take: 100,
+    });
+    for (const e of entries) list.push({
+      kind: 'tournament', id: Number(e.id), tournamentId: Number(e.tournament_id),
+      courtName: `турнир «${e.tournaments.name}»`,
+      date: this.dateOf(e.tournaments.starts_at), hour: hourOf(e.tournaments.starts_at),
+      hours: e.tournaments.hours, price: e.tournaments.fee, createdAt: e.created_at,
+      name: e.clients.name, phone: e.clients.phone,
+    });
+    return list.sort((a, b) => a.date.localeCompare(b.date) || a.hour - b.hour);
   }
 
   /** Перенести бронь на другой корт или час.
@@ -1355,9 +1370,10 @@ export class AdminController {
   /** Турниры: список с числом записавшихся. */
   @Get('tournaments')
   async tournaments() {
+    await this.club.releaseExpired();
     const rows = await this.db.tournaments.findMany({ orderBy: { starts_at: 'desc' } });
     const counts = await this.db.tournament_entries.groupBy({
-      by: ['tournament_id'], _count: { _all: true },
+      by: ['tournament_id'], where: { status: { in: ['pending', 'confirmed'] } }, _count: { _all: true },
     });
     const taken = new Map(counts.map(c => [String(c.tournament_id), c._count._all]));
     return rows.map(t => ({
@@ -1368,18 +1384,60 @@ export class AdminController {
     }));
   }
 
-  /** Кто записался: имя и телефон, чтобы можно было позвонить. */
+  /** Кто записался: имя, телефон, ID и состояние заявки. */
   @Get('tournaments/:id/entries')
   async entries(@Param('id') id: string) {
+    await this.club.releaseExpired();
     const rows = await this.db.tournament_entries.findMany({
       where: { tournament_id: BigInt(id) },
       orderBy: { created_at: 'asc' },
       include: { clients: true },
     });
     return rows.map(e => ({
-      id: Number(e.id), name: e.clients.name, phone: e.clients.phone,
-      signedAt: e.created_at,
+      id: Number(e.id), clientId: Number(e.client_id),
+      name: [e.clients.name, e.clients.surname].filter(Boolean).join(' '), phone: e.clients.phone,
+      signedAt: e.created_at, status: e.status, holdUntil: e.hold_until,
+      paid: e.paid_amount,
     }));
+  }
+
+  /** Подтвердить или отменить заявку на турнир — как бронь корта. */
+  @Post('entries/:id/status')
+  async setEntryStatus(@Req() req: any, @Param('id') id: string, @Body() body: { status: string }) {
+    const status = String(body?.status);
+    if (!['confirmed', 'cancelled'].includes(status)) {
+      throw new BadRequestException('Можно подтвердить или отменить');
+    }
+    if (status === 'cancelled' && !this.auth.can(req.admin, 'cancel')) {
+      throw new ForbiddenException('Нет доступа: отменять записи');
+    }
+    const e = await this.db.tournament_entries.findUnique({
+      where: { id: BigInt(id) }, include: { tournaments: true, clients: true } });
+    if (!e) throw new NotFoundException('Заявка на турнир не найдена');
+
+    if (status === 'confirmed' && e.status !== 'confirmed') {
+      // Истёкшую или отменённую заявку можно вернуть, если есть место
+      if (!['pending', 'confirmed'].includes(e.status)) {
+        const taken = await this.db.tournament_entries.count({ where: {
+          tournament_id: e.tournament_id, status: { in: ['pending', 'confirmed'] } } });
+        if (taken >= e.tournaments.seats) throw new ConflictException('Мест больше нет');
+      }
+    }
+    await this.db.tournament_entries.update({ where: { id: e.id }, data: {
+      status, hold_until: null, status_at: new Date(), status_by: req.admin.login,
+    }});
+
+    if (e.status !== status) {
+      const when = e.tournaments.starts_at.toLocaleString('ru-RU', {
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+      const t = status === 'confirmed'
+        ? ['Вы в турнире', `«${e.tournaments.name}», ${when}. Ждём вас.`]
+        : ['Запись на турнир отменена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`];
+      await this.notes.toClient(e.client_id, 'tournament', t[0], t[1], { by: req.admin.name });
+    }
+    await this.auth.log(req.admin, status === 'confirmed' ? 'подтвердил участие в турнире' : 'отменил участие в турнире',
+      `${e.clients.name}, «${e.tournaments.name}»`);
+    return { id: Number(e.id), status };
   }
 
   /** Завести турнир или изменить существующий. */
