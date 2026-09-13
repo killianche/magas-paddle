@@ -21,7 +21,6 @@ import { useClub } from '../../src/club';
 import { IMG, HERO, HERO_LIGHT, TOURN_IMG } from '../../src/images';
 import { Mark, IconChevron, IconBell, IconAccount } from '../../src/components/icons';
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
-import { SocialButtons } from '../../src/components/contacts';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
@@ -80,11 +79,14 @@ export default function Home() {
   const Day = tomorrow ? 'Завтра' : 'Сегодня';
   const day = tomorrow ? 'завтра' : 'сегодня';
   // Первый экран — одна большая фотография, кнопки внизу неё
-  const heroH = Math.max(460, Math.min(height * 0.7, 600));
+  // Обложка почти на весь первый экран: снизу скругление и две кнопки в ряд
+  const heroH = Math.max(520, Math.min(height * 0.8, 700));
   const tileW = Math.floor((width - S.xl * 2 - TILE_GAP) / 2);
   // «Мини-футбольное поле» должно стоять в одну строку и на узком телефоне:
   // на 360 pt при кегле 19 оно переносилось
-  const ctaSize = width < 340 ? 15 : width < 385 ? 17 : 19;
+  // Кнопки стоят в ряд, на каждую — половина ширины: «Мини-футбольное»
+  // должно поместиться одним словом на строку и на узком телефоне
+  const ctaSize = width < 340 ? 13 : width < 385 ? 15 : 16.5;
   // Фото первого экрана: своё из админки, иначе встроенное. В светлой теме —
   // светлый кадр: тёмный снимок на белом фоне выглядит чужеродно.
   const hero = mode === 'light'
@@ -171,15 +173,15 @@ export default function Home() {
           </Pressable>
         </View>
 
-        {/* Две кнопки одного вида: корт — залитая, поле — без цвета */}
+        {/* Две кнопки одного вида в ряд: корт — залитая, поле — без цвета.
+            Одинаковой высоты: «Мини-футбольное поле» занимает две строки. */}
         <View style={st.heroActions}>
           <Pressable onPress={() => go('/courts')} accessibilityRole="button"
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
             style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[st.ctaEy, { color: C.onLime, opacity: 0.65 }]}>Забронировать</Text>
-              <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color:C.onLime }]}>Падел-корт</Text>
-            </View>
+            <Text style={[st.ctaEy, { color: C.onLime, opacity: 0.65 }]}>Забронировать</Text>
+            <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: C.onLime }]}
+              allowFontScaling={false}>Падел-{'\n'}корт</Text>
             <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
           </Pressable>
 
@@ -187,10 +189,9 @@ export default function Home() {
             <Pressable onPress={() => go('/football')} accessibilityRole="button"
               accessibilityLabel="Забронировать мини-футбольное поле"
               style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.85 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[st.ctaEy, { color: 'rgba(245,248,242,.66)' }]}>Забронировать</Text>
-                <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color:ON_PHOTO }]}>Мини-футбольное поле</Text>
-              </View>
+              <Text style={[st.ctaEy, { color: 'rgba(245,248,242,.66)' }]}>Забронировать</Text>
+              <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: ON_PHOTO }]}
+                allowFontScaling={false}>Мини-футбольное{'\n'}поле</Text>
               <Text style={[st.ctaArrow, { color: ON_PHOTO }]}>→</Text>
             </Pressable>
           )}
@@ -233,8 +234,6 @@ export default function Home() {
           <IconChevron size={18} color={C.dim2} />
         </Pressable>
       )}
-
-      <SocialButtons />
 
       {/* Корты плитками по два в ряд: все шесть видны сразу, без прокрутки
           вбок. Нажатие — страница корта с его временем. */}
@@ -371,7 +370,9 @@ const st = sheet(() => ({
   // растягивает их до собственного размера, и виден лишь угол снимка.
   fillImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     width: '100%', height: '100%' },
-  hero: { overflow: 'hidden', backgroundColor: '#0A1D14', justifyContent: 'space-between' },
+  // Низ обложки скруглён — как карточка, выезжающая из-под экрана
+  hero: { overflow: 'hidden', backgroundColor: '#0A1D14', justifyContent: 'space-between',
+    borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
   // Марка в две строки: PADEL / MAGAS
   brand: { color: ON_PHOTO, fontFamily: DISP, fontSize: 15, lineHeight: 15,
@@ -383,17 +384,19 @@ const st = sheet(() => ({
     alignItems: 'center', justifyContent: 'center' },
   circleT: { fontFamily: DISP, color: ON_PHOTO, fontSize: 13, letterSpacing: -0.2 },
 
-  heroActions: { paddingHorizontal: S.xl, paddingBottom: 22, gap: 10 },
+  heroActions: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: S.xl,
+    paddingBottom: 20, gap: 10 },
   // Кнопки записи: над крупной надписью — мелкое «Забронировать». Так длинное
   // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
-  cta: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 66,
-    paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1, borderRadius: R.lg },
+  // Кнопка в половину ширины: подпись, крупное название, стрелка внизу
+  cta: { flex: 1, minHeight: 118, paddingTop: 13, paddingBottom: 12, paddingHorizontal: 14,
+    borderWidth: 1, borderRadius: R.xl },
   ctaLime: { backgroundColor: C.lime, borderColor: C.lime },
   ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
-  ctaEy: { ...EYEBROW },
+  ctaEy: { ...EYEBROW, fontSize: 10, letterSpacing: 1.1 },
   ctaT: { fontFamily: DISP, fontSize: 19, lineHeight: 22, letterSpacing: -0.5,
     textTransform: 'uppercase', marginTop: 3 },
-  ctaArrow: { fontFamily: DISP, fontSize: 22 },
+  ctaArrow: { fontFamily: DISP, fontSize: 22, marginTop: 'auto', alignSelf: 'flex-end' },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
     marginTop: 16, padding: 16, backgroundColor: C.surface,

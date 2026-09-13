@@ -614,6 +614,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
           <input id="setMap" type="url" placeholder="https://yandex.ru/maps/-/…"></div>
         <div><label for="setInsta">Instagram</label>
           <input id="setInsta" type="url" placeholder="https://www.instagram.com/…"></div>
+        <div><label for="setTg">Telegram</label>
+          <input id="setTg" type="text" placeholder="@имя или https://t.me/имя"></div>
       </div>
       <div class="err" id="cnErr"></div>
       <div class="acts"><button class="btn acc" id="cnSave">Сохранить контакты</button></div>
@@ -1612,6 +1614,7 @@ async function openSetup(){
   $('#setPhone').value = st.phone || ''; $('#setWa').value = st.whatsapp || '';
   $('#setAddr').value = st.address || ''; $('#setMap').value = st.mapUrl || '';
   $('#setInsta').value = st.instagram || '';
+  $('#setTg').value = st.telegram || '';
   $('#setPrepay').value = st.prepayPercent; $('#setLate').value = st.lateMinutes;
   $('#setRentals').value = st.rentalsText || '';
   rent = rentParse(st.rentalsText);
@@ -1822,6 +1825,7 @@ $('#cnSave').onclick = async () => {
       phone: $('#setPhone').value, whatsapp: $('#setWa').value,
       address: $('#setAddr').value, mapUrl: $('#setMap').value,
       instagram: $('#setInsta').value,
+      telegram: $('#setTg').value,
     })});
     ok('#cnErr', '#cnSave', 'Сохранить контакты');
   } catch(e){ fail('#cnErr', e) }

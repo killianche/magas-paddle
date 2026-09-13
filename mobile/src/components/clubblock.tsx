@@ -11,7 +11,7 @@ import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet, R } from '../theme';
 import { rub, type ApiPrices } from '../api';
 import { CLUB, hoursOnDate, pointText, sameEveryDay, useClub } from '../club';
 import { hh, today } from '../dates';
-import { openLink } from './contacts';
+import { openLink, SocialButtons } from './contacts';
 import { RentalsList, useRentals } from './extras';
 
 const DAYS = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -124,6 +124,12 @@ export function ClubBlock({ prices }: { prices: ApiPrices | null }) {
                 : <Fact big={`${two(d.open)}–${two(d.close)}`} label="часы сегодня" /> })()}
         <Fact big={`${club.prepayPercent} %`} label="предоплата" />
       </View>
+
+      {/* Связь с клубом — последним блоком главной, после карты и правил */}
+      <View style={s.contact}>
+        <Text style={s.eyebrow}>Связаться с клубом</Text>
+        <SocialButtons style={{ marginTop: 10 }} />
+      </View>
     </View>
   );
 }
@@ -204,6 +210,7 @@ const s = sheet(() => ({
   routeA: { fontFamily: DISP, color: C.onLime, fontSize: 18 },
 
   facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  contact: { marginTop: 10 },
   fact: { flexGrow: 1, flexBasis: '45%', minHeight: 96, padding: 14, justifyContent: 'space-between',
     borderWidth: 1, borderColor: C.line, borderRadius: R.xl },
   factBig: { color: C.text, fontFamily: DISP, fontSize: 30, lineHeight: 33, letterSpacing: -1.2,

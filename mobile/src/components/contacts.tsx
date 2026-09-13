@@ -1,10 +1,10 @@
 // Как нас найти и как связаться. Один блок на все экраны: главная и «Клуб».
 // Ссылки и координаты лежат в src/club.ts — здесь только вид и открытие ссылок.
-import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, BODY, sheet } from '../theme';
-import { CLUB, pointText, useClub, whatsappUrl } from '../club';
-import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone } from './icons';
+import { CLUB, pointText, telegramUrl, useClub, whatsappUrl } from '../club';
+import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone, IconTelegram } from './icons';
 
 /** Открывает ссылку, а если открыть нечем — говорит человеку, что делать руками. */
 export async function openLink(url: string, fallback: string) { return open(url, fallback) }
@@ -43,51 +43,50 @@ export function WhereWeAre() {
   );
 }
 
-/** Связь одной строкой: написать, позвонить, посмотреть.
- *
- *  WhatsApp занимает всю ширину — это главный путь к менеджеру. Телефон и
- *  Instagram стоят рядом квадратными кнопками: подписи им не нужны, значки
- *  узнаются сами, а места остаётся втрое меньше.
- *  Кнопки без номера видны, но честно неактивны — выдуманного номера нет. */
-export function SocialButtons() {
+/** Связь с клубом: четыре одинаковые кнопки — WhatsApp, звонок, Telegram,
+ *  Instagram. Раньше WhatsApp был широкой кнопкой, а остальные квадратиками;
+ *  заказчик попросил сделать их одинаковыми и убрать блок вниз главной.
+ *  Кнопки без ссылки видны, но честно неактивны — выдуманных контактов нет. */
+export function SocialButtons({ style }: { style?: any }) {
   const club = useClub();
+  const { width } = useWindowDimensions();
+  // На узком телефоне плитка ~65 pt: подпись мельче, чтобы «Instagram» влез целиком
+  const labelSize = width < 360 ? 9.5 : 11.5;
   const wa = whatsappUrl();
+  const tg = telegramUrl();
   const tel = club.phone ? `tel:${club.phone.replace(/[^\d+]/g, '')}` : null;
 
+  const items = [
+    { key: 'wa', url: wa, label: 'WhatsApp', icon: IconWhatsApp,
+      a11y: wa ? 'Написать в WhatsApp' : 'WhatsApp: номер клуб ещё не сообщил',
+      fallback: 'Напишите менеджеру в WhatsApp вручную.' },
+    { key: 'tel', url: tel, label: 'Позвонить', icon: IconPhone,
+      a11y: tel ? `Позвонить в клуб, ${club.phone}` : 'Телефон: номер клуб ещё не сообщил',
+      fallback: `Телефон клуба: ${club.phone}` },
+    { key: 'tg', url: tg, label: 'Telegram', icon: IconTelegram,
+      a11y: tg ? 'Открыть Telegram клуба' : 'Telegram: клуб ещё не указал',
+      fallback: 'Найдите клуб в Telegram вручную.' },
+    { key: 'ig', url: club.instagram, label: 'Instagram', icon: IconInstagram,
+      a11y: club.instagram ? 'Открыть Instagram клуба' : 'Instagram: клуб ещё не указал',
+      fallback: 'Найдите клуб в Instagram вручную.' },
+  ];
+
   return (
-    <View style={s.row}>
-      <Pressable
-        disabled={!wa}
-        onPress={() => wa && open(wa, 'Напишите менеджеру в WhatsApp вручную.')}
-        accessibilityRole="button"
-        accessibilityLabel={wa ? 'Написать в WhatsApp' : 'WhatsApp: номер клуб ещё не сообщил'}
-        style={({ pressed }) => [s.btn, s.wa, !wa && s.off, pressed && wa && { opacity: 0.85 }]}>
-        <IconWhatsApp size={21} color={wa ? C.onWa : C.dim2} />
-        <View style={{ flex: 1 }}>
-          <Text style={[s.btnT, { color: wa ? C.onWa : C.dim }]}>WhatsApp</Text>
-          <Text numberOfLines={1} style={[s.btnS, { color: wa ? C.onWa : C.dim2, opacity: wa ? 0.75 : 1 }]}>
-            {wa ? 'написать менеджеру' : 'скоро'}
-          </Text>
-        </View>
-      </Pressable>
-
-      <Pressable
-        disabled={!tel}
-        onPress={() => tel && open(tel, `Телефон клуба: ${club.phone}`)}
-        accessibilityRole="button"
-        accessibilityLabel={tel ? `Позвонить в клуб, ${club.phone}` : 'Телефон: номер клуб ещё не сообщил'}
-        style={({ pressed }) => [s.sq, tel ? s.sqOn : s.off, pressed && tel && { opacity: 0.85 }]}>
-        <IconPhone size={21} color={tel ? C.text : C.dim2} />
-      </Pressable>
-
-      <Pressable
-        disabled={!club.instagram}
-        onPress={() => club.instagram && open(club.instagram, 'Мы в Instagram: padel_magas')}
-        accessibilityRole="button" accessibilityLabel="Открыть Instagram клуба"
-        style={({ pressed }) => [s.sq, club.instagram ? s.sqOn : s.off,
-          pressed && { opacity: 0.85 }]}>
-        <IconInstagram size={21} color={club.instagram ? C.text : C.dim2} />
-      </Pressable>
+    <View style={[s.row, style]}>
+      {items.map(it => {
+        const Icon = it.icon;
+        const on = !!it.url;
+        return (
+          <Pressable key={it.key} disabled={!on}
+            onPress={() => it.url && open(it.url, it.fallback)}
+            accessibilityRole="button" accessibilityLabel={it.a11y}
+            style={({ pressed }) => [s.tile, pressed && on && { opacity: 0.8 }]}>
+            <Icon size={22} color={on ? C.accent : C.dim2} />
+            <Text style={[s.tileT, { fontSize: labelSize }, !on && { color: C.dim2 }]}
+              numberOfLines={1} allowFontScaling={false}>{it.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -102,16 +101,10 @@ const s = sheet(() => ({
     textTransform: 'uppercase' },
   mapS: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 2 },
 
-  row: { flexDirection: 'row', gap: 10, marginHorizontal: S.xl, marginTop: 10 },
-  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 12, paddingHorizontal: 13, borderRadius: R.lg, minHeight: HIT },
-  wa: { backgroundColor: C.waSoft },
-  sq: { width: 54, minHeight: HIT, alignItems: 'center', justifyContent: 'center',
-    borderRadius: R.lg },
-  sqOn: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  ig: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  off: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  btnT: { color: C.text, fontFamily: DISP_MED, fontSize: 12, letterSpacing: 1.4,
-    textTransform: 'uppercase' },
-  btnS: { fontFamily: BODY, color: C.dim2, fontSize: 11, marginTop: 1 },
+  // Четыре равные плитки в ряд
+  row: { flexDirection: 'row', gap: 8 },
+  tile: { flex: 1, minHeight: 74, alignItems: 'center', justifyContent: 'center', gap: 7,
+    paddingHorizontal: 2, borderRadius: R.lg, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface },
+  tileT: { fontFamily: DISP_MED, color: C.text, fontSize: 11.5, letterSpacing: 0.1 },
 }));

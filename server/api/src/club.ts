@@ -55,6 +55,8 @@ export type ClubSettings = {
   address: string | null;
   mapUrl: string | null;
   instagram: string | null;
+  /** Telegram клуба, https://t.me/… */
+  telegram: string | null;
 
   /** Доля предоплаты, проценты. Бронь подтверждают после неё. */
   prepayPercent: number;
@@ -80,7 +82,7 @@ export type ClubSettings = {
 export const FALLBACK: ClubSettings = {
   openHour: 9, closeHour: 24, week: parseWeek(null, 9, 24), morningUntil: 13, maxHours: 3, cancelHours: 4,
   holdMinutes: 60,
-  phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
+  phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null, telegram: null,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
@@ -127,6 +129,7 @@ export class ClubService {
       address: row.address ?? null,
       mapUrl: row.map_url ?? null,
       instagram: row.instagram ?? null,
+      telegram: row.telegram ?? null,
       prepayPercent: row.prepay_percent,
       lateMinutes: row.late_minutes,
       rentalsText: row.rentals_text ?? null,

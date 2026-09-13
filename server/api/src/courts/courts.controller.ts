@@ -98,6 +98,7 @@ export class ClubController {
       address: s.address,
       mapUrl: s.mapUrl,
       instagram: s.instagram,
+      telegram: s.telegram,
       prepayPercent: s.prepayPercent,
       lateMinutes: s.lateMinutes,
       rentalsText: s.rentalsText,

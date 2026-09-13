@@ -1090,7 +1090,7 @@ export class AdminController {
     week: { open: number; close: number; closed?: boolean }[];
     maxHours: number; cancelHours: number; holdMinutes: number;
     phone: string; whatsapp: string; address: string;
-    mapUrl: string; instagram: string;
+    mapUrl: string; instagram: string; telegram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
     showTournaments: boolean; showFootball: boolean; waTemplate: string;
     bookingNote: string;
@@ -1129,6 +1129,7 @@ export class AdminController {
       address: body.address === undefined ? cur.address : (body.address.trim() || null),
       map_url: body.mapUrl === undefined ? cur.mapUrl : linkOrNull(body.mapUrl),
       instagram: body.instagram === undefined ? cur.instagram : linkOrNull(body.instagram),
+      telegram: body.telegram === undefined ? cur.telegram : telegramOrNull(body.telegram),
       prepay_percent: int(body.prepayPercent, cur.prepayPercent, 0, 100),
       late_minutes: int(body.lateMinutes, cur.lateMinutes, 0, 120),
       rentals_text: body.rentalsText === undefined
@@ -1697,6 +1698,17 @@ function phoneOrNull(v: string): string | null {
 }
 
 /** Ссылка. Пусто — убрать. Только http(s), иначе можно подсунуть что угодно. */
+/** Telegram можно вписать как угодно: «@имя», «имя», «t.me/имя»
+ *  или полной ссылкой. Храним всегда https://t.me/имя. */
+function telegramOrNull(v: string): string | null {
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  const m = raw.match(/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\/(\+?[\w-]{3,64})\/?$/i)
+    ?? raw.match(/^@?([A-Za-z][\w]{3,31})$/);
+  if (!m) throw new BadRequestException('Telegram: впишите @имя или ссылку https://t.me/имя');
+  return `https://t.me/${m[1]}`;
+}
+
 function linkOrNull(v: string): string | null {
   const raw = String(v ?? '').trim();
   if (!raw) return null;

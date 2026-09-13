@@ -186,6 +186,16 @@ export function IconWhatsApp({ size = 20, color = '#04240F' }: P) {
   );
 }
 
+/** Telegram — бумажный самолётик */
+export function IconTelegram({ size = 20, color = C.text }: P) {
+  return (
+    <Svg {...base(size, color)}>
+      <Path d="M21 4 3.4 10.8c-.8.3-.8 1.4 0 1.7l4.3 1.5 1.7 5.3c.2.7 1.1.9 1.6.4l2.5-2.3 4.4 3.2c.6.4 1.4.1 1.6-.6L22 5.2c.2-.8-.5-1.5-1-1.2Z" />
+      <Path d="m7.7 14 9.6-6.3-6.9 7.7" />
+    </Svg>
+  );
+}
+
 /** Instagram — рамка, объектив, вспышка */
 export function IconInstagram({ size = 20, color = C.text }: P) {
   return (

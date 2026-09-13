@@ -20,6 +20,8 @@ export type ClubInfoData = {
   address: string | null;
   mapUrl: string | null;
   instagram: string | null;
+  /** Ссылка на Telegram клуба: https://t.me/… ; null — не указан. */
+  telegram?: string | null;
   openHour: number;
   closeHour: number;
   /** Часы по дням недели, с понедельника. Старый сервер не присылает. */
@@ -162,6 +164,11 @@ export function useClub(): ClubInfoData {
     return () => { listeners.delete(l) };
   }, []);
   return cache;
+}
+
+/** Ссылка на Telegram. null, пока клуб не указал его в админке. */
+export function telegramUrl(): string | null {
+  return cache.telegram || null;
 }
 
 /** Ссылка на WhatsApp по номеру. null, пока номер не задан в админке. */
