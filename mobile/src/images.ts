@@ -8,11 +8,12 @@ const F4 = require('../assets/img/club-f4.webp');
 const F5 = require('../assets/img/club-f5.webp');
 const F6 = require('../assets/img/club-f6.webp');
 const F8 = require('../assets/img/club-f8.webp');
+/** Мини-футбольное поле — 777.png от заказчика (мяч и бутсы Padel Magas), обрезано в 4:3. */
+const PITCH = require('../assets/img/club-777.webp');
 
 export const IMG: Record<string, any> = {
   c1: F1, c2: F2, c3: F3, c4: F4, c5: F5, c6: F6,
-  // Мини-футбольное поле: среди присланных снимков поля нет — прежнее фото
-  f1: require('../assets/img/f1.webp'),
+  f1: PITCH,
 };
 /** Фотографии для галереи на экране площадки: первый кадр — карточка корта. */
 export const COURT_PHOTOS: Record<string, any[]> = {
@@ -22,7 +23,7 @@ export const COURT_PHOTOS: Record<string, any[]> = {
   c4: [F4, F2, F5],
   c5: [F5, F6, F8],
   c6: [F6, F3, F1],
-  f1: [require('../assets/img/f1.webp')],
+  f1: [PITCH],
 };
 
 /** Обложка главной — mm.png от заказчика (ракетка и мячи на закате), по его
