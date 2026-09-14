@@ -245,6 +245,8 @@ export const TAB_SPACE = 96;
 export const DISP = 'Inter-Black';
 export const DISP_MED = 'Inter-SemiBold';
 export const BODY = 'Inter-Regular';
+export const BOLD = 'Inter-Bold';
+export const MEDIUM = 'Inter-Medium';
 
 /** Размеры и посадка заголовков — из макета.
  *  Межстрочный меньше кегля там задан как 0.82–0.9; в React Native при таком

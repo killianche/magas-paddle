@@ -97,6 +97,16 @@ export function Mark({ size = 34 }: { size?: number }) {
   );
 }
 
+/** Стрелка вправо — «перейти» на кнопках записи */
+export function IconArrowRight({ size = 18, color = C.text }: P) {
+  return (
+    <Svg {...base(size, color)} strokeWidth={2.2}>
+      <Path d="M4 12h15" />
+      <Path d="m13 5.5 6.5 6.5-6.5 6.5" />
+    </Svg>
+  );
+}
+
 /** Трубка — позвонить */
 export function IconPhone({ size = 20, color = C.text }: P) {
   return (

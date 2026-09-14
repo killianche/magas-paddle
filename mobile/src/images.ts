@@ -25,10 +25,11 @@ export const COURT_PHOTOS: Record<string, any[]> = {
   f1: [require('../assets/img/f1.webp')],
 };
 
-/** Обложка главной — f8, как попросил заказчик. Одна для обеих тем:
- *  снимок светлый, а белую марку сверху держит затемнение. */
-export const HERO = F8;
-export const HERO_LIGHT = F8;
+/** Обложка главной — mm.png от заказчика (ракетка и мячи на закате), по его
+ *  референсу первого экрана. Одна для обеих тем. */
+const MM = require('../assets/img/club-mm.webp');
+export const HERO = MM;
+export const HERO_LIGHT = MM;
 
 // Обложки турниров. Менеджер выбирает их в админке — здесь это ключ в данных.
 export const TOURN_IMG: Record<string, any> = {

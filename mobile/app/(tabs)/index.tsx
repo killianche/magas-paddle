@@ -13,13 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
 import { IMG, HERO, HERO_LIGHT, TOURN_IMG } from '../../src/images';
-import { Mark, IconChevron, IconBell, IconAccount } from '../../src/components/icons';
+import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../src/components/icons';
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
@@ -88,10 +88,10 @@ export default function Home() {
   // должно поместиться одним словом на строку и на узком телефоне
   // Размер названия — от ширины кнопки: «МИНИ-ФУТБОЛЬНОЕ» должно уместиться
   // в строку, иначе название ломается на три строки и кнопка вытягивается
-  // Замер шрифта Inter Black: слово в 10,94 раза шире кегля, минус трекинг
-  // −0,5 на букву; поля кнопки 12 + 12 и рамка. Берём с запасом 4 %.
+  // Замер Inter Bold по файлу шрифта: «МИНИ-ФУТБОЛЬНОЕ» в 10,82 раза шире
+  // кегля, трекинг −0,3 на букву; поля 13 + 13 и рамка. Запас 4 %.
   const ctaW = (Math.min(width, 520) - S.xl * 2 - 10) / 2;
-  const ctaSize = Math.min(16, Math.max(10.5, Math.floor((ctaW - 26 + 7.5) / 11.4 * 2) / 2));
+  const ctaSize = Math.min(17, Math.max(10.5, Math.floor((ctaW - 28 + 4.5) / 11.25 * 2) / 2));
   const narrow = width < 340;
   // Фото первого экрана: своё из админки, иначе встроенное. В светлой теме —
   // светлый кадр: тёмный снимок на белом фоне выглядит чужеродно.
@@ -153,12 +153,14 @@ export default function Home() {
         <Image source={hero} style={st.fillImg} resizeMode="cover" />
         {/* Затемнение сверху и снизу: марка и кнопки белые, а фото бывает
             светлым — на нём белое иначе не читается */}
+        {/* Затемнение мягче прежнего: по референсу фото должно читаться
+            целиком, марке сверху хватает лёгкой тени, кнопкам снизу — плотнее */}
         <LinearGradient
-          colors={['rgba(2,7,5,.9)', 'rgba(2,7,5,.35)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.92)']}
-          locations={[0, 0.16, 0.45, 1]} style={st.fill} />
+          colors={['rgba(2,7,5,.62)', 'rgba(2,7,5,.18)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.55)']}
+          locations={[0, 0.2, 0.55, 1]} style={st.fill} />
 
         <View style={[st.brandRow, { paddingTop: insets.top + 12 }]}>
-          <Mark size={30} />
+          <Mark size={46} />
           {/* Сначала PADEL, под ним MAGAS — так попросил заказчик */}
           <Text style={st.brand} allowFontScaling={false}>PADEL{'\n'}MAGAS</Text>
           <View style={{ flex: 1 }} />
@@ -167,7 +169,7 @@ export default function Home() {
               ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
             style={({ pressed }) => [st.circle, { marginRight: 8 },
               pressed && { opacity: 0.7 }]}>
-            <IconBell size={18} color={ON_PHOTO} />
+            <IconBell size={21} color={ON_PHOTO} />
             {unread > 0 && <View style={st.badge} />}
           </Pressable>
           <Pressable onPress={() => go('/account')} accessibilityRole="button"
@@ -175,7 +177,7 @@ export default function Home() {
             style={({ pressed }) => [st.circle, pressed && { opacity: 0.7 }]}>
             {profile
               ? <Text style={st.circleT} allowFontScaling={false}>{initials(profile)}</Text>
-              : <IconAccount size={19} color={ON_PHOTO} />}
+              : <IconAccount size={22} color={ON_PHOTO} />}
           </Pressable>
         </View>
 
@@ -186,9 +188,9 @@ export default function Home() {
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
             style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
             <View style={st.ctaTop}>
-              <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: C.onLime, opacity: 0.65 }]}
-                numberOfLines={1}>Забронировать</Text>
-              <Text style={[st.ctaArrow, { color: C.onLime }]}>→</Text>
+              <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: C.onLime, opacity: 0.62 }]}
+                numberOfLines={1} allowFontScaling={false}>Забронировать</Text>
+              <IconArrowRight size={narrow ? 15 : 19} color={C.onLime} />
             </View>
             <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: C.onLime }]}
               allowFontScaling={false}>Падел-{'\n'}корт</Text>
@@ -199,9 +201,9 @@ export default function Home() {
               accessibilityLabel="Забронировать мини-футбольное поле"
               style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.85 }]}>
               <View style={st.ctaTop}>
-                <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: 'rgba(245,248,242,.66)' }]}
-                  numberOfLines={1}>Забронировать</Text>
-                <Text style={[st.ctaArrow, { color: ON_PHOTO }]}>→</Text>
+                <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: 'rgba(245,248,242,.62)' }]}
+                  numberOfLines={1} allowFontScaling={false}>Забронировать</Text>
+                <IconArrowRight size={narrow ? 15 : 19} color={ON_PHOTO} />
               </View>
               <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: ON_PHOTO }]}
                 allowFontScaling={false}>Мини-футбольное{'\n'}поле</Text>
@@ -385,16 +387,16 @@ const st = sheet(() => ({
   // Низ обложки скруглён — как карточка, выезжающая из-под экрана
   hero: { overflow: 'hidden', backgroundColor: '#0A1D14', justifyContent: 'space-between',
     borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: S.xl },
-  // Марка в две строки: PADEL / MAGAS
-  brand: { color: ON_PHOTO, fontFamily: DISP, fontSize: 15, lineHeight: 15,
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: S.xl },
+  // Марка в две строки: PADEL / MAGAS — крупнее, рядом с крупным щитом
+  brand: { color: ON_PHOTO, fontFamily: DISP, fontSize: 17, lineHeight: 17,
     letterSpacing: -0.6 },
   badge: { position: 'absolute', top: 7, right: 8, width: 9, height: 9, borderRadius: 5,
     backgroundColor: '#C9F23D', borderWidth: 1.5, borderColor: '#020705' },
-  circle: { width: 38, height: 38, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.3)', backgroundColor: 'rgba(2,7,5,.65)',
+  // Круглые кнопки — сплошные тёмные, без обводки, как в референсе
+  circle: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(14,16,17,.86)',
     alignItems: 'center', justifyContent: 'center' },
-  circleT: { fontFamily: DISP, color: ON_PHOTO, fontSize: 13, letterSpacing: -0.2 },
+  circleT: { fontFamily: DISP, color: ON_PHOTO, fontSize: 14, letterSpacing: -0.2 },
 
   heroActions: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: S.xl,
     paddingBottom: 20, gap: 10 },
@@ -402,15 +404,19 @@ const st = sheet(() => ({
   // «Мини-футбольное поле» помещается в одну строку и на узком телефоне.
   // Кнопка в половину ширины, компактная: сверху «Забронировать» и стрелка,
   // под ними крупное название
-  cta: { flex: 1, paddingVertical: 11, paddingHorizontal: 12, borderWidth: 1, borderRadius: R.lg },
+  cta: { flex: 1, paddingTop: 11, paddingBottom: 11, paddingHorizontal: 13, borderWidth: 1,
+    borderRadius: R.lg },
   ctaTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   ctaLime: { backgroundColor: C.lime, borderColor: C.lime },
-  ctaGhost: { backgroundColor: 'rgba(2,7,5,0.45)', borderColor: 'rgba(255,255,255,0.5)' },
-  ctaEy: { ...EYEBROW, fontSize: 10, letterSpacing: 1.1, flexShrink: 1 },
-  ctaEyNarrow: { fontSize: 8.5, letterSpacing: 0.6 },
-  ctaT: { fontFamily: DISP, fontSize: 19, lineHeight: 22, letterSpacing: -0.5,
-    textTransform: 'uppercase', marginTop: 3 },
-  ctaArrow: { fontFamily: DISP, fontSize: 18, lineHeight: 20 },
+  // Вторая кнопка — тёмное стекло с тонкой светлой рамкой
+  ctaGhost: { backgroundColor: 'rgba(8,14,26,0.58)', borderColor: 'rgba(255,255,255,0.34)' },
+  // «Забронировать» — спокойным Medium, светлее названия
+  ctaEy: { fontFamily: MEDIUM, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
+    flexShrink: 1 },
+  ctaEyNarrow: { fontSize: 8.5, letterSpacing: 0.5 },
+  // Название — Bold, не сверхжирный Black: так в референсе
+  ctaT: { fontFamily: BOLD, fontSize: 17, lineHeight: 20, letterSpacing: -0.3,
+    textTransform: 'uppercase', marginTop: 6 },
 
   mine: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl,
     marginTop: 16, padding: 16, backgroundColor: C.surface,

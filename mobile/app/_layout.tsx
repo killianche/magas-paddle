@@ -36,6 +36,10 @@ export default function RootLayout() {
     'Inter-Black': require('../assets/fonts/Inter-Black.ttf'),
     'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
     'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    // Для первого экрана по референсу заказчика: название кнопки — Bold,
+    // подпись «Забронировать» — Medium. Inter 4.1, лицензия OFL.
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+    'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
   });
 
   if (!ready || !themeReady) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
