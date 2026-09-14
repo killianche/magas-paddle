@@ -3,8 +3,51 @@
 // Пока клуб их не заполнил, ничего не рисуется: какой корт синий, а какой
 // ультраширокий, знает только клуб, выдумывать это нельзя.
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Rect, Line, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { C, BODY, EYEBROW, sheet, R } from '../theme';
 import type { CourtColor } from '../api';
+
+/** Клуб отметил корт одиночным. */
+export const isSingle = (tags?: string[]) =>
+  (tags ?? []).some(t => t.toLowerCase().startsWith('одиноч'));
+
+/** Корт сверху, как на плане: покрытие цветом корта, белая разметка, сетка.
+ *  Размеры — по правилам FIP: парный корт 20×10 м, одиночный 20×6 м,
+ *  линии подачи в 6,95 м от сетки. Ширину «ультраширокого» не рисуем:
+ *  чем он отличается в метрах, клуб не сообщал. */
+export function CourtPlan({ width, color, single, dim }: {
+  width: number; color?: CourtColor | null; single?: boolean; dim?: boolean;
+}) {
+  const pad = 6;
+  const k = (width - pad * 2) / 20;            // точек на метр
+  const H = Math.round(10 * k + pad * 2);       // высота всегда как у парного —
+  const w = 20 * k, h = (single ? 6 : 10) * k;  // плитки в сетке одной высоты
+  const x0 = pad, y0 = (H - h) / 2, mid = y0 + h / 2;
+  const svc = 3.05 * k;
+  const fill = color?.hex ?? '#6B7A70';
+  const line = 'rgba(255,255,255,0.92)';
+  return (
+    <Svg width={width} height={H} opacity={dim ? 0.4 : 1}>
+      <Defs>
+        <SvgGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.16" />
+          <Stop offset="1" stopColor="#000000" stopOpacity="0.14" />
+        </SvgGradient>
+      </Defs>
+      <Rect x={x0 - 2} y={y0 - 2} width={w + 4} height={h + 4} rx={4}
+        fill="none" stroke="rgba(120,135,125,0.55)" strokeWidth={1.5} />
+      <Rect x={x0} y={y0} width={w} height={h} rx={2.5} fill={fill} />
+      <Rect x={x0} y={y0} width={w} height={h} rx={2.5} fill="url(#sheen)" />
+      <Line x1={x0 + svc} y1={y0} x2={x0 + svc} y2={y0 + h} stroke={line} strokeWidth={1.2} />
+      <Line x1={x0 + w - svc} y1={y0} x2={x0 + w - svc} y2={y0 + h} stroke={line} strokeWidth={1.2} />
+      <Line x1={x0 + svc} y1={mid} x2={x0 + w - svc} y2={mid} stroke={line} strokeWidth={1.2} />
+      <Line x1={x0 + w / 2} y1={y0 - 3} x2={x0 + w / 2} y2={y0 + h + 3}
+        stroke="#F5F8F2" strokeWidth={2.4} strokeLinecap="round" />
+      <Circle cx={x0 + w / 2} cy={y0 - 3} r={2.2} fill="#1C2420" />
+      <Circle cx={x0 + w / 2} cy={y0 + h + 3} r={2.2} fill="#1C2420" />
+    </Svg>
+  );
+}
 
 /** Ярлыки в ряд: «▮ Синий», «Ультраширокий», «Одиночный». */
 export function Look({ color, tags, onPhoto }: {
