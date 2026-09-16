@@ -543,7 +543,7 @@ export class AdminController {
       courtName: `турнир «${e.tournaments.name}»`,
       date: this.dateOf(e.tournaments.starts_at), hour: hourOf(e.tournaments.starts_at),
       hours: e.tournaments.hours, price: e.tournaments.fee, createdAt: e.created_at,
-      name: e.clients.name, phone: e.clients.phone,
+      name: [e.clients.name, e.clients.surname].filter(Boolean).join(' '), phone: e.clients.phone,
     });
     return list.sort((a, b) => a.date.localeCompare(b.date) || a.hour - b.hour);
   }
@@ -1430,9 +1430,13 @@ export class AdminController {
     if (e.status !== status) {
       const when = e.tournaments.starts_at.toLocaleString('ru-RU', {
         day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+      const fee = e.tournaments.fee > 0
+        ? ` Взнос ${(e.tournaments.fee / 100).toLocaleString('ru-RU')} ₽ оплачивается в клубе.` : '';
       const t = status === 'confirmed'
-        ? ['Вы в турнире', `«${e.tournaments.name}», ${when}. Ждём вас.`]
-        : ['Запись на турнир отменена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`];
+        ? ['Вы записаны на турнир', `«${e.tournaments.name}». Приходите ${when}.${fee}`]
+        : e.status === 'confirmed'
+          ? ['Запись на турнир отменена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`]
+          : ['Заявка на турнир отклонена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`];
       await this.notes.toClient(e.client_id, 'tournament', t[0], t[1], { by: req.admin.name });
     }
     await this.auth.log(req.admin, status === 'confirmed' ? 'подтвердил участие в турнире' : 'отменил участие в турнире',

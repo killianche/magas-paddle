@@ -143,16 +143,18 @@ export type ApiTournament = {
   coverUrl: string | null; result: string | null; entered: boolean;
   /** Сколько часов идёт турнир. */
   hours?: number;
-  /** Своя заявка на турнир — как бронь: ждёт подтверждения, подтверждена,
-   *  отменена или срок удержания вышел. null — не подавал. */
+  /** Своя заявка на турнир: ждёт подтверждения, подтверждена, отменена или
+   *  клуб не подтвердил её до начала. null — не подавал. */
   entry?: { id: number; status: 'pending' | 'confirmed' | 'cancelled' | 'expired';
-    holdUntil: string | null } | null;
+    holdUntil: string | null;
+    /** Отменил клуб, а не сам человек — «заявка отклонена». */
+    byClub?: boolean } | null;
 };
 
 /** Ответ на заявку на турнир. */
 export type ApiEntry = {
   id: number; tournamentId: number; tournamentName: string; startsAt: string;
-  fee: number; status: string; holdUntil: string | null; holdMinutes: number;
+  fee: number; status: string; holdUntil: string | null;
   clientId: number;
 };
 

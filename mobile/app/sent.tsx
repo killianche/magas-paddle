@@ -6,6 +6,10 @@
 // кнопки («написать в WhatsApp», «позвонить», «мои записи») и объяснение про
 // менеджера: это повтор того, что уже произошло. Деньги и номер заявки нужны,
 // но мелкой строкой — их смотрят, только если что-то пошло не так.
+//
+// Заявка на турнир подаётся формой в приложении, без WhatsApp. Поэтому для
+// турнира экран говорит, что будет дальше: подтвердит администратор, ответ
+// придёт в уведомления.
 import { Text, View, Pressable, Linking, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
@@ -84,8 +88,14 @@ export default function Sent() {
 
         <View style={s.pill}>
           <View style={s.dot} />
-          <Text style={s.pillT}>МЕСТО ЗАДЕРЖАНО</Text>
+          <Text style={s.pillT}>{tournament ? 'ЖДЁТ ПОДТВЕРЖДЕНИЯ' : 'МЕСТО ЗАДЕРЖАНО'}</Text>
         </View>
+        {tournament && (
+          <Text style={s.next}>
+            Администратор проверит заявку. Когда подтвердит, придёт уведомление,
+            а в «Моих записях» появится «Вы записаны».
+          </Text>
+        )}
 
         {!!phone && (
           <Pressable onPress={call} accessibilityRole="button"
@@ -130,6 +140,8 @@ const s = sheet(() => ({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.amber },
   pillT: { ...EYEBROW, color: C.amber },
 
+  next: { fontFamily: BODY, color: C.dim, fontSize: 13.5, lineHeight: 20, textAlign: 'center',
+    marginTop: 14 },
   phoneBtn: { alignItems: 'center', marginTop: 22, paddingVertical: 6, minHeight: HIT },
   phone: { color: C.text, fontFamily: DISP, fontSize: 22, letterSpacing: -0.6,
     fontVariant: ['tabular-nums'] },

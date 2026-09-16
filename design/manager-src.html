@@ -1512,7 +1512,7 @@ function openPending(kind){
   const rows = pendRows.filter(r => (r.kind||'booking') === kind);
   $('#pendTitle').textContent = tour ? 'Заявки на турниры' : 'Новые брони';
   $('#pendSub').textContent = tour
-    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим.'
+    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим до начала турнира.'
     : 'Из приложения, по всем датам. Ждут подтверждения.';
   $('#pendList').innerHTML = rows.length ? rows.map(r => `
     <button class="it" data-date="${r.date}" data-id="${r.id}" data-t="${r.tournamentId||''}">
@@ -2134,8 +2134,9 @@ async function openTournament(t){
 }
 
 /** Заявки на турнир. Из приложения они приходят «ждут подтверждения» и
- *  держат место, как бронь корта; менеджер подтверждает или отменяет. */
-const ENTRY_STATE = { pending:'ждёт подтверждения', confirmed:'участвует', cancelled:'отменена', expired:'срок вышел' };
+ *  держат место до начала турнира; менеджер подтверждает или отклоняет,
+ *  человеку приходит уведомление в приложении. */
+const ENTRY_STATE = { pending:'ждёт подтверждения', confirmed:'участвует', cancelled:'отменена', expired:'не подтвердили до начала' };
 async function loadEntries(t){
   try {
     const es = await call(`/admin/tournaments/${t.id}/entries`);
@@ -2143,12 +2144,12 @@ async function loadEntries(t){
     $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Заявок: ${active.length} из ${t.seats}` +
       ` · подтверждено ${es.filter(e => e.status==='confirmed').length}</div>` +
       (es.length ? es.map(e => {
-        const left = holdLeft(e);
         return `<div class="er" data-id="${e.id}">
           <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}</span></div>
-          <span class="stt ${e.status}">${ENTRY_STATE[e.status]||e.status}${left!==null?' · '+holdText(left):''}</span>
+          <span class="stt ${e.status}">${ENTRY_STATE[e.status]||e.status}</span>
           ${e.status!=='confirmed' ? `<button type="button" class="btn small acc" data-st="confirmed">Подтвердить</button>` : ''}
-          ${e.status==='pending'||e.status==='confirmed' ? `<button type="button" class="btn small" data-st="cancelled">Отменить</button>` : ''}
+          ${e.status==='pending' ? `<button type="button" class="btn small" data-st="cancelled">Отклонить</button>` : ''}
+          ${e.status==='confirmed' ? `<button type="button" class="btn small" data-st="cancelled">Отменить</button>` : ''}
         </div>`}).join('')
       : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
     $('#tnEntries').querySelectorAll('button[data-st]').forEach(b => b.onclick = async () => {

@@ -17,6 +17,9 @@ class EnterDto {
 /** Заявка занимает место, пока её не отменили и не истёк срок удержания. */
 export const ACTIVE_ENTRY = { status: { in: ['pending', 'confirmed'] } };
 
+/** Кем отмечено изменение, если не клубом. */
+const SELF = ['приложение', 'сам в приложении', 'срок вышел'];
+
 @Controller('tournaments')
 export class TournamentsController {
   constructor(
@@ -47,12 +50,15 @@ export class TournamentsController {
     const taken = new Map(counts.map(c => [String(c.tournament_id), c._count._all]));
 
     // Своя заявка: номер, состояние и срок удержания — как у брони корта
-    const mine = new Map<string, { id: number; status: string; holdUntil: Date | null }>();
+    const mine = new Map<string, { id: number; status: string; holdUntil: Date | null; byClub: boolean }>();
     const client = await this.whose(header, phone);
     if (client) {
       const e = await this.db.tournament_entries.findMany({ where: { client_id: client.id } });
-      for (const x of e) mine.set(String(x.tournament_id),
-        { id: Number(x.id), status: x.status, holdUntil: x.hold_until });
+      for (const x of e) mine.set(String(x.tournament_id), {
+        id: Number(x.id), status: x.status, holdUntil: x.hold_until,
+        // Отменил не сам человек, а клуб — в приложении это «заявка отклонена»
+        byClub: x.status === 'cancelled' && !SELF.includes(x.status_by ?? ''),
+      });
     }
 
     return rows.map(t => ({
@@ -74,8 +80,10 @@ export class TournamentsController {
     }));
   }
 
-  /** Заявка на турнир — так же, как бронь корта: место держится, пока
-   *  менеджер не подтвердит; человек тем временем пишет ему в WhatsApp. */
+  /** Заявка на турнир из приложения: человек заполняет форму, заявка ждёт
+   *  подтверждения администратора и держит место. WhatsApp не нужен, поэтому
+   *  короткого удержания, как у брони корта, нет: заявка ждёт решения до
+   *  начала турнира. Ответ клуба приходит в уведомления приложения. */
   @Post(':id/entries')
   async enter(@Param('id') id: string, @Body() dto: EnterDto) {
     const entryPhone = normalizePhone(dto.phone);
@@ -100,8 +108,7 @@ export class TournamentsController {
       create: { phone: entryPhone, name: dto.name, surname },
     });
 
-    const set = await this.club.get();
-    const holdUntil = new Date(Math.min(Date.now() + set.holdMinutes * 60_000, +t.starts_at));
+    const holdUntil = t.starts_at;
 
     // Один человек — одна запись на турнир. Отменённую или истёкшую
     // заявку можно подать снова: оживляем ту же строку.
@@ -119,8 +126,8 @@ export class TournamentsController {
     return {
       id: Number(e.id), tournamentId: Number(t.id), tournamentName: t.name,
       startsAt: t.starts_at, fee: t.fee, status: e.status,
-      holdUntil: e.hold_until, holdMinutes: set.holdMinutes,
-      // ID аккаунта — в сообщение WhatsApp, как у брони корта
+      holdUntil: e.hold_until,
+      // ID аккаунта приложение запоминает в профиле
       clientId: Number(client.id),
       entered: true, left: t.seats - count - 1,
     };

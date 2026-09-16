@@ -73,6 +73,7 @@ export default function RootLayout() {
         <Stack.Screen name="prices" options={{ title: "Цены" }} />
         <Stack.Screen name="football" options={{ title: 'Мини-футбольное поле' }} />
         <Stack.Screen name="tournament" options={{ title: 'Турнир' }} />
+        <Stack.Screen name="tournament-entry" options={{ title: 'Запись на турнир' }} />
         <Stack.Screen name="book" options={{ title: 'Проверьте заявку', presentation: 'card' }} />
         <Stack.Screen name="sent" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>

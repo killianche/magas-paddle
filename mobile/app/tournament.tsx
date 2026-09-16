@@ -10,22 +10,17 @@ import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError } from '../src/api';
 import { useApi } from '../src/useApi';
-import { fullName, saveToken, useProfile, type Profile } from '../src/profile';
+import { useProfile } from '../src/profile';
 import { TOURN_IMG } from '../src/images';
-import { IconCheck, IconClock, IconWhatsApp } from '../src/components/icons';
-import { WhoSheet } from '../src/components/booking';
-import { openLink } from '../src/components/contacts';
-import { whatsappUrl } from '../src/club';
-import { holdLeft } from '../src/components/bookingstate';
+import { IconCheck, IconClock } from '../src/components/icons';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
-import { hh, dayMonth, weekday, dateOfIso, hourOfIso, longDate, plural } from '../src/dates';
+import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
   useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile, save } = useProfile();
-  const [ask, setAsk] = useState(false);
+  const { profile } = useProfile();
   const phone = profile?.phone;
   const [busy, setBusy] = useState(false);
 
@@ -52,53 +47,14 @@ export default function TournamentScreen() {
 
   const pending = t.entry?.status === 'pending';
   const confirmed = t.entry?.status === 'confirmed';
-  const left_min = t.entry ? holdLeft({ status: t.entry.status, holdUntil: t.entry.holdUntil }) : null;
+  // Прошлую заявку отклонил клуб — записаться можно снова, но сказать об этом надо
+  const rejected = t.entry?.status === 'cancelled' && !!t.entry.byClub;
 
-  // Запись — как бронь корта: без аккаунта спрашиваем, кто записывается;
-  // заявка держит место, человек пишет менеджеру в WhatsApp готовым текстом,
-  // затем экран «Заявка отправлена». Менеджер подтверждает в админке.
-  const enter = async () => {
-    if (!profile) { setAsk(true); return }
-    await sendEntry(profile);
-  };
-
-  const sendEntry = async (who: Profile) => {
-    setBusy(true);
-    try {
-      const res = await api.enterTournament(t.id,
-        { name: who.name, surname: who.surname, phone: who.phone });
-      // ID аккаунта становится известен с первой заявкой — запоминаем
-      if (res.clientId && who.id !== res.clientId) await save({ ...who, id: res.clientId });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setAsk(false);
-
-      const wa = whatsappUrl();
-      if (wa) {
-        const text = [
-          `Хочу записаться на турнир «${t.name}», ${longDate(date)}, начало в ${hh(hourOfIso(t.startsAt))}. `
-            + `Взнос ${rub(t.fee)}.`,
-          `Меня зовут ${fullName(who)}.`,
-          `ID ${res.clientId}.`,
-          `Заявка на турнир №${res.id} в приложении.`,
-        ].join('\n');
-        await openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp вручную.');
-      }
-      router.replace({ pathname: '/sent', params: {
-        kind: 'tournament', id: String(res.id), name: t.name, date,
-        hour: String(hourOfIso(t.startsAt)), hours: String(t.hours ?? 1),
-        price: String(t.fee), holdUntil: res.holdUntil ?? '' } });
-    } catch (e) {
-      const m = e instanceof ApiError ? e.message : 'Не получилось отправить заявку.';
-      Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
-      q.refresh();
-    } finally { setBusy(false) }
-  };
-
-  /** Ответ из окна «Кто записывается»: запоминаем человека и отправляем заявку. */
-  const withWho = async (p: Profile, token?: string) => {
-    if (token) await saveToken(token);
-    await save(p);
-    await sendEntry(p);
+  // Запись — онлайн: форма с именем и телефоном на отдельном экране,
+  // заявка ждёт подтверждения администратора
+  const enter = () => {
+    Haptics.selectionAsync();
+    router.push({ pathname: '/tournament-entry', params: { id: String(t.id) } });
   };
 
   const leave = () => {
@@ -191,7 +147,7 @@ export default function TournamentScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.barOkT}>Заявка отправлена</Text>
                 <Text style={s.barOkS}>
-                  Ждёт подтверждения менеджера{left_min ? ` · место держим ещё ${left_min} ${plural(left_min, 'минуту', 'минуты', 'минут')}` : ''}
+                  Ждём подтверждения администратора — ответ придёт в уведомления
                 </Text>
               </View>
             </View>
@@ -201,36 +157,34 @@ export default function TournamentScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.barOkT}>Вы записаны</Text>
                 <Text style={s.barOkS}>
-                  {dayMonth(date)}, {hh(hourOfIso(t.startsAt))} · взнос {rub(t.fee)} на месте
+                  Приходите {dayMonth(date)} к {hh(hourOfIso(t.startsAt))} · взнос {rub(t.fee)} в клубе
                 </Text>
               </View>
             </View>
           ) : (
             <>
+              {rejected && canEnter && (
+                <Text style={s.barWarn}>Клуб отклонил прошлую заявку. Можно подать новую.</Text>
+              )}
               <Pressable onPress={enter} disabled={!canEnter || busy}
                 accessibilityRole="button"
-                style={({ pressed }) => [s.cta, canEnter && s.ctaWa, !canEnter && s.ctaOff,
+                style={({ pressed }) => [s.cta, !canEnter && s.ctaOff,
                   pressed && canEnter && { opacity: 0.9 }]}>
-                {busy ? <ActivityIndicator color={C.onWa} />
+                {busy ? <ActivityIndicator color={C.onLime} />
                   : canEnter ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <IconWhatsApp size={20} color={C.onWa} />
-                      <Text style={[s.ctaT, { color: C.onWa }]}>Записаться в WhatsApp</Text>
-                    </View>
+                    <Text style={s.ctaT}>Записаться на турнир</Text>
                   ) : (
                     <Text style={[s.ctaT, { color: C.dim2 }]}>
                       {t.state === 'soon' ? 'Запись ещё не открыта' : 'Мест нет'}
                     </Text>
                   )}
               </Pressable>
-              {canEnter && <Text style={s.barSub}>Взнос {rub(t.fee)} оплачивается в клубе</Text>}
+              {canEnter && <Text style={s.barSub}>Заявку подтвердит администратор · взнос {rub(t.fee)} в клубе</Text>}
             </>
           )}
         </View>
       )}
 
-      <WhoSheet visible={ask} title="Кто записывается"
-        onCancel={() => setAsk(false)} onDone={withWho} />
     </View>
   );
 }
@@ -303,10 +257,9 @@ const s = sheet(() => ({
   cta: { backgroundColor: C.lime, borderRadius: R.lg, paddingVertical: 17,
     alignItems: 'center', minHeight: HIT + 10, justifyContent: 'center' },
   ctaOff: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
-  // Записаться — как забронировать корт: кнопка цвета WhatsApp
-  ctaWa: { backgroundColor: C.wa },
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
+  barWarn: { fontFamily: BODY, color: C.dangerText, fontSize: 12.5, textAlign: 'center', marginBottom: 9 },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
   barOk: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 4 },
   barOkIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.lime,

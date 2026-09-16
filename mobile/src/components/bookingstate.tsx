@@ -5,8 +5,8 @@
 // «время освободилось». Теперь состояние считается здесь, и расходиться нечему.
 import { C, DISP_MED } from '../theme';
 import { IconCheck, IconClock, IconCross } from './icons';
-import type { ApiBooking } from '../api';
-import { plural } from '../dates';
+import { rub, type ApiBooking, type ApiTournament } from '../api';
+import { plural, hh, hourOfIso, dayMonth, dateOfIso } from '../dates';
 
 export type StateKey = 'pending' | 'confirmed' | 'played' | 'missed' | 'cancelled' | 'noshow';
 
@@ -69,6 +69,50 @@ export function bookingState(b: ApiBooking): BookingState {
         ? `Менеджер подтвердит запись и свяжется с вами. Место держим ещё ${left} ${plural(left, 'минуту', 'минуты', 'минут')}.`
         : 'Срок удержания вышел — место могло освободиться. Свяжитесь с менеджером.',
     bg: C.warnSoft, fg: C.amber, dim: false, warn: left === 0, canCancel: true,
+  };
+}
+
+/** Заявка на турнир. Подаётся в приложении и ждёт администратора до начала
+ *  турнира; ответ приходит в уведомления. Слова свои, цвета и значки — те же,
+ *  что у брони корта. */
+export function entryState(t: ApiTournament): BookingState {
+  const e = t.entry;
+  const status = e?.status ?? (t.entered ? 'confirmed' : null);
+  const start = new Date(t.startsAt);
+  const ends = start.getTime() + (t.hours ?? 1) * 3600_000;
+  const when = `${dayMonth(dateOfIso(t.startsAt))} к ${hh(hourOfIso(t.startsAt))}`;
+  const fee = t.fee > 0 ? ` Взнос ${rub(t.fee)} — в клубе.` : '';
+
+  if (status === 'cancelled' && e?.byClub) return {
+    key: 'cancelled', label: 'ЗАЯВКА ОТКЛОНЕНА', short: 'заявка отклонена',
+    note: 'Клуб отклонил заявку. Если это ошибка, напишите менеджеру.',
+    bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
+  };
+  if (status === 'cancelled') return {
+    key: 'cancelled', label: 'ЗАПИСЬ ОТМЕНЕНА', short: 'запись отменена',
+    note: 'Вы отменили запись. Пока идёт регистрация, можно записаться снова.',
+    bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
+  };
+  if (status === 'expired') return {
+    key: 'missed', label: 'НЕ ПОДТВЕРЖДЕНО', short: 'не подтверждено',
+    note: 'Клуб не подтвердил заявку до начала турнира.',
+    bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
+  };
+  if (ends < Date.now()) return {
+    key: 'played', label: 'ТУРНИР ПРОШЁЛ', short: 'турнир прошёл',
+    note: 'Спасибо за игру. Ждём на следующем турнире.',
+    bg: C.surface2, fg: C.dim, dim: true, warn: false, canCancel: false,
+  };
+  if (status === 'confirmed') return {
+    key: 'confirmed', label: 'ВЫ ЗАПИСАНЫ', short: 'вы записаны',
+    note: `Администратор подтвердил участие. Приходите ${when}.${fee}`,
+    bg: C.lime, fg: C.onLime, dim: false, warn: false, canCancel: true,
+  };
+  return {
+    key: 'pending', label: 'ЖДЁТ ПОДТВЕРЖДЕНИЯ', short: 'ждёт подтверждения',
+    note: 'Администратор проверит заявку. Когда подтвердит, придёт уведомление, '
+      + 'а здесь появится «Вы записаны».',
+    bg: C.warnSoft, fg: C.amber, dim: false, warn: false, canCancel: true,
   };
 }
 

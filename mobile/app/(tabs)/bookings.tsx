@@ -14,7 +14,7 @@ import { openLink } from '../../src/components/contacts';
 import { Loading, Failed } from '../../src/components/status';
 
 import { IconRacket, IconTrophy } from '../../src/components/icons';
-import { bookingState, StateIcon } from '../../src/components/bookingstate';
+import { bookingState, entryState, StateIcon } from '../../src/components/bookingstate';
 import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
 function NeedLogin({ note }: { note: string }) {
@@ -41,10 +41,10 @@ export default function Bookings() {
     const [bookings, tournaments] = await Promise.all([
       api.myBookings(phone), api.tournaments(phone),
     ]);
-    // Заявки на турниры — как брони: и ждущие, и подтверждённые, и те, у
-    // которых вышел срок (чтобы человек видел, что место не за ним)
+    // Заявки на турниры — как брони: ждущие, подтверждённые, не подтверждённые
+    // до начала и отклонённые клубом. Отменённую самим человеком не показываем.
     return { bookings, tournaments: tournaments.filter(t =>
-      t.entry ? t.entry.status !== 'cancelled' : t.entered) };
+      t.entry ? t.entry.status !== 'cancelled' || !!t.entry.byClub : t.entered) };
   }, [phone], phone ? `mine.${phone}` : undefined);
 
   // Вернулись на вкладку — подтянуть свежее: бронь могли подтвердить
@@ -72,7 +72,9 @@ export default function Bookings() {
   ].join('\n'));
 
   const aboutTournament = (t: ApiTournament) => writeManager([
-    `Хочу отменить запись на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
+    t.entry?.byClub
+      ? `Мою заявку на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}, отклонили. Хочу уточнить.`
+      : `Хочу отменить запись на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
     ...who(profile),
   ].join('\n'));
 
@@ -97,9 +99,8 @@ export default function Bookings() {
       refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
 
       {entries.map(t => {
-        // Состояние заявки на турнир — теми же словами и цветами, что у брони
-        const st = bookingState({ status: t.entry?.status ?? 'confirmed', holdUntil: t.entry?.holdUntil ?? null,
-          endsAt: new Date(new Date(t.startsAt).getTime() + (t.hours ?? 1) * 3600_000).toISOString() } as ApiBooking);
+        // Состояние заявки на турнир — теми же цветами и значками, что у брони
+        const st = entryState(t);
         return (
         <View key={'t' + t.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
           <View style={[s.band, { backgroundColor: st.bg }]}>
@@ -118,12 +119,13 @@ export default function Bookings() {
             <Text style={s.time}>Начало {hh(hourOfIso(t.startsAt))}</Text>
             <Text style={s.price}>взнос {rub(t.fee)}</Text>
           </View>
+          <Text style={s.note}>{st.note}</Text>
           <View style={s.actions}>
             <Pressable style={s.mini}
               onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id) } })}>
               <Text style={s.miniT}>О турнире</Text>
             </Pressable>
-            {st.canCancel && (
+            {(st.canCancel || !!t.entry?.byClub) && (
               <Pressable style={s.mini} onPress={() => aboutTournament(t)}
                 accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
                 <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
