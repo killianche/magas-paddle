@@ -11,17 +11,23 @@ import type { CourtColor } from '../api';
 export const isSingle = (tags?: string[]) =>
   (tags ?? []).some(t => t.toLowerCase().startsWith('одиноч'));
 
+/** Клуб отметил корт ультрашироким. */
+export const isWide = (tags?: string[]) =>
+  (tags ?? []).some(t => t.toLowerCase().startsWith('ультрашир'));
+
 /** Корт сверху, как на плане: покрытие цветом корта, белая разметка, сетка.
- *  Размеры — по правилам FIP: парный корт 20×10 м, одиночный 20×6 м,
- *  линии подачи в 6,95 м от сетки. Ширину «ультраширокого» не рисуем:
- *  чем он отличается в метрах, клуб не сообщал. */
-export function CourtPlan({ width, color, single, dim }: {
-  width: number; color?: CourtColor | null; single?: boolean; dim?: boolean;
+ *  Парный корт 20×10 м и одиночный 20×6 м — по правилам FIP, линии подачи
+ *  в 6,95 м от сетки. Ультраширокий нарисован шире парного (13 м) — это
+ *  условный знак, не размер: насколько он шире, клуб не сообщал
+ *  (docs/OPEN-QUESTIONS.md, Q60). Высота плана у всех одна — под самый
+ *  широкий, чтобы плитки в сетке были ровными. */
+export function CourtPlan({ width, color, single, wide, dim }: {
+  width: number; color?: CourtColor | null; single?: boolean; wide?: boolean; dim?: boolean;
 }) {
   const pad = 6;
-  const k = (width - pad * 2) / 20;            // точек на метр
-  const H = Math.round(10 * k + pad * 2);       // высота всегда как у парного —
-  const w = 20 * k, h = (single ? 6 : 10) * k;  // плитки в сетке одной высоты
+  const k = (width - pad * 2) / 20;                       // точек на метр
+  const H = Math.round(13 * k + pad * 2);
+  const w = 20 * k, h = (single ? 6 : wide ? 13 : 10) * k;
   const x0 = pad, y0 = (H - h) / 2, mid = y0 + h / 2;
   const svc = 3.05 * k;
   const fill = color?.hex ?? '#6B7A70';

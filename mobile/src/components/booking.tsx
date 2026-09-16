@@ -17,7 +17,6 @@ import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp } from './icons';
 import { Gallery } from './gallery';
-import { RentalsSheet, useRentals } from './extras';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { BOOKING_NOTE, useClub } from '../club';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -323,8 +322,6 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
 }) {
   const insets = useSafeAreaInsets();
   const club = useClub();
-  const rentals = useRentals();
-  const [showRentals, setShowRentals] = useState(false);
   return (
     <View style={[b.sheet, { paddingBottom: insets.bottom + 12 }]}>
       <View style={b.sumRow}>
@@ -339,19 +336,13 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
       </View>
 
       {/* Что входит в бронь — тихой строкой со значком, не подсказкой поверх.
-          Для поля про ракетки говорить нечего, там строки нет. */}
+          Для поля про ракетки говорить нечего, там строки нет. Ссылку «Цены на
+          прокат и мячи» заказчик попросил убрать: цены есть внизу главной. */}
       {!court.isFootball && (
-        <Pressable disabled={rentals.length === 0}
-          onPress={() => { Haptics.selectionAsync(); setShowRentals(true) }}
-          accessibilityRole={rentals.length ? 'button' : undefined}
-          accessibilityLabel={`${club.bookingNote?.trim() || BOOKING_NOTE}${rentals.length ? ' Цены на прокат и мячи' : ''}`}
-          hitSlop={6} style={({ pressed }) => [b.incl, pressed && { opacity: 0.6 }]}>
+        <View style={b.incl}>
           <PadelMark />
-          <View style={{ flex: 1 }}>
-            <Text style={b.inclT}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
-            {rentals.length > 0 && <Text style={b.inclMore}>Цены на прокат и мячи ›</Text>}
-          </View>
-        </Pressable>
+          <Text style={[b.inclT, { flex: 1 }]}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
+        </View>
       )}
 
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}
@@ -364,7 +355,6 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
       </Pressable>
 
       <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />
-      <RentalsSheet visible={showRentals} groups={rentals} onClose={() => setShowRentals(false)} />
     </View>
   );
 }
@@ -586,7 +576,6 @@ const b = sheet(() => ({
   problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 18, marginBottom: 10 },
   incl: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: -4, marginBottom: 12 },
   inclT: { fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
-  inclMore: { fontFamily: DISP_MED, color: C.accent, fontSize: 11.5, marginTop: 2 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: C.wa, minHeight: 52, borderRadius: R.lg },
   waT: { color: C.onWa, fontFamily: DISP, fontSize: 14, letterSpacing: 0.4,
