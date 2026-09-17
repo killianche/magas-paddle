@@ -5,8 +5,13 @@
 // Теперь показанное сохраняется на устройстве и при следующем открытии
 // рисуется сразу, а свежее подтягивается фоном и молча заменяет старое.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from './api';
+
+/** Как часто пробуем снова, пока связи нет. Экран не должен висеть с плашкой
+ *  «нет связи», когда интернет уже вернулся (например, включили VPN). */
+const RETRY_MS = 10_000;
 
 export type Query<T> = {
   data: T | null;
@@ -100,6 +105,15 @@ export function useApi<T>(
     return () => { alive = false };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run]);
+
+  // Пока связи нет — сами пробуем ещё раз и при возвращении в приложение.
+  // Раньше плашка «нет связи с клубом» висела до перехода на другой экран.
+  useEffect(() => {
+    if (!error) return;
+    const timer = setInterval(() => { run(true) }, RETRY_MS);
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') run(true) });
+    return () => { clearInterval(timer); sub.remove() };
+  }, [error, run]);
 
   // Индикатор обновления привязан только к жесту. Раньше он включался и от
   // тихого обновления при возврате на вкладку, а на iPhone включённый
