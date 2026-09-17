@@ -9,6 +9,7 @@ import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
 import { accountIdOf, normalizePhone, searchDigits } from '../phone';
+import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -66,8 +67,7 @@ export class AdminAuthController {
 
     // Считаем попытки и по логину, и по адресу: иначе перебор одного логина
     // с разных адресов или всех логинов с одного останется возможным.
-    const ip = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()
-      || req.socket?.remoteAddress || 'неизвестно';
+    const ip = ipOf(req);
     const keys = [`login:${login}`, `ip:${ip}`];
 
     const left = this.auth.lockedFor(keys);

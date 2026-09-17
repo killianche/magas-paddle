@@ -1,7 +1,9 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Delete, Get,
-  Headers, NotFoundException, Param, Post, Query,
+  Headers, HttpException, NotFoundException, Param, Post, Query, Req,
 } from '@nestjs/common';
+import { ipOf, limitRate } from '../ratelimit';
+import { MAX_PENDING_PER_PHONE, REQUESTS_PER_HOUR } from '../bookings/bookings.controller';
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../phone';
@@ -83,13 +85,15 @@ export class TournamentsController {
   }
 
   /** Заявка на турнир из приложения: человек заполняет форму, заявка ждёт
-   *  подтверждения администратора и держит место. WhatsApp не нужен, поэтому
-   *  короткого удержания, как у брони корта, нет: заявка ждёт решения до
-   *  начала турнира. Ответ клуба приходит в уведомления приложения. */
+   *  подтверждения администратора и держит место 24 часа (не дольше начала
+   *  турнира) — иначе ботом можно было бы занять все места до старта.
+   *  Ответ клуба приходит в уведомления приложения. */
   @Post(':id/entries')
-  async enter(@Param('id') id: string, @Body() dto: EnterDto) {
+  async enter(@Req() req: any, @Param('id') id: string, @Body() dto: EnterDto) {
     const entryPhone = normalizePhone(dto.phone);
     if (!entryPhone) throw new BadRequestException('Номер телефона неполный');
+    limitRate(`req:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
+      'Слишком много заявок подряд. Попробуйте через час или напишите в клуб');
 
     await this.club.releaseExpired();
     const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
@@ -104,13 +108,21 @@ export class TournamentsController {
     // Чужую анкету заявка не переписывает — как у брони корта
     const surname = dto.surname?.trim() || null;
     const known = await this.db.clients.findUnique({ where: { phone: entryPhone } });
-    const client = known?.pass_hash ? known : await this.db.clients.upsert({
-      where: { phone: entryPhone },
-      update: { name: dto.name, ...(surname ? { surname } : {}) },
-      create: { phone: entryPhone, name: dto.name, surname },
-    });
+    if (known) {
+      const pending = await this.db.tournament_entries.count({ where: {
+        client_id: known.id, status: 'pending', hold_until: { gt: new Date() } } });
+      if (pending >= MAX_PENDING_PER_PHONE) {
+        throw new HttpException(
+          `На этом номере уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба`, 429);
+      }
+    }
+    // Имя существующего клиента анонимная заявка не меняет; пустое — дополняем
+    const client = known
+      ? (known.pass_hash || known.name?.trim() ? known : await this.db.clients.update({
+          where: { id: known.id }, data: { name: dto.name, ...(surname ? { surname } : {}) } }))
+      : await this.db.clients.create({ data: { phone: entryPhone, name: dto.name, surname } });
 
-    const holdUntil = t.starts_at;
+    const holdUntil = new Date(Math.min(Date.now() + 24 * 3600_000, +t.starts_at));
 
     // Один человек — одна запись на турнир. Отменённую или истёкшую
     // заявку можно подать снова: оживляем ту же строку.

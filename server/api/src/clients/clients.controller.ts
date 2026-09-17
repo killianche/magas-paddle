@@ -14,8 +14,9 @@
 // провайдер рассылки и решение клуба (вопрос Q57).
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Headers,
-  HttpException, Post, Query, UnauthorizedException,
+  HttpException, Post, Query, Req, UnauthorizedException,
 } from '@nestjs/common';
+import { ipOf, limitRate } from '../ratelimit';
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../phone';
@@ -95,21 +96,19 @@ export class ClientsController {
    *  показать: форму входа или заполненную регистрацию. Ничего о записях
    *  и деньгах здесь нет. */
   @Get('check')
-  async check(@Query('phone') phone?: string) {
+  async check(@Req() req: any, @Query('phone') phone?: string) {
     const key = normalizePhone(phone);
     if (!key) throw new BadRequestException('Нужен номер телефона');
+    limitRate(`check:${ipOf(req)}`, 60, 60_000, 'Слишком много проверок подряд. Подождите минуту');
     const c = await this.db.clients.findUnique({ where: { phone: key } });
-    if (!c) return { known: false, hasPassword: false, profile: null };
-    return {
-      known: true,
-      hasPassword: !!c.pass_hash,
-      profile: c.pass_hash ? null : card(c),
-    };
+    // Анкету не отдаём: перебором номеров иначе выгружалась база клиентов клуба
+    return { known: !!c, hasPassword: !!c?.pass_hash, profile: null };
   }
 
   /** Завести аккаунт или задать пароль номеру, который клуб уже знает. */
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
+  async register(@Req() req: any, @Body() dto: RegisterDto) {
+    limitRate(`register:${ipOf(req)}`, 5, 3600_000, 'Слишком много регистраций подряд. Попробуйте через час');
     const key = normalizePhone(dto.phone);
     if (!key) throw new BadRequestException('Не разобрал номер телефона');
     const name = dto.name.trim();
@@ -141,11 +140,11 @@ export class ClientsController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Headers('x-forwarded-for') ip?: string) {
+  async login(@Req() req: any, @Body() dto: LoginDto) {
     const key = normalizePhone(dto.phone);
     if (!key) throw new BadRequestException('Не разобрал номер телефона');
 
-    const keys = [`p:${key}`, `i:${(ip ?? '').split(',')[0].trim() || 'нет'}`];
+    const keys = [`p:${key}`, `i:${ipOf(req)}`];
     const left = this.auth.lockedFor(keys);
     if (left > 0) {
       throw new HttpException(

@@ -1,13 +1,21 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Delete, Get,
-  Headers, NotFoundException, Param, Post, Query, UnauthorizedException,
+  Headers, HttpException, NotFoundException, Param, Post, Query, Req, UnauthorizedException,
 } from '@nestjs/common';
+import { ipOf, limitRate } from '../ratelimit';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
 import { ClubService, hoursOn } from '../club';
 import { normalizePhone } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
-import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
+import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
+
+/** Защита от ботов (решение заказчика 17.09.2026): не больше 3 неподтверждённых
+ *  заявок на номер, запись не дальше 30 дней вперёд, не больше 10 заявок в час
+ *  с одного адреса. */
+export const MAX_PENDING_PER_PHONE = 3;
+export const DAYS_AHEAD = 30;
+export const REQUESTS_PER_HOUR = 10;
 
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
 const EXCLUSION_VIOLATION = '23P01';
@@ -69,10 +77,15 @@ export class BookingsController {
   }
 
   @Post()
-  async create(@Body() dto: CreateBookingDto) {
+  async create(@Req() req: any, @Body() dto: CreateBookingDto) {
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
     const bookingPhone = normalizePhone(dto.phone);
     if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
+    if (dto.date > shiftDate(clubToday(), DAYS_AHEAD)) {
+      throw new BadRequestException(`Записаться можно не дальше чем на ${DAYS_AHEAD} дней вперёд`);
+    }
+    limitRate(`req:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
+      'Слишком много заявок подряд. Попробуйте через час или позвоните в клуб');
     await this.club.releaseExpired();
     const pricing = await this.club.pricing();
     const set = pricing.settings;
@@ -110,11 +123,22 @@ export class BookingsController {
     // и номера меняет только сам хозяин, войдя в аккаунт. Записаться при этом
     // можно — бронь на чужой номер вреда не делает, менеджер всё равно звонит.
     const known = await this.db.clients.findUnique({ where: { phone: bookingPhone } });
-    const client = known?.pass_hash ? known : await this.db.clients.upsert({
-      where: { phone: bookingPhone },
-      update: { name: dto.name, ...(surname ? { surname } : {}), ...(wa ? { whatsapp: wa } : {}) },
-      create: { phone: bookingPhone, name: dto.name, surname, whatsapp: wa },
-    });
+    if (known) {
+      const pending = await this.db.bookings.count({ where: {
+        client_id: known.id, status: 'pending', starts_at: { gt: new Date() },
+        OR: [{ hold_until: null }, { hold_until: { gt: new Date() } }],
+      } });
+      if (pending >= MAX_PENDING_PER_PHONE) {
+        throw new HttpException(
+          `На этом номере уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба или напишите менеджеру`, 429);
+      }
+    }
+    // Существующему клиенту анонимная заявка имя не меняет — иначе любой мог
+    // переименовать чужого клиента. Пустое имя (клиента завёл менеджер) дополняем.
+    const client = known
+      ? (known.pass_hash || known.name?.trim() ? known : await this.db.clients.update({
+          where: { id: known.id }, data: { name: dto.name, ...(surname ? { surname } : {}) } }))
+      : await this.db.clients.create({ data: { phone: bookingPhone, name: dto.name, surname, whatsapp: wa } });
 
     try {
       const b = await this.db.bookings.create({

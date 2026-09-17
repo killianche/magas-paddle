@@ -1790,7 +1790,7 @@ function openPending(kind){
   const rows = pendRows.filter(r => (r.kind||'booking') === kind);
   $('#pendTitle').textContent = tour ? 'Заявки на турниры' : 'Новые брони';
   $('#pendSub').textContent = tour
-    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим до начала турнира.'
+    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим 24 часа, но не дольше начала турнира.'
     : 'Из приложения, по всем датам. Ждут подтверждения.';
   $('#pendList').innerHTML = rows.length ? rows.map(r => `
     <button class="it" data-date="${r.date}" data-id="${r.id}" data-t="${r.tournamentId||''}">
@@ -2678,9 +2678,9 @@ function renderTnPhotos(t){
 }
 
 /** Заявки на турнир. Из приложения они приходят «ждут подтверждения» и
- *  держат место до начала турнира; менеджер подтверждает или отклоняет,
+ *  держат место 24 часа (не дольше начала турнира); менеджер подтверждает или отклоняет,
  *  человеку приходит уведомление в приложении. */
-const ENTRY_STATE = { pending:'ждёт подтверждения', confirmed:'участвует', cancelled:'отменена', expired:'не подтвердили до начала' };
+const ENTRY_STATE = { pending:'ждёт подтверждения', confirmed:'участвует', cancelled:'отменена', expired:'не подтвердили за 24 часа' };
 async function loadEntries(t){
   try {
     const es = await call(`/admin/tournaments/${t.id}/entries`);

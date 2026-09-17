@@ -95,7 +95,7 @@ export function entryState(t: ApiTournament): BookingState {
   };
   if (status === 'expired') return {
     key: 'missed', label: 'НЕ ПОДТВЕРЖДЕНО', short: 'не подтверждено',
-    note: 'Клуб не подтвердил заявку до начала турнира.',
+    note: 'Клуб не подтвердил заявку вовремя. Если места ещё есть, подайте новую.',
     bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
   };
   if (ends < Date.now()) return {
