@@ -37,8 +37,12 @@ export function bookingState(b: ApiBooking): BookingState {
   const past = new Date(b.endsAt).getTime() < Date.now();
 
   if (b.status === 'cancelled') return {
-    key: 'cancelled', label: 'ОТМЕНЕНО', short: 'отменено',
-    note: 'Запись отменена, время снова свободно.',
+    key: 'cancelled',
+    label: b.cancelledByClub ? 'КЛУБ ОТМЕНИЛ' : 'ВЫ ОТМЕНИЛИ',
+    short: b.cancelledByClub ? 'клуб отменил' : 'вы отменили',
+    note: b.cancelledByClub
+      ? 'Клуб отменил эту запись — время снова свободно. Если это ошибка, напишите менеджеру.'
+      : 'Вы отменили запись, время снова свободно.',
     bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
   };
   if (b.status === 'expired') return {

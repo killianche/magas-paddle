@@ -34,16 +34,12 @@ export class BookingsController {
    *  без пароля: иначе чужой номер снова открывал бы чужие записи. Так же
    *  продолжают работать версии приложения, разосланные до появления пароля.
    */
-  private async whose(header: string | undefined, phone: string | undefined) {
+  /** Кто спрашивает. Только по входу в аккаунт: раньше хватало номера телефона,
+   *  и чужие записи мог посмотреть и отменить любой, кто знает номер. */
+  private async whose(header: string | undefined, _phone?: string) {
     const byToken = await this.auth.whoIs(this.auth.tokenOf(header));
-    if (byToken) return byToken;
-
-    const key = normalizePhone(phone);
-    if (!key) throw new UnauthorizedException('Нужно войти в аккаунт');
-    const c = await this.db.clients.findUnique({ where: { phone: key } });
-    if (!c) return null;
-    if (c.pass_hash) throw new UnauthorizedException('Этот номер защищён паролем — войдите в аккаунт');
-    return c;
+    if (!byToken) throw new UnauthorizedException('Войдите в аккаунт');
+    return byToken;
   }
 
   /** Записи одного человека. */
@@ -56,14 +52,22 @@ export class BookingsController {
     // «ждёт подтверждения» у брони, которую клуб уже отпустил.
     await this.club.releaseExpired();
 
+    // Отменённые тоже показываем: клуб мог отменить бронь, и человек должен
+    // это увидеть, а не обнаружить, что запись просто пропала. Старые отмены
+    // не копим — только свежие и будущие.
     const rows = await this.db.bookings.findMany({
-      where: { client_id: client.id, status: { not: 'cancelled' } },
+      where: { client_id: client.id, OR: [
+        { status: { not: 'cancelled' } },
+        { status: 'cancelled', status_at: { gt: new Date(Date.now() - 7 * 864e5) } },
+      ] },
       orderBy: { starts_at: 'asc' },
     });
     const courts = new Map((await this.db.courts.findMany()).map(c => [c.id, c.name]));
 
     return rows.map(b => ({
       id: Number(b.id),
+      // Отменил клуб, а не сам человек: в приложении это видно отдельной строкой
+      cancelledByClub: b.status === 'cancelled' && !(b.status_by ?? '').startsWith('client'),
       courtId: b.court_id,
       courtName: courts.get(b.court_id) ?? b.court_id,
       startsAt: b.starts_at,
@@ -77,10 +81,14 @@ export class BookingsController {
   }
 
   @Post()
-  async create(@Req() req: any, @Body() dto: CreateBookingDto) {
+  async create(@Req() req: any, @Body() dto: CreateBookingDto,
+               @Headers('authorization') header?: string) {
+    // Заявку оставляет только вошедший: так бронь привязана к настоящему
+    // аккаунту, а чужой номер нельзя ни занять, ни переименовать
+    const me = await this.auth.whoIs(this.auth.tokenOf(header));
+    if (!me) throw new UnauthorizedException('Войдите в аккаунт, чтобы записаться');
     if (!isValidDate(dto.date)) throw new BadRequestException('Неверная дата');
-    const bookingPhone = normalizePhone(dto.phone);
-    if (!bookingPhone) throw new BadRequestException('Номер телефона неполный');
+    const bookingPhone = me.phone;
     if (dto.date > shiftDate(clubToday(), DAYS_AHEAD)) {
       throw new BadRequestException(`Записаться можно не дальше чем на ${DAYS_AHEAD} дней вперёд`);
     }
@@ -100,7 +108,9 @@ export class BookingsController {
 
     const court = await this.db.courts.findUnique({ where: { id: dto.courtId } });
     if (!court || !court.is_active) throw new NotFoundException('Площадка не найдена');
-    if (court.closed_until && court.closed_until > new Date()) {
+    // Сравниваем с временем игры, а не с «сейчас»: корт, закрытый до завтра,
+    // на следующей неделе снова доступен
+    if (court.closed_until && court.closed_until > clubHour(dto.date, dto.hour)) {
       throw new ConflictException({ code: 'court_closed', message: court.closed_reason ?? 'Площадка закрыта' });
     }
 
@@ -122,23 +132,18 @@ export class BookingsController {
     // Чужую анкету заявка не переписывает: если на номере стоит пароль, имя
     // и номера меняет только сам хозяин, войдя в аккаунт. Записаться при этом
     // можно — бронь на чужой номер вреда не делает, менеджер всё равно звонит.
-    const known = await this.db.clients.findUnique({ where: { phone: bookingPhone } });
-    if (known) {
-      const pending = await this.db.bookings.count({ where: {
-        client_id: known.id, status: 'pending', starts_at: { gt: new Date() },
-        OR: [{ hold_until: null }, { hold_until: { gt: new Date() } }],
-      } });
-      if (pending >= MAX_PENDING_PER_PHONE) {
-        throw new HttpException(
-          `На этом номере уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба или напишите менеджеру`, 429);
-      }
+    const pending = await this.db.bookings.count({ where: {
+      client_id: me.id, status: 'pending', starts_at: { gt: new Date() },
+      OR: [{ hold_until: null }, { hold_until: { gt: new Date() } }],
+    } });
+    if (pending >= MAX_PENDING_PER_PHONE) {
+      throw new HttpException(
+        `У вас уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба или напишите менеджеру`, 429);
     }
-    // Существующему клиенту анонимная заявка имя не меняет — иначе любой мог
-    // переименовать чужого клиента. Пустое имя (клиента завёл менеджер) дополняем.
-    const client = known
-      ? (known.pass_hash || known.name?.trim() ? known : await this.db.clients.update({
-          where: { id: known.id }, data: { name: dto.name, ...(surname ? { surname } : {}) } }))
-      : await this.db.clients.create({ data: { phone: bookingPhone, name: dto.name, surname, whatsapp: wa } });
+    // Второй номер запоминаем, имя аккаунта заявка не меняет — оно в «Моих данных»
+    const client = wa && wa !== me.whatsapp
+      ? await this.db.clients.update({ where: { id: me.id }, data: { whatsapp: wa } })
+      : me;
 
     try {
       const b = await this.db.bookings.create({
@@ -182,13 +187,24 @@ export class BookingsController {
     if (!booking || !client || booking.client_id !== client.id) {
       throw new NotFoundException('Запись не найдена');
     }
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      throw new ConflictException('Эту запись уже нельзя отменить');
+    }
+    if (booking.starts_at < new Date()) {
+      throw new ConflictException('Игра уже началась — отменить нельзя, напишите менеджеру');
+    }
+    // Правило клуба (заказчик, 17.09.2026): отмена не позже чем за cancelHours;
+    // позже отменить можно, но предоплата сгорает — это помечается в записи
+    const set = await this.club.get();
+    const late = +booking.starts_at - Date.now() < set.cancelHours * 3600_000;
     await this.db.$transaction([
       this.db.bookings.update({ where: { id: booking.id }, data: {
-        status: 'cancelled', status_at: new Date(), status_by: 'client',
+        status: 'cancelled', status_at: new Date(),
+        status_by: late ? 'client, поздняя отмена' : 'client',
       }}),
       this.db.clients.update({ where: { id: client.id }, data: { cancels: { increment: 1 } } }),
     ]);
-    return { id: Number(booking.id), status: 'cancelled' };
+    return { id: Number(booking.id), status: 'cancelled', late, cancelHours: set.cancelHours };
   }
 
   /** Чем заменить занятое время: сначала другие площадки того же типа

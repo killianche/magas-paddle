@@ -1,6 +1,6 @@
 import {
   BadRequestException, Body, ConflictException, Controller, Delete, Get,
-  Headers, HttpException, NotFoundException, Param, Post, Query, Req,
+  Headers, HttpException, NotFoundException, Param, Post, Query, Req, UnauthorizedException,
 } from '@nestjs/common';
 import { ipOf, limitRate } from '../ratelimit';
 import { MAX_PENDING_PER_PHONE, REQUESTS_PER_HOUR } from '../bookings/bookings.controller';
@@ -32,13 +32,8 @@ export class TournamentsController {
 
   /** Кто спрашивает: по токену входа, а без него — по номеру, но только
    *  если аккаунт не защищён паролем. Та же логика, что и у записей. */
-  private async whose(header: string | undefined, phone: string | undefined) {
-    const byToken = await this.auth.whoIs(this.auth.tokenOf(header));
-    if (byToken) return byToken;
-    const key = normalizePhone(phone);
-    if (!key) return null;
-    const c = await this.db.clients.findUnique({ where: { phone: key } });
-    return c && !c.pass_hash ? c : null;
+  private async whose(header: string | undefined, _phone?: string) {
+    return this.auth.whoIs(this.auth.tokenOf(header));
   }
 
   @Get()
@@ -89,9 +84,12 @@ export class TournamentsController {
    *  турнира) — иначе ботом можно было бы занять все места до старта.
    *  Ответ клуба приходит в уведомления приложения. */
   @Post(':id/entries')
-  async enter(@Req() req: any, @Param('id') id: string, @Body() dto: EnterDto) {
-    const entryPhone = normalizePhone(dto.phone);
-    if (!entryPhone) throw new BadRequestException('Номер телефона неполный');
+  async enter(@Req() req: any, @Param('id') id: string, @Body() dto: EnterDto,
+              @Headers('authorization') header?: string) {
+    // Только для вошедшего: заявка привязана к настоящему аккаунту, и чужой
+    // номер записать нельзя
+    const me = await this.auth.whoIs(this.auth.tokenOf(header));
+    if (!me) throw new UnauthorizedException('Войдите в аккаунт, чтобы записаться');
     limitRate(`req:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
       'Слишком много заявок подряд. Попробуйте через час или напишите в клуб');
 
@@ -101,49 +99,52 @@ export class TournamentsController {
     if (t.state !== 'open') throw new ConflictException('Запись на этот турнир закрыта');
     if (t.starts_at < new Date()) throw new ConflictException('Турнир уже начался');
 
-    const count = await this.db.tournament_entries.count({
-      where: { tournament_id: t.id, ...ACTIVE_ENTRY } });
-    if (count >= t.seats) throw new ConflictException('Мест больше нет');
-
-    // Чужую анкету заявка не переписывает — как у брони корта
-    const surname = dto.surname?.trim() || null;
-    const known = await this.db.clients.findUnique({ where: { phone: entryPhone } });
-    if (known) {
-      const pending = await this.db.tournament_entries.count({ where: {
-        client_id: known.id, status: 'pending', hold_until: { gt: new Date() } } });
-      if (pending >= MAX_PENDING_PER_PHONE) {
-        throw new HttpException(
-          `На этом номере уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба`, 429);
-      }
+    const pending = await this.db.tournament_entries.count({ where: {
+      client_id: me.id, status: 'pending', hold_until: { gt: new Date() } } });
+    if (pending >= MAX_PENDING_PER_PHONE) {
+      throw new HttpException(
+        `У вас уже ${pending} заявки ждут подтверждения. Дождитесь ответа клуба`, 429);
     }
-    // Имя существующего клиента анонимная заявка не меняет; пустое — дополняем
-    const client = known
-      ? (known.pass_hash || known.name?.trim() ? known : await this.db.clients.update({
-          where: { id: known.id }, data: { name: dto.name, ...(surname ? { surname } : {}) } }))
-      : await this.db.clients.create({ data: { phone: entryPhone, name: dto.name, surname } });
+
+    // Своё имя и фамилию человек может поправить прямо в форме записи
+    const name = dto.name?.trim();
+    const surname = dto.surname?.trim() || null;
+    const client = (name && name.length >= 2 && (name !== me.name || surname !== me.surname))
+      ? await this.db.clients.update({ where: { id: me.id }, data: { name, surname } })
+      : me;
 
     const holdUntil = new Date(Math.min(Date.now() + 24 * 3600_000, +t.starts_at));
-
-    // Один человек — одна запись на турнир. Отменённую или истёкшую
-    // заявку можно подать снова: оживляем ту же строку.
-    const prev = await this.db.tournament_entries.findUnique({
-      where: { tournament_id_client_id: { tournament_id: t.id, client_id: client.id } } });
-    if (prev && ['pending', 'confirmed'].includes(prev.status)) {
-      throw new ConflictException(prev.status === 'confirmed'
-        ? 'Вы уже записаны на этот турнир' : 'Ваша заявка на этот турнир уже ждёт подтверждения');
-    }
     const data = { status: 'pending', hold_until: holdUntil, status_at: new Date(), status_by: 'приложение' };
-    const e = prev
-      ? await this.db.tournament_entries.update({ where: { id: prev.id }, data })
-      : await this.db.tournament_entries.create({ data: { tournament_id: t.id, client_id: client.id, ...data } });
+
+    // Места считаем и занимаем в одной транзакции с блокировкой строки турнира:
+    // иначе на последнее место одновременно проходили несколько заявок.
+    const { entry, taken } = await this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM tournaments WHERE id = ${t.id} FOR UPDATE`;
+      const count = await tx.tournament_entries.count({
+        where: { tournament_id: t.id, ...ACTIVE_ENTRY } });
+      if (count >= t.seats) throw new ConflictException('Мест больше нет');
+
+      // Один человек — одна запись на турнир. Отменённую или истёкшую
+      // заявку можно подать снова: оживляем ту же строку.
+      const prev = await tx.tournament_entries.findUnique({
+        where: { tournament_id_client_id: { tournament_id: t.id, client_id: client.id } } });
+      if (prev && ['pending', 'confirmed'].includes(prev.status)) {
+        throw new ConflictException(prev.status === 'confirmed'
+          ? 'Вы уже записаны на этот турнир' : 'Ваша заявка на этот турнир уже ждёт подтверждения');
+      }
+      const e = prev
+        ? await tx.tournament_entries.update({ where: { id: prev.id }, data })
+        : await tx.tournament_entries.create({ data: { tournament_id: t.id, client_id: client.id, ...data } });
+      return { entry: e, taken: count + 1 };
+    });
 
     return {
-      id: Number(e.id), tournamentId: Number(t.id), tournamentName: t.name,
-      startsAt: t.starts_at, fee: t.fee, status: e.status,
-      holdUntil: e.hold_until,
+      id: Number(entry.id), tournamentId: Number(t.id), tournamentName: t.name,
+      startsAt: t.starts_at, fee: t.fee, status: entry.status,
+      holdUntil: entry.hold_until,
       // ID аккаунта приложение запоминает в профиле
       clientId: Number(client.id),
-      entered: true, left: t.seats - count - 1,
+      entered: true, left: t.seats - taken,
     };
   }
 

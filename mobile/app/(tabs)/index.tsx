@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
-import { api, rub, mediaUrl, type ApiBooking } from '../../src/api';
+import { api, rub, mediaUrl, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
@@ -58,10 +58,14 @@ export default function Home() {
   const unread = notes.data?.unread ?? 0;
 
   const q = useApi(async () => {
+    // Свои записи и турниры грузим «мягко»: если сервер ответит на них ошибкой
+    // (например, вход устарел), главная всё равно покажет корты и цены,
+    // а не станет целиком экраном «нет связи»
+    const soft = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
     const [next, tournaments, bookings, prices] = await Promise.all([
       upcomingGrid(),
-      api.tournaments(phone),
-      phone ? api.myBookings(phone) : Promise.resolve([] as ApiBooking[]),
+      soft(api.tournaments(phone), [] as ApiTournament[]),
+      phone ? soft(api.myBookings(phone), [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
       api.prices(),
     ]);
     return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices };

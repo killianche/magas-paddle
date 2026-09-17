@@ -61,11 +61,14 @@ export class AvailabilityController {
           busy.add(h);
         }
       }
-      const closed = c.closed_until != null && c.closed_until > new Date();
+      // Закрытие корта действует до своей даты: «до завтра» не должно
+      // закрывать корт на всю неделю вперёд
+      const closedUntil = c.closed_until;
 
       const hours = [];
       for (let h = open; h < close; h++) {
         const started = day === clubToday() && clubHour(day, h) <= now;
+        const closed = closedUntil != null && closedUntil > clubHour(day, h);
         const status = closed ? 'closed'
           : started ? 'past'
           : busy.has(h) ? 'busy'
@@ -78,6 +81,8 @@ export class AvailabilityController {
           maxRun: status !== 'free' ? 0 : runFrom(day, h, busy, now, close, set.maxHours),
         });
       }
+      // Корт «закрыт» на этот день, если закрытие покрывает весь день
+      const closed = closedUntil != null && closedUntil >= clubHour(day, close);
       return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours,
         photo: firstPhoto.get(c.id) ?? null,
         // Цвет и особенности — для карточек кортов на главной

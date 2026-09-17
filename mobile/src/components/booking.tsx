@@ -9,10 +9,10 @@ import {
   StyleSheet, Text, TextInput, View, useWindowDimensions, type ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet, R } from '../theme';
-import { api, rub, mediaUrl, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
+import { api, rub, mediaUrl, getToken, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp } from './icons';
@@ -192,8 +192,9 @@ export type Booking = ReturnType<typeof useBooking>;
  *
  *  Заявка всегда заводится в приложении на конкретного человека: иначе её не
  *  к кому привязать — ни истории, ни «Моих записей», ни уведомления, когда
- *  менеджер подтвердит. У кого аккаунта нет, сначала спрашиваем телефон и
- *  имя (окно «Кто бронирует»), пароль не нужен. */
+ *  менеджер подтвердит. Записывается только вошедший: заявка привязана
+ *  к аккаунту, и чужой номер занять нельзя (решение заказчика 17.09.2026).
+ *  Без аккаунта отправляем на вход и возвращаем обратно на этот же экран. */
 export function useBooking({ date, hours, sel, court, onTaken }: {
   date: string; hours: number; sel: Sel; court: Court | null; onTaken: () => void;
 }) {
@@ -201,7 +202,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   const { profile, save } = useProfile();
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [asking, setAsking] = useState(false);
+  const path = usePathname();
+  const params = useLocalSearchParams<{ id?: string }>();
 
   // Цена складывается по часам: утро и вечер стоят по-разному
   const total = useMemo(() => {
@@ -268,9 +270,15 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     ]);
   };
 
+  /** Куда вернуться после входа: этот же экран с тем же кортом. */
+  const backHere = () => path + (params.id ? `?id=${params.id}` : '');
+
   const bookInWhatsApp = async (who: Profile | null = profile) => {
     if (!sel || !court || sending) return;
-    if (!who) { setAsking(true); return }
+    if (!who || !getToken()) {
+      router.push({ pathname: '/account', params: { next: backHere() } });
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setProblem(null);
     setSending(true);
@@ -299,17 +307,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     }
   };
 
-  /** Ответ из окна «Кто бронирует»: запоминаем человека и сразу бронируем. */
-  const withWho = async (p: Profile, token?: string) => {
-    if (token) await saveToken(token);
-    await save(p);
-    setAsking(false);
-    await bookInWhatsApp(p);
-  };
-
   return {
-    total, prepay, sending, problem, setProblem, asking, withWho,
-    cancelAsk: () => setAsking(false),
+    total, prepay, sending, problem, setProblem,
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,
   };
@@ -354,7 +353,6 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
         <Text style={b.waT}>{booking.sending ? 'Минуту…' : 'Забронировать в WhatsApp'}</Text>
       </Pressable>
 
-      <WhoSheet visible={booking.asking} onCancel={booking.cancelAsk} onDone={booking.withWho} />
     </View>
   );
 }
@@ -373,115 +371,6 @@ function PadelMark() {
       <Circle cx={11.2} cy={10.1} r={0.7} fill={C.dim} stroke="none" />
       <Circle cx={19.2} cy={5.4} r={2.4} />
     </Svg>
-  );
-}
-
-/** «Кто бронирует» — для тех, у кого ещё нет аккаунта.
- *
- *  Два поля: телефон и имя. Пароль не нужен — его можно задать позже в
- *  аккаунте. Если номер уже защищён паролем, окно просит пароль, иначе бронь
- *  привязалась бы к чужому аккаунту без его ведома. */
-export function WhoSheet({ visible, onCancel, onDone, title = 'Кто бронирует' }: {
-  visible: boolean; onCancel: () => void; onDone: (p: Profile, token?: string) => void;
-  /** Заголовок окна: на турнире — «Кто записывается». */
-  title?: string;
-}) {
-  const insets = useSafeAreaInsets();
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [state, setState] = useState<'unknown' | 'new' | 'known' | 'protected'>('unknown');
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-  const clean = normalizePhone(phone);
-  // Ключ уже спрошенного номера — в ref: состояние перезапускало бы эффект
-  const asked = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!clean || clean === asked.current) return;
-    asked.current = clean;
-    api.checkPhone(clean).then(r => {
-      setState(!r.known ? 'new' : r.hasPassword ? 'protected' : 'known');
-      const p = r.profile;
-      if (p) setName(n => n.trim() ? n : p.name);
-    }).catch(() => setState('new'));
-  }, [clean]);
-
-  const login = state === 'protected';
-  const ok = !!clean && (login ? password.length >= 6 : name.trim().length >= 2);
-
-  const submit = async () => {
-    if (!ok || !clean || busy) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setBusy(true); setProblem(null);
-    try {
-      if (login) {
-        const res = await api.login(clean, password);
-        onDone({
-          id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
-          phone: res.profile.phone, whatsapp: res.profile.whatsapp ?? undefined,
-          hasPassword: true,
-        }, res.token);
-      } else {
-        onDone({ name: name.trim(), phone: clean, hasPassword: false });
-      }
-    } catch (e) {
-      setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}
-      statusBarTranslucent>
-      <KeyboardAvoidingView style={b.whoBack} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={{ flex: 1 }} onPress={onCancel} accessibilityLabel="Закрыть" />
-        <View style={[b.who, { paddingBottom: insets.bottom + 14 }]}>
-          <Text style={b.whoT}>{title}</Text>
-
-          <Text style={b.whoL}>Телефон</Text>
-          <TextInput style={b.whoIn} value={phone} onChangeText={setPhone}
-            placeholder="89289204029" placeholderTextColor={C.busy}
-            keyboardType="phone-pad" textContentType="telephoneNumber" autoFocus
-            accessibilityLabel="Номер телефона" />
-
-          {login ? (
-            <>
-              <Text style={b.whoL}>Пароль</Text>
-              <TextInput style={b.whoIn} value={password} onChangeText={setPassword}
-                placeholder="Номер защищён паролем" placeholderTextColor={C.busy}
-                secureTextEntry autoCapitalize="none" autoCorrect={false}
-                textContentType="password" accessibilityLabel="Пароль" />
-            </>
-          ) : (
-            <>
-              <Text style={b.whoL}>Имя</Text>
-              <TextInput style={b.whoIn} value={name} onChangeText={setName}
-                placeholder="Как к вам обращаться" placeholderTextColor={C.busy}
-                autoCapitalize="words" textContentType="givenName"
-                accessibilityLabel="Имя" />
-            </>
-          )}
-
-          {!!problem && <Text style={b.problem}>{problem}</Text>}
-
-          <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
-            accessibilityLabel="Продолжить в WhatsApp"
-            style={({ pressed }) => [b.wa, { marginTop: 16 }, (!ok || busy) && b.waOff,
-              pressed && ok && { opacity: 0.85 }]}>
-            <IconWhatsApp size={20} color={ok ? C.onWa : C.dim2} />
-            <Text style={[b.waT, !ok && { color: C.dim2 }]}>
-              {busy ? 'Минуту…' : 'Продолжить в WhatsApp'}
-            </Text>
-          </Pressable>
-          <Pressable onPress={onCancel} accessibilityRole="button"
-            style={({ pressed }) => [b.clear, pressed && { opacity: 0.6 }]}>
-            <Text style={b.clearT}>отмена</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
   );
 }
 

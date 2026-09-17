@@ -119,6 +119,17 @@ export class ClientsController {
     catch (e) { throw new BadRequestException((e as Error).message) }
 
     const exists = await this.db.clients.findUnique({ where: { phone: key } });
+    // Пароль ставят на номер, который клуб уже знает, — клубу это видно в журнале:
+    // подтверждения номера по SMS пока нет (вопрос Q57)
+    if (exists && !exists.pass_hash) {
+      const played = await this.db.bookings.count({ where: { client_id: exists.id } });
+      if (played > 0) {
+        await this.db.admin_log.create({ data: {
+          admin_name: 'приложение', action: 'на известный номер задали пароль',
+          details: `${exists.name}, ${key}, записей: ${played}`,
+        }});
+      }
+    }
     if (exists?.pass_hash) {
       throw new ConflictException('У этого номера уже есть пароль. Войдите или попросите менеджера сбросить его.');
     }
@@ -158,6 +169,43 @@ export class ClientsController {
     }
     this.auth.clearFails(keys);
     return { token: await this.auth.startSession(c.id), profile: card(c) };
+  }
+
+  /** Удаление аккаунта — требование Apple к приложениям с регистрацией.
+   *
+   *  Строку клиента не удаляем: на ней висят прошлые брони и деньги клуба.
+   *  Стираем всё личное (имя, номера, пароль), закрываем входы и снимаем
+   *  будущие записи, чтобы время вернулось в расписание. */
+  @Post('me/delete')
+  async removeMe(@Body() body: { password?: string }, @Headers('authorization') header?: string) {
+    const c = await this.auth.whoIs(this.auth.tokenOf(header));
+    if (!c) throw new UnauthorizedException('Нужно войти');
+    if (c.pass_hash && !(await this.auth.verify(String(body?.password ?? ''), c.pass_hash))) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+    const now = new Date();
+    await this.db.$transaction([
+      this.db.bookings.updateMany({
+        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, starts_at: { gt: now } },
+        data: { status: 'cancelled', status_at: now, status_by: 'клиент удалил аккаунт' },
+      }),
+      this.db.tournament_entries.updateMany({
+        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] } },
+        data: { status: 'cancelled', hold_until: null, status_at: now, status_by: 'клиент удалил аккаунт' },
+      }),
+      this.db.notifications.deleteMany({ where: { client_id: c.id } }),
+      this.db.client_sessions.deleteMany({ where: { client_id: c.id } }),
+      this.db.clients.update({ where: { id: c.id }, data: {
+        name: 'Удалённый аккаунт', surname: null,
+        // Номер должен остаться неповторимым, но узнать по нему человека уже нельзя
+        phone: `удалён-${c.id}`, whatsapp: null, pass_hash: null, pass_at: null, note: null,
+      }}),
+      this.db.admin_log.create({ data: {
+        admin_name: 'приложение', action: 'клиент удалил аккаунт',
+        details: `ID ${Number(c.id)}, будущие записи сняты`,
+      }}),
+    ]);
+    return { ok: true };
   }
 
   @Post('logout')

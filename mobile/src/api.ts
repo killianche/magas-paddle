@@ -127,6 +127,8 @@ export type Session = { token: string; profile: ClientCard };
 
 export type ApiBooking = {
   id: number; courtId: string; courtName: string;
+  /** Бронь отменил клуб, а не сам человек. */
+  cancelledByClub?: boolean;
   startsAt: string; endsAt: string; hour: number; hours: number;
   price: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
@@ -211,6 +213,11 @@ export const api = {
   logout: () => call<{ ok: boolean }>('/clients/logout', { method: 'POST' }),
 
   me: () => call<ClientCard>('/clients/me'),
+
+  /** Удалить свой аккаунт: требование Apple к приложениям с регистрацией. */
+  deleteMe: (password?: string) =>
+    call<{ ok: boolean }>('/clients/me/delete', { method: 'POST',
+      body: JSON.stringify({ password }) }),
 
   updateMe: (c: { name?: string; surname?: string; whatsapp?: string;
                   password?: string; oldPassword?: string }) =>

@@ -11,7 +11,7 @@ import {
   Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { api, rub, ApiError, getToken, type ApiBooking } from '../src/api';
@@ -35,11 +35,17 @@ export default function Account() {
   useTheme();
   const { profile, ready, save, forget } = useProfile();
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
+  // Сюда возвращаемся после входа: на экран корта или записи на турнир
+  const { next } = useLocalSearchParams<{ next?: string }>();
 
   if (!ready) return <><Stack.Screen options={{ title: 'Аккаунт' }} /><View style={s.root} /></>;
 
   if (!profile) {
-    return <Enter onDone={async (p, token) => { await saveToken(token); await save(p) }} />;
+    return <Enter why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
+      onDone={async (p, token) => {
+        await saveToken(token); await save(p);
+        if (next) router.replace(next as never);
+      }} />;
   }
   if (mode === 'edit') {
     return <EditForm profile={profile}
@@ -58,7 +64,11 @@ export default function Account() {
 
 /* ── Вход и регистрация ────────────────────────────────────────────────── */
 
-function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
+function Enter({ onDone, why }: {
+  onDone: (p: Profile, token: string) => void;
+  /** Зачем его сюда привели: «чтобы записаться». */
+  why?: string | null;
+}) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
@@ -130,6 +140,7 @@ function Enter({ onDone }: { onDone: (p: Profile, token: string) => void }) {
             {login ? 'ВХОД\nВ АККАУНТ' : 'СОЗДАТЬ\nАККАУНТ'}
           </Text>
           <Text style={s.lede}>
+            {why ? why + ' ' : ''}
             {login
               ? 'Этот номер уже защищён паролем. Введите его, чтобы увидеть свои записи.'
               : 'Клуб узнаёт вас по номеру телефона, а пароль закрывает ваши записи от чужих глаз.'}
@@ -399,6 +410,47 @@ function Card({ profile, onEdit, onPassword, onForget, onId }: {
   const soon = all.filter(b => !PAST.includes(b.status)
     && new Date(b.endsAt).getTime() >= Date.now()).length;
 
+  /** Удаление аккаунта. Требование Apple: если аккаунт можно завести
+   *  в приложении, его должно быть можно удалить оттуда же. */
+  const removeAccount = () => {
+    const title = 'Удалить аккаунт?';
+    const msg = 'Ваши имя и номер будут стёрты, будущие записи отменены, вход закроется. '
+      + 'Отменить удаление нельзя. История игр останется у клуба для учёта, без ваших данных.';
+    const go = async () => {
+      let password: string | undefined;
+      if (profile.hasPassword) {
+        password = Platform.OS === 'web'
+          ? (prompt('Введите пароль от аккаунта') ?? undefined)
+          : undefined;
+        if (Platform.OS !== 'web') {
+          // На телефоне пароль спрашиваем отдельным окном ввода
+          Alert.prompt?.('Пароль', 'Введите пароль от аккаунта', [
+            { text: 'Отмена', style: 'cancel' },
+            { text: 'Удалить', style: 'destructive', onPress: async (p?: string) => { await doDelete(p) } },
+          ], 'secure-text');
+          return;
+        }
+        if (!password) return;
+      }
+      await doDelete(password);
+    };
+    const doDelete = async (password?: string) => {
+      try {
+        await api.deleteMe(password);
+        await onForget();
+        router.replace('/');
+      } catch (e) {
+        const m = e instanceof ApiError ? e.message : 'Не получилось удалить аккаунт.';
+        Platform.OS === 'web' ? alert(m) : Alert.alert('Не вышло', m);
+      }
+    };
+    if (Platform.OS === 'web') { if (confirm(title + '\n\n' + msg)) go(); return }
+    Alert.alert(title, msg, [
+      { text: 'Оставить', style: 'cancel' },
+      { text: 'Удалить аккаунт', style: 'destructive', onPress: go },
+    ]);
+  };
+
   const leave = () => {
     const title = 'Выйти из аккаунта?';
     const msg = 'Записи останутся в клубе — вы увидите их снова, когда войдёте.';
@@ -462,6 +514,11 @@ function Card({ profile, onEdit, onPassword, onForget, onId }: {
               <Text style={[s.ghostT, { color: C.dim }]}>Выйти</Text>
             </Pressable>
           </View>
+          <Pressable onPress={removeAccount} accessibilityRole="button"
+            accessibilityLabel="Удалить аккаунт"
+            style={({ pressed }) => [s.delRow, pressed && { opacity: 0.7 }]}>
+            <Text style={s.delT}>Удалить аккаунт</Text>
+          </Pressable>
         </View>
 
         <Text style={s.group}>История посещений</Text>
@@ -573,6 +630,9 @@ const s = sheet(() => ({
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  delRow: { marginTop: 12, minHeight: HIT, justifyContent: 'center' },
+  delT: { color: C.red, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
+    textTransform: 'uppercase' },
   problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 19,
     marginHorizontal: S.xl, marginTop: 14 },
   link: { paddingVertical: 14, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },

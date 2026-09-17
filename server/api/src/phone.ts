@@ -4,13 +4,16 @@
 // без приведения к общему виду это два разных клиента, и история визитов
 // с отменами расходится. Правило простое: 11 цифр, всегда начинается с 7.
 
-/** Приводит номер к виду 79280001122. null — если это не российский номер. */
+/** Приводит номер к виду 79280001122. Зарубежные номера принимаются как есть,
+ *  цифрами с кодом страны (заказчик, 17.09.2026: «принимать»). null — если это
+ *  вообще не похоже на телефон. */
 export function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let d = String(raw).replace(/\D/g, '');
   if (d.length === 11 && d.startsWith('8')) d = '7' + d.slice(1);
   if (d.length === 10) d = '7' + d;             // набрали без кода страны
-  return d.length === 11 && d.startsWith('7') ? d : null;
+  if (d.length === 11 && d.startsWith('7')) return d;
+  return d.length >= 10 && d.length <= 15 ? d : null;
 }
 
 /** Цифры для поиска по номеру: «89289204029» и «79289204029» — один и тот же
@@ -26,7 +29,7 @@ export function searchDigits(raw: string | null | undefined): string {
 /** Читаемый вид для экрана: +7 928 000-11-22. */
 export function prettyPhone(normalized: string): string {
   const d = normalized;
-  if (d.length !== 11) return d;
+  if (d.length !== 11 || !d.startsWith('7')) return '+' + d;
   return `+${d[0]} ${d.slice(1, 4)} ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9)}`;
 }
 

@@ -304,6 +304,15 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .checkRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .checkRow input,.checkRow select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);color-scheme:var(--scheme)}
+/* Сигнал о новой заявке */
+.toast{position:fixed;right:18px;bottom:18px;z-index:60;display:none;align-items:center;gap:10px;
+  padding:13px 16px;border-radius:14px;border:1px solid var(--ok-line);background:var(--surface);
+  color:var(--text);font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.18);cursor:pointer}
+.toast.on{display:flex;animation:toastIn .25s ease-out}
+.toast span{color:var(--lime);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.btn.pend.ring{animation:ring 1s ease-in-out 0s 6}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(240,169,59,.7)}50%{box-shadow:0 0 0 8px rgba(240,169,59,0)}}
 .quick{display:flex;flex-wrap:wrap;gap:6px}
 .quick button{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:10px;
   padding:7px 10px;font-size:12.5px;text-align:left}
@@ -1774,6 +1783,45 @@ async function runSearch(q){
 // Брони кортов и заявки на турниры — раздельно: у каждых своя кнопка
 // в шапке и свой список. Турнирная заявка открывает карточку турнира.
 let pendRows = [];
+/* Новая заявка не должна ждать, пока менеджер сам заглянет в админку:
+   звук, мигание заголовка вкладки и подсветка кнопки. Звук — короткий сигнал
+   через WebAudio, файл не нужен; браузер разрешает его после первого клика,
+   поэтому включаем после входа. */
+let pendKnown = null;         // id заявок, о которых уже знаем
+let blinkTimer = null, soundOk = false;
+const TITLE_BASE = document.title;
+
+function beep(){
+  if (!soundOk) return;
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const go = (at, f) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, a.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.25, a.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + at + 0.28);
+      o.connect(g); g.connect(a.destination);
+      o.start(a.currentTime + at); o.stop(a.currentTime + at + 0.3);
+    };
+    go(0, 880); go(0.22, 1170);
+    setTimeout(() => a.close().catch(() => {}), 1200);
+  } catch {}
+}
+document.addEventListener('click', () => { soundOk = true }, { once: true });
+
+function blinkTitle(n){
+  clearInterval(blinkTimer);
+  let on = false;
+  blinkTimer = setInterval(() => {
+    on = !on;
+    document.title = on ? `🔔 Новых заявок: ${n}` : TITLE_BASE;
+  }, 1000);
+}
+function stopBlink(){ clearInterval(blinkTimer); blinkTimer = null; document.title = TITLE_BASE }
+window.addEventListener('focus', stopBlink);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) stopBlink() });
+
 async function loadPending(){
   try {
     pendRows = await call('/admin/pending');
@@ -1783,7 +1831,40 @@ async function loadPending(){
     $('#pendBtn').hidden = books.length === 0;
     $('#pendTnN').textContent = tours.length;
     $('#pendTnBtn').hidden = tours.length === 0;
+
+    // Что появилось с прошлой проверки
+    const ids = new Set(pendRows.map(r => (r.kind || 'booking') + r.id));
+    if (pendKnown) {
+      const fresh = [...ids].filter(k => !pendKnown.has(k));
+      if (fresh.length) {
+        beep();
+        if (document.hidden) blinkTitle(pendRows.length);
+        const tn = fresh.filter(k => k.startsWith('tournament')).length;
+        toast(fresh.length === 1
+          ? (tn ? 'Новая заявка на турнир' : 'Новая заявка на бронь')
+          : `Новых заявок: ${fresh.length}`,
+          tn && !fresh.some(k => k.startsWith('booking')) ? 'tournament' : 'booking');
+        [...(tn ? [$('#pendTnBtn')] : []), ...(fresh.some(k => k.startsWith('booking')) ? [$('#pendBtn')] : [])]
+          .forEach(b => { if (b) { b.classList.add('ring'); setTimeout(() => b.classList.remove('ring'), 6000) } });
+      }
+    }
+    pendKnown = ids;
   } catch {}
+}
+
+/** Всплывающая подсказка внизу справа: нажатие открывает список заявок. */
+function toast(text, kind){
+  let el = $('#toast');
+  if (!el) {
+    el = document.createElement('button');
+    el.id = 'toast'; el.className = 'toast'; el.type = 'button';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `🔔 ${esc(text)}<span>показать</span>`;
+  el.onclick = () => { el.classList.remove('on'); openPending(kind) };
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 12000);
 }
 function openPending(kind){
   const tour = kind === 'tournament';
@@ -3347,4 +3428,6 @@ document.addEventListener('keydown', e => {
 if(key){ $('#authModal').classList.remove('on'); start() }
 // Раз в минуту подтягиваем новые заявки: менеджер не должен обновлять вручную
 setInterval(() => { if(key && !document.hidden) load() }, 60000);
+// Заявки проверяем чаще расписания: менеджер должен узнать о новой сразу
+setInterval(() => { if(key) loadPending() }, 20000);
 </script>

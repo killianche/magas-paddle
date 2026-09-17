@@ -6,10 +6,10 @@ import {
   ScrollView, Text, View, Pressable, StyleSheet, Modal, Image,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
-import { router, useLocalSearchParams, Stack } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
-import { api, rub, ApiError, type Alternatives } from '../src/api';
+import { api, getToken, rub, ApiError, type Alternatives } from '../src/api';
 import { useProfile, normalizePhone, plainPhone } from '../src/profile';
 import { useClub } from '../src/club';
 import { IMG } from '../src/images';
@@ -50,6 +50,12 @@ export default function Book() {
   const price = Number(p.price ?? 0);
 
   if (!hydrated || !ready) return <ScreenSkeleton />;
+  // Заявку оставляет только вошедший — иначе бронь не привязать к аккаунту
+  if (!getToken()) {
+    const back = `/book?courtId=${encodeURIComponent(courtId)}&name=${encodeURIComponent(courtName)}`
+      + `&date=${date}&hour=${hour}&hours=${hours}&price=${price}`;
+    return <Redirect href={{ pathname: '/account', params: { next: back } } as never} />;
+  }
   if (!courtId || !date || !p.hour) return (
     <NotFound title="Заявка не собрана"
       note="Похоже, вы открыли ссылку напрямую. Выберите время и площадку на главной." />

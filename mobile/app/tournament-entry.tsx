@@ -5,24 +5,23 @@
 // подтверждения администратора, а ответ приходит в уведомления и виден
 // на странице турнира и в «Моих записях».
 //
-// Номер, защищённый паролем, без входа записать нельзя — как и при брони:
-// иначе кто угодно записал бы чужой аккаунт.
+// Записывается только вошедший (решение заказчика 17.09.2026): заявка
+// привязана к аккаунту, номер берётся из него и не редактируется. Имя и
+// фамилию поправить можно — они сохранятся и в аккаунте.
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View,
 } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, getToken, ApiError } from '../src/api';
 import { useApi } from '../src/useApi';
-import { normalizePhone, saveToken, useProfile } from '../src/profile';
+import { prettyPhone, useProfile } from '../src/profile';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
 import { hh, dayMonth, dateOfIso, hourOfIso } from '../src/dates';
-
-type PhoneState = 'unknown' | 'new' | 'known' | 'protected' | 'mine';
 
 export default function TournamentEntry() {
   useTheme();
@@ -32,37 +31,17 @@ export default function TournamentEntry() {
 
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [state, setState] = useState<PhoneState>('unknown');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const filled = useRef(false);
 
-  // Уже знакомый человек — поля заполнены, остаётся проверить и отправить
+  // Имя и фамилия — из аккаунта, их можно поправить перед отправкой
   useEffect(() => {
-    if (!ready || filled.current) return;
+    if (!ready || filled.current || !profile) return;
     filled.current = true;
-    if (!profile) return;
     setName(profile.name ?? '');
     setSurname(profile.surname ?? '');
-    setPhone(profile.phone ?? '');
   }, [ready, profile]);
-
-  const clean = normalizePhone(phone);
-  // Вошёл в аккаунт с этим номером на этом устройстве — пароль не спрашиваем
-  const loggedIn = !!clean && !!getToken() && normalizePhone(profile?.phone ?? '') === clean;
-
-  const asked = useRef<string | null>(null);
-  useEffect(() => {
-    if (!clean) { setState('unknown'); asked.current = null; return }
-    if (loggedIn) { setState('mine'); return }
-    if (clean === asked.current) return;
-    asked.current = clean;
-    api.checkPhone(clean)
-      .then(r => setState(!r.known ? 'new' : r.hasPassword ? 'protected' : 'known'))
-      .catch(() => setState('new'));
-  }, [clean, loggedIn]);
 
   const q = useApi(async () => {
     const all = await api.tournaments(profile?.phone);
@@ -70,7 +49,13 @@ export default function TournamentEntry() {
   }, [id]);
 
   const screen = <Stack.Screen options={{ title: 'Запись на турнир' }} />;
-  if (q.loading || !ready) return (<>{screen}<Loading /></>);
+  if (!ready) return (<>{screen}<Loading /></>);
+  // Без аккаунта записаться нельзя: отправляем на вход и возвращаем обратно
+  if (!profile || !getToken()) {
+    return <Redirect href={{ pathname: '/account',
+      params: { next: `/tournament-entry?id=${String(id)}` } } as never} />;
+  }
+  if (q.loading) return (<>{screen}<Loading /></>);
   if (q.error) return (<>{screen}<Failed message={q.error} onRetry={q.reload} /></>);
   const t = q.data;
   if (!t) return (<>{screen}
@@ -81,30 +66,19 @@ export default function TournamentEntry() {
   const closed = t.state !== 'open' ? 'Запись на этот турнир закрыта'
     : left === 0 ? 'Мест больше нет' : null;
 
-  const login = state === 'protected';
   const nameOk = name.trim().length >= 2;
   const surnameOk = surname.trim().length >= 2;
-  const ok = !closed && !!clean && nameOk && surnameOk && (!login || password.length >= 6);
+  const ok = !closed && nameOk && surnameOk;
 
   const submit = async () => {
-    if (!ok || !clean || busy) return;
+    if (!ok || busy) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
-      let hasPassword = loggedIn ? !!profile?.hasPassword : false;
-      let id: number | undefined = loggedIn ? profile?.id : undefined;
-      if (login) {
-        const s = await api.login(clean, password);
-        await saveToken(s.token);
-        hasPassword = true; id = s.profile.id;
-      }
       const res = await api.enterTournament(t.id,
-        { name: name.trim(), surname: surname.trim(), phone: clean });
-      await save({
-        ...(profile && normalizePhone(profile.phone) === clean ? profile : {}),
-        name: name.trim(), surname: surname.trim(), phone: clean,
-        id: res.clientId ?? id, hasPassword,
-      });
+        { name: name.trim(), surname: surname.trim(), phone: profile.phone });
+      await save({ ...profile, name: name.trim(), surname: surname.trim(),
+        id: res.clientId ?? profile.id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
         kind: 'tournament', id: String(res.id), name: t.name, date,
@@ -139,15 +113,13 @@ export default function TournamentEntry() {
           autoCapitalize="words" textContentType="givenName" />
         <Field label="Фамилия" value={surname} onChange={setSurname} placeholder="Для списка участников"
           autoCapitalize="words" textContentType="familyName" />
-        <Field label="Телефон" value={phone} onChange={v => { setPhone(v); setProblem(null) }}
-          placeholder="89289204029" keyboardType="phone-pad" textContentType="telephoneNumber"
-          hint={state === 'mine' ? 'Вы вошли в аккаунт с этим номером'
-            : login ? 'Номер защищён паролем — введите его, чтобы записаться'
-            : 'По нему клуб свяжется с вами, если что-то изменится'} />
-        {login && (
-          <Field label="Пароль" value={password} onChange={setPassword} placeholder="Пароль от аккаунта"
-            secure textContentType="password" autoCapitalize="none" />
-        )}
+        <View style={s.field}>
+          <Text style={s.label}>Телефон</Text>
+          <View style={[s.input, s.locked]}>
+            <Text style={s.lockedT}>{prettyPhone(profile.phone)}</Text>
+          </View>
+          <Text style={s.hint}>Номер вашего аккаунта — по нему клуб свяжется с вами</Text>
+        </View>
 
         <View style={s.how}>
           <Step n="1" t="Отправляете заявку — место за вами придержано." />
@@ -165,10 +137,7 @@ export default function TournamentEntry() {
             : <Text style={[s.ctaT, !ok && { color: C.dim2 }]}>Отправить заявку</Text>}
         </Pressable>
         {!closed && !ok && !busy && (
-          <Text style={s.need}>
-            {!nameOk ? 'Впишите имя' : !surnameOk ? 'Впишите фамилию'
-              : !clean ? 'Впишите номер телефона' : 'Введите пароль'}
-          </Text>
+          <Text style={s.need}>{!nameOk ? 'Впишите имя' : 'Впишите фамилию'}</Text>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -232,6 +201,8 @@ const s = sheet(() => ({
     paddingVertical: 13, paddingHorizontal: 14, minHeight: 50, borderRadius: R.md,
     color: C.text, fontFamily: BODY, fontSize: 16 },
   hint: { fontFamily: BODY, color: C.dim2, fontSize: 12, lineHeight: 16, marginTop: 6 },
+  locked: { justifyContent: 'center', backgroundColor: C.surface2 },
+  lockedT: { fontFamily: BODY, color: C.dim, fontSize: 16 },
 
   how: { marginHorizontal: S.xl, marginTop: 22, padding: 14, gap: 10, borderRadius: R.xl,
     backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder },

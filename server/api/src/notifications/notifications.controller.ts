@@ -1,7 +1,7 @@
 // Ящик уведомлений в приложении.
 //
-// Доступ по тем же правилам, что и записи: сначала токен входа, а без него —
-// по номеру, но только если на аккаунте не задан пароль.
+// Доступ только по входу в аккаунт: по одному номеру телефона чужие
+// уведомления посмотреть нельзя.
 import { Controller, Get, Headers, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientAuthService } from '../clients/client-auth.service';
@@ -16,15 +16,8 @@ export class NotificationsController {
     private readonly notes: NotificationsService,
   ) {}
 
-  private async whose(header: string | undefined, phone: string | undefined) {
-    const byToken = await this.auth.whoIs(this.auth.tokenOf(header));
-    if (byToken) return byToken;
-    const key = normalizePhone(phone);
-    if (!key) throw new UnauthorizedException('Нужно войти в аккаунт');
-    const c = await this.db.clients.findUnique({ where: { phone: key } });
-    if (!c) return null;
-    if (c.pass_hash) throw new UnauthorizedException('Этот номер защищён паролем — войдите в аккаунт');
-    return c;
+  private async whose(header: string | undefined, _phone?: string) {
+    return this.auth.whoIs(this.auth.tokenOf(header));
   }
 
   @Get()

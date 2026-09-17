@@ -74,10 +74,6 @@ export function ClubInfo() {
         {sameEveryDay(club)
           ? <Line k="Каждый день" v={`${hh(club.openHour)} – ${hh(club.closeHour)}`} />
           : weekLines(club).map(l => <Line key={l.days} k={l.days} v={l.hours} />)}
-        <Text style={s.q}>
-          ВОПРОС К ЗАКАЗЧИКУ: часы взяты как рабочее предположение. Если в выходные
-          или праздники режим другой — пришлите, поправим.
-        </Text>
       </Section>
 
       {/* Пока адреса нет — только город и кнопка карты, без пояснений */}
