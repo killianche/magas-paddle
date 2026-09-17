@@ -55,7 +55,7 @@ export default function Tournaments() {
             ? <View style={s.okFlag}><IconCheck size={12} color={C.onLime} />
                 <Text style={s.flagT}>ВЫ ЗАПИСАНЫ</Text></View>
             : <View style={s.flag}><Text style={s.flagT}>
-                {hero.state === 'open' ? 'РЕГИСТРАЦИЯ ОТКРЫТА' : 'СКОРО ОТКРОЕМ ЗАПИСЬ'}</Text></View>}
+                {hero.state === 'open' ? 'РЕГИСТРАЦИЯ ОТКРЫТА' : hero.state === 'closed' ? 'ЗАПИСЬ ЗАКРЫТА' : 'СКОРО ОТКРОЕМ ЗАПИСЬ'}</Text></View>}
           <View style={{ marginTop: 'auto' }}>
             <Text style={s.heroName}>{hero.name}</Text>
             <Text style={s.heroMeta}>
@@ -107,7 +107,7 @@ function Row({ t, onPress, past }: { t: ApiTournament; onPress: () => void; past
         ? <Pill text="Ждёт" kind="wait" />
         : t.entered && !past
         ? <View style={s.rowOk}><IconCheck size={12} color={C.onLime} /></View>
-        : <Pill text={past ? 'Завершён' : t.state === 'open' ? 'Открыт' : 'Скоро'}
+        : <Pill text={past ? 'Завершён' : t.state === 'open' ? 'Открыт' : t.state === 'closed' ? 'Запись закрыта' : 'Скоро'}
             kind={past ? 'past' : t.state === 'open' ? 'ok' : 'wait'} />}
     </Pressable>
   );

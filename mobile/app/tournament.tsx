@@ -15,6 +15,8 @@ import { TOURN_IMG } from '../src/images';
 import { IconCheck, IconClock } from '../src/components/icons';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
+import { Podium, photosOfTournament } from '../src/components/results';
+import { Gallery } from '../src/components/gallery';
 import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
@@ -82,7 +84,8 @@ export default function TournamentScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: done ? 40 : 200 }}>
 
         <View style={s.cover}>
-          <Image source={TOURN_IMG[t.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
+          {/* У прошедшего турнира с фото на обложке первый снимок с турнира */}
+          <Image source={done && t.photos?.length ? photosOfTournament(t)[0] : (TOURN_IMG[t.coverUrl ?? 't1'] ?? TOURN_IMG.t1)}
             style={s.coverImg} resizeMode="cover" />
           <LinearGradient colors={['rgba(9,13,10,.12)', 'rgba(9,13,10,.58)', 'rgba(9,13,10,.94)']}
             locations={[0, 0.5, 1]} style={s.fill} />
@@ -91,6 +94,7 @@ export default function TournamentScreen() {
               : pending ? <Flag text="ЖДЁТ ПОДТВЕРЖДЕНИЯ" warn />
               : confirmed || t.entered ? <Flag text="ВЫ ЗАПИСАНЫ" ok />
               : t.state === 'open' ? <Flag text="РЕГИСТРАЦИЯ ОТКРЫТА" ok />
+              : t.state === 'closed' ? <Flag text="ЗАПИСЬ ЗАКРЫТА" muted />
               : <Flag text="СКОРО ОТКРОЕМ ЗАПИСЬ" warn />}
             <Text style={s.name}>{t.name}</Text>
           </View>
@@ -110,10 +114,19 @@ export default function TournamentScreen() {
           </View>
         </View>
 
-        {done && !!t.result && (
+        {done && (!!t.result || !!t.results?.length || !!t.photos?.length) && (
           <View style={s.resultCard}>
             <Text style={s.resultK}>ИТОГИ</Text>
-            <Text style={s.resultT}>{t.result}</Text>
+            {!!t.results?.length && <View style={{ marginTop: 10 }}><Podium results={t.results} /></View>}
+            {!!t.result && <Text style={s.resultT}>{t.result}</Text>}
+          </View>
+        )}
+        {done && !!t.photos?.length && (
+          <View style={s.photos}>
+            <Text style={s.photosK}>ФОТО С ТУРНИРА</Text>
+            <View style={{ marginTop: 10, marginHorizontal: -S.xl }}>
+              <Gallery photos={photosOfTournament(t)} />
+            </View>
           </View>
         )}
 
@@ -175,7 +188,8 @@ export default function TournamentScreen() {
                     <Text style={s.ctaT}>Записаться на турнир</Text>
                   ) : (
                     <Text style={[s.ctaT, { color: C.dim2 }]}>
-                      {t.state === 'soon' ? 'Запись ещё не открыта' : 'Мест нет'}
+                      {t.state === 'soon' ? 'Запись ещё не открыта'
+                        : t.state === 'closed' ? 'Запись закрыта' : 'Мест нет'}
                     </Text>
                   )}
               </Pressable>
@@ -234,7 +248,9 @@ const s = sheet(() => ({
   resultCard: { marginHorizontal: S.xl, marginTop: 12, padding: 15, borderRadius: R.xl,
     borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
   resultK: { ...EYEBROW, color: C.limeDim },
-  resultT: { fontFamily: BODY, color: C.text, fontSize: 15, lineHeight: 22, marginTop: 7 },
+  resultT: { fontFamily: BODY, color: C.text, fontSize: 15, lineHeight: 22, marginTop: 10 },
+  photos: { marginHorizontal: S.xl, marginTop: 18 },
+  photosK: { ...EYEBROW, color: C.dim2 },
 
   facts: { marginHorizontal: S.xl, marginTop: 12, borderWidth: 1, borderColor: C.line,
     borderRadius: R.xl, backgroundColor: C.surface, paddingHorizontal: 15 },

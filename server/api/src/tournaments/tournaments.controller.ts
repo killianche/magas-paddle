@@ -74,6 +74,8 @@ export class TournamentsController {
       state: t.state,
       coverUrl: t.cover_url,
       result: t.result_text,
+      // Итоги: призовые места и фото; bannerOn — показать баннер на главной
+      results: t.results, photos: t.result_photos, bannerOn: t.banner_on,
       // Записан — заявка ждёт подтверждения или уже подтверждена
       entered: ['pending', 'confirmed'].includes(mine.get(String(t.id))?.status ?? ''),
       entry: mine.get(String(t.id)) ?? null,

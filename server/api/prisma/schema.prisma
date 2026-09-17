@@ -102,6 +102,8 @@ model settings {
   hero_light_url   String?
   week_hours       Json?
   telegram         String?
+  sales_on         Boolean  @default(true)
+  sales_in_stats   Boolean  @default(true)
   updated_at       DateTime @default(now()) @db.Timestamptz(6)
 }
 
@@ -246,6 +248,9 @@ model tournaments {
   court_ids          String[]
   cover_url          String?
   result_text        String?
+  results            Json                 @default("[]")
+  result_photos      String[]             @default([])
+  banner_on          Boolean              @default(false)
   created_at         DateTime             @default(now()) @db.Timestamptz(6)
   tournament_entries tournament_entries[]
   bookings           bookings[]
@@ -272,6 +277,7 @@ model sales {
   method     String
   qty        Int      @default(1) @db.SmallInt
   note       String?
+  item       String?
   admin_id   BigInt?
   admin_name String
   created_at DateTime @default(now()) @db.Timestamptz(6)
@@ -292,6 +298,7 @@ enum booking_status {
 enum tournament_state {
   soon
   open
+  closed
   done
 }
 

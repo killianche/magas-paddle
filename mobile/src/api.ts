@@ -139,10 +139,13 @@ export type ApiBooking = {
 export type ApiTournament = {
   id: number; name: string; startsAt: string; format: string;
   fee: number; seats: number; taken: number;
-  state: 'soon' | 'open' | 'done';
+  state: 'soon' | 'open' | 'closed' | 'done';
   coverUrl: string | null; result: string | null; entered: boolean;
   /** Сколько часов идёт турнир. */
   hours?: number;
+  /** Итоги: призовые места, фото с турнира. bannerOn — клуб включил баннер
+   *  с итогами на главной. */
+  results?: ApiPlace[]; photos?: string[]; bannerOn?: boolean;
   /** Своя заявка на турнир: ждёт подтверждения, подтверждена, отменена или
    *  клуб не подтвердил её до начала. null — не подавал. */
   entry?: { id: number; status: 'pending' | 'confirmed' | 'cancelled' | 'expired';
@@ -150,6 +153,8 @@ export type ApiTournament = {
     /** Отменил клуб, а не сам человек — «заявка отклонена». */
     byClub?: boolean } | null;
 };
+
+export type ApiPlace = { place: number; names: string; prize?: string };
 
 /** Ответ на заявку на турнир. */
 export type ApiEntry = {

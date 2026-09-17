@@ -23,6 +23,7 @@ import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
+import { ResultsBanner } from '../../src/components/results';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
 import { today, hh, plural, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
 import { upcomingGrid } from '../../src/upcoming';
@@ -72,6 +73,7 @@ export default function Home() {
   // данных не требуют.
   const grid = q.data?.grid ?? null;
   const tournaments = q.data?.tournaments ?? [];
+  const banner = club.showTournaments ? tournaments.find(t => t.bannerOn) : undefined;
   const bookings = q.data?.bookings ?? [];
   const waiting = !q.data && !q.error;
   // Поздно вечером сегодняшние часы уже прошли — плитки говорят про завтра
@@ -82,6 +84,9 @@ export default function Home() {
   // Высота обложки прежняя — 80 % экрана заказчик счёл слишком вытянутой
   const heroH = Math.max(460, Math.min(height * 0.7, 600));
   const tileW = Math.floor((width - S.xl * 2 - TILE_GAP) / 2);
+  // Карточки поля и турнира крупные, почти квадратные: заказчик просил,
+  // чтобы фотографию было видно
+  const bigCardH = Math.round(Math.min(Math.min(width, 520) - S.xl * 2, 480) * 0.92);
   // «Мини-футбольное поле» должно стоять в одну строку и на узком телефоне:
   // на 360 pt при кегле 19 оно переносилось
   // Кнопки стоят в ряд, на каждую — половина ширины: «Мини-футбольное»
@@ -223,6 +228,14 @@ export default function Home() {
         </Pressable>
       )}
 
+      {/* Итоги турнира — только когда клуб включил баннер в админке */}
+      {banner && (
+        <View style={{ marginTop: 22 }}>
+          <ResultsBanner t={banner} width={Math.min(width, 520) - S.xl * 2}
+            onPress={() => go('/tournament', { id: String(banner.id) })} />
+        </View>
+      )}
+
       {(mine.length > 0 || entered.length > 0) && (
         <Pressable onPress={() => go('/bookings')}
           style={({ pressed }) => [st.mine,
@@ -309,19 +322,14 @@ export default function Home() {
             accessibilityLabel={'Мини-футбольное поле. ' + (pitchFree.length > 0
               ? `свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} ${day}`
               : `${day} занято`) + '. Забронировать'}
-            style={({ pressed }) => [st.pitch, pressed && { opacity: 0.9 }]}>
+            style={({ pressed }) => [st.pitch, { height: bigCardH }, pressed && { opacity: 0.9 }]}>
             <Image source={pitch.photo ? { uri: mediaUrl(pitch.photo) } : (IMG[pitch.courtId] ?? IMG.f1)} style={st.fillImg} resizeMode="cover" />
-            <LinearGradient colors={['rgba(9,13,10,.25)', 'rgba(9,13,10,.55)', 'rgba(9,13,10,.95)']}
-              locations={[0, 0.5, 1]} style={st.fill} />
+            {/* Затемнение только снизу, под ценой: фото поля должно быть видно.
+                «Поле целиком» и «свободно N часов» заказчик попросил убрать. */}
+            <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.08)', 'rgba(9,13,10,.72)']}
+              locations={[0, 0.55, 1]} style={st.fill} />
             <View style={st.pitchIn}>
-              <Text style={st.pitchEyebrow}>Поле целиком</Text>
-              <Text style={st.pitchS}>
-                {pitch.closed ? 'Закрыто на ремонт'
-                  : grid?.dayOff ? `${Day} не работаем`
-                  : pitchFree.length > 0
-                    ? `Свободно ${pitchFree.length} ${plural(pitchFree.length, 'час', 'часа', 'часов')} ${day}`
-                    : `${Day} занято — посмотрите другие дни`}
-              </Text>
+              {pitch.closed && <Text style={st.pitchS}>Закрыто на ремонт</Text>}
               <View style={st.pitchRow}>
                 <Text style={st.pitchPrice}>{pitchPrice > 0 ? rub(pitchPrice) : '—'}</Text>
                 <Text style={st.pitchUnit}>за час</Text>
@@ -345,11 +353,11 @@ export default function Home() {
             </Pressable>
           </View>
           <Pressable onPress={() => go('/tournament', { id: String(tourn.id) })}
-            style={({ pressed }) => [st.tourn, pressed && { opacity: 0.88 }]}>
+            style={({ pressed }) => [st.tourn, { height: bigCardH }, pressed && { opacity: 0.88 }]}>
             <Image source={TOURN_IMG[tourn.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
               style={st.fillImg} resizeMode="cover" />
-            <LinearGradient colors={['rgba(9,13,10,.15)', 'rgba(9,13,10,.9)']}
-              locations={[0.3, 1]} style={st.fill} />
+            <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.8)']}
+              locations={[0.45, 1]} style={st.fill} />
             <View style={st.tournIn}>
               <Text style={st.tournN}>{tourn.name}</Text>
               <Text style={st.tournS}>
@@ -445,9 +453,8 @@ const st = sheet(() => ({
   pitch: { marginHorizontal: S.xl, height: 252, overflow: 'hidden', borderRadius: R.xl,
     backgroundColor: '#0A1D14', justifyContent: 'flex-end' },
   pitchIn: { padding: 18 },
-  pitchEyebrow: { ...EYEBROW, color: '#C9F23D' },
-  pitchS: { fontFamily: BODY, color: '#D0D9D2', fontSize: 14, marginTop: 7 },
-  pitchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  pitchS: { fontFamily: BODY, color: '#F5F8F2', fontSize: 14, fontWeight: '600' },
+  pitchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   pitchPrice: { color: ON_PHOTO, fontFamily: DISP, fontSize: 24, letterSpacing: -0.6,
     fontVariant: ['tabular-nums'] },
   pitchUnit: { fontFamily: BODY, color: '#A5B0A8', fontSize: 11 },

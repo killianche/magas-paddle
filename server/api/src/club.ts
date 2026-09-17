@@ -71,6 +71,9 @@ export type ClubSettings = {
   waTemplate: string | null;
   /** Что входит в бронь — строка на панели брони; null — текст по умолчанию. */
   bookingNote: string | null;
+  /** Продажи (прокат, мячи, бар): вести их в админке и учитывать ли в аналитике. */
+  salesOn: boolean;
+  salesInStats: boolean;
   /** Фото первого экрана, загруженное клубом; null — встроенное в приложение. */
   heroUrl: string | null;
   /** То же фото для светлой темы: клубные снимки тёмные. */
@@ -85,6 +88,7 @@ export const FALLBACK: ClubSettings = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null, telegram: null,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null, heroLightUrl: null,
+  salesOn: true, salesInStats: true,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -138,6 +142,8 @@ export class ClubService {
       waTemplate: row.wa_template ?? null,
       bookingNote: row.booking_note ?? null,
       heroUrl: row.hero_url ?? null,
+      salesOn: row.sales_on,
+      salesInStats: row.sales_in_stats,
       heroLightUrl: row.hero_light_url ?? null,
     } : FALLBACK;
     this.readAt = Date.now();
