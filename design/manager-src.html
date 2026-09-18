@@ -75,7 +75,10 @@ input,select{font-family:inherit;font-size:inherit}
   color-mix(in srgb,var(--cc) 16%,transparent)),var(--ink);
   box-shadow:inset 2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
              inset -2px 0 color-mix(in srgb,var(--cc) 45%,transparent)}
-#board td.lane{padding:3px 4px;background:color-mix(in srgb,var(--cc) 6%,transparent);
+/* Тонкая линия по низу каждого часа: видно, где кончается час */
+#board td.lane{padding:3px 4px;
+  background-image:linear-gradient(to top,var(--line) 1px,transparent 1px);
+  background-color:color-mix(in srgb,var(--cc) 6%,transparent);
   box-shadow:inset 2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
              inset -2px 0 color-mix(in srgb,var(--cc) 45%,transparent)}
 #board tr.last td.lane{border-radius:0 0 10px 10px;
@@ -91,8 +94,14 @@ input,select{font-family:inherit;font-size:inherit}
 #board tbody tr{height:52px}
 .hcell{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);padding-top:6px;text-align:right;padding-right:6px}
 .slot{height:100%;min-height:46px;border-radius:10px;border:1px dashed var(--line-soft);
-  background:transparent;width:100%;color:var(--dim-2);font-size:11.5px}
+  background:transparent;width:100%;color:var(--dim-2);font-size:11.5px;
+  display:flex;align-items:center;justify-content:center}
+/* В пустой ячейке плюс, под курсором — её время: менеджер попадает
+   в нужный час, не сверяясь глазами с левым столбцом */
+.slot b{display:none;font-family:var(--mono);font-size:12px;color:var(--text)}
 .slot:hover{border-color:var(--line-strong);background:var(--surface)}
+.slot:hover span{display:none}
+.slot:hover b{display:block}
 .slot.closed{height:100%;min-height:46px;border-style:solid;border-color:var(--line);
   background:repeating-linear-gradient(45deg,transparent,transparent 6px,
   var(--hatch) 6px,var(--hatch) 12px);cursor:not-allowed}
@@ -156,6 +165,9 @@ td.hcell{position:sticky;left:0;z-index:12;background:var(--ink)}
 
 /* Прошедшие часы приглушены, текущий отбит линией */
 tr.past td.hcell,tr.past .slot{opacity:.45}
+/* Строка часа под курсором подсвечивается целиком — сразу видно, какой час */
+#board tbody tr:hover td.lane{background-color:color-mix(in srgb,var(--cc) 16%,transparent)}
+#board tbody tr:hover td.hcell{color:var(--text);font-weight:700}
 tr.now td{border-top:2px solid var(--lime)}
 tr.now td.hcell{color:var(--lime);font-weight:700}
 
@@ -163,6 +175,30 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .bk .st{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85;margin-top:2px}
 
 .sheet.wide{max-width:880px}
+.sheet.mid{max-width:620px}
+/* Окно записи: поля собраны в блоки, площадка и длительность — плитками */
+.fgroup{margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.fgroup > label:first-of-type{margin-top:0}
+.fh{font-family:var(--disp);font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.picks button{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;
+  border:1px solid var(--line);background:var(--ink-2);color:var(--text);font-size:13.5px}
+.picks button:hover{border-color:var(--line-strong)}
+.picks button.on{border-color:var(--lime);background:var(--ok-bg);font-weight:700}
+.picks button .cdot{width:9px;height:9px;border-radius:3px;background:var(--cc,var(--dim-2))}
+.picks button small{color:var(--dim-2);font-size:11.5px}
+.rel{position:relative}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:5;margin-top:4px;padding:4px;
+  border:1px solid var(--line-strong);border-radius:12px;background:var(--ink-2);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);max-height:210px;overflow:auto}
+.sugg button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:9px;
+  background:none;color:var(--text);font-size:13.5px}
+.sugg button:hover{background:var(--surface-2)}
+.sugg button span{display:block;color:var(--dim-2);font-size:12px}
+.sumBox{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;
+  padding:14px 16px;border-radius:14px;border:1px solid var(--ok-line);background:var(--ok-bg)}
+.sumWhen{font-size:13.5px;color:var(--dim)}
+.sumPrice{font-family:var(--disp);font-size:26px;white-space:nowrap}
 .list{max-height:52vh;overflow:auto;margin-top:6px}
 .list .it{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
   padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
@@ -629,20 +665,45 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
 <!-- занять время вручную -->
 <div class="modal" id="addModal">
-  <div class="sheet">
+  <div class="sheet mid">
     <h3>Записать клиента</h3>
     <p class="sub">Для тех, кто позвонил или пришёл без приложения.</p>
-    <label for="addDate">Дата</label><input id="addDate" type="date">
-    <label for="addCourt">Площадка</label><select id="addCourt"></select>
-    <label for="addHour">Час начала</label><select id="addHour"></select>
-    <label for="addHours">Длительность</label><select id="addHours"></select>
-    <label for="addPlayers">Сколько человек играет</label>
-    <input id="addPlayers" type="number" min="1" max="30" placeholder="Необязательно">
-    <label for="addName">Имя</label><input id="addName" placeholder="Кто играет">
-    <label for="addPhone">Телефон</label>
-    <input id="addPhone" inputmode="tel" placeholder="89289204029">
-    <label for="addComment">Заметка</label><input id="addComment" placeholder="Необязательно">
-    <div class="total" id="addTotal">К оплате: —</div>
+
+    <div class="fgroup">
+      <div class="fh">Когда и где</div>
+      <div class="grid2">
+        <div><label for="addDate">Дата</label><input id="addDate" type="date"></div>
+        <div><label for="addHour">Начало</label><select id="addHour"></select></div>
+      </div>
+      <label>Площадка</label>
+      <div class="picks" id="addCourts"></div>
+      <label>Сколько часов</label>
+      <div class="picks" id="addHoursPick"></div>
+    </div>
+
+    <div class="fgroup">
+      <div class="fh">Кто играет</div>
+      <div class="grid2">
+        <div class="rel">
+          <label for="addPhone">Телефон</label>
+          <input id="addPhone" inputmode="tel" autocomplete="off" placeholder="89289204029">
+          <div class="sugg" id="addSugg" hidden></div>
+        </div>
+        <div><label for="addName">Имя</label><input id="addName" placeholder="Кто играет"></div>
+      </div>
+      <div class="grid2">
+        <div><label for="addPlayers">Сколько человек</label>
+          <input id="addPlayers" type="number" min="1" max="30" placeholder="Необязательно"></div>
+        <div><label for="addComment">Заметка</label>
+          <input id="addComment" placeholder="Необязательно"></div>
+      </div>
+      <p class="hint" id="addWho">Телефон нужен, чтобы клиент нашёлся в поиске и получил уведомление.</p>
+    </div>
+
+    <div class="sumBox">
+      <div class="sumWhen" id="addWhen">—</div>
+      <div class="sumPrice" id="addTotal">—</div>
+    </div>
     <div class="err" id="addErr"></div>
     <div class="acts">
       <button class="btn" id="addCancel">Отмена</button>
@@ -1421,7 +1482,7 @@ function render(){
       } else if(day.dayOff || h < wOpen() || h >= wClose()){
         html += `<td class="lane" style="${laneOf(c)}"><div class="slot closed" title="Клуб в это время не работает"></div></td>`;
       } else {
-        html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}">+</button></td>`;
+        html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}"><span>+</span><b>${hh(h)}</b></button></td>`;
       }
     }
     html += '</tr>';
@@ -1690,31 +1751,95 @@ function closeAdd(){
   // Поля обязательно чистим: иначе следующая бронь уходила на чужое имя
   $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
   $('#addPlayers').value = '';
+  $('#addSugg').hidden = true;
+}
+
+/** Выбранные площадка и длительность держим в переменных: вместо выпадающих
+ *  списков — плитки, по ним видно цвет корта и цену сразу. */
+let addCourtId = null, addHoursN = 1;
+
+function renderAddCourts(){
+  const list = day.courts.filter(c => c.isActive && !(c.closedUntil && new Date(c.closedUntil) > new Date()));
+  if (!list.some(c => c.id === addCourtId)) addCourtId = list[0]?.id ?? null;
+  $('#addCourts').innerHTML = list.map(c => {
+    const hex = /^#[0-9a-f]{6}$/i.test(c.color?.hex || '') ? c.color.hex : '#8A968C';
+    return `<button type="button" data-c="${c.id}" style="--cc:${hex}"${c.id===addCourtId?' class="on"':''}>
+      <span class="cdot"></span>${esc(c.name)}</button>`;
+  }).join('');
+  $('#addCourts').querySelectorAll('button').forEach(b => b.onclick = () => {
+    addCourtId = b.dataset.c; renderAddCourts(); addTotal();
+  });
+}
+
+function renderAddHours(){
+  const hour = +$('#addHour').value;
+  const max = Math.max(1, wClose() - hour);
+  if (addHoursN > max) addHoursN = max;
+  let html = '';
+  for (let n = 1; n <= max && n <= 6; n++) {
+    const p = priceFor(addCourtId, hour, n);
+    html += `<button type="button" data-n="${n}"${n===addHoursN?' class="on"':''}>
+      ${n} ${plural(n,'час','часа','часов')}${p!=null?` <small>${rub(p)}</small>`:''}</button>`;
+  }
+  $('#addHoursPick').innerHTML = html;
+  $('#addHoursPick').querySelectorAll('button').forEach(b => b.onclick = () => {
+    addHoursN = +b.dataset.n; renderAddHours(); addTotal();
+  });
 }
 
 function addTotal(){
-  const p = priceFor($('#addCourt').value, +$('#addHour').value, +$('#addHours').value);
-  $('#addTotal').textContent = 'К оплате: ' + (p==null ? '—' : rub(p));
+  const hour = +$('#addHour').value;
+  const p = priceFor(addCourtId, hour, addHoursN);
+  const court = day.courts.find(c => c.id === addCourtId);
+  $('#addTotal').textContent = p == null ? '—' : rub(p);
+  $('#addWhen').textContent = court
+    ? `${court.name} · ${pretty($('#addDate').value || date)} · ${hh(hour)}–${hh(hour + addHoursN)}`
+    : '—';
 }
 
 function openAdd(courtId, hour){
   $('#addDate').value = date;
-  $('#addCourt').innerHTML = openCourtsOptions(courtId);
+  addCourtId = courtId ?? null;
+  addHoursN = 1;
   $('#addHour').innerHTML = hourOptions(hour);
-  $('#addHours').innerHTML = hoursOptions(hour, 1);
+  renderAddCourts();
+  renderAddHours();
   addTotal();
   $('#addErr').classList.remove('on');
+  $('#addSugg').hidden = true;
   $('#addModal').classList.add('on');
-  $('#addName').focus();
+  $('#addPhone').focus();
 }
 
-['#addCourt','#addHour','#addHours'].forEach(id => {
-  $(id).onchange = () => {
-    if(id==='#addHour') $('#addHours').innerHTML = hoursOptions(+$('#addHour').value, +$('#addHours').value);
-    addTotal();
-  };
-});
+$('#addHour').onchange = () => { renderAddHours(); addTotal() };
 $('#addDate').onchange = () => { date = $('#addDate').value; load() };
+
+/** Подсказка по номеру: постоянного клиента не надо вводить заново.
+ *  Нет права на клиентов — подсказок просто не будет. */
+let addSuggTimer = null;
+$('#addPhone').oninput = () => {
+  clearTimeout(addSuggTimer);
+  const q = $('#addPhone').value.replace(/\D/g, '');
+  if (q.length < 4) { $('#addSugg').hidden = true; return }
+  addSuggTimer = setTimeout(async () => {
+    try {
+      const rows = await call('/admin/clients?q=' + encodeURIComponent(q));
+      const list = rows.slice(0, 6);
+      if (!list.length) { $('#addSugg').hidden = true; return }
+      $('#addSugg').innerHTML = list.map(c => `<button type="button" data-p="${esc(c.phone)}"
+        data-n="${esc([c.name, c.surname].filter(Boolean).join(' '))}">
+        ${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}
+        <span>${phoneNice(c.phone)} · игр: ${c.bookings}${c.noShows ? ' · неявок: ' + c.noShows : ''}</span></button>`).join('');
+      $('#addSugg').hidden = false;
+      $('#addSugg').querySelectorAll('button').forEach(b => b.onclick = () => {
+        $('#addPhone').value = b.dataset.p.replace(/\D/g, '');
+        $('#addName').value = b.dataset.n;
+        $('#addSugg').hidden = true;
+      });
+    } catch { $('#addSugg').hidden = true }
+  }, 300);
+};
+$('#addPhone').onblur = () => setTimeout(() => { $('#addSugg').hidden = true }, 200);
 
 $('#addOk').onclick = async () => {
   const when = $('#addDate').value || date;
@@ -1730,8 +1855,8 @@ $('#addOk').onclick = async () => {
       `Записать на ${hh(hour)}, ${pretty(when)}? Обычно так отмечают уже сыгранное.`)) return;
 
   const body = {
-    courtId: $('#addCourt').value, date: when,
-    hour, hours: +$('#addHours').value,
+    courtId: addCourtId, date: when,
+    hour, hours: addHoursN,
     name: $('#addName').value.trim() || undefined,
     phone: phone || undefined,
     players: +$('#addPlayers').value || undefined,
