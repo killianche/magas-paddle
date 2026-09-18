@@ -2,7 +2,7 @@
 // чьи это записи. Храним на устройстве, никуда больше не отправляем.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
-import { setToken } from './api';
+import { setToken, setUnauthorizedHandler } from './api';
 
 const KEY = 'magas.profile.v1';
 const TOKEN_KEY = 'magas.token.v1';
@@ -27,7 +27,21 @@ export const fullName = (p: Profile) =>
   [p.name, p.surname].filter(Boolean).join(' ').trim();
 
 let cache: Profile | null = null;
+/** Вошёл ли человек на самом деле. Имя и телефон на устройстве могли
+ *  остаться от старых версий, когда запись шла без аккаунта. */
+let signedIn = false;
 const listeners = new Set<() => void>();
+
+export const isSignedIn = () => signedIn;
+
+// Сервер сказал «войдите» — вход больше не действует
+setUnauthorizedHandler(() => {
+  if (!signedIn) return;
+  signedIn = false;
+  setToken(null);
+  AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+  listeners.forEach(l => l());
+});
 
 export async function loadProfile(): Promise<Profile | null> {
   if (cache) return cache;
@@ -37,6 +51,7 @@ export async function loadProfile(): Promise<Profile | null> {
     ]);
     cache = raw ? JSON.parse(raw) : null;
     setToken(tok);
+    signedIn = !!tok;
   } catch { cache = null }
   return cache;
 }
@@ -44,13 +59,16 @@ export async function loadProfile(): Promise<Profile | null> {
 /** Вошли: запоминаем токен и на устройстве, и в слое связи с сервером. */
 export async function saveToken(t: string | null) {
   setToken(t);
+  signedIn = !!t;
   if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
   else await AsyncStorage.removeItem(TOKEN_KEY);
+  listeners.forEach(l => l());
 }
 
 /** Выход: с устройства уходит всё, включая имя. */
 export async function forgetProfile() {
   cache = null;
+  signedIn = false;
   setToken(null);
   await Promise.all([AsyncStorage.removeItem(KEY), AsyncStorage.removeItem(TOKEN_KEY)]);
   listeners.forEach(l => l());
@@ -86,17 +104,22 @@ export function prettyPhone(phone: string): string {
 
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(cache);
+  const [signed, setSigned] = useState(signedIn);
   const [ready, setReady] = useState(cache != null);
 
   useEffect(() => {
     let alive = true;
-    loadProfile().then(p => { if (alive) { setProfile(p); setReady(true) } });
-    const l = () => setProfile(cache);
+    loadProfile().then(p => { if (alive) { setProfile(p); setSigned(signedIn); setReady(true) } });
+    const l = () => { setProfile(cache); setSigned(signedIn) };
     listeners.add(l);
     return () => { alive = false; listeners.delete(l) };
   }, []);
 
-  const save = useCallback(async (p: Profile) => { await saveProfile(p); setProfile(p) }, []);
-  const forget = useCallback(async () => { await forgetProfile(); setProfile(null) }, []);
-  return { profile, ready, save, forget };
+  const save = useCallback(async (p: Profile) => {
+    await saveProfile(p); setProfile(p); setSigned(signedIn);
+  }, []);
+  const forget = useCallback(async () => { await forgetProfile(); setProfile(null); setSigned(false) }, []);
+  /** signedIn — вход действительно выполнен. Профиль без входа значит только,
+   *  что имя и телефон помним с прошлого раза. */
+  return { profile, ready, save, forget, signedIn: signed };
 }

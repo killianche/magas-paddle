@@ -23,7 +23,8 @@ function NeedLogin({ note }: { note: string }) {
       <View style={s.emptyIcon}><IconRacket size={26} color={C.accent} /></View>
       <Text style={s.emptyT}>Нужен вход</Text>
       <Text style={s.emptyS}>{note}</Text>
-      <Pressable onPress={() => router.push('/account')} accessibilityRole="button"
+      <Pressable onPress={() => router.push({ pathname: '/account', params: { next: '/bookings' } })}
+        accessibilityRole="button"
         style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.9 }]}>
         <Text style={s.emptyBtnT}>Войти в аккаунт</Text>
       </Pressable>
@@ -33,8 +34,8 @@ function NeedLogin({ note }: { note: string }) {
 
 export default function Bookings() {
   useTheme();
-  const { profile, ready } = useProfile();
-  const phone = profile?.phone ?? '';
+  const { profile, ready, signedIn } = useProfile();
+  const phone = signedIn ? (profile?.phone ?? '') : '';
 
   const q = useApi(async () => {
     if (!phone) return { bookings: [] as ApiBooking[], tournaments: [] as ApiTournament[] };
@@ -80,7 +81,13 @@ export default function Bookings() {
 
   if (!ready) return <Loading />;
 
-  // Ещё ни разу не записывался — телефона нет, спрашивать сервер не о чем
+  // Записи привязаны к аккаунту: без входа сервер их не отдаст
+  if (!signedIn) return (
+    <NeedLogin note={profile
+      ? 'Ваши записи привязаны к аккаунту. Войдите — имя и телефон уже подставлены.'
+      : 'Войдите или заведите аккаунт, чтобы видеть свои записи.'} />
+  );
+  // Вошёл, но записей ещё нет
   if (!phone) return <Empty />;
 
   if (q.loading) return <Loading note="Смотрю ваши записи" />;

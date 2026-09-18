@@ -33,15 +33,19 @@ const LABEL: Record<string, string> = {
 
 export default function Account() {
   useTheme();
-  const { profile, ready, save, forget } = useProfile();
+  const { profile, ready, save, forget, signedIn } = useProfile();
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
   // Сюда возвращаемся после входа: на экран корта или записи на турнир
   const { next } = useLocalSearchParams<{ next?: string }>();
 
   if (!ready) return <><Stack.Screen options={{ title: 'Аккаунт' }} /><View style={s.root} /></>;
 
-  if (!profile) {
-    return <Enter why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
+  // Форма входа нужна, пока человек не вошёл. Сохранённые имя и телефон —
+  // это ещё не аккаунт: в старых версиях они оставались после записи без
+  // регистрации, и экран показывал карточку, а сервер отвечал «войдите».
+  if (!profile || !signedIn) {
+    return <Enter prefill={profile}
+      why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
       onDone={async (p, token) => {
         await saveToken(token); await save(p);
         if (next) router.replace(next as never);
@@ -64,15 +68,17 @@ export default function Account() {
 
 /* ── Вход и регистрация ────────────────────────────────────────────────── */
 
-function Enter({ onDone, why }: {
+function Enter({ onDone, why, prefill }: {
   onDone: (p: Profile, token: string) => void;
   /** Зачем его сюда привели: «чтобы записаться». */
   why?: string | null;
+  /** Что уже знаем о человеке с прошлых записей: подставляем в поля. */
+  prefill?: Profile | null;
 }) {
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [wa, setWa] = useState('');
+  const [phone, setPhone] = useState(prefill ? plainPhone(prefill.phone) : '');
+  const [name, setName] = useState(prefill?.name ?? '');
+  const [surname, setSurname] = useState(prefill?.surname ?? '');
+  const [wa, setWa] = useState(prefill?.whatsapp ? plainPhone(prefill.whatsapp) : '');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -135,15 +141,18 @@ function Enter({ onDone, why }: {
       <Stack.Screen options={{ title: 'Аккаунт' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={s.head}>
-          <Eyebrow>{login ? 'Вход' : 'Регистрация · 30 секунд'}</Eyebrow>
+          <Eyebrow>{login ? 'Вход' : prefill ? 'Остался пароль' : 'Регистрация · 30 секунд'}</Eyebrow>
           <Text style={s.h1} allowFontScaling={false}>
-            {login ? 'ВХОД\nВ АККАУНТ' : 'СОЗДАТЬ\nАККАУНТ'}
+            {login ? 'ВХОД\nВ АККАУНТ' : prefill ? 'ЗАВЕРШИТЕ\nРЕГИСТРАЦИЮ' : 'СОЗДАТЬ\nАККАУНТ'}
           </Text>
           <Text style={s.lede}>
             {why ? why + ' ' : ''}
             {login
               ? 'Этот номер уже защищён паролем. Введите его, чтобы увидеть свои записи.'
-              : 'Клуб узнаёт вас по номеру телефона, а пароль закрывает ваши записи от чужих глаз.'}
+              : prefill
+                ? 'Ваши данные сохранились, но пароля у аккаунта ещё нет — придумайте его. '
+                  + 'Прошлые записи останутся на месте.'
+                : 'Клуб узнаёт вас по номеру телефона, а пароль закрывает ваши записи от чужих глаз.'}
           </Text>
         </View>
 

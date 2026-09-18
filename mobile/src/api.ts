@@ -28,11 +28,18 @@ let token: string | null = null;
 export const setToken = (t: string | null) => { token = t };
 export const getToken = () => token;
 
+/** Кого позвать, когда сервер сказал «войдите»: profile.ts стирает
+ *  просроченный вход, чтобы приложение не считало себя вошедшим. */
+let onUnauthorized: (() => void) | null = null;
+export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn };
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 15000);
+    // 25 секунд, а не 15: в сетях Магаса ответы иногда идут долго,
+    // и на 15 секундах экран зря показывал «нет связи с клубом»
+    const timer = setTimeout(() => ctrl.abort(), 25000);
     res = await fetch(BASE + path, {
       ...init,
       signal: ctrl.signal,
@@ -51,6 +58,12 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const body = text ? safeJson(text) : null;
 
   if (!res.ok) {
+    // Вход просрочен или закрыт — забываем его, иначе приложение считает
+    // себя вошедшим и показывает карточку аккаунта вместо формы входа
+    if (res.status === 401 && !path.startsWith('/clients/login')
+        && !path.startsWith('/clients/register')) {
+      onUnauthorized?.();
+    }
     // NestJS кладёт наш объект в message при выбросе ConflictException
     const inner = body?.message && typeof body.message === 'object' ? body.message : body;
     throw new ApiError(
