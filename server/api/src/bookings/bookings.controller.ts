@@ -221,14 +221,40 @@ export class BookingsController {
     // позже отменить можно, но предоплата сгорает — это помечается в записи
     const set = await this.club.get();
     const late = +booking.starts_at - Date.now() < set.cancelHours * 3600_000;
-    await this.db.$transaction([
+    // Внесённое при поздней отмене остаётся клубу — то же правило, что и
+    // при отмене через менеджера (D13, D27)
+    const paid = (await this.db.payments.aggregate({
+      where: { booking_id: booking.id }, _sum: { amount: true } }))._sum.amount ?? 0;
+    // Ракетки и мячи из счёта человек не брал — строки убираем, товар возвращаем
+    const lines = await this.db.sales.findMany({
+      where: { booking_id: booking.id, method: 'bill', product_id: { not: null } }, include: { products: true } });
+    const back = new Map<string, number>();
+    const ops: any[] = [
       this.db.bookings.update({ where: { id: booking.id }, data: {
         status: 'cancelled', status_at: new Date(),
         status_by: late ? 'client, поздняя отмена' : 'client',
+        kept_prepay: late && paid > 0,
       }}),
-      this.db.clients.update({ where: { id: client.id }, data: { cancels: { increment: 1 } } }),
-    ]);
-    return { id: Number(booking.id), status: 'cancelled', late, cancelHours: set.cancelHours };
+    ];
+    // Счётчик отмен — только за подтверждённую бронь: отказ от своей же
+    // неподтверждённой заявки человеку не в укор
+    if (booking.status === 'confirmed') {
+      ops.push(this.db.clients.update({ where: { id: client.id }, data: { cancels: { increment: 1 } } }));
+    }
+    for (const l of lines) {
+      const pr = l.products;
+      if (!pr || pr.category === 'rental' || pr.stock == null) continue;
+      const after = (back.get(String(pr.id)) ?? pr.stock) + l.qty;
+      back.set(String(pr.id), after);
+      ops.push(this.db.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
+      ops.push(this.db.stock_moves.create({ data: {
+        product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
+        note: `бронь №${Number(booking.id)} отменена в приложении`, admin_name: 'приложение',
+      }}));
+    }
+    ops.push(this.db.sales.deleteMany({ where: { booking_id: booking.id, method: 'bill' } }));
+    await this.db.$transaction(ops);
+    return { id: Number(booking.id), status: 'cancelled', late, kept: late && paid > 0, cancelHours: set.cancelHours };
   }
 
   /** Чем заменить занятое время: сначала другие площадки того же типа

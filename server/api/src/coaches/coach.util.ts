@@ -54,3 +54,19 @@ export const classPay = lessonPay;
 export const PAY_WORD: Record<string, string> = {
   percent: '% от цены тренировки', per_hour: '₽ за час', per_lesson: '₽ за тренировку',
 };
+
+/** Занят ли тренер групповой тренировкой в это время.
+ *  Групповая держит корт отдельной бронью без тренера, поэтому одной
+ *  проверки по броням мало — тренер оказывался «свободен» на своей же группе. */
+export async function coachBusyByClass(db: any, coachId: bigint, from: Date, to: Date, exceptId?: bigint): Promise<string | null> {
+  const rows = await db.tournaments.findMany({
+    where: { kind: 'class', coach_id: coachId, state: { not: 'cancelled' },
+             starts_at: { lt: to }, ...(exceptId ? { id: { not: exceptId } } : {}) },
+    select: { id: true, name: true, starts_at: true, hours: true },
+  });
+  for (const t of rows) {
+    const end = new Date(+t.starts_at + t.hours * 3600_000);
+    if (+t.starts_at < +to && +end > +from) return t.name;
+  }
+  return null;
+}

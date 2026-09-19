@@ -15,7 +15,7 @@ import { clubHour, clubToday, isValidDate, shiftDate, weekdayOf } from '../time'
 import { bigId } from '../phone';
 import { ipOf, limitRate } from '../ratelimit';
 import { MAX_PENDING_PER_PHONE, REQUESTS_PER_HOUR } from '../bookings/bookings.controller';
-import { coachHours } from './coach.util';
+import { coachHours, coachBusyByClass } from './coach.util';
 
 const DAYS_AHEAD = 30;
 const LIVE = { notIn: ['cancelled', 'expired'] as any };
@@ -61,10 +61,14 @@ export class CoachesController {
     const wh = coachHours(coach, pricing.settings, date);
     if (!wh) return [];
     const dayFrom = clubHour(date, 0), dayTo = clubHour(shiftDate(date, 1), 0);
-    const [courts, busy] = await Promise.all([
+    const [courts, busy, classes] = await Promise.all([
       this.db.courts.findMany({ where: { is_active: true, is_football: false }, orderBy: { sort_order: 'asc' } }),
       this.db.bookings.findMany({ where: { status: LIVE, starts_at: { lt: dayTo }, ends_at: { gt: dayFrom } },
         select: { court_id: true, coach_id: true, starts_at: true, ends_at: true } }),
+      // Групповые тренировки этого тренера: в это время он занят с группой
+      this.db.tournaments.findMany({ where: { kind: 'class', coach_id: coach.id, state: { notIn: ['cancelled'] },
+        starts_at: { gte: new Date(+dayFrom - 6 * 3600_000), lt: dayTo } },
+        select: { starts_at: true, hours: true } }),
     ]);
     const now = Date.now();
     const out: { hour: number; courtId: string; price: number; coachPrice: number; courtPrice: number }[] = [];
@@ -73,6 +77,7 @@ export class CoachesController {
       if (+a <= now) continue;
       const overlaps = (x: { starts_at: Date; ends_at: Date }) => x.starts_at < b && x.ends_at > a;
       if (busy.some(x => x.coach_id === coach.id && overlaps(x))) continue;
+      if (classes.some(t => +t.starts_at < +b && +t.starts_at + t.hours * 3600_000 > +a)) continue;
       const court = courts.find(c => !(c.closed_until && c.closed_until > a)
         && !busy.some(x => x.court_id === c.id && overlaps(x)));
       if (!court) continue;

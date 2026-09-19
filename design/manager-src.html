@@ -2008,6 +2008,9 @@ function bkState(b){
   const due = dueOf(b), paid = b.paid || 0;
   const { ended } = timing(b);
   const left = holdLeft(b);
+  // Корт под турниром или тренировкой: это не продажа, а занятое время
+  if (b.tournamentId) return { cls:'done', tone:'dim',
+    label: /^Тренировка/.test(b.guestName || '') ? 'Тренировка клуба' : 'Турнир клуба' };
   // Несостоявшаяся бронь: главное — что с внесёнными деньгами
   const money = paid <= 0 ? '' : b.keptPrepay ? ` · ${rub(paid)} у клуба` : ` · вернуть ${rub(paid)}`;
   if (b.status === 'cancelled') return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim', label:'Отменена' + money };
@@ -2359,7 +2362,9 @@ async function openBooking(id){
   // ── деньги
   const left = Math.max(0, due - paid);
   let note = '', noteCls = '';
-  if (b.tournamentId) { note = 'Корт занят под турнир — деньги принимаются в турнире.' }
+  if (b.tournamentId) { note = /^Тренировка/.test(b.guestName || '')
+    ? 'Корт занят под групповую тренировку — оплата идёт в ней.'
+    : 'Корт занят под турнир — деньги принимаются в турнире.' }
   else if (closed) {
     if (paid > 0 && b.keptPrepay) { note = `Предоплата ${rub(paid)} осталась клубу.`; noteCls = 'ok' }
     else if (paid > 0) { note = `Нужно вернуть клиенту ${rub(paid)}.`; noteCls = 'warn' }
@@ -2390,7 +2395,7 @@ async function openBooking(id){
 
   // ── клиент и контакты
   const c = b.client;
-  const contact = c ? `
+  const contact = b.tournamentId ? '' : c ? `
     <div class="bki-group">
       <div class="bki-row"><span>Клиент</span><div class="v"><a href="#" id="bkClient">${esc(c.name || 'Без имени')} — карточка ›</a></div></div>
       <div class="bki-row"><span>Телефон</span><div class="v">${phoneNice(c.phone)}
@@ -2420,7 +2425,7 @@ async function openBooking(id){
   const L = [], R = [];
   const owes = paid < due;
   if (b.tournamentId) {
-    R.push(`<button class="btn acc" data-tourn>Открыть турнир</button>`);
+    R.push(`<button class="btn acc" data-tourn>${/^Тренировка/.test(b.guestName || '') ? 'Открыть тренировку' : 'Открыть турнир'}</button>`);
   } else {
     if (live && !ended && can('cancel')) L.push(`<button class="btn dg" data-end="cancelled">Отменить бронь…</button>`);
     if (b.status === 'confirmed' && begun && can('cancel')) L.push(`<button class="btn dg" data-end="no_show">Не пришёл…</button>`);
@@ -2450,7 +2455,8 @@ async function openBooking(id){
   on('[data-tourn]', async () => {
     $('#bkModal').classList.remove('on');
     const ts = await call('/admin/tournaments');
-    const t = ts.find(x => x.id === b.tournamentId); if (t) openTournament(t);
+    const t = ts.find(x => x.id === b.tournamentId);
+    if (t) { if (t.kind === 'class') await loadCoachBrief(); openTournament(t, t.kind) }
   });
   on('#bkClient', e => { e.preventDefault(); $('#bkModal').classList.remove('on'); openClient(c) });
   on('#bkCopy', () => { navigator.clipboard?.writeText(phoneNice(c.phone)); $('#bkCopy').textContent = 'скопировано' });
@@ -4261,7 +4267,7 @@ function switchView(v){
     $('#coNew').hidden = cls || !can('coaches'); $('#clsNew').hidden = !cls || !can('tournaments');
     $('#coFrom').parentElement.hidden = cls || !can('coaches'); $('#coTo').parentElement.hidden = cls || !can('coaches');
     if (!can('coaches')) $('#coSeg [data-v="classes"]').click(); else if (cls) loadCoachBrief().then(() => loadTourView('class')); else loadCoaches() }
-  if (v==='mycoach' && myCoach) openCoachPage(myCoach.id, true);
+  if (v==='mycoach' && myCoach && !coBusy) openCoachPage(myCoach.id, true);
   $('#viewDay').hidden = v!=='day';
   $('#viewHistory').hidden = v!=='history';
   $('#viewStats').hidden = v!=='stats';
@@ -4505,9 +4511,13 @@ $('#coNew').onclick = () => openCoach(null);
 $('#clsNew').onclick = () => openTournament(null, 'class');
 
 /** Страница тренера: цифры за период, все тренировки, выплаты. */
+let coBusy = false;
 async function openCoachPage(id, own){
   coPage = id;
-  if (view !== 'coach') switchView(own ? 'mycoach' : 'coach');
+  // Свой раздел тренера открывает сам себя через switchView — без флага
+  // получалась бесконечная рекурсия
+  const target = own ? 'mycoach' : 'coach';
+  if (view !== target) { coBusy = true; switchView(target); coBusy = false }
   $('#coBack').hidden = !!own;
   $('#coOut').innerHTML = '<div class="center">Загружаю…</div>';
   let r;

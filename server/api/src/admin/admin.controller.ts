@@ -11,7 +11,7 @@ import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
 import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
-import { coachHours, courtPart, coachPart, lessonPay, classPay } from '../coaches/coach.util';
+import { coachHours, courtPart, coachPart, lessonPay, classPay, coachBusyByClass } from '../coaches/coach.util';
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -960,6 +960,10 @@ export class AdminController {
         throw new BadRequestException(wh ? `${coach.name} работает в этот день с ${wh.open}:00 до ${wh.close}:00`
           : `${coach.name} в этот день не работает`);
       }
+      // В это время он может вести группу — она держит корт, но не тренера
+      const busyClass = await coachBusyByClass(this.db, coach.id,
+        clubHour(body.date, body.hour), clubHour(body.date, body.hour + hoursCount));
+      if (busyClass) throw new BadRequestException(`${coach.name} в это время ведёт группу «${busyClass}»`);
     }
     const oldHours = Math.round((+b.ends_at - +b.starts_at) / 3600_000) || 1;
     const coachPrice = coach ? Math.round(b.coach_price / oldHours * hoursCount) : b.coach_price;
@@ -1795,6 +1799,9 @@ export class AdminController {
       where: {
         status: { in: ['pending', 'confirmed', 'done'] }, tournament_id: null,
         ends_at: { gte: new Date(+now - SALE_WINDOW_H * 3600_000) },
+        // Дальше недели вперёд к броням ничего не продают — список не должен
+        // превращаться в расписание на месяц
+        starts_at: { lt: new Date(+now + 7 * 864e5) },
       },
       orderBy: { starts_at: 'asc' }, include: { clients: true, courts: true }, take: 300,
     });
@@ -2610,9 +2617,25 @@ export class AdminController {
     }
     if (body.level !== undefined) data.level = String(body.level ?? '').trim().slice(0, 60) || null;
 
+    // Групповая тренировка: тренер не может вести две группы сразу или
+    // группу поверх индивидуальной тренировки
+    const checkCoach = async (id: bigint | null, startsAt: Date, hours: number, coachId: bigint | null) => {
+      if (!coachId) return;
+      const end = new Date(+startsAt + hours * 3600_000);
+      const c = await this.db.coaches.findUnique({ where: { id: coachId } });
+      const busy = await this.db.bookings.findFirst({ where: { coach_id: coachId,
+        status: { notIn: ['cancelled', 'expired'] }, starts_at: { lt: end }, ends_at: { gt: startsAt } } });
+      if (busy) throw new ConflictException(`${c?.name ?? 'Тренер'} в это время ведёт индивидуальную тренировку`);
+      const other = await coachBusyByClass(this.db, coachId, startsAt, end, id ?? undefined);
+      if (other) throw new ConflictException(`${c?.name ?? 'Тренер'} в это время ведёт группу «${other}»`);
+    };
+
     if (body.id) {
       const before = await this.db.tournaments.findUnique({ where: { id: BigInt(body.id) } });
       if (!before) throw new NotFoundException('Турнир не найден');
+      const kind = data.kind ?? before.kind;
+      if (kind === 'class') await checkCoach(before.id, data.starts_at ?? before.starts_at,
+        data.hours ?? before.hours, data.coach_id !== undefined ? data.coach_id : before.coach_id);
       const activeEntries = await this.db.tournament_entries.count({
         where: { tournament_id: before.id, status: { in: ['pending', 'confirmed'] } } });
       if (data.seats != null && data.seats < activeEntries) {
@@ -2662,6 +2685,9 @@ export class AdminController {
     if (!data.name || !data.starts_at) {
       throw new BadRequestException('Для нового турнира нужны название и дата начала');
     }
+    if ((data.kind ?? 'tournament') === 'class') {
+      await checkCoach(null, data.starts_at, data.hours ?? 1, data.coach_id ?? null);
+    }
     const t = await this.db.tournaments.create({ data: {
       name: data.name, starts_at: data.starts_at,
       format: data.format ?? 'Americano', fee: data.fee ?? 0,
@@ -2686,7 +2712,7 @@ export class AdminController {
    *  Молча пропускать нельзя: клуб будет думать, что корт под турниром. */
   private async blockCourts(t: {
     id: bigint; name: string; starts_at: Date; hours: number; court_ids: string[];
-    state: string;
+    state: string; kind?: string;
   }): Promise<string[]> {
     // Завершённый турнир корты не пересобирает: его брони — это история
     // загрузки кортов, удалять их нельзя
@@ -2708,7 +2734,7 @@ export class AdminController {
             starts_at: t.starts_at,
             ends_at: new Date(+t.starts_at + t.hours * 3600_000),
             price: 0, status: 'confirmed', source: 'tournament',
-            guest_name: `Турнир: ${t.name}`,
+            guest_name: `${t.kind === 'class' ? 'Тренировка' : 'Турнир'}: ${t.name}`,
             tournament_id: t.id,
           }});
         } catch (e: any) {
@@ -2798,6 +2824,10 @@ export class AdminController {
         throw new BadRequestException(wh ? `${coach.name} работает в этот день с ${wh.open}:00 до ${wh.close}:00`
           : `${coach.name} в этот день не работает`);
       }
+      // В это время он может вести группу — она держит корт, но не тренера
+      const busyClass = await coachBusyByClass(this.db, coach.id,
+        clubHour(body.date, body.hour), clubHour(body.date, body.hour + hoursCount));
+      if (busyClass) throw new BadRequestException(`${coach.name} в это время ведёт группу «${busyClass}»`);
     }
     const coachPrice = !coach ? 0 : body.coachPrice != null ? rubToKop(body.coachPrice) : coach.price * hoursCount;
     const price = coach && !coach.court_extra ? 0 : pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
