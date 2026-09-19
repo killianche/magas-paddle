@@ -5,7 +5,7 @@ import {
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard, Needs } from './admin.guard';
-import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
+import { AuthService, PERMS, type Admin, type Perm, sealPassword, openPassword, makePassword } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
 import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
@@ -175,7 +175,40 @@ export class AdminController {
     return rows.map(r => ({
       id: Number(r.id), login: r.login, name: r.name, role: r.role,
       perms: r.perms, isActive: r.is_active, lastLoginAt: r.last_login_at,
+      // Сам пароль не отдаём списком — только по отдельному запросу владельца
+      hasSealed: !!r.password_enc,
     }));
+  }
+
+  /** Пароль сотрудника — только владельцу, каждый просмотр — в журнал. */
+  @Get('staff/:id/password')
+  async staffPassword(@Req() req: any, @Param('id') id: string) {
+    const me: Admin = req.admin;
+    if (me.role !== 'owner') throw new ForbiddenException('Пароли видит только владелец');
+    const row = await this.db.admins.findUnique({ where: { id: bigId(id) } });
+    if (!row) throw new NotFoundException('Сотрудник не найден');
+    const password = openPassword(row.password_enc);
+    await this.auth.log(me, 'посмотрел пароль', `${row.name} (${row.login})`);
+    return { password };
+  }
+
+  /** Новый пароль сотруднику. Не передали — придумаем сами. Входы с прежним
+   *  паролем закрываются. Пароль владельца меняет только владелец. */
+  @Post('staff/:id/password')
+  @Needs('staff')
+  async setStaffPassword(@Req() req: any, @Param('id') id: string, @Body() body: { password?: string }) {
+    const me: Admin = req.admin;
+    const row = await this.db.admins.findUnique({ where: { id: bigId(id) } });
+    if (!row) throw new NotFoundException('Сотрудник не найден');
+    if (row.role === 'owner' && me.role !== 'owner') throw new ForbiddenException('Пароль владельца меняет только владелец');
+    const password = checkPassword(body.password ? String(body.password) : makePassword());
+    await this.db.admins.update({ where: { id: row.id }, data: {
+      password_hash: await this.auth.hash(password), password_enc: sealPassword(password) } });
+    await this.auth.dropSessions(Number(row.id));
+    await this.auth.log(me, 'сменил пароль сотрудника', `${row.name} (${row.login})`);
+    // Владелец видит новый пароль сразу; сотрудник с правом «сотрудники» — тоже,
+    // один раз: он его и выдаёт
+    return { password };
   }
 
   /** Завести сотрудника или изменить его. Пароль задаётся только здесь
@@ -195,7 +228,10 @@ export class AdminController {
 
       const data: any = {};
       if (body.name != null) data.name = String(body.name).trim().slice(0, 80) || row.name;
-      if (body.password) data.password_hash = await this.auth.hash(checkPassword(body.password));
+      if (body.password) {
+        data.password_hash = await this.auth.hash(checkPassword(body.password));
+        data.password_enc = sealPassword(body.password);
+      }
 
       // Имя и пароль владельца меняет только сам владелец: иначе сотрудник
       // с правом «сотрудники» поставил бы ему свой пароль и вошёл владельцем
@@ -230,12 +266,14 @@ export class AdminController {
       throw new BadRequestException('Такой логин уже занят');
     }
 
+    // Пароль не задали — придумываем сами и сразу показываем
+    const password = checkPassword(body.password ? String(body.password) : makePassword());
     const created = await this.db.admins.create({ data: {
       login, name, role: 'staff', perms,
-      password_hash: await this.auth.hash(checkPassword(body.password ?? '')),
+      password_hash: await this.auth.hash(password), password_enc: sealPassword(password),
     }});
     await this.auth.log(me, 'завёл сотрудника', `${name} (${login})`);
-    return { id: Number(created.id) };
+    return { id: Number(created.id), password };
   }
 
   @Post('staff/:id/delete')
@@ -1807,7 +1845,7 @@ export class AdminController {
   /** Движение остатка: привезли (receipt), списали (writeoff: брак, потеря,
    *  взяли себе) или пересчитали (count: сколько реально лежит). */
   @Post('products/:id/move')
-  @Needs('prices')
+  @Needs('stock')
   async productMove(@Req() req: any, @Param('id') id: string, @Body() body: {
     kind?: string; qty?: number; unitCost?: number | null; note?: string;
   }) {
@@ -1839,7 +1877,7 @@ export class AdminController {
 
   /** Прежняя кнопка «±1»: плюс — приход, минус — списание. */
   @Post('products/:id/stock')
-  @Needs('prices')
+  @Needs('stock')
   async productStock(@Req() req: any, @Param('id') id: string, @Body() body: { delta?: number; set?: number }) {
     if (body.set != null) return this.productMove(req, id, { kind: 'count', qty: body.set });
     const d = Math.trunc(Number(body.delta ?? 0));

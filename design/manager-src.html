@@ -522,6 +522,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .srow .sd{flex:1;min-width:0}
 .srow .sd b{display:block;font-size:14px}
 .srow .sd span{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+.srow .sd .cred{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;color:var(--dim)}
+.srow .cred code{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--fill);padding:1px 7px;border-radius:6px}
 .srow .tag{font-size:11px;padding:3px 8px;border-radius:7px;border:1px solid var(--line);color:var(--dim)}
 .srow .tag.own{border-color:var(--lime);color:var(--lime)}
 .logRow{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;
@@ -1650,8 +1652,9 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <input id="stPass" placeholder="не короче 8 знаков, буквы и цифры">
       <button class="btn small" type="button" id="stGen">Придумать</button>
     </div>
-    <p class="sub" id="stPassHint" style="margin:4px 0 0">Пароль виден только сейчас — запишите его.</p>
-    <label>Что разрешено</label>
+    <p class="sub" id="stPassHint" style="margin:4px 0 0"></p>
+    <label style="display:flex;align-items:center;gap:8px">Что разрешено
+      <button type="button" class="copy" id="stPreset" title="Отмена броней, клиенты, турниры, склад">как менеджеру</button></label>
     <div id="stPerms" class="perms"></div>
     <label class="chk"><input type="checkbox" id="stActive" checked> Работает</label>
     <div class="err" id="stErr"></div>
@@ -2009,7 +2012,16 @@ async function start(){
   document.querySelector('.vw[data-view="stats"]').hidden = !can('analytics');
   document.querySelector('.vw[data-view="clients"]').hidden = !can('clients');
   document.querySelector('.vw[data-view="tourn"]').hidden = !can('tournaments');
-  document.querySelector('.vw[data-view="sales"]').hidden = !can('analytics');
+  // «Продажи» видит аналитика целиком; с правом «склад» — только товары и остатки
+  document.querySelector('.vw[data-view="sales"]').hidden = !(can('analytics') || can('stock'));
+  $('#slSeg').hidden = !can('analytics');
+  if (!can('analytics')) {
+    $('#slSales').hidden = true; $('#slGoods').hidden = false;
+    // Без аналитики раздел — это только склад
+    const sv = document.querySelector('.vw[data-view="sales"]');
+    sv.lastChild.textContent = 'Склад'; VIEW_TITLE.sales = 'Склад';
+  }
+  $('#pdNew').hidden = !can('prices');
   call('/admin/setup').then(st => { setup = st; applySalesSwitches(st.settings) }).catch(() => {});
   document.querySelector('.tab[data-tab="notify"]').hidden = !can('clients');
   $('#setupBtn').hidden = !(can('club') || can('prices') || can('tournaments') || can('staff') || can('clients'));
@@ -4025,7 +4037,7 @@ function switchView(v){
   $('#viewClients').hidden = v!=='clients';
   $('#viewTourn').hidden = v!=='tourn';
   $('#viewSales').hidden = v!=='sales';
-  if(v==='sales') loadSales();
+  if(v==='sales') { if (can('analytics')) loadSales(); else loadProducts() }
   // Касса из боковой панели — с пустой корзиной; из брони или клиента — openPos сам
   if(v==='pos' && !pos.busy){ pos.busy = true; openPos().finally(() => { pos.busy = false }) }
   if(v==='tourn') loadTourView();
@@ -4413,16 +4425,20 @@ async function loadProducts(){
           <td class="money">${p.sold30}</td>
           <td class="money">${rub(p.revenue30)}</td>
           <td class="money">${r && r.profit != null ? rub(r.profit) : '<span style="color:var(--dim-2)">—</span>'}</td>
-          <td style="white-space:nowrap;text-align:right">${can('prices') && p.category !== 'rental'
+          <td style="white-space:nowrap;text-align:right">${can('stock') && p.category !== 'rental'
             ? `<button class="btn small" data-mv="receipt">Приход</button> <button class="btn small" data-mv="writeoff"${p.stock ? '' : ' disabled'}>Списать</button>` : ''}</td>
         </tr>`;
       }).join('') + '</tbody></table>'
       : '<div class="center">Товаров пока нет. Нажмите «Новый товар» или заведите их из прайса проката.</div>';
+    if (!can('analytics')) $('#pdRows').querySelectorAll('table').forEach(t => {
+      // Закупка, выручка и прибыль — деньги клуба: без права «аналитика» не показываем
+      [3, 6, 7].sort((a, b) => b - a).forEach(i => t.querySelectorAll('tr').forEach(r => r.children[i]?.remove()));
+    });
     $('#pdRows').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = e => {
       const p = products.find(x => x.id === +tr.dataset.id);
       const mv = e.target.closest('[data-mv]');
       if (mv) { e.stopPropagation(); openMove(p, mv.dataset.mv); return }
-      if (can('prices')) openProduct(p);
+      if (can('prices') || can('stock')) openProduct(p);
     });
   } catch(e){ $('#pdRows').innerHTML = `<div class="center">${esc(e.message)}</div>` }
 }
@@ -4466,10 +4482,15 @@ async function openProduct(p){
   $('#pdImg').innerHTML = p?.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : '';
   $('#pdPhotoNote').textContent = p ? '' : 'Фото — после сохранения';
   $('#pdPhotoIn').disabled = !p;
-  $('#pdDel').hidden = !p;
+  $('#pdDel').hidden = !p || !can('prices');
+  // Со складом без права на цены: карточку смотреть и двигать остаток можно, менять — нет
+  $('#pdSave').hidden = !can('prices');
+  $('#pdModal').querySelectorAll('.ilist input, .ilist button').forEach(el => el.disabled = !can('prices'));
+  $('#pdPhotoIn').disabled = !p || !can('prices');
   $('#pdErr').classList.remove('on');
   pdCatUi();
   $('#pdMovesBox').hidden = !(p && tracked);
+  $('#pdMovesBox').querySelectorAll('[data-mv]').forEach(b => b.hidden = !can('stock'));
   $('#pdModal').classList.add('on');
   if (p && tracked) loadMoves(p);
 }
@@ -4863,8 +4884,12 @@ async function loadStaff(){
     const seen = u.lastLoginAt
       ? 'заходил ' + new Date(u.lastLoginAt).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})
       : 'ни разу не заходил';
+    // Логин и пароль — прямо в строке: владелец видит пароль по кнопке
     return `<div class="srow${u.isActive?'':' off'}">
-      <div class="sd"><b>${esc(u.name)}</b><span>${esc(u.login)} · ${rights} · ${seen}</span></div>
+      <div class="sd"><b>${esc(u.name)}</b><span>${rights} · ${seen}</span>
+        <span class="cred">Логин <code>${esc(u.login)}</code> · Пароль <code data-pw="${u.id}">••••••••</code>
+        ${me.role === 'owner' ? `<button class="copy" data-show="${u.id}">показать</button>` : ''}
+        ${me.role === 'owner' || u.role !== 'owner' ? `<button class="copy" data-newpw="${u.id}">новый пароль</button>` : ''}</span></div>
       ${u.role==='owner' ? '<span class="tag own">владелец</span>' : ''}
       ${u.isActive ? '' : '<span class="tag">выключен</span>'}
       <button class="btn small" data-id="${u.id}">Изменить</button>
@@ -4873,6 +4898,22 @@ async function loadStaff(){
 
   $('#staffRows').querySelectorAll('button[data-id]').forEach(b =>
     b.onclick = () => openStaff(staff.find(u => u.id === +b.dataset.id)));
+  const showPw = (id, pw) => {
+    const el = $('#staffRows').querySelector(`[data-pw="${id}"]`);
+    el.textContent = pw ?? 'пароль задан раньше — нажмите «новый пароль»';
+    const b = $('#staffRows').querySelector(`[data-show="${id}"]`);
+    if (b && pw) { b.textContent = 'копировать'; b.onclick = () => { navigator.clipboard?.writeText(pw); b.textContent = 'скопировано' } }
+  };
+  $('#staffRows').querySelectorAll('[data-show]').forEach(b => b.onclick = async () => {
+    try { showPw(+b.dataset.show, (await call(`/admin/staff/${b.dataset.show}/password`)).password); loadLog() }
+    catch(e){ alert(e.message) }
+  });
+  $('#staffRows').querySelectorAll('[data-newpw]').forEach(b => b.onclick = async () => {
+    const u = staff.find(x => x.id === +b.dataset.newpw);
+    if (!await ask('Новый пароль?', `${u.name} выйдет со всех устройств и войдёт с новым паролем.`)) return;
+    try { const r = await call(`/admin/staff/${u.id}/password`, { method:'POST', body:'{}' }); showPw(u.id, r.password); loadLog() }
+    catch(e){ alert(e.message) }
+  });
 }
 
 async function loadLog(){
@@ -4915,9 +4956,8 @@ function openStaff(u){
   // Логин менять нельзя: по нему человек входит и им подписаны записи в журнале
   $('#stLoginWrap').style.display = u ? 'none' : '';
   $('#stPass').value = u ? '' : makePassword();
-  $('#stPassHint').textContent = u
-    ? 'Оставьте пустым, чтобы не менять пароль.'
-    : 'Пароль виден только сейчас — запишите и передайте сотруднику.';
+  $('#stPassHint').textContent = u ? 'Пусто — пароль не меняется.' : '';
+  $('#stPreset').hidden = owner;
 
   const on = new Set(u?.perms ?? []);
   $('#stPerms').innerHTML = Object.entries(permNames).map(([k, title]) =>
@@ -4930,6 +4970,10 @@ function openStaff(u){
   $('#staffModal').classList.add('on');
 }
 
+/** Набор прав менеджера стойки: запись, отмена и неявка, клиенты, турниры,
+ *  склад. Без денег клуба: возвратов, цен и скидок, аналитики, настроек. */
+const MANAGER_PERMS = ['cancel', 'clients', 'tournaments', 'stock'];
+$('#stPreset').onclick = () => $('#stPerms').querySelectorAll('input').forEach(i => { i.checked = MANAGER_PERMS.includes(i.value) });
 $('#stSave').onclick = async () => {
   const perms = [...$('#stPerms').querySelectorAll('input:checked:not(:disabled)')].map(i => i.value);
   const body = {

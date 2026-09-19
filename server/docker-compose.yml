@@ -64,6 +64,8 @@ services:
       REDIS_URL: redis://cache:6379
       # Ключ входа в админку: общий для персонала клуба
       ADMIN_KEY: ${ADMIN_KEY:?нужен ADMIN_KEY в .env}
+      # Ключ шифрования копий паролей сотрудников (видит владелец): 64 hex-знака
+      STAFF_PASS_KEY: ${STAFF_PASS_KEY:?нужен STAFF_PASS_KEY в .env}
       PORT: 3001
       TZ: Europe/Moscow
     ports:

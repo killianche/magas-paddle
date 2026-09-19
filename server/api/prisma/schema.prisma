@@ -14,6 +14,7 @@ model admins {
   login         String           @unique
   name          String
   password_hash String
+  password_enc  String?
   role          String           @default("staff")
   perms         String[]
   is_active     Boolean          @default(true)

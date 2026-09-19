@@ -1,11 +1,14 @@
 /** Вход сотрудников: пароли, сессии, права, журнал действий.
  *
- *  Пароль никогда не хранится и не пишется в лог. В базе лежит scrypt-хэш
- *  с индивидуальной солью; scrypt взят из стандартной библиотеки Node,
- *  отдельной зависимости для этого не нужно.
+ *  Для входа пароль проверяется по scrypt-хэшу с индивидуальной солью.
+ *  Владелец клуба попросил видеть пароли сотрудников (19.09.2026), поэтому
+ *  рядом лежит копия, зашифрованная AES-256-GCM ключом STAFF_PASS_KEY.
+ *  Ключ живёт только в .env сервера, не в базе: копия базы без ключа
+ *  паролей не раскрывает. Расшифровать может только владелец, и каждый
+ *  просмотр пишется в журнал. В лог пароль не пишется никогда.
  */
 import { Injectable } from '@nestjs/common';
-import { randomBytes, scrypt, timingSafeEqual, createHash } from 'crypto';
+import { randomBytes, scrypt, timingSafeEqual, createHash, createCipheriv, createDecipheriv, randomInt } from 'crypto';
 import { promisify } from 'util';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -40,7 +43,38 @@ export const PERMS = {
   club: 'Площадки, часы работы, правила',
   tournaments: 'Турниры',
   staff: 'Сотрудники и их права',
+  stock: 'Склад: приход, списание и пересчёт товаров',
 } as const;
+
+/** Ключ шифрования копий паролей: 64 hex-знака в STAFF_PASS_KEY. */
+function passKey(): Buffer | null {
+  const hex = process.env.STAFF_PASS_KEY ?? '';
+  return /^[0-9a-f]{64}$/i.test(hex) ? Buffer.from(hex, 'hex') : null;
+}
+/** Зашифровать пароль: iv(12) | tag(16) | шифртекст — в base64. */
+export function sealPassword(pw: string): string | null {
+  const key = passKey(); if (!key) return null;
+  const iv = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', key, iv);
+  const ct = Buffer.concat([c.update(pw, 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
+}
+export function openPassword(sealed: string | null | undefined): string | null {
+  const key = passKey(); if (!key || !sealed) return null;
+  try {
+    const buf = Buffer.from(sealed, 'base64');
+    const d = createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12));
+    d.setAuthTag(buf.subarray(12, 28));
+    return Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString('utf8');
+  } catch { return null }
+}
+/** Пароль, который легко продиктовать: «корт-7kpm-42» латиницей —
+ *  три части, буквы без похожих (l/1, o/0), обязательно есть цифры. */
+export function makePassword(): string {
+  const L = 'abcdefghjkmnpqrstuvwxyz', D = '23456789';
+  const pick = (a: string, n: number) => Array.from({ length: n }, () => a[randomInt(a.length)]).join('');
+  return `padel-${pick(L, 4)}-${pick(D, 2)}${pick(L, 2)}`;
+}
 
 export type Perm = keyof typeof PERMS;
 
