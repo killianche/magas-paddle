@@ -26,7 +26,8 @@ import { hh, dayMonth, dateOfIso, hourOfIso } from '../src/dates';
 export default function TournamentEntry() {
   useTheme();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, kind } = useLocalSearchParams<{ id: string; kind?: string }>();
+  const cls = kind === 'class';
   const { profile, ready, save } = useProfile();
 
   const [name, setName] = useState('');
@@ -44,26 +45,26 @@ export default function TournamentEntry() {
   }, [ready, profile]);
 
   const q = useApi(async () => {
-    const all = await api.tournaments(profile?.phone);
+    const all = await api.tournaments(profile?.phone, cls ? 'class' : 'tournament');
     return all.find(t => String(t.id) === String(id)) ?? null;
   }, [id]);
 
-  const screen = <Stack.Screen options={{ title: 'Запись на турнир' }} />;
+  const screen = <Stack.Screen options={{ title: cls ? 'Запись на тренировку' : 'Запись на турнир' }} />;
   if (!ready) return (<>{screen}<Loading /></>);
   // Без аккаунта записаться нельзя: отправляем на вход и возвращаем обратно
   if (!profile || !getToken()) {
     return <Redirect href={{ pathname: '/account',
-      params: { next: `/tournament-entry?id=${String(id)}` } } as never} />;
+      params: { next: `/tournament-entry?id=${String(id)}${cls ? '&kind=class' : ''}` } } as never} />;
   }
   if (q.loading) return (<>{screen}<Loading /></>);
   if (q.error) return (<>{screen}<Failed message={q.error} onRetry={q.reload} /></>);
   const t = q.data;
   if (!t) return (<>{screen}
-    <NotFound title="Турнир не найден" note="Все турниры — во вкладке «Турниры»." /></>);
+    <NotFound title={cls ? 'Тренировка не найдена' : 'Турнир не найден'} note={cls ? 'Все тренировки — в разделе «Тренировки».' : 'Все турниры — во вкладке «Турниры».'} /></>);
 
   const date = dateOfIso(t.startsAt);
   const left = Math.max(0, t.seats - t.taken);
-  const closed = t.state !== 'open' ? 'Запись на этот турнир закрыта'
+  const closed = t.state !== 'open' ? `Запись на ${cls ? 'эту тренировку' : 'этот турнир'} закрыта`
     : left === 0 ? 'Мест больше нет' : null;
 
   const nameOk = name.trim().length >= 2;
@@ -81,7 +82,7 @@ export default function TournamentEntry() {
         id: res.clientId ?? profile.id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
-        kind: 'tournament', id: String(res.id), name: t.name, date,
+        kind: cls ? 'class' : 'tournament', id: String(res.id), name: t.name, date,
         hour: String(hourOfIso(t.startsAt)), hours: String(t.hours ?? 1), price: String(t.fee) } });
     } catch (e) {
       setProblem(e instanceof ApiError ? e.message : 'Не получилось отправить заявку. Проверьте интернет.');
@@ -96,13 +97,13 @@ export default function TournamentEntry() {
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
 
         <View style={s.card}>
-          <Text style={s.eyebrow}>Турнир</Text>
+          <Text style={s.eyebrow}>{cls ? `Тренировка · ${t.coach?.name ?? ''}` : 'Турнир'}</Text>
           <Text style={s.title}>{t.name}</Text>
           <View style={s.facts}>
             {/* «21» крупно, месяц ниже: «21 сентября» в узкую колонку не влезало */}
             <Fact k="Дата" v={dayMonth(date).split(' ')[0]} sub={dayMonth(date).split(' ').slice(1).join(' ')} />
             <Fact k="Начало" v={hh(hourOfIso(t.startsAt))} />
-            <Fact k="Взнос" v={rub(t.fee)} sub="в клубе" />
+            <Fact k={cls ? 'Цена' : 'Взнос'} v={rub(t.fee)} sub="в клубе" />
             <Fact k="Мест" v={`${left}`} sub={`из ${t.seats}`} last />
           </View>
         </View>
@@ -131,7 +132,7 @@ export default function TournamentEntry() {
       <View style={[s.bar, { paddingBottom: Math.max(insets.bottom, 12) + 10 }]}>
         {!!(problem || closed) && <Text style={s.problem}>{problem ?? closed}</Text>}
         <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
-          accessibilityLabel="Отправить заявку на турнир"
+          accessibilityLabel={cls ? 'Отправить заявку на тренировку' : 'Отправить заявку на турнир'}
           style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff, pressed && ok && { opacity: 0.9 }]}>
           {busy ? <ActivityIndicator color={C.onLime} />
             : <Text style={[s.ctaT, !ok && { color: C.dim2 }]}>Отправить заявку</Text>}

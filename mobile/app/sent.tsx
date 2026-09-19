@@ -29,7 +29,8 @@ export default function Sent() {
   const p = useLocalSearchParams<{ id: string; name: string; date: string; hour: string;
     hours: string; price: string; holdUntil?: string; kind?: string }>();
   // Заявка на турнир показывается тем же экраном: турнир, дата, начало
-  const tournament = p.kind === 'tournament';
+  const tournament = p.kind === 'tournament' || p.kind === 'class';
+  const cls = p.kind === 'class', lesson = p.kind === 'lesson';
   const hydrated = useHydrated();
   const hour = Number(p.hour ?? 0), hours = Number(p.hours ?? 1);
   const price = Number(p.price ?? 0);
@@ -73,7 +74,7 @@ export default function Sent() {
         <Text style={s.h}>Заявка отправлена</Text>
         {tournament ? (
           <Text style={s.p}>
-            Турнир <Text style={s.strong}>«{String(p.name)}»</Text>
+            {cls ? 'Тренировка' : 'Турнир'} <Text style={s.strong}>«{String(p.name)}»</Text>
             {'\n'}{longDate(String(p.date))}
             {'\n'}начало в <Text style={s.strong}>{hh(hour)}</Text>
           </Text>
@@ -88,9 +89,9 @@ export default function Sent() {
 
         <View style={s.pill}>
           <View style={s.dot} />
-          <Text style={s.pillT}>{tournament ? 'ЖДЁТ ПОДТВЕРЖДЕНИЯ' : 'МЕСТО ЗАДЕРЖАНО'}</Text>
+          <Text style={s.pillT}>{tournament || lesson ? 'ЖДЁТ ПОДТВЕРЖДЕНИЯ' : 'МЕСТО ЗАДЕРЖАНО'}</Text>
         </View>
-        {tournament && (
+        {(tournament || lesson) && (
           <Text style={s.next}>
             Администратор проверит заявку. Когда подтвердит, придёт уведомление,
             а в «Моих записях» появится «Вы записаны».
@@ -113,7 +114,8 @@ export default function Sent() {
       {/* Мелким внизу: пригодится, только если что-то пойдёт не так */}
       <Text style={[s.small, { paddingBottom: insets.bottom + 20 }]}>
         {tournament
-          ? `Заявка на турнир № ${String(p.id ?? '—')} · взнос ${rub(price)} — оплачивается в клубе.`
+          ? `Заявка на ${cls ? 'тренировку' : 'турнир'} № ${String(p.id ?? '—')} · ${cls ? 'оплата' : 'взнос'} ${rub(price)} — в клубе.`
+          : lesson ? `Заявка № ${String(p.id ?? '—')} · ${rub(price)} — оплачивается в клубе.`
           : <>Заявка № {String(p.id ?? '—')} · {rub(price)} · предоплата {club.prepayPercent} % —
             {' '}{rub(prepay)}. Остальное на месте.</>}
       </Text>

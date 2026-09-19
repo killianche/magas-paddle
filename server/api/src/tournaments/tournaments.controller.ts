@@ -37,11 +37,15 @@ export class TournamentsController {
   }
 
   @Get()
-  async list(@Query('phone') phone?: string, @Headers('authorization') header?: string) {
+  async list(@Query('phone') phone?: string, @Headers('authorization') header?: string,
+             @Query('kind') kind?: string) {
     // Просроченные заявки не должны занимать места и значиться «ждёт»
     await this.club.releaseExpired();
+    // По умолчанию — только турниры: старые сборки приложения не должны
+    // показывать групповые тренировки среди турниров
     const rows = await this.db.tournaments.findMany({
-      where: { state: { not: 'cancelled' } }, orderBy: { starts_at: 'asc' } });
+      where: { state: { not: 'cancelled' }, kind: kind === 'class' ? 'class' : 'tournament' },
+      orderBy: { starts_at: 'asc' }, include: { coaches: { select: { id: true, name: true, photo_url: true } } } });
     const counts = await this.db.tournament_entries.groupBy({
       by: ['tournament_id'], where: ACTIVE_ENTRY, _count: { _all: true },
     });
@@ -77,6 +81,8 @@ export class TournamentsController {
       // Записан — заявка ждёт подтверждения или уже подтверждена
       entered: ['pending', 'confirmed'].includes(mine.get(String(t.id))?.status ?? ''),
       entry: mine.get(String(t.id)) ?? null,
+      kind: t.kind, level: t.level,
+      coach: t.coaches ? { id: Number(t.coaches.id), name: t.coaches.name, photoUrl: t.coaches.photo_url } : null,
     }));
   }
 

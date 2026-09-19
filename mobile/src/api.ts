@@ -152,6 +152,8 @@ export type ApiBooking = {
   refunded?: number;
   /** Строки счёта к брони: прокат ракетки, мячи. */
   extras?: { item: string; qty: number; amount: number }[];
+  /** Тренировка: имя тренера и его часть цены. */
+  coachName?: string | null; coachPrice?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
   /** До какого времени клуб держит неподтверждённую заявку. */
   holdUntil?: string | null;
@@ -175,7 +177,23 @@ export type ApiTournament = {
     holdUntil: string | null;
     /** Отменил клуб, а не сам человек — «заявка отклонена». */
     byClub?: boolean } | null;
+  /** 'class' — групповая тренировка с тренером, а не турнир. */
+  kind?: 'tournament' | 'class'; level?: string | null;
+  coach?: { id: number; name: string; photoUrl: string | null } | null;
 };
+
+/** Тренер клуба — для экрана «Тренировки». Цены в копейках. */
+export type ApiCoach = {
+  id: number; name: string; photoUrl: string | null; bio: string | null;
+  /** Цена индивидуальной тренировки за час. */
+  price: number;
+  /** Корт оплачивается отдельно по тарифу (true) или входит в цену. */
+  courtExtra: boolean; color: string | null;
+  /** Сколько у тренера открытых групповых тренировок. */
+  classes: number;
+};
+/** Свободный час у тренера: есть корт, тренер свободен. */
+export type ApiSlot = { hour: number; courtId: string; price: number; coachPrice: number; courtPrice: number };
 
 export type ApiPlace = { place: number; names: string; prize?: string };
 
@@ -256,8 +274,19 @@ export const api = {
   cancel: (id: number, phone: string) =>
     call<{ id: number }>(`/bookings/${id}?phone=${encodeURIComponent(phone)}`, { method: 'DELETE' }),
 
-  tournaments: (phone?: string) =>
-    call<ApiTournament[]>(`/tournaments${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),
+  /** Турниры; kind='class' — групповые тренировки. */
+  tournaments: (phone?: string, kind?: 'tournament' | 'class') => {
+    const q = [phone ? `phone=${encodeURIComponent(phone)}` : '', kind === 'class' ? 'kind=class' : ''].filter(Boolean).join('&');
+    return call<ApiTournament[]>(`/tournaments${q ? '?' + q : ''}`);
+  },
+
+  coaches: () => call<ApiCoach[]>('/coaches'),
+  coachSlots: (id: number, date: string, hours = 1) =>
+    call<{ date: string; hours: number; slots: ApiSlot[] }>(`/coaches/${id}/slots?date=${date}&hours=${hours}`),
+  bookCoach: (id: number, b: { date: string; hour: number; hours: number; comment?: string }) =>
+    call<{ id: number; courtName: string; coachName: string; startsAt: string; endsAt: string;
+      price: number; status: string; holdMinutes: number; clientId: number }>(`/coaches/${id}/book`,
+      { method: 'POST', body: JSON.stringify(b) }),
 
   enterTournament: (id: number, who: { name: string; surname?: string; phone: string }) =>
     call<ApiEntry>(`/tournaments/${id}/entries`,

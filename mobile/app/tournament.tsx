@@ -21,24 +21,28 @@ import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
 export default function TournamentScreen() {
   useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, kind } = useLocalSearchParams<{ id: string; kind?: string }>();
+  // Групповая тренировка открывается тем же экраном: места, запись, подтверждение
+  const cls = kind === 'class';
+  const W = cls ? { one: 'Тренировка', fee: 'Цена', enter: 'Записаться на тренировку', gone: 'тренировка прошла' }
+               : { one: 'Турнир', fee: 'Взнос', enter: 'Записаться на турнир', gone: 'турнир прошёл' };
   const { profile } = useProfile();
   const phone = profile?.phone;
   const [busy, setBusy] = useState(false);
 
   const q = useApi(async () => {
-    const all = await api.tournaments(phone);
+    const all = await api.tournaments(phone, cls ? 'class' : 'tournament');
     return all.find(t => String(t.id) === String(id)) ?? null;
   }, [id, phone]);
   useFocusEffect(useCallback(() => { q.refresh() }, [id, phone]));
 
-  if (q.loading) return (<><Stack.Screen options={{ title: 'Турнир' }} /><Loading /></>);
-  if (q.error) return (<><Stack.Screen options={{ title: 'Турнир' }} />
+  if (q.loading) return (<><Stack.Screen options={{ title: W.one }} /><Loading /></>);
+  if (q.error) return (<><Stack.Screen options={{ title: W.one }} />
     <Failed message={q.error} onRetry={q.reload} /></>);
 
   const t = q.data;
   if (!t) return (
-    <NotFound title="Турнир не найден"
+    <NotFound title={cls ? 'Тренировка не найдена' : 'Турнир не найден'}
       note="Возможно, он уже прошёл и его убрали. Все турниры — во вкладке «Турниры»." />
   );
 
@@ -57,7 +61,7 @@ export default function TournamentScreen() {
   // заявка ждёт подтверждения администратора
   const enter = () => {
     Haptics.selectionAsync();
-    router.push({ pathname: '/tournament-entry', params: { id: String(t.id) } });
+    router.push({ pathname: '/tournament-entry', params: { id: String(t.id), kind: cls ? 'class' : '' } });
   };
 
   const leave = () => {
@@ -81,7 +85,7 @@ export default function TournamentScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.ink }}>
-      <Stack.Screen options={{ title: done ? 'Турнир завершён' : 'Турнир' }} />
+      <Stack.Screen options={{ title: done ? (cls ? 'Тренировка прошла' : 'Турнир завершён') : W.one }} />
       <ScrollView contentContainerStyle={{ paddingBottom: done ? 40 : 200 }}>
 
         <View style={s.cover}>
@@ -111,7 +115,7 @@ export default function TournamentScreen() {
           <View style={s.whenBlock}>
             <Text style={s.whenK}>Начало</Text>
             <Text style={s.whenV}>{hh(hourOfIso(t.startsAt))}</Text>
-            <Text style={s.whenS}>{done ? 'турнир прошёл' : 'сбор за 20 минут'}</Text>
+            <Text style={s.whenS}>{done ? W.gone : 'сбор за 20 минут'}</Text>
           </View>
         </View>
 
@@ -132,8 +136,8 @@ export default function TournamentScreen() {
         )}
 
         <View style={s.facts}>
-          <Fact k="Формат" v={t.format} />
-          <Fact k="Взнос" v={rub(t.fee)} />
+          <Fact k={cls ? 'Тренер' : 'Формат'} v={cls ? (t.coach?.name ?? '—') : t.format} />
+          <Fact k={W.fee} v={rub(t.fee)} />
           <Fact k={done ? 'Участников было' : 'Свободных мест'}
             v={done ? String(t.seats) : `${left} из ${t.seats}`} last />
         </View>
@@ -171,7 +175,7 @@ export default function TournamentScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.barOkT}>Вы записаны</Text>
                 <Text style={s.barOkS}>
-                  Приходите {dayMonth(date)} к {hh(hourOfIso(t.startsAt))} · взнос {rub(t.fee)} в клубе
+                  Приходите {dayMonth(date)} к {hh(hourOfIso(t.startsAt))} · {cls ? 'оплата' : 'взнос'} {rub(t.fee)} в клубе
                 </Text>
               </View>
             </View>
@@ -186,7 +190,7 @@ export default function TournamentScreen() {
                   pressed && canEnter && { opacity: 0.9 }]}>
                 {busy ? <ActivityIndicator color={C.onLime} />
                   : canEnter ? (
-                    <Text style={s.ctaT}>Записаться на турнир</Text>
+                    <Text style={s.ctaT}>{W.enter}</Text>
                   ) : (
                     <Text style={[s.ctaT, { color: C.dim2 }]}>
                       {t.state === 'soon' ? 'Запись ещё не открыта'
@@ -194,7 +198,7 @@ export default function TournamentScreen() {
                     </Text>
                   )}
               </Pressable>
-              {canEnter && <Text style={s.barSub}>Заявку подтвердит администратор · взнос {rub(t.fee)} в клубе</Text>}
+              {canEnter && <Text style={s.barSub}>Заявку подтвердит администратор · {cls ? 'оплата' : 'взнос'} {rub(t.fee)} в клубе</Text>}
             </>
           )}
         </View>

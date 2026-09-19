@@ -933,6 +933,37 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .pos-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px 20px;color:var(--dim);text-align:center}
 .pos-empty b{font-size:17px;color:var(--text)}
 @media(max-width:1180px){.pos{grid-template-columns:1fr}.pos-cart{position:static;max-height:none}}
+/* ── тренеры ────────────────────────────────────────────────────────── */
+.co-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.co-card{display:flex;flex-direction:column;gap:12px;text-align:left;padding:14px 16px;border:0;border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow);color:var(--text);position:relative}
+.co-card:hover{box-shadow:0 0 0 .5px var(--line),0 6px 18px rgba(0,0,0,.08)}
+.co-card.off{opacity:.55}
+.co-card > .tag{position:absolute;top:12px;right:12px}
+.co-top{display:flex;align-items:center;gap:12px}
+.co-top b{display:block;font-size:15px;font-weight:600}
+.co-top span{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+.co-av{width:48px;height:48px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:var(--cc);color:#fff;font-weight:700;font-size:17px}
+.co-av img{width:100%;height:100%;object-fit:cover}
+.co-top .co-av{display:flex;font-size:17px;color:#fff;margin-top:0}
+.cp-head{flex-wrap:wrap}
+.cp-head .acts{flex-wrap:wrap;justify-content:flex-end}
+.co-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.co-nums div{background:var(--surface-2);border-radius:10px;padding:8px 10px}
+:root[data-theme="dark"] .co-nums div{background:rgba(255,255,255,.05)}
+.co-nums b{display:block;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.co-nums span{font-size:11px;color:var(--dim)}
+.co-money{display:flex;gap:6px;border-top:.5px solid var(--line);padding-top:10px}
+.co-money div{flex:1}
+.co-money span{display:block;font-size:11px;color:var(--dim)}
+.co-money b{font-variant-numeric:tabular-nums;font-size:14px}
+.co-money .due b{color:var(--amber)}
+.co-col{width:22px;height:22px;border-radius:50%;border:0;background:var(--cc);padding:0}
+.co-col.on{box-shadow:0 0 0 2px var(--ink-2),0 0 0 4px var(--cc)}
+.bk .co-line{display:flex;align-items:center;gap:5px;color:var(--text);font-weight:500}
+.bk .co-line .cdot{width:7px;height:7px;border-radius:50%;background:var(--cc)}
+#addCoachPick .cdot{border-radius:50%}
 @media(max-width:1100px){:root{--side-w:196px}.gsearch{width:220px}}
 @media(max-width:860px){body:not(.showside){--side-w:0px}body:not(.showside) .side{display:none}}
 </style>
@@ -946,6 +977,8 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div class="sgroup">Клуб</div>
     <button class="vw on" data-view="day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="3"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg>День</button>
     <button class="vw" data-view="clients"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="7" r="3"/><path d="M2.5 16.5c.6-2.8 2.9-4.5 5.5-4.5s4.9 1.7 5.5 4.5M13.5 4.2a3 3 0 0 1 0 5.6M15.5 12.4c1 .7 1.7 2 2 3.6"/></svg>Клиенты</button>
+    <button class="vw" data-view="coaches"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="5.5" r="2.5"/><path d="M6 17l1.5-6.5L10 12l2.5-1.5L14 17M7.5 10.5 5 9M12.5 10.5 16 7"/></svg>Тренеры</button>
+    <button class="vw" data-view="mycoach" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="3"/><path d="M3 8h14M7 11h2M7 14h5"/></svg>Мои тренировки</button>
     <button class="vw" data-view="history"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg>История</button>
     <div class="sgroup">Деньги и события</div>
     <button class="vw" data-view="pos"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="2.5"/><path d="M2.5 9h15M6 13h3"/></svg>Касса</button>
@@ -1069,6 +1102,29 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
   <div id="viewClient" hidden>
     <button class="btn plain cp-back" id="cpBack">‹ Клиенты</button>
     <div id="cpOut"><div class="center">Загружаю…</div></div>
+  </div>
+
+  <!-- Тренеры: список с цифрами за период и групповые тренировки -->
+  <div id="viewCoaches" hidden>
+    <div class="filters">
+      <div class="seg" id="coSeg" style="margin:0">
+        <button type="button" data-v="list" class="on">Тренеры</button>
+        <button type="button" data-v="classes">Групповые тренировки</button>
+      </div>
+      <label>С <input type="date" id="coFrom"></label>
+      <label>по <input type="date" id="coTo"></label>
+      <div style="flex:1"></div>
+      <button class="btn acc" id="coNew">Новый тренер</button>
+      <button class="btn acc" id="clsNew" hidden>Новая групповая</button>
+    </div>
+    <div id="coRows"><div class="center">Загружаю…</div></div>
+    <div id="coClassRows" hidden></div>
+  </div>
+
+  <!-- Страница тренера: отчёт, тренировки, выплаты -->
+  <div id="viewCoach" hidden>
+    <button class="btn plain cp-back" id="coBack">‹ Тренеры</button>
+    <div id="coOut"><div class="center">Загружаю…</div></div>
   </div>
 
   <!-- Касса: витрина товаров слева, корзина справа -->
@@ -1234,6 +1290,84 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
   </div>
 </div>
 
+<!-- профиль тренера -->
+<div class="modal" id="coModal">
+  <div class="sheet form mid">
+    <div class="fhead"><h3 id="coTitle">Тренер</h3></div>
+    <div class="pdPhoto">
+      <div class="pdImg" id="coImg" style="border-radius:50%"></div>
+      <div>
+        <label class="btn small" style="display:inline-block">Загрузить фото<input type="file" id="coPhotoIn"
+          accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
+        <p class="fnote" id="coPhotoNote"></p>
+      </div>
+    </div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Имя</span><input id="coName" class="iv" maxlength="80" placeholder="Имя и фамилия"></div>
+      <div class="irow"><span class="ik">Телефон</span><input id="coPhone" class="iv" inputmode="tel" placeholder="необязательно"></div>
+      <div class="irow"><span class="ik">О себе</span><input id="coBio" class="iv" maxlength="1000" placeholder="опыт, для кого тренировки — видно в приложении"></div>
+    </div>
+    <div class="fsec">Цена для клиента</div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Тренировка, час</span><div class="iv money-in"><input id="coPrice" type="number" min="0" step="100" placeholder="0"><span>₽</span></div></div>
+      <div class="irow"><span class="ik">Корт</span>
+        <div class="seg small iv" id="coCourt" style="margin:0">
+          <button type="button" data-v="extra" class="on">платится отдельно</button>
+          <button type="button" data-v="incl">входит в цену</button>
+        </div></div>
+    </div>
+    <div class="fsec">Оплата тренеру</div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Схема</span>
+        <div class="seg small iv" id="coPay" style="margin:0">
+          <button type="button" data-v="percent" class="on">% от тренировки</button>
+          <button type="button" data-v="per_hour">₽ за час</button>
+          <button type="button" data-v="per_lesson">₽ за тренировку</button>
+        </div></div>
+      <div class="irow"><span class="ik" id="coPayL">Процент</span><div class="iv money-in"><input id="coPayV" type="number" min="0" step="1" placeholder="0"><span id="coPayU">%</span></div></div>
+    </div>
+    <div class="fsec">Когда работает</div>
+    <div class="ilist" id="coWeek"></div>
+    <div class="fsec">Ещё</div>
+    <div class="ilist">
+      <div class="irow"><span class="ik" style="flex:1">Показывать в приложении и принимать запись</span><label class="chk" style="margin:0"><input type="checkbox" id="coInApp" checked></label></div>
+      <div class="irow"><span class="ik" style="flex:1">Работает в клубе</span><label class="chk" style="margin:0"><input type="checkbox" id="coActive" checked></label></div>
+      <div class="irow"><span class="ik">Вход в админку</span><select id="coAdmin" class="iv"></select></div>
+      <div class="irow"><span class="ik">Цвет</span><div class="iv" id="coColors" style="display:flex;gap:6px;justify-content:flex-end"></div></div>
+    </div>
+    <div class="err" id="coErr"></div>
+    <div class="ffoot">
+      <button class="btn dg" id="coDel" hidden>Убрать тренера</button>
+      <div class="acts" style="margin:0;margin-left:auto">
+        <button class="btn" data-close>Отмена</button>
+        <button class="btn acc" id="coSave">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- выплата тренеру -->
+<div class="modal" id="poModal">
+  <div class="sheet form" style="max-width:440px">
+    <div class="fhead"><h3 id="poTitle">Выплата</h3><p class="sub" id="poSub"></p></div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Сумма</span><div class="iv money-in"><input id="poAmount" type="number" min="1" step="100"><span>₽</span></div></div>
+      <div class="irow"><span class="ik">Чем</span>
+        <div class="seg small iv" id="poMethod" style="margin:0">
+          <button type="button" data-m="cash" class="on">Наличными</button>
+          <button type="button" data-m="card">На карту</button>
+          <button type="button" data-m="transfer">Переводом</button>
+        </div></div>
+      <div class="irow"><span class="ik">Заметка</span><input id="poNote" class="iv" maxlength="200" placeholder="необязательно"></div>
+    </div>
+    <div class="err" id="poErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="poOk">Выплатить</button>
+    </div>
+  </div>
+</div>
+
 <!-- движение товара: приход, списание, пересчёт -->
 <div class="modal" id="mvModal">
   <div class="sheet form" style="max-width:440px">
@@ -1336,6 +1470,10 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <div class="picks" id="addCourts"></div>
       <label>Сколько часов</label>
       <div class="picks" id="addHoursPick"></div>
+      <div id="addCoachBox" hidden>
+        <label>Тренер</label>
+        <div class="picks" id="addCoachPick"></div>
+      </div>
     </div>
 
     <div class="fgroup">
@@ -1686,10 +1824,12 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
           <div class="irow"><span class="ik">Название</span><input id="tnName" class="iv" maxlength="120" placeholder="Осенний кубок Магаса"></div>
           <div class="irow"><span class="ik">Начало</span><input id="tnStart" class="iv" type="datetime-local"></div>
           <div class="irow"><span class="ik">Идёт часов</span><input id="tnHours" class="iv" type="number" min="1" max="15"></div>
-          <div class="irow"><span class="ik">Формат</span><input id="tnFormat" class="iv" maxlength="80" placeholder="Americano"></div>
+          <div class="irow"><span class="ik" id="tnFormatL">Формат</span><input id="tnFormat" class="iv" maxlength="80" placeholder="Americano"></div>
+          <div class="irow" id="tnCoachRow" hidden><span class="ik">Тренер</span><select id="tnCoach" class="iv"></select></div>
+          <div class="irow" id="tnLevelRow" hidden><span class="ik">Уровень</span><input id="tnLevel" class="iv" maxlength="60" placeholder="например, начинающие"></div>
         </div>
         <div class="ilist">
-          <div class="irow"><span class="ik">Взнос</span><div class="iv money-in"><input id="tnFee" type="number" min="0" step="100"><span>₽</span></div></div>
+          <div class="irow"><span class="ik" id="tnFeeL">Взнос</span><div class="iv money-in"><input id="tnFee" type="number" min="0" step="100"><span>₽</span></div></div>
           <div class="irow"><span class="ik">Мест</span><input id="tnSeats" class="iv" type="number" min="2" max="200"></div>
           <div class="irow"><span class="ik">Состояние</span>
             <select id="tnState" class="iv">
@@ -1795,7 +1935,7 @@ const API = '/api';
 const KEY_STORE = 'magas.admin.token';
 let key = localStorage.getItem(KEY_STORE) || '';
 /** Кто вошёл и что ему можно. Заполняется после входа. */
-let me = null, myPerms = [], permNames = {};
+let me = null, myPerms = [], permNames = {}, myCoach = null;
 const can = p => myPerms.includes(p);
 let date = todayStr();
 let day = null;
@@ -1847,7 +1987,9 @@ function holdText(min){
  *  (прокат, мячи), прикреплённые к брони. */
 const extrasOf = b => typeof b.extras === 'number' ? b.extras : (b.extras?.sum || 0);
 const courtDue = b => Math.max(0, (b.price || 0) - (b.discount || 0));
-const dueOf = b => courtDue(b) + extrasOf(b);
+/** Часть тренера: скидка сначала уменьшает корт, потом тренера. */
+const coachDue = b => Math.max(0, (b.coachPrice || 0) - Math.max(0, (b.discount || 0) - (b.price || 0)));
+const dueOf = b => courtDue(b) + coachDue(b) + extrasOf(b);
 
 /** Когда игра по этой брони: началась ли, закончилась ли (по московскому времени). */
 function timing(b){
@@ -2012,6 +2154,11 @@ async function start(){
   document.querySelector('.vw[data-view="stats"]').hidden = !can('analytics');
   document.querySelector('.vw[data-view="clients"]').hidden = !can('clients');
   document.querySelector('.vw[data-view="tourn"]').hidden = !can('tournaments');
+  document.querySelector('.vw[data-view="coaches"]').hidden = !(can('coaches') || can('tournaments'));
+  $('#coSeg [data-v="list"]').hidden = !can('coaches');
+  // Вход тренера: свой раздел со своими тренировками
+  call('/admin/me/coach').then(c => { myCoach = c; document.querySelector('.vw[data-view="mycoach"]').hidden = !c }).catch(() => {});
+  loadCoachBrief();
   // «Продажи» видит аналитика целиком; с правом «склад» — только товары и остатки
   document.querySelector('.vw[data-view="sales"]').hidden = !(can('analytics') || can('stock'));
   $('#slSeg').hidden = !can('analytics');
@@ -2152,7 +2299,8 @@ function render(){
           const stt = bkState(b);
           html += `<td class="lane" style="${laneOf(c)}" rowspan="${b.hours}"><button class="bk ${stt.cls}" data-id="${b.id}" title="${nm} · ${esc(stt.label)}">
             <div class="n">${nm}${flags}</div>
-            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price)}</s>` : ''}${rub(dueOf(b))}${extrasOf(b) ? ' <small title="с доп. позициями">+доп.</small>' : ''}</div>
+            ${b.coach ? `<div class="m co-line" style="--cc:${b.coach.color || 'var(--dim-2)'}"><span class="cdot"></span>тренер ${esc(b.coach.name)}</div>` : ''}
+            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price + (b.coachPrice || 0))}</s>` : ''}${rub(dueOf(b))}${extrasOf(b) ? ' <small title="с доп. позициями">+доп.</small>' : ''}</div>
             <div class="st ${stt.tone}">${esc(stt.label)}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
@@ -2202,7 +2350,7 @@ async function openBooking(id){
     <div class="t">
       <h3>${esc(who(b))}${b.client && (b.client.noShows>0 || b.client.cancels>1) ? ' <span title="Бывали отмены или неявки" style="color:var(--amber)">⚠</span>' : ''}</h3>
       <div class="when">${esc(court.name)} · ${wd}, ${pretty(date)} · ${hh(b.hour)}–${hh(b.hour+b.hours)}</div>
-      <div class="meta">Заявка №${b.id}${b.client ? ' · ID ' + b.client.id : ''} · ${b.source==='app' ? 'из приложения' : 'записал менеджер'}</div>
+      <div class="meta">${b.coach ? 'Тренировка · ' : ''}Заявка №${b.id}${b.client ? ' · ID ' + b.client.id : ''} · ${b.source==='app' ? 'из приложения' : 'записал менеджер'}</div>
     </div>
     <span class="pill ${st.tone === 'dim' ? '' : st.tone}">${esc(st.label)}</span>`;
 
@@ -2217,7 +2365,8 @@ async function openBooking(id){
   } else if (paid >= due && due > 0) { note = 'Оплачено полностью.'; noteCls = 'ok' }
   else if (ended && ['confirmed','done'].includes(b.status)) { note = `Игра прошла, долг ${rub(left)}.`; noteCls = 'bad' }
   const lines = [
-    `<div class="bki-line"><span>Корт, ${b.hours} ${plural(b.hours,'час','часа','часов')}</span><b>${rub(b.price)}</b></div>`,
+    b.coach ? `<div class="bki-line"><span>Тренировка · ${esc(b.coach.name)}</span><b>${rub(b.coachPrice || 0)}</b></div>` : '',
+    b.coach && !b.price ? '' : `<div class="bki-line"><span>Корт, ${b.hours} ${plural(b.hours,'час','часа','часов')}</span><b>${rub(b.price)}</b></div>`,
     b.discount ? `<div class="bki-line"><span>Скидка${b.discountReason ? ' · ' + esc(b.discountReason) : ''}</span><b style="color:var(--amber)">−${rub(b.discount)}</b></div>` : '',
     ...(b.extras?.items ?? []).map(x => `<div class="bki-line"><span>${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}</span><b>${rub(x.amount)}</b>${
       editable && (b.saleOpen || can('cancel')) ? `<button type="button" class="x" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}</div>`),
@@ -2594,16 +2743,34 @@ function addTotal(){
   const hour = +$('#addHour').value;
   const p = priceFor(addCourtId, hour, addHoursN);
   const court = day.courts.find(c => c.id === addCourtId);
-  $('#addTotal').textContent = p == null ? '—' : rub(p);
+  // Тренировка: цена тренера за часы, корт — по тарифу или входит в цену
+  const co = coachBrief.find(c => c.id === addCoachId);
+  const courtP = co && !co.courtExtra ? 0 : p;
+  const total = courtP == null ? null : courtP + (co ? co.price * addHoursN : 0);
+  $('#addTotal').textContent = total == null ? '—' : rub(total);
   $('#addWhen').textContent = court
     ? `${court.name} · ${pretty($('#addDate').value || date)} · ${hh(hour)}–${hh(hour + addHoursN)}`
+      + (co ? ` · тренер ${co.name}` : '')
     : '—';
+}
+/** Тренер для записи: «без тренера» или один из работающих. */
+let addCoachId = null;
+function renderAddCoaches(){
+  const list = coachBrief.filter(c => c.isActive);
+  $('#addCoachBox').hidden = !list.length;
+  $('#addCoachPick').innerHTML = `<button type="button" data-c=""${addCoachId ? '' : ' class="on"'}>Без тренера</button>`
+    + list.map(c => `<button type="button" data-c="${c.id}" style="--cc:${c.color || 'var(--dim-2)'}"${c.id === addCoachId ? ' class="on"' : ''}>
+      <span class="cdot"></span>${esc(c.name)} <small>${rub(c.price)}/ч${c.courtExtra ? ' + корт' : ''}</small></button>`).join('');
+  $('#addCoachPick').querySelectorAll('button').forEach(b => b.onclick = () => {
+    addCoachId = b.dataset.c ? +b.dataset.c : null; renderAddCoaches(); addTotal() });
 }
 
 function openAdd(courtId, hour, preset){
   $('#addDate').value = date;
   addCourtId = courtId ?? null;
   addHoursN = 1;
+  addCoachId = preset?.coachId ?? null;
+  loadCoachBrief().then(() => { renderAddCoaches(); addTotal() });
   $('#addHour').innerHTML = hourOptions(hour);
   renderAddCourts();
   renderAddHours();
@@ -2694,6 +2861,7 @@ $('#addOk').onclick = async () => {
     name: addWho === 'none' ? ($('#addName').value.trim() || undefined) : undefined,
     phone: phone || undefined,
     clientId: addWho === 'app' ? addClient.id : undefined,
+    coachId: addCoachId || undefined,
     players: +$('#addPlayers').value || undefined,
     comment: $('#addComment').value.trim() || undefined,
   };
@@ -3770,9 +3938,10 @@ $('#tnNew').onclick = () => openTournament(null);
 $('#tvNew').onclick = () => openTournament(null);
 
 /** Раздел «Турниры»: карточки по группам — идёт запись, скоро, завершённые. */
-async function loadTourView(){
+async function loadTourView(kind = 'tournament'){
+  const box = kind === 'class' ? '#coClassRows' : '#tvRows';
   try {
-    const rows = await call('/admin/tournaments');
+    const rows = (await call('/admin/tournaments')).filter(t => (t.kind || 'tournament') === kind);
     const when = t => new Date(t.startsAt).toLocaleString('ru-RU',
       { day:'numeric', month:'long', weekday:'short', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Moscow' });
     const card = t => {
@@ -3784,7 +3953,9 @@ async function loadTourView(){
           ${t.pending ? `<span class="tag warn">ждут подтверждения: ${t.pending}</span>` : ''}
         </div>
         <b class="tv-n">${esc(t.name)}</b>
-        <div class="tv-w">${when(t)} · ${esc(t.format)} · взнос ${rub(t.fee)}</div>
+        <div class="tv-w">${when(t)} · ${kind === 'class'
+          ? `${esc(coachName(t.coachId))}${t.level ? ' · ' + esc(t.level) : ''} · ${rub(t.fee)} с человека`
+          : `${esc(t.format)} · взнос ${rub(t.fee)}`}</div>
         <div class="tv-seats"><div class="tv-bar"><i style="width:${pct}%"></i></div>
           <span>участвуют ${t.confirmed} · заявок ${t.taken} из ${t.seats}</span></div>
         ${t.results?.length ? `<div class="tv-res">${t.results.slice(0,3).map((r,i) =>
@@ -3798,27 +3969,42 @@ async function loadTourView(){
     const soon = rows.filter(t => t.state === 'soon').sort((a,b) => +new Date(a.startsAt) - +new Date(b.startsAt));
     const done = rows.filter(t => t.state === 'done');
     const off = rows.filter(t => t.state === 'cancelled');
-    $('#tvRows').innerHTML = rows.length
-      ? group('Идёт запись', now) + group('Скоро', soon) + group('Завершённые', done) + group('Отменённые', off)
-      : '<div class="center">Турниров пока нет. Нажмите «Новый турнир».</div>';
-    $('#tvRows').querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
-      await openTournament(rows.find(t => t.id === +b.dataset.id));
+    $(box).innerHTML = rows.length
+      ? group('Идёт запись', now) + group('Скоро', soon) + group(kind === 'class' ? 'Прошедшие' : 'Завершённые', done) + group('Отменённые', off)
+      : `<div class="center">${kind === 'class' ? 'Групповых тренировок пока нет.' : 'Турниров пока нет. Нажмите «Новый турнир».'}</div>`;
+    $(box).querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
+      await openTournament(rows.find(t => t.id === +b.dataset.id), kind);
       const t = rows.find(x => x.id === +b.dataset.id);
       if (t?.pending) $('#tnEntries').scrollIntoView({ block: 'start' });
     });
-  } catch(e){ $('#tvRows').innerHTML = `<div class="center">${esc(e.message)}</div>` }
+  } catch(e){ $(box).innerHTML = `<div class="center">${esc(e.message)}</div>` }
 }
 
-async function openTournament(t){
+/** Групповая тренировка — та же форма, что у турнира: места, запись,
+ *  подтверждение. Отличия: тренер, уровень, цена за человека, без итогов. */
+let editKind = 'tournament';
+async function openTournament(t, kind){
   editing = t;
-  $('#tnTitle').textContent = t ? t.name : 'Новый турнир';
+  editKind = t?.kind ?? kind ?? 'tournament';
+  const cls = editKind === 'class';
+  if (cls) await loadCoachBrief();
+  $('#tnCoachRow').hidden = !cls; $('#tnLevelRow').hidden = !cls;
+  $('#tnCoach').innerHTML = coachBrief.filter(c => c.isActive || c.id === t?.coachId)
+    .map(c => `<option value="${c.id}"${c.id === t?.coachId ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+  $('#tnLevel').value = t?.level ?? '';
+  $('#tnFeeL').textContent = cls ? 'Цена с человека' : 'Взнос';
+  $('#tnFormatL').textContent = cls ? 'Что за тренировка' : 'Формат';
+  $('#tnFormat').placeholder = cls ? 'Группа, техника удара' : 'Americano';
+  $('#tnTabs').querySelector('[data-t="results"]').style.display = cls ? 'none' : '';
+  $('#tnTitle').textContent = t ? t.name : cls ? 'Групповая тренировка' : 'Новый турнир';
   $('#tnName').value = t?.name ?? '';
   // input datetime-local ждёт местное время без зоны
   $('#tnStart').value = t ? new Date(new Date(t.startsAt).getTime()+3*3600e3).toISOString().slice(0,16)
                           : new Date(Date.now()+7*864e5).toISOString().slice(0,16);
-  $('#tnFormat').value = t?.format ?? 'Americano';
-  $('#tnFee').value = t ? t.fee/100 : 2500;
-  $('#tnSeats').value = t?.seats ?? 16;
+  $('#tnFormat').value = t?.format ?? (cls ? '' : 'Americano');
+  // Своих цен не придумываем: у нового события цену и места вписывает клуб
+  $('#tnFee').value = t ? t.fee/100 : '';
+  $('#tnSeats').value = t?.seats ?? (cls ? 4 : 16);
   $('#tnState').value = t?.state ?? 'soon';
   $('#tnCover').value = t?.coverUrl ?? 't1';
   renderCovers();
@@ -3956,11 +4142,18 @@ async function loadEntries(t){
           <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}${e.paid > 0 ? ` · <span style="color:var(--lime)">взнос ${rub(e.paid)}</span>` : ''}</span></div>
           <span class="stt ${e.status}">${ENTRY_STATE[e.status]||e.status}</span>
           ${e.status!=='confirmed' && t.state !== 'cancelled' ? `<button type="button" class="btn small acc" data-st="confirmed">Подтвердить</button>` : ''}
-          ${e.status==='confirmed' && t.fee > 0 && !e.paid ? `<button type="button" class="btn small" data-fee>Взнос получен</button>` : ''}
+          ${e.status==='confirmed' && t.fee > 0 && !e.paid ? `<button type="button" class="btn small" data-fee>${t.kind === 'class' ? 'Оплатил' : 'Взнос получен'}</button>` : ''}
+          ${t.kind === 'class' && e.status === 'confirmed' && new Date(t.startsAt) <= new Date()
+            ? `<button type="button" class="btn small ${e.attended === true ? 'acc' : ''}" data-att="1">был</button><button type="button" class="btn small ${e.attended === false ? 'dg' : ''}" data-att="0">не был</button>` : ''}
           ${e.status==='pending' ? `<button type="button" class="btn small" data-st="cancelled">Отклонить</button>` : ''}
           ${e.status==='confirmed' ? `<button type="button" class="btn small" data-st="cancelled">Отменить</button>` : ''}
         </div>`}).join('')
       : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
+    $('#tnEntries').querySelectorAll('button[data-att]').forEach(b => b.onclick = async () => {
+      const id = b.closest('.er').dataset.id;
+      try { await call(`/admin/entries/${id}/attended`, { method:'POST', body: JSON.stringify({ attended: b.dataset.att === '1' }) }); loadEntries(t) }
+      catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
+    });
     $('#tnEntries').querySelectorAll('button[data-fee]').forEach(b => b.onclick = async () => {
       const id = b.closest('.er').dataset.id;
       try {
@@ -3995,8 +4188,13 @@ $('#tnSave').onclick = async () => {
     courtIds: [...$('#tnCourts').querySelectorAll('button.on')].map(b => b.dataset.c),
     results: [...$('#tnPlaces').querySelectorAll('.pl')].map((row, i) => ({
       place: i + 1, names: row.querySelector('.pl-n').value, prize: row.querySelector('.pl-p').value })),
-    bannerOn: $('#tnBanner').checked,
+    bannerOn: editKind === 'class' ? false : $('#tnBanner').checked,
+    kind: editKind,
+    coachId: editKind === 'class' ? (+$('#tnCoach').value || null) : null,
+    level: editKind === 'class' ? $('#tnLevel').value.trim() : undefined,
   };
+  if (editKind === 'class' && !body.coachId) { fail('#tnErr', new Error('Выберите тренера')); return }
+  if (editKind === 'class' && !body.format) body.format = 'Групповая тренировка';
   if (body.bannerOn && !body.results.some(r => r.names.trim())) {
     $('#tnErr').textContent = 'Для баннера на главной впишите хотя бы победителя';
     $('#tnErr').classList.add('on'); return;
@@ -4013,6 +4211,7 @@ $('#tnSave').onclick = async () => {
     $('#tnModal').classList.remove('on');
     loadTournaments(); load();
     if (view === 'tourn') loadTourView();
+    if (view === 'coaches') { loadTourView('class'); loadCoaches() }
   } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
 };
 
@@ -4021,16 +4220,23 @@ let view = 'day';
 document.querySelectorAll('.vw').forEach(b => b.onclick = () => switchView(b.dataset.view));
 
 const VIEW_TITLE = { day:'День', history:'История', stats:'Аналитика', sales:'Продажи', pos:'Касса',
+  coaches:'Тренеры', coach:'Тренер', mycoach:'Мои тренировки',
   tourn:'Турниры', clients:'Клиенты', client:'Клиент' };
 function switchView(v){
   view = v;
   // Карточка клиента — часть раздела «Клиенты»: в боковой панели выделен он
-  document.querySelectorAll('.vw').forEach(b => b.classList.toggle('on', b.dataset.view === (v === 'client' ? 'clients' : v)));
+  document.querySelectorAll('.vw').forEach(b => b.classList.toggle('on', b.dataset.view === (v === 'client' ? 'clients' : v === 'coach' ? 'coaches' : v)));
   $('#viewTitle').textContent = VIEW_TITLE[v] ?? '';
   document.body.classList.remove('showside');
   window.scrollTo(0, 0);
   $('#viewClient').hidden = v!=='client';
   $('#viewPos').hidden = v!=='pos';
+  $('#viewCoaches').hidden = v!=='coaches';
+  $('#viewCoach').hidden = !(v==='coach' || v==='mycoach');
+  if (v==='coaches') { const cls = $('#coSeg [data-v="classes"]').classList.contains('on');
+    $('#coNew').hidden = cls || !can('coaches'); $('#clsNew').hidden = !cls || !can('tournaments');
+    if (!can('coaches')) $('#coSeg [data-v="classes"]').click(); else if (cls) loadCoachBrief().then(() => loadTourView('class')); else loadCoaches() }
+  if (v==='mycoach' && myCoach) openCoachPage(myCoach.id, true);
   $('#viewDay').hidden = v!=='day';
   $('#viewHistory').hidden = v!=='history';
   $('#viewStats').hidden = v!=='stats';
@@ -4216,6 +4422,243 @@ function priceItems(text){
   }
   return out;
 }
+/* ── тренеры ──────────────────────────────────────────── */
+/* Как в системах для падел-клубов (Playtomic Academy и подобных): профиль
+   тренера с ценой и расписанием, индивидуальные тренировки — брони с
+   тренером, групповые — события с местами. По каждому тренеру за период:
+   сколько провёл, сколько клиентов, выручка, начислено, выплачено. */
+let coachBrief = [], coachList = [], coEdit = null, coPage = null;
+const COACH_COLORS = ['#1B7A32', '#0A66C2', '#B25E00', '#8E44AD', '#C0392B', '#16A085'];
+const PAYWORD = { percent: '% от тренировки', per_hour: '₽ за час', per_lesson: '₽ за тренировку' };
+async function loadCoachBrief(){ try { coachBrief = await call('/admin/coaches/brief') } catch { coachBrief = [] } return coachBrief }
+const coachName = id => coachBrief.find(c => c.id === id)?.name ?? 'тренер';
+const coachPayText = c => c.payType === 'percent' ? `${c.payValue}% от тренировки` : `${rub(c.payValue)} ${c.payType === 'per_hour' ? 'за час' : 'за тренировку'}`;
+
+function coPeriod(){
+  if (!$('#coFrom').value) { $('#coTo').value = todayStr(); $('#coFrom').value = todayStr().slice(0, 8) + '01' }
+  return `from=${$('#coFrom').value}&to=${$('#coTo').value}`;
+}
+async function loadCoaches(){
+  await loadCoachBrief();
+  if (!can('coaches')) { $('#coRows').innerHTML = '<div class="center">Нет доступа</div>'; return }
+  try {
+    const r = await call('/admin/coaches?' + coPeriod());
+    coachList = r.coaches;
+    $('#coRows').innerHTML = coachList.length ? `<div class="co-grid">${coachList.map(c => `
+      <button type="button" class="co-card${c.isActive ? '' : ' off'}" data-id="${c.id}">
+        <div class="co-top">
+          <span class="co-av" style="--cc:${c.color || 'var(--fill-2)'}">${c.photoUrl ? `<img src="${esc(c.photoUrl)}" alt="">` : esc(initials(c.name))}</span>
+          <div><b>${esc(c.name)}</b><span>${rub(c.price)} за час${c.courtExtra ? ' + корт' : ', корт включён'} · тренеру ${coachPayText(c)}</span></div>
+        </div>
+        <div class="co-nums">
+          <div><b>${c.period.lessons}</b><span>индивид.</span></div>
+          <div><b>${c.period.classes}</b><span>групповых</span></div>
+          <div><b>${c.period.lessonHours}</b><span>часов</span></div>
+          <div><b>${c.period.clients}</b><span>клиентов</span></div>
+        </div>
+        <div class="co-money">
+          <div><span>Выручка</span><b>${rub(c.period.revenue)}</b></div>
+          <div><span>Начислено</span><b>${rub(c.period.pay)}</b></div>
+          <div class="${c.balance > 0 ? 'due' : ''}"><span>К выплате</span><b>${rub(Math.max(0, c.balance))}</b></div>
+        </div>
+        ${c.isActive ? '' : '<span class="tag">не работает</span>'}
+      </button>`).join('')}</div>`
+      : '<div class="center">Тренеров пока нет. Нажмите «Новый тренер».</div>';
+    $('#coRows').querySelectorAll('.co-card').forEach(el => el.onclick = () => openCoachPage(+el.dataset.id));
+  } catch(e){ $('#coRows').innerHTML = `<div class="center">${esc(e.message)}</div>` }
+}
+$('#coSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#coSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  const cls = b.dataset.v === 'classes';
+  $('#coRows').hidden = cls; $('#coClassRows').hidden = !cls;
+  $('#coNew').hidden = cls || !can('coaches'); $('#clsNew').hidden = !cls || !can('tournaments');
+  if (cls) { loadCoachBrief().then(() => loadTourView('class')) } else loadCoaches();
+});
+['#coFrom', '#coTo'].forEach(id => $(id).onchange = () => { if (view === 'coaches') loadCoaches(); else if (coPage) openCoachPage(coPage) });
+$('#coNew').onclick = () => openCoach(null);
+$('#clsNew').onclick = () => openTournament(null, 'class');
+
+/** Страница тренера: цифры за период, все тренировки, выплаты. */
+async function openCoachPage(id, own){
+  coPage = id;
+  if (view !== 'coach') switchView(own ? 'mycoach' : 'coach');
+  $('#coBack').hidden = !!own;
+  $('#coOut').innerHTML = '<div class="center">Загружаю…</div>';
+  let r;
+  try { r = await call(`/admin/coaches/${id}/report?` + coPeriod()) }
+  catch(e){ $('#coOut').innerHTML = `<div class="center">${esc(e.message)}</div>`; return }
+  const c = r.coach, t = r.totals;
+  const items = [
+    ...r.lessons.map(l => ({ ...l, k: 'l' })),
+    ...r.classes.map(x => ({ ...x, k: 'c' })),
+  ].sort((a, b) => (b.date + String(b.hour).padStart(2, '0')).localeCompare(a.date + String(a.hour).padStart(2, '0')));
+  const stTxt = x => x.k === 'c' ? (x.state === 'cancelled' ? 'отменена' : x.done ? 'проведена' : 'будет')
+    : x.status === 'no_show' ? 'не пришёл' : ['cancelled', 'expired'].includes(x.status) ? 'отменена'
+    : x.done ? 'проведена' : x.status === 'pending' ? 'ждёт подтверждения' : 'будет';
+  const stCls = x => { const s2 = stTxt(x); return s2 === 'проведена' ? 'ok' : s2 === 'не пришёл' ? 'bad' : s2 === 'ждёт подтверждения' ? 'warn' : s2 === 'будет' ? 'info' : '' };
+  const manage = can('coaches');
+  $('#coOut').innerHTML = `
+    <div class="cp-head">
+      <span class="av" style="${c.photoUrl ? 'padding:0;overflow:hidden' : ''}">${c.photoUrl ? `<img src="${esc(c.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc(initials(c.name))}</span>
+      <div><h2>${esc(c.name)}</h2>
+        <div class="sub2">${rub(c.price)} за час${c.courtExtra ? ' + корт' : ', корт включён'} · тренеру ${coachPayText(c)}${c.phone ? ' · ' + phoneNice(c.phone) : ''}</div></div>
+      <div class="acts">
+        ${manage ? '<button class="btn" id="coEdit">Изменить</button>' : ''}
+        ${manage ? '<button class="btn" id="coPayout">Выплатить</button>' : ''}
+        <button class="btn acc" id="coBook">Записать на тренировку</button>
+      </div>
+    </div>
+    <div class="cp-tiles">
+      <div class="card"><b>${t.lessons}</b><span>индивидуальных проведено · ${t.lessonHours} ч</span></div>
+      <div class="card"><b>${t.classes}</b><span>групповых · ${t.classPeople} чел.</span></div>
+      <div class="card"><b>${t.clients}</b><span>клиентов</span></div>
+      <div class="card"><b>${t.upcoming}</b><span>впереди</span></div>
+      ${manage ? `<div class="card"><b>${rub(t.revenue)}</b><span>выручка за период</span></div>
+      <div class="card"><b>${rub(t.pay)}</b><span>начислено тренеру</span></div>
+      <div class="card${r.balance > 0 ? ' warn' : ''}"><b>${rub(Math.max(0, r.balance))}</b><span>к выплате всего</span></div>` : ''}
+    </div>
+    <div class="cp-grid">
+      <div class="cp-box">
+        <h4>Тренировки <span>${pretty($('#coFrom').value)} — ${pretty($('#coTo').value)}</span></h4>
+        ${items.length ? items.map(x => `<div class="cp-row${x.k === 'l' ? ' click' : ''}" ${x.k === 'l' ? `data-b="${x.id}" data-d="${x.date}"` : `data-t="${x.id}"`}>
+          <span class="d">${new Date(x.date + 'T00:00:00Z').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})}, ${hh(x.hour)}–${hh(x.hour + x.hours)}</span>
+          <span class="c">${x.k === 'l' ? esc(x.client) + ' · ' + esc(x.court) : 'Группа «' + esc(x.name) + '» · ' + x.participants + ' из ' + x.seats}</span>
+          <span class="pill ${stCls(x)}">${stTxt(x)}</span>
+          ${manage ? `<span class="m"><b>${rub(x.revenue)}</b><small>${x.pay ? 'тренеру ' + rub(x.pay) : ''}</small></span>` : ''}
+        </div>`).join('') : '<div class="cp-empty">За период тренировок нет.</div>'}
+      </div>
+      <div>
+        ${manage ? `<div class="cp-box">
+          <h4>Выплаты <span>${r.payouts.length ? rub(r.payouts.reduce((n, p) => n + p.amount, 0)) : ''}</span></h4>
+          ${r.payouts.length ? r.payouts.map(p => `<div class="cp-kv"><span>${new Date(p.at).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'Europe/Moscow'})} · ${METHOD[p.method] || esc(p.method)}${p.note ? ' · ' + esc(p.note) : ''}</span>
+            <b>${rub(p.amount)} <button class="copy" data-po="${p.id}">убрать</button></b></div>`).join('') : '<div class="cp-empty">За период выплат не было.</div>'}
+        </div>` : ''}
+        <div class="cp-box" style="margin-top:14px">
+          <h4>Расписание</h4>
+          ${weekText(c.week)}
+        </div>
+      </div>
+    </div>
+    <div class="err" id="coPageErr"></div>`;
+  const on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn };
+  on('#coEdit', () => openCoach(coachList.find(x => x.id === c.id) ?? { ...c }));
+  on('#coPayout', () => openPayout(c, Math.max(0, r.balance)));
+  on('#coBook', () => { switchView('day'); openAdd(null, undefined, { coachId: c.id }) });
+  $('#coOut').querySelectorAll('[data-b]').forEach(el => el.onclick = async () => {
+    switchView('day'); date = el.dataset.d; await load(); openBooking(+el.dataset.b) });
+  $('#coOut').querySelectorAll('[data-t]').forEach(el => el.onclick = async () => {
+    const ts = await call('/admin/tournaments'); openTournament(ts.find(x => x.id === +el.dataset.t), 'class') });
+  $('#coOut').querySelectorAll('[data-po]').forEach(el => el.onclick = async () => {
+    if (!await ask('Убрать выплату?', 'Это исправление ошибки. В журнале останется запись.')) return;
+    try { await call(`/admin/payouts/${el.dataset.po}/delete`, { method:'POST', body:'{}' }); openCoachPage(id, own) }
+    catch(e){ fail('#coPageErr', e) }
+  });
+}
+$('#coBack').onclick = () => switchView('coaches');
+const WDN = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+function weekText(w){
+  if (!w) return '<div class="cp-kv"><span>Как у клуба</span><b>все рабочие часы</b></div>';
+  return [1,2,3,4,5,6,7].map(d => `<div class="cp-kv"><span>${WDN[d]}</span><b>${w[d] ? hh(w[d][0]) + '–' + hh(w[d][1]) : '<span style="color:var(--dim-2);font-weight:400">выходной</span>'}</b></div>`).join('');
+}
+
+/** Профиль тренера: цена, корт, оплата тренеру, расписание, вход. */
+async function openCoach(c){
+  coEdit = c ?? null;
+  $('#coTitle').textContent = c ? c.name : 'Новый тренер';
+  $('#coName').value = c?.name ?? ''; $('#coPhone').value = c?.phone ? phoneNice(c.phone) : ''; $('#coBio').value = c?.bio ?? '';
+  // Цены не придумываем: у нового тренера поля пустые — вписывает клуб
+  $('#coPrice').value = c ? c.price / 100 : '';
+  segSet('#coCourt', c ? (c.courtExtra ? 'extra' : 'incl') : 'extra');
+  segSet('#coPay', c?.payType ?? 'percent'); coPayUi();
+  $('#coPayV').value = c ? (c.payType === 'percent' ? c.payValue : c.payValue / 100) : '';
+  $('#coInApp').checked = c ? c.inApp : true; $('#coActive').checked = c ? c.isActive : true;
+  $('#coImg').innerHTML = c?.photoUrl ? `<img src="${esc(c.photoUrl)}" alt="">` : '';
+  $('#coPhotoIn').disabled = !c; $('#coPhotoNote').textContent = c ? '' : 'Фото — после сохранения';
+  $('#coDel').hidden = !c;
+  // Расписание: семь дней, у каждого — работает или нет, с какого по какой час
+  const w = c?.week ?? null, set = setup?.settings;
+  $('#coWeek').innerHTML = `<div class="irow"><span class="ik" style="flex:1">Как у клуба — все рабочие часы</span>
+      <label class="chk" style="margin:0"><input type="checkbox" id="coWeekClub"${w ? '' : ' checked'}></label></div>`
+    + [1,2,3,4,5,6,7].map(d => {
+      const r = w?.[d]; const from = r?.[0] ?? (set?.openHour ?? 9), to = r?.[1] ?? (set?.closeHour ?? 23);
+      return `<div class="irow co-day" data-d="${d}"${w ? '' : ' hidden'}><span class="ik">${WDN[d]}</span>
+        <div class="iv" style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
+          <select data-f>${hourOpts(0, 23, from)}</select><span>—</span><select data-t>${hourOpts(1, 24, to)}</select>
+          <label class="chk" style="margin:0"><input type="checkbox" data-on${!w || r ? ' checked' : ''}></label></div></div>`;
+    }).join('');
+  $('#coWeekClub').onchange = () => $('#coWeek').querySelectorAll('.co-day').forEach(r => r.hidden = $('#coWeekClub').checked);
+  // Вход тренера в админку: к какому сотруднику привязан
+  let staffList = [];
+  try { if (can('staff')) staffList = await call('/admin/staff') } catch {}
+  $('#coAdmin').innerHTML = '<option value="">нет</option>' + staffList.filter(u => u.role !== 'owner')
+    .map(u => `<option value="${u.id}"${u.id === c?.adminId ? ' selected' : ''}>${esc(u.name)} (${esc(u.login)})</option>`).join('');
+  $('#coAdmin').disabled = !can('staff');
+  const col = c?.color ?? COACH_COLORS[(coachList.length) % COACH_COLORS.length];
+  $('#coColors').innerHTML = COACH_COLORS.map(x => `<button type="button" class="co-col${x === col ? ' on' : ''}" data-c="${x}" style="--cc:${x}"></button>`).join('');
+  $('#coColors').querySelectorAll('button').forEach(b => b.onclick = () => $('#coColors').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
+  $('#coErr').classList.remove('on');
+  $('#coModal').classList.add('on');
+}
+function segSet(sel, v){ $(sel).querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.v ?? b.dataset.m) === v)) }
+function segGet(sel){ const b = $(sel).querySelector('button.on'); return b?.dataset.v ?? b?.dataset.m }
+function coPayUi(){
+  const t = segGet('#coPay');
+  $('#coPayL').textContent = t === 'percent' ? 'Процент' : t === 'per_hour' ? 'За час' : 'За тренировку';
+  $('#coPayU').textContent = t === 'percent' ? '%' : '₽';
+}
+['#coCourt', '#coPay', '#poMethod'].forEach(sel => $(sel).querySelectorAll('button').forEach(b => b.onclick = () => {
+  $(sel).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); if (sel === '#coPay') coPayUi() }));
+$('#coSave').onclick = async () => {
+  const club = $('#coWeekClub').checked;
+  const week = club ? null : Object.fromEntries([...$('#coWeek').querySelectorAll('.co-day')]
+    .filter(r => r.querySelector('[data-on]').checked)
+    .map(r => [r.dataset.d, [+r.querySelector('[data-f]').value, +r.querySelector('[data-t]').value]]));
+  if (week && Object.values(week).some(([a, b]) => a >= b)) { fail('#coErr', new Error('Время «с» должно быть раньше «до»')); return }
+  if ($('#coPrice').value === '' || $('#coPayV').value === '') { fail('#coErr', new Error('Впишите цену тренировки и оплату тренеру')); return }
+  try {
+    const r = await call('/admin/coaches', { method:'POST', body: JSON.stringify({
+      id: coEdit?.id, name: $('#coName').value, phone: $('#coPhone').value, bio: $('#coBio').value,
+      price: +$('#coPrice').value, courtExtra: segGet('#coCourt') === 'extra',
+      payType: segGet('#coPay'), payValue: +$('#coPayV').value, week,
+      inApp: $('#coInApp').checked, isActive: $('#coActive').checked,
+      adminId: can('staff') ? ($('#coAdmin').value || null) : undefined,
+      color: $('#coColors').querySelector('button.on')?.dataset.c }) });
+    $('#coModal').classList.remove('on');
+    await loadCoaches();
+    if (!coEdit) openCoach(coachList.find(x => x.id === r.id));
+    else if (view === 'coach') openCoachPage(coEdit.id);
+  } catch(e){ fail('#coErr', e) }
+};
+$('#coPhotoIn').onchange = async () => {
+  const f = $('#coPhotoIn').files[0]; $('#coPhotoIn').value = ''; if (!f || !coEdit) return;
+  try { const data = await shrink(f); const r = await call(`/admin/coaches/${coEdit.id}/photo`, { method:'POST', body: JSON.stringify({ data }) });
+        $('#coImg').innerHTML = `<img src="${esc(r.url)}" alt="">`; coEdit.photoUrl = r.url; loadCoaches() }
+  catch(e){ fail('#coErr', e) }
+};
+$('#coDel').onclick = async () => {
+  if (!coEdit || !await ask('Убрать тренера?', 'Если у него были тренировки, он просто перестанет показываться — история и выплаты останутся.')) return;
+  try { await call(`/admin/coaches/${coEdit.id}/delete`, { method:'POST', body:'{}' }); $('#coModal').classList.remove('on'); switchView('coaches') }
+  catch(e){ fail('#coErr', e) }
+};
+
+let poCoach = null;
+function openPayout(c, suggest){
+  poCoach = c;
+  $('#poTitle').textContent = `Выплата: ${c.name}`;
+  $('#poSub').textContent = suggest ? `Начислено и не выплачено: ${rub(suggest)}` : '';
+  $('#poAmount').value = suggest ? suggest / 100 : '';
+  $('#poNote').value = ''; segSet('#poMethod', 'cash');
+  $('#poErr').classList.remove('on'); $('#poModal').classList.add('on');
+}
+$('#poOk').onclick = async () => {
+  try {
+    await call(`/admin/coaches/${poCoach.id}/payouts`, { method:'POST', body: JSON.stringify({
+      amount: +$('#poAmount').value, method: segGet('#poMethod'), note: $('#poNote').value.trim() || undefined,
+      from: $('#coFrom').value, to: $('#coTo').value }) });
+    $('#poModal').classList.remove('on'); openCoachPage(poCoach.id);
+  } catch(e){ fail('#poErr', e) }
+};
+
 /* ── касса ────────────────────────────────────────────── */
 /* Полноценная страница, как в кассовых программах: слева витрина товаров
    с фото, справа корзина. Продают только товары из учёта — остаток
@@ -4841,7 +5284,7 @@ function moneyTable(d){
       <td class="money">${m.revenue ? Math.round(c.revenue / m.revenue * 100) + '%' : ''}</td>
       <td class="money">${ch(c.revenue, prevOf(c.key))}</td></tr>`).join('');
   return `<table class="hist" style="margin-bottom:6px"><thead><tr><th>Категория</th><th class="money">Сколько</th>
-      <th class="money">Выручка</th><th class="money">Закупка</th><th class="money">Заработано</th><th class="money">Доля</th><th class="money">К прошлому</th></tr></thead>
+      <th class="money">Выручка</th><th class="money" title="Закупка проданных товаров, оплата тренерам">Себестоимость</th><th class="money">Заработано</th><th class="money">Доля</th><th class="money">К прошлому</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="7" style="color:var(--dim-2)">За период денег нет</td></tr>'}</tbody>
     <tfoot>
       <tr><td><b>Выручка</b></td><td></td><td class="money"><b>${rub(m.revenue)}</b></td><td class="money">${m.cogs ? '−' + rub(m.cogs) : ''}</td>

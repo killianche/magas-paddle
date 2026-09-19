@@ -12,13 +12,15 @@ import { TournamentsController } from './tournaments/tournaments.controller';
 import { HealthController } from './health.controller';
 import { AdminController, AdminAuthController } from './admin/admin.controller';
 import { AuthService } from './admin/auth.service';
+import { CoachesController } from './coaches/coaches.controller';
+import { AdminCoachesController } from './coaches/coaches.admin.controller';
 
 @Module({
   controllers: [
     HealthController, CourtsController, PricesController, AvailabilityController,
     ClubController,
     BookingsController, ClientsController, NotificationsController, TournamentsController,
-    AdminController, AdminAuthController,
+    AdminController, AdminAuthController, CoachesController, AdminCoachesController,
   ],
   providers: [PrismaService, ClubService, AuthService, ClientAuthService,
     NotificationsService],

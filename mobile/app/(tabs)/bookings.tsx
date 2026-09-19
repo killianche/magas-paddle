@@ -32,9 +32,9 @@ function NeedLogin({ note }: { note: string }) {
   );
 }
 
-/** Сколько платить: корт со скидкой плюс строки счёта — как считает клуб. */
+/** Сколько платить: корт и тренер со скидкой плюс строки счёта — как считает клуб. */
 const dueOf = (b: ApiBooking) =>
-  Math.max(0, b.price - (b.discount ?? 0)) + (b.extras ?? []).reduce((n, x) => n + x.amount, 0);
+  Math.max(0, b.price + (b.coachPrice ?? 0) - (b.discount ?? 0)) + (b.extras ?? []).reduce((n, x) => n + x.amount, 0);
 
 export default function Bookings() {
   useTheme();
@@ -43,9 +43,11 @@ export default function Bookings() {
 
   const q = useApi(async () => {
     if (!phone) return { bookings: [] as ApiBooking[], tournaments: [] as ApiTournament[] };
-    const [bookings, tournaments] = await Promise.all([
-      api.myBookings(phone), api.tournaments(phone),
+    // Групповые тренировки — те же заявки с местами, что и турниры
+    const [bookings, tourn, classes] = await Promise.all([
+      api.myBookings(phone), api.tournaments(phone), api.tournaments(phone, 'class').catch(() => [] as ApiTournament[]),
     ]);
+    const tournaments = [...tourn, ...classes];
     // Заявки на турниры — как брони: ждущие, подтверждённые, не подтверждённые
     // до начала и отклонённые клубом. Отменённую самим человеком не показываем.
     return { bookings, tournaments: tournaments.filter(t =>
@@ -78,8 +80,8 @@ export default function Bookings() {
 
   const aboutTournament = (t: ApiTournament) => writeManager([
     t.entry?.byClub
-      ? `Мою заявку на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}, отклонили. Хочу уточнить.`
-      : `Хочу отменить запись на турнир «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
+      ? `Мою заявку на ${t.kind === 'class' ? 'тренировку' : 'турнир'} «${t.name}», ${longDate(dateOfIso(t.startsAt))}, отклонили. Хочу уточнить.`
+      : `Хочу отменить запись на ${t.kind === 'class' ? 'тренировку' : 'турнир'} «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
     ...who(profile),
   ].join('\n'));
 
@@ -116,7 +118,7 @@ export default function Bookings() {
         <View key={'t' + t.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
           <View style={[s.band, { backgroundColor: st.bg }]}>
             <StateIcon state={st} size={13} />
-            <Text style={[s.bandT, { color: st.fg }]}>{st.label} · ТУРНИР</Text>
+            <Text style={[s.bandT, { color: st.fg }]}>{st.label} · {t.kind === 'class' ? 'ТРЕНИРОВКА' : 'ТУРНИР'}</Text>
           </View>
           <View style={s.body}>
           <View style={s.head}>
@@ -133,8 +135,8 @@ export default function Bookings() {
           <Text style={s.note}>{st.note}</Text>
           <View style={s.actions}>
             <Pressable style={s.mini}
-              onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id) } })}>
-              <Text style={s.miniT}>О турнире</Text>
+              onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id), kind: t.kind === 'class' ? 'class' : '' } })}>
+              <Text style={s.miniT}>{t.kind === 'class' ? 'О тренировке' : 'О турнире'}</Text>
             </Pressable>
             {(st.canCancel || !!t.entry?.byClub) && (
               <Pressable style={s.mini} onPress={() => aboutTournament(t)}
@@ -162,7 +164,8 @@ export default function Bookings() {
             <View style={s.body}>
               <View style={s.head}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.name}>{b.courtName}</Text>
+                  <Text style={s.name}>{b.coachName ? `Тренировка · ${b.coachName}` : b.courtName}</Text>
+                  {!!b.coachName && <Text style={s.date}>{b.courtName}</Text>}
                   <Text style={s.date}>{longDate(dateOfIso(b.startsAt))}</Text>
                 </View>
               </View>
@@ -171,9 +174,10 @@ export default function Bookings() {
                 <Text style={s.price}>{rub(dueOf(b))}</Text>
               </View>
               {/* Из чего сложилась сумма: скидка клуба и что добавили к игре */}
-              {(!!b.discount || !!b.extras?.length || !!b.paid || !!b.refunded) && (
+              {(!!b.discount || !!b.extras?.length || !!b.paid || !!b.refunded || !!b.coachPrice) && (
                 <View style={s.bill}>
-                  {!!b.discount && <Text style={s.billT}>Корт {rub(b.price)} · скидка −{rub(b.discount)}</Text>}
+                  {!!b.coachPrice && <Text style={s.billT}>Тренер {rub(b.coachPrice)}{b.price ? ` · корт ${rub(b.price)}` : ' · корт включён'}</Text>}
+                  {!!b.discount && <Text style={s.billT}>{b.coachPrice ? 'Скидка' : `Корт ${rub(b.price)} · скидка`} −{rub(b.discount)}</Text>}
                   {(b.extras ?? []).map((x, i) => (
                     <Text key={i} style={s.billT}>+ {x.item}{x.qty > 1 ? ` × ${x.qty}` : ''} · {rub(x.amount)}</Text>
                   ))}

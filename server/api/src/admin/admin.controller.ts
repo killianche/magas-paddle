@@ -11,6 +11,7 @@ import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
 import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
+import { coachHours, courtPart, coachPart, lessonPay, classPay } from '../coaches/coach.util';
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -49,7 +50,7 @@ function imageFrom(data?: string): { buf: Buffer; ext: string } {
  *  по длинной стороне, пережать в JPEG (mozjpeg) и убрать метаданные —
  *  в EXIF телефона бывают координаты съёмки. Прозрачный фон PNG — белый.
  *  Имя файла случайное: кэш nginx не покажет старое фото под тем же адресом. */
-async function saveImage(data: string | undefined, folder: string, maxSide = 2000, prefix = ''): Promise<string> {
+export async function saveImage(data: string | undefined, folder: string, maxSide = 2000, prefix = ''): Promise<string> {
   const { buf } = imageFrom(data);
   let out: Buffer;
   try {
@@ -70,7 +71,7 @@ async function saveImage(data: string | undefined, folder: string, maxSide = 200
 }
 
 /** Убрать загруженный файл с диска; чужие и встроенные пути не трогаем. */
-async function dropUpload(url: string | null | undefined) {
+export async function dropUpload(url: string | null | undefined) {
   if (!url?.startsWith('/uploads/')) return;
   const rel = url.replace(/^\/uploads\//, '');
   if (!rel.includes('..')) await unlink(join(UPLOAD_DIR, rel)).catch(() => {});
@@ -311,6 +312,7 @@ export class AdminController {
     const rows = await this.db.bookings.findMany({
       where: { starts_at: { gte: clubHour(d, 0), lt: clubHour(d, 24) } },
       orderBy: [{ starts_at: 'asc' }, { court_id: 'asc' }],
+      include: { coaches: { select: { id: true, name: true, color: true } } },
     });
     const [courts, clients, paid] = await Promise.all([
       this.db.courts.findMany({ orderBy: { sort_order: 'asc' } }),
@@ -372,6 +374,9 @@ export class AdminController {
           holdUntil: b.hold_until,
           // Отменённая или неявочная бронь: предоплата остаётся клубу или ждёт возврата
           keptPrepay: b.kept_prepay,
+          // Тренировка: тренер и его часть цены
+          coach: b.coaches ? { id: Number(b.coaches.id), name: b.coaches.name, color: b.coaches.color } : null,
+          coachPrice: b.coach_price,
           // Можно ли сейчас добавить к брони продажу (окно SALE_WINDOW_H)
           saleOpen: !b.tournament_id && ['pending', 'confirmed', 'done'].includes(b.status)
             && saleWindowOk(b.starts_at, b.ends_at),
@@ -543,7 +548,9 @@ export class AdminController {
     if (b.client_id && b.status !== dto.status) {
       const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
       const when = whenText(b.starts_at, b.ends_at);
-      const where = court?.name ?? b.court_id;
+      // Тренировка — с именем тренера: человек должен понимать, о чём речь
+      const coachName = b.coach_id ? (await this.db.coaches.findUnique({ where: { id: b.coach_id } }))?.name : null;
+      const where = (coachName ? `Тренировка с ${coachName}, ` : '') + (court?.name ?? b.court_id);
       const rubs = (k: number) => `${(k / 100).toLocaleString('ru-RU')} ₽`;
       // Что стало с деньгами — одной фразой, без сюрпризов для клиента
       const moneyLine = !closing || paidBefore <= 0 ? ''
@@ -594,9 +601,9 @@ export class AdminController {
     if (!['pending', 'confirmed', 'done'].includes(b.status)) throw new ConflictException('Бронь отменена — скидка не нужна');
     if (Number(body.amount ?? 0) < 0) throw new BadRequestException('Скидка не бывает отрицательной');
     const amount = rubToKop(Math.max(0, Number(body.amount ?? 0)));
-    if (amount > b.price) throw new BadRequestException('Скидка больше цены');
+    if (amount > b.price + b.coach_price) throw new BadRequestException('Скидка больше цены');
     const paidSoFar = await this.paidOf(b.id);
-    if (b.price - amount < paidSoFar) {
+    if (b.price + b.coach_price - amount < paidSoFar) {
       throw new BadRequestException(`Уже внесено ${(paidSoFar / 100).toLocaleString('ru-RU')} ₽ — такая скидка сделает переплату. Сначала оформите возврат`);
     }
     const reason = body.reason ? String(body.reason).trim().slice(0, 200) : null;
@@ -669,7 +676,7 @@ export class AdminController {
 
     const paid = await this.paidOf(b.id);
     const extras = (await this.extrasOf([b.id])).get(String(b.id))?.sum ?? 0;
-    if (kind !== 'refund' && paid + amount > (b.price + extras) * 3) {
+    if (kind !== 'refund' && paid + amount > (b.price + b.coach_price + extras) * 3) {
       throw new BadRequestException('Сумма сильно больше цены — похоже на ошибку');
     }
     if (kind === 'refund' && paid + amount < 0) {
@@ -870,7 +877,7 @@ export class AdminController {
     const rows = await this.db.bookings.findMany({
       where: { status: 'pending', starts_at: { gte: new Date() } },
       orderBy: { starts_at: 'asc' },
-      take: 100,
+      take: 100, include: { coaches: { select: { name: true } } },
     });
     const [courts, clients] = await Promise.all([
       this.db.courts.findMany(),
@@ -883,10 +890,11 @@ export class AdminController {
       const cl = b.client_id ? byId.get(String(b.client_id)) : null;
       return {
         kind: 'booking',
-        id: Number(b.id), courtId: b.court_id, courtName: courtName.get(b.court_id) ?? b.court_id,
+        id: Number(b.id), courtId: b.court_id,
+        courtName: (courtName.get(b.court_id) ?? b.court_id) + (b.coaches ? ` · тренировка, ${b.coaches.name}` : ''),
         date: this.dateOf(b.starts_at), hour: hourOf(b.starts_at),
         hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
-        price: b.price, createdAt: b.created_at,
+        price: b.price + b.coach_price, createdAt: b.created_at,
         name: cl?.name ?? b.guest_name ?? 'Без имени',
         phone: cl?.phone ?? null,
       };
@@ -899,7 +907,7 @@ export class AdminController {
     });
     for (const e of entries) list.push({
       kind: 'tournament', id: Number(e.id), tournamentId: Number(e.tournament_id),
-      courtName: `турнир «${e.tournaments.name}»`,
+      courtName: `${e.tournaments.kind === 'class' ? 'групповая тренировка' : 'турнир'} «${e.tournaments.name}»`,
       date: this.dateOf(e.tournaments.starts_at), hour: hourOf(e.tournaments.starts_at),
       hours: e.tournaments.hours, price: e.tournaments.fee, createdAt: e.created_at,
       name: [e.clients.name, e.clients.surname].filter(Boolean).join(' '), phone: e.clients.phone,
@@ -943,7 +951,19 @@ export class AdminController {
       throw new BadRequestException('Время не помещается в рабочий день');
     }
 
-    const price = pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
+    // Тренировка переезжает вместе с тренером: он должен работать в новое время,
+    // цена тренера — пропорционально часам, корт — как задано у тренера
+    const coach = b.coach_id ? await this.db.coaches.findUnique({ where: { id: b.coach_id } }) : null;
+    if (coach) {
+      const wh = coachHours(coach, set, body.date);
+      if (!wh || body.hour < wh.open || body.hour + hoursCount > wh.close) {
+        throw new BadRequestException(wh ? `${coach.name} работает в этот день с ${wh.open}:00 до ${wh.close}:00`
+          : `${coach.name} в этот день не работает`);
+      }
+    }
+    const oldHours = Math.round((+b.ends_at - +b.starts_at) / 3600_000) || 1;
+    const coachPrice = coach ? Math.round(b.coach_price / oldHours * hoursCount) : b.coach_price;
+    const price = coach && !coach.court_extra ? 0 : pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
 
     try {
       // Одна операция обновления: старое место освобождается только вместе
@@ -953,9 +973,9 @@ export class AdminController {
         court_id: court.id,
         starts_at: startsAt,
         ends_at: clubHour(body.date, body.hour + hoursCount),
-        price,
+        price, coach_price: coachPrice,
         // Скидка не может быть больше новой цены
-        discount: Math.min(b.discount, price),
+        discount: Math.min(b.discount, price + coachPrice),
         // Заявка ждёт подтверждения — срок держим, но не дольше начала игры
         hold_until: b.status === 'pending' && b.hold_until
           ? new Date(Math.min(+b.hold_until, +startsAt)) : b.hold_until,
@@ -966,11 +986,14 @@ export class AdminController {
       if (b.client_id) {
         await this.notes.toClient(b.client_id, 'booking', 'Бронь перенесена',
           `Было: ${oldCourt?.name ?? b.court_id}, ${whenText(b.starts_at, b.ends_at)}. Стало: ${court.name}, ${whenText(startsAt, clubHour(body.date, body.hour + hoursCount))}.${
-            price !== b.price ? ` К оплате теперь ${((price - Math.min(b.discount, price)) / 100).toLocaleString('ru-RU')} ₽.` : ''}`,
+            price + coachPrice !== b.price + b.coach_price ? ` К оплате теперь ${((price + coachPrice - Math.min(b.discount, price + coachPrice)) / 100).toLocaleString('ru-RU')} ₽.` : ''}`,
           { bookingId: b.id, by: req.admin.name });
       }
       return { id: Number(b.id), price };
     } catch (e: any) {
+      if (String(e?.message).includes('no_double_coach')) {
+        throw new BadRequestException(`${coach?.name ?? 'Тренер'} в это время уже ведёт тренировку — бронь осталась на старом месте`);
+      }
       if (String(e?.message).includes('23P01')) {
         throw new BadRequestException('Это время уже занято — бронь осталась на старом месте');
       }
@@ -1024,12 +1047,13 @@ export class AdminController {
     const skip = Math.max(0, Number(q.offset) || 0);
 
     const [rows, total, charged, received] = await Promise.all([
-      this.db.bookings.findMany({ where, orderBy: { starts_at: 'desc' }, take, skip }),
+      this.db.bookings.findMany({ where, orderBy: { starts_at: 'desc' }, take, skip,
+        include: { coaches: { select: { name: true } } } }),
       this.db.bookings.count({ where }),
       // Итоги по всему периоду, а не по показанной странице; скидки вычтены.
       // Только состоявшиеся брони: сгоревшие и отменённые заявки — не долги
       this.db.bookings.aggregate({ where: { ...where, status: { in: ['confirmed', 'done'] } },
-        _sum: { price: true, discount: true } }),
+        _sum: { price: true, discount: true, coach_price: true } }),
       this.db.payments.aggregate({
         where: { bookings: { ...where, status: { in: ['confirmed', 'done'] } } }, _sum: { amount: true },
       }),
@@ -1053,7 +1077,7 @@ export class AdminController {
 
     return {
       total, from, to,
-      charged: (charged._sum.price ?? 0) - (charged._sum.discount ?? 0) + (extrasAll._sum.amount ?? 0),
+      charged: (charged._sum.price ?? 0) + (charged._sum.coach_price ?? 0) - (charged._sum.discount ?? 0) + (extrasAll._sum.amount ?? 0),
       received: received._sum.amount ?? 0,
       rows: rows.map(b => {
         const cl = b.client_id ? byId.get(String(b.client_id)) : null;
@@ -1073,6 +1097,7 @@ export class AdminController {
           comment: b.comment,
           extras: extrasBy.get(String(b.id))?.sum ?? 0,
           keptPrepay: b.kept_prepay,
+          coachPrice: b.coach_price, coachName: b.coaches?.name ?? null,
         };
       }),
     };
@@ -1118,7 +1143,7 @@ export class AdminController {
         id: true, court_id: true, client_id: true, starts_at: true, ends_at: true,
         status: true, price: true, source: true, created_at: true,
         discount: true, players: true, status_at: true, status_by: true,
-        kept_prepay: true,
+        kept_prepay: true, coach_id: true, coach_price: true,
       },
     });
 
@@ -1135,11 +1160,19 @@ export class AdminController {
       select: { category: true, amount: true, method: true, qty: true, cost: true, booking_id: true,
                 bookings: { select: { status: true } } },
     });
-    /** Взносы за турниры, начавшиеся в периоде. */
+    /** Взносы за турниры и групповые тренировки, начавшиеся в периоде. */
     const fees = async (a: string, b: string) => this.db.tournament_entries.findMany({
       where: { paid_amount: { gt: 0 }, tournaments: { starts_at: { gte: clubHour(a, 0), lt: clubHour(shiftDate(b, 1), 0) } } },
-      select: { paid_amount: true, paid_method: true },
+      select: { paid_amount: true, paid_method: true, tournaments: { select: { kind: true } } },
     });
+    /** Проведённые групповые тренировки периода — для начисления тренерам. */
+    const classesOf = async (a: string, b: string) => this.db.tournaments.findMany({
+      where: { kind: 'class', state: { not: 'cancelled' }, coach_id: { not: null },
+               starts_at: { gte: clubHour(a, 0), lt: clubHour(shiftDate(b, 1), 0) } },
+      include: { tournament_entries: { select: { paid_amount: true } } },
+    });
+    const coachRows = await this.db.coaches.findMany();
+    const coachBy = new Map(coachRows.map(c => [String(c.id), c]));
     /** Расходы за период: расход месяца берётся пропорционально дням периода
      *  в этом месяце — неделя не должна «нести» аренду за весь месяц. */
     const costs = async (a: string, b: string) => {
@@ -1158,10 +1191,10 @@ export class AdminController {
       });
     };
 
-    const [rows, prevRows, pays, prevPays, salesAll, prevSalesAll, exp, prevExp, feeRows, prevFeeRows] = await Promise.all([
+    const [rows, prevRows, pays, prevPays, salesAll, prevSalesAll, exp, prevExp, feeRows, prevFeeRows, clsNow, clsPrev] = await Promise.all([
       load(from, to), load(prevFrom, prevTo), money(from, to), money(prevFrom, prevTo),
       otherSales(from, to), otherSales(prevFrom, prevTo), costs(from, to), costs(prevFrom, prevTo),
-      fees(from, to), fees(prevFrom, prevTo),
+      fees(from, to), fees(prevFrom, prevTo), classesOf(from, to), classesOf(prevFrom, prevTo),
     ]);
     const paidTotal = (list: { amount: number }[]) => list.reduce((n, p) => n + p.amount, 0);
 
@@ -1181,7 +1214,7 @@ export class AdminController {
     };
     const [extrasNow, extrasPrev] = await Promise.all([extrasFor(rows), extrasFor(prevRows)]);
     const dueOf = (b: typeof rows[number], ex: Map<string, { sum: number }>) =>
-      Math.max(0, b.price - b.discount) + (ex.get(String(b.id))?.sum ?? 0);
+      courtPart(b) + coachPart(b) + (ex.get(String(b.id))?.sum ?? 0);
     // Продажа — выручка, если она состоялась: строка счёта брони — только
     // у сыгранной брони (у отменённой и неявки строки убираются), продажа
     // клиенту — всегда
@@ -1219,7 +1252,7 @@ export class AdminController {
         // Аренда кортов: цена минус скидка по сыгранным броням плюс удержанные
         // предоплаты. Ракетки и мячи из счёта брони сюда НЕ входят — они
         // в своих категориях продаж, иначе посчитались бы дважды.
-        charged: played.filter(isClientBooking).reduce((n, b) => n + Math.max(0, b.price - b.discount), 0) + keptOf(list, payList),
+        charged: played.filter(isClientBooking).reduce((n, b) => n + courtPart(b), 0) + keptOf(list, payList),
         kept: keptOf(list, payList),
         // К оплате по сыгранным: корт и строки счёта — с этим сравнивают кассу
         due: played.filter(isClientBooking).reduce((n, b) => n + dueOf(b, ex), 0),
@@ -1242,7 +1275,22 @@ export class AdminController {
     //    продажи» больше нет: из-за него цифры расходились.
     const SALE_CATS: [string, string][] = [['rental', 'Прокат'], ['shop', 'Товары'], ['bar', 'Бар'],
       ['coaching', 'Тренировки'], ['other', 'Прочее']];
-    const moneyOf = (s0: ReturnType<typeof sum>, list: typeof sales, feeList: typeof feeRows, expList: typeof exp) => {
+    const moneyOf = (s0: ReturnType<typeof sum>, list: typeof sales, feeList: typeof feeRows, expList: typeof exp,
+                     bookingsList: typeof rows, classList: typeof clsNow) => {
+      // Индивидуальные тренировки: часть тренера в сыгранных бронях; начисление тренеру — его расход
+      const now0 = Date.now();
+      const lessons = bookingsList.filter(b => b.coach_id && PLAYED.has(b.status) && isClientBooking(b));
+      const lessonRev = lessons.reduce((n, b) => n + coachPart(b), 0);
+      const lessonPayTotal = lessons.filter(b => +b.ends_at <= now0).reduce((n, b) => {
+        const c = coachBy.get(String(b.coach_id)); if (!c) return n;
+        return n + lessonPay(c, { hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000), revenue: coachPart(b) });
+      }, 0);
+      const classFees = feeList.filter(f => f.tournaments.kind === 'class');
+      const classPayTotal = classList.filter(t => +t.starts_at + t.hours * 3600_000 <= now0).reduce((n, t) => {
+        const c = coachBy.get(String(t.coach_id)); if (!c) return n;
+        return n + classPay(c, { hours: t.hours, revenue: t.tournament_entries.reduce((m, e) => m + e.paid_amount, 0) });
+      }, 0);
+      const tournFees = feeList.filter(f => f.tournaments.kind !== 'class');
       const cats = [
         { key: 'courts', label: 'Аренда кортов', revenue: s0.charged - s0.kept, cost: 0, qty: s0.hours, unit: 'ч' },
         { key: 'kept', label: 'Удержанные предоплаты', revenue: s0.kept, cost: 0, qty: s0.noShows, unit: '' },
@@ -1252,16 +1300,20 @@ export class AdminController {
             qty: l.reduce((n, x) => n + x.qty, 0), unit: key === 'rental' ? 'раз' : 'шт.',
             costMissing: key !== 'rental' && l.some(x => x.cost == null) };
         }),
-        { key: 'fees', label: 'Турнирные взносы', revenue: feeList.reduce((n, x) => n + x.paid_amount, 0), cost: 0,
-          qty: feeList.length, unit: 'чел.' },
+        { key: 'lessons', label: 'Индивидуальные тренировки', revenue: lessonRev, cost: lessonPayTotal,
+          qty: lessons.length, unit: 'трен.', costLabel: 'тренерам' },
+        { key: 'classes', label: 'Групповые тренировки', revenue: classFees.reduce((n, x) => n + x.paid_amount, 0),
+          cost: classPayTotal, qty: classFees.length, unit: 'чел.', costLabel: 'тренерам' },
+        { key: 'fees', label: 'Турнирные взносы', revenue: tournFees.reduce((n, x) => n + x.paid_amount, 0), cost: 0,
+          qty: tournFees.length, unit: 'чел.' },
       ];
       const revenue = cats.reduce((n, c) => n + c.revenue, 0);
       const cogs = cats.reduce((n, c) => n + c.cost, 0);
       const expenses = expList.reduce((n, x) => n + x.amount, 0);
       return { cats, revenue, cogs, expenses, profit: revenue - cogs - expenses };
     };
-    const moneyNow = moneyOf(now, sales, feeRows, exp);
-    const moneyPrev = moneyOf(prev, prevSales, prevFeeRows, prevExp);
+    const moneyNow = moneyOf(now, sales, feeRows, exp, rows, clsNow);
+    const moneyPrev = moneyOf(prev, prevSales, prevFeeRows, prevExp, prevRows, clsPrev);
     // Прежние поля — для совместимости экранов
     const otherRevenue = moneyNow.revenue - now.charged;
     const prevOther = moneyPrev.revenue - prev.charged;
@@ -1335,7 +1387,7 @@ export class AdminController {
     // что клуб всё-таки удержал с этих броней
     const paidByBooking = paidPer(pays);
     const lost = rows.filter(b => (b.status === 'cancelled' || b.status === 'no_show') && isClientBooking(b))
-      .reduce((n, b) => n + Math.max(0, b.price - b.discount
+      .reduce((n, b) => n + Math.max(0, b.price + b.coach_price - b.discount
         - (b.kept_prepay ? Math.max(0, paidByBooking.get(String(b.id)) ?? 0) : 0)), 0);
 
     // Поздние отмены — по просьбе клиента позже бесплатной границы.
@@ -2361,6 +2413,8 @@ export class AdminController {
       pending: of(t.id, 'pending'), confirmed: of(t.id, 'confirmed'),
       hours: t.hours, courtIds: t.court_ids,
       results: t.results, photos: t.result_photos, bannerOn: t.banner_on,
+      // Групповая тренировка — та же запись с местами, но с тренером и уровнем
+      kind: t.kind, coachId: t.coach_id ? Number(t.coach_id) : null, level: t.level,
     }));
   }
 
@@ -2428,7 +2482,7 @@ export class AdminController {
     return rows.map(e => ({
       id: Number(e.id), clientId: Number(e.client_id),
       name: [e.clients.name, e.clients.surname].filter(Boolean).join(' '), phone: e.clients.phone,
-      signedAt: e.created_at, status: e.status, holdUntil: e.hold_until,
+      signedAt: e.created_at, status: e.status, holdUntil: e.hold_until, attended: e.attended,
       paid: e.paid_amount,
     }));
   }
@@ -2488,6 +2542,7 @@ export class AdminController {
     fee: number; seats: number; state: string; coverUrl: string; resultText: string;
     hours: number; courtIds: string[];
     results: { place?: number; names?: string; prize?: string }[]; bannerOn: boolean;
+    kind: string; coachId: number | null; level: string;
   }>) {
     const STATES = ['soon', 'open', 'closed', 'done', 'cancelled'];
     const data: any = {};
@@ -2538,6 +2593,19 @@ export class AdminController {
         .slice(0, 10);
     }
     if (body.bannerOn != null) data.banner_on = !!body.bannerOn;
+    if (body.kind != null) {
+      if (!['tournament', 'class'].includes(body.kind)) throw new BadRequestException('Неизвестный вид события');
+      data.kind = body.kind;
+    }
+    if (body.coachId !== undefined) {
+      if (body.coachId == null) data.coach_id = null;
+      else {
+        const c = await this.db.coaches.findUnique({ where: { id: bigId(String(body.coachId)) } });
+        if (!c) throw new NotFoundException('Тренер не найден');
+        data.coach_id = c.id;
+      }
+    }
+    if (body.level !== undefined) data.level = String(body.level ?? '').trim().slice(0, 60) || null;
 
     if (body.id) {
       const before = await this.db.tournaments.findUnique({ where: { id: BigInt(body.id) } });
@@ -2598,6 +2666,7 @@ export class AdminController {
       cover_url: data.cover_url ?? null, result_text: data.result_text ?? null,
       hours: data.hours ?? 3, court_ids: data.court_ids ?? [],
       results: data.results ?? [], banner_on: false,
+      kind: data.kind ?? 'tournament', coach_id: data.coach_id ?? null, level: data.level ?? null,
     }});
     const busy = await this.blockCourts(t);
     await this.auth.log(req.admin, 'завёл турнир', t.name);
@@ -2665,6 +2734,8 @@ export class AdminController {
     name?: string; phone?: string; comment?: string; players?: number;
     /** Аккаунт приложения, выбранный менеджером: бронь идёт на него. */
     clientId?: number;
+    /** Тренировка: тренер и, если нужно, своя цена тренировки (рубли). */
+    coachId?: number; coachPrice?: number;
   }) {
     if (!isValidDate(body.date)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
     const court = await this.db.courts.findUnique({ where: { id: body.courtId } });
@@ -2713,10 +2784,24 @@ export class AdminController {
       clientId = c.id;
     }
 
-    const price = pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
+    // Тренировка: тренер работает в это время? Цена — по тренеру (или своя),
+    // корт — по тарифу или входит в тренировку, как задано у тренера
+    let coach: { id: bigint; name: string; price: number; court_extra: boolean; is_active: boolean; week: unknown } | null = null;
+    if (body.coachId) {
+      coach = await this.db.coaches.findUnique({ where: { id: bigId(String(body.coachId)) } });
+      if (!coach || !coach.is_active) throw new NotFoundException('Тренер не найден');
+      const wh = coachHours(coach, set, body.date);
+      if (!wh || body.hour < wh.open || body.hour + hoursCount > wh.close) {
+        throw new BadRequestException(wh ? `${coach.name} работает в этот день с ${wh.open}:00 до ${wh.close}:00`
+          : `${coach.name} в этот день не работает`);
+      }
+    }
+    const coachPrice = !coach ? 0 : body.coachPrice != null ? rubToKop(body.coachPrice) : coach.price * hoursCount;
+    const price = coach && !coach.court_extra ? 0 : pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
 
     try {
       const b = await this.db.bookings.create({ data: {
+        coach_id: coach?.id ?? null, coach_price: coachPrice,
         court_id: court.id, client_id: clientId,
         starts_at: clubHour(body.date, body.hour),
         ends_at: clubHour(body.date, body.hour + hoursCount),
@@ -2725,17 +2810,20 @@ export class AdminController {
         // имя гостя без телефона больше не теряется
         guest_name: clientId == null ? name : null,
       }});
-      await this.auth.log(req.admin, 'записал клиента',
-        `№${Number(b.id)}: ${accountName ?? name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}`);
+      await this.auth.log(req.admin, coach ? 'записал на тренировку' : 'записал клиента',
+        `№${Number(b.id)}: ${accountName ?? name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}${coach ? `, тренер ${coach.name}` : ''}`);
       // Человеку с приложением бронь придёт уведомлением, а не «появится сама»
       if (clientId) {
         const c = await this.db.clients.findUnique({ where: { id: clientId } });
-        if (c?.pass_hash) await this.notes.toClient(clientId, 'booking', 'Вас записали',
-          `${court.name}, ${whenText(b.starts_at, b.ends_at)}. К оплате ${(price / 100).toLocaleString('ru-RU')} ₽.`,
+        if (c?.pass_hash) await this.notes.toClient(clientId, 'booking', coach ? 'Вас записали на тренировку' : 'Вас записали',
+          `${coach ? `Тренер ${coach.name}. ` : ''}${court.name}, ${whenText(b.starts_at, b.ends_at)}. К оплате ${((price + coachPrice) / 100).toLocaleString('ru-RU')} ₽.`,
           { bookingId: b.id, by: req.admin.name });
       }
       return { id: Number(b.id) };
     } catch (e: any) {
+      if (String(e?.message).includes('no_double_coach')) {
+        throw new BadRequestException(`${coach?.name ?? 'Тренер'} в это время уже ведёт тренировку`);
+      }
       if (String(e?.message).includes('23P01')) {
         throw new BadRequestException('Это время уже занято');
       }
@@ -2881,7 +2969,7 @@ export class AdminController {
       }),
       this.db.bookings.groupBy({
         by: ['client_id'], where: { client_id: inIds, status: { in: ['confirmed', 'done'] }, starts_at: { lt: new Date() } },
-        _sum: { price: true, discount: true }, _max: { starts_at: true },
+        _sum: { price: true, discount: true, coach_price: true }, _max: { starts_at: true },
       }),
       this.db.tournament_entries.groupBy({
         by: ['client_id'], where: { client_id: inIds, status: 'confirmed' }, _count: { _all: true },
@@ -2896,7 +2984,7 @@ export class AdminController {
         id: Number(c.id), name: c.name, surname: c.surname, phone: c.phone,
         whatsapp: c.whatsapp, hasPassword: !!c.pass_hash, since: c.created_at,
         bookings: cnt.get(String(c.id)) ?? 0,
-        spent: (p?._sum.price ?? 0) - (p?._sum.discount ?? 0),
+        spent: (p?._sum.price ?? 0) + (p?._sum.coach_price ?? 0) - (p?._sum.discount ?? 0),
         lastAt: p?._max.starts_at ?? null,
         tournaments: tn.get(String(c.id)) ?? 0,
         cancels: c.cancels, noShows: c.no_shows,
@@ -2913,6 +3001,7 @@ export class AdminController {
     // с прокруткой, и длинная история там уместна
     const rows = await this.db.bookings.findMany({
       where: { client_id: c.id }, orderBy: { starts_at: 'desc' }, take: 2000,
+      include: { coaches: { select: { name: true } } },
     });
     const courts = new Map((await this.db.courts.findMany()).map(x => [x.id, x.name]));
     const entries = await this.db.tournament_entries.findMany({
@@ -2932,7 +3021,8 @@ export class AdminController {
           id: Number(b.id), courtId: b.court_id, courtName: courts.get(b.court_id) ?? b.court_id,
           startsAt: b.starts_at, hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
           price: b.price, discount: b.discount, extras: extrasBy.get(String(b.id))?.sum ?? 0,
-          due: Math.max(0, b.price - b.discount) + (extrasBy.get(String(b.id))?.sum ?? 0),
+          due: courtPart(b) + coachPart(b) + (extrasBy.get(String(b.id))?.sum ?? 0),
+          coachName: b.coaches?.name ?? null,
           paid: paidBy.get(String(b.id)) ?? 0, status: b.status, keptPrepay: b.kept_prepay,
           tournamentId: b.tournament_id ? Number(b.tournament_id) : null, source: b.source,
         }));

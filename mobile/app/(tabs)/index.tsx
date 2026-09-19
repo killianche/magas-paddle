@@ -14,12 +14,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
-import { api, rub, mediaUrl, type ApiBooking, type ApiTournament } from '../../src/api';
+import { api, rub, mediaUrl, type ApiBooking, type ApiTournament, type ApiCoach } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
 import { IMG, HERO, HERO_LIGHT } from '../../src/images';
 import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../src/components/icons';
+import { CoachFace } from '../../src/components/coach';
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
@@ -62,13 +63,14 @@ export default function Home() {
     // (например, вход устарел), главная всё равно покажет корты и цены,
     // а не станет целиком экраном «нет связи»
     const soft = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
-    const [next, tournaments, bookings, prices] = await Promise.all([
+    const [next, tournaments, bookings, prices, coaches] = await Promise.all([
       upcomingGrid(),
       soft(api.tournaments(phone), [] as ApiTournament[]),
       phone ? soft(api.myBookings(phone), [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
       api.prices(),
+      soft(api.coaches(), [] as ApiCoach[]),
     ]);
-    return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices };
+    return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices, coaches };
   }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
   useFocusEffect(useCallback(() => { q.refresh(); notes.refresh() }, [phone]));
@@ -373,6 +375,26 @@ export default function Home() {
         </>
       )}
 
+      {/* Тренировки с тренерами — если клуб их завёл */}
+      {(q.data?.coaches ?? []).length > 0 && (
+        <>
+          <View style={st.secHead}><Text style={st.secT}>Тренировки</Text></View>
+          <Pressable onPress={() => go('/coaches')} accessibilityRole="button" accessibilityLabel="Тренировки с тренером"
+            style={({ pressed }) => [st.coachCard, pressed && { opacity: 0.88 }]}>
+            <View style={{ flexDirection: 'row' }}>
+              {(q.data?.coaches ?? []).slice(0, 3).map((c, i) => (
+                <View key={c.id} style={{ marginLeft: i ? -12 : 0, borderRadius: 26, borderWidth: 2, borderColor: C.surface }}>
+                  <CoachFace c={c} size={44} /></View>))}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={st.coachT}>С тренером</Text>
+              <Text style={st.coachS}>Индивидуальные и групповые · {(q.data?.coaches ?? []).length} {plural((q.data?.coaches ?? []).length, 'тренер', 'тренера', 'тренеров')}</Text>
+            </View>
+            <IconChevron size={16} color={C.dim2} />
+          </Pressable>
+        </>
+      )}
+
       <View style={st.secHead}>
         <Text style={st.secT}>Клуб</Text>
         {/* Сведения о клубе переехали в аккаунт — там же настройки и документы */}
@@ -391,6 +413,10 @@ export default function Home() {
 
 const st = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
+  coachCard: { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: S.xl, padding: 14,
+    borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  coachT: { fontFamily: DISP_MED, color: C.text, fontSize: 16 },
+  coachS: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 3 },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Для картинок мало одних краёв: без ширины и высоты React Native Web
   // растягивает их до собственного размера, и виден лишь угол снимка.

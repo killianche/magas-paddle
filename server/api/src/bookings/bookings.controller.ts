@@ -64,6 +64,7 @@ export class BookingsController {
         { status: { in: ['cancelled', 'expired', 'no_show'] }, ends_at: { gt: new Date(Date.now() - 7 * 864e5) } },
       ] },
       orderBy: { starts_at: 'asc' },
+      include: { coaches: { select: { name: true } } },
     });
     const courts = new Map((await this.db.courts.findMany()).map(c => [c.id, c.name]));
     // Строки счёта (прокат, мячи) и внесённые деньги — человек видит, сколько
@@ -88,6 +89,8 @@ export class BookingsController {
       hour: hourOf(b.starts_at),
       hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
       price: b.price,
+      // Тренировка: имя тренера и его часть цены
+      coachName: b.coaches?.name ?? null, coachPrice: b.coach_price,
       discount: b.discount,
       paid: paidBy.get(String(b.id)) ?? 0,
       // Отмена или неявка: предоплата осталась клубу или её вернули
