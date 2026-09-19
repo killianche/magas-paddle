@@ -1513,6 +1513,94 @@ export class AdminController {
     });
   }
 
+  /** Касса: несколько товаров одной покупкой. Только товары из учёта — без
+   *  «впишите своё»: так остаток всегда списывается, цена берётся из карточки
+   *  и ошибиться в сумме нельзя. Всё или ничего — одной транзакцией. */
+  @Post('sales/checkout')
+  async checkout(@Req() req: any, @Body() body: {
+    bookingId?: number; clientId?: number; method?: string; note?: string;
+    lines?: { productId?: number; qty?: number }[];
+  }) {
+    if (!(await this.club.get()).salesOn) throw new BadRequestException('Продажи выключены в настройках');
+    // Одинаковые товары складываем в одну строку
+    const want = new Map<string, number>();
+    for (const l of Array.isArray(body.lines) ? body.lines : []) {
+      if (!l?.productId) continue;
+      const k = String(bigId(String(l.productId)));
+      want.set(k, (want.get(k) ?? 0) + int(l.qty, 1, 1, 999));
+    }
+    if (!want.size) throw new BadRequestException('Корзина пуста — выберите товар');
+    if (want.size > 30) throw new BadRequestException('Слишком много позиций в одной продаже');
+
+    // Кому: к брони (окно SALE_WINDOW_H) или клиенту «сейчас». Без человека — нельзя.
+    let booking: { id: bigint; starts_at: Date; ends_at: Date; status: string;
+                   tournament_id: bigint | null; client_id: bigint | null } | null = null;
+    let clientId: bigint | null = null;
+    if (body.bookingId) {
+      booking = await this.db.bookings.findUnique({ where: { id: bigId(String(body.bookingId)) } });
+      if (!booking) throw new NotFoundException('Бронь не найдена');
+      if (booking.tournament_id) throw new ConflictException('Это корт под турниром — к нему продажи не записывают');
+      if (!['pending', 'confirmed', 'done'].includes(booking.status)) {
+        throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
+      }
+      if (!saleWindowOk(booking.starts_at, booking.ends_at)) {
+        throw new ConflictException(`Игра закончилась больше ${SALE_WINDOW_H} ч назад — задним числом к брони не добавляют. Запишите продажу клиенту`);
+      }
+      clientId = booking.client_id;
+    } else if (body.clientId) {
+      const c = await this.db.clients.findUnique({ where: { id: bigId(String(body.clientId)) } });
+      if (!c) throw new NotFoundException('Клиент не найден');
+      clientId = c.id;
+    } else {
+      throw new BadRequestException('Выберите бронь или клиента');
+    }
+    const method = booking ? 'bill' : String(body.method ?? 'cash');
+    if (!booking && !PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
+    const day = booking ? this.dateOf(booking.starts_at) : clubToday();
+    const note = body.note ? String(body.note).trim().slice(0, 200) : null;
+    const adminId = BigInt(req.admin.id);
+
+    const done = await this.db.$transaction(async tx => {
+      const out: { name: string; qty: number; amount: number }[] = [];
+      for (const [pid, qty] of want) {
+        const pr = await tx.products.findUnique({ where: { id: BigInt(pid) } });
+        if (!pr) throw new NotFoundException('Товар не найден');
+        if (!pr.is_active) throw new ConflictException(`«${pr.name}» снят с продажи`);
+        const fromStock = pr.category !== 'rental' && pr.stock != null;
+        if (fromStock) {
+          // Под блокировкой: два кассира не продадут последнюю банку дважды
+          const upd = await tx.products.updateMany({ where: { id: pr.id, stock: { gte: qty } }, data: { stock: { decrement: qty } } });
+          if (!upd.count) {
+            const cur = await tx.products.findUnique({ where: { id: pr.id }, select: { stock: true } });
+            throw new ConflictException(`«${pr.name}»: на складе только ${cur?.stock ?? 0} шт.`);
+          }
+        }
+        const amount = pr.price * qty;
+        const sale = await tx.sales.create({ data: {
+          day: new Date(day), category: pr.category, amount, method, qty, note, item: pr.name,
+          booking_id: booking?.id ?? null, client_id: clientId, product_id: pr.id,
+          cost: pr.category !== 'rental' && pr.cost != null ? pr.cost * qty : null,
+          admin_id: adminId, admin_name: req.admin.name,
+        }});
+        if (fromStock) {
+          const after = await tx.products.findUnique({ where: { id: pr.id }, select: { stock: true } });
+          await tx.stock_moves.create({ data: {
+            product_id: pr.id, kind: 'sale', qty: -qty, stock_after: after?.stock ?? null, sale_id: sale.id,
+            note: booking ? `к брони №${Number(booking.id)}` : `клиенту ID ${Number(clientId)}`,
+            admin_id: adminId, admin_name: req.admin.name,
+          }});
+        }
+        out.push({ name: pr.name, qty, amount });
+      }
+      return out;
+    });
+    const total = done.reduce((n, x) => n + x.amount, 0);
+    await this.auth.log(req.admin, booking ? 'добавил к брони' : 'продал клиенту',
+      done.map(x => `${x.name}${x.qty > 1 ? ` × ${x.qty}` : ''}`).join(', ')
+      + `, ${(total / 100).toLocaleString('ru-RU')} ₽` + (booking ? `, бронь №${Number(booking.id)}` : `, клиент ID ${Number(clientId)}`));
+    return { total, lines: done.length };
+  }
+
   /** Продать воду, прокат ракетки, тренировку. Это работа стойки. */
   @Post('sales')
   async saveSale(@Req() req: any, @Body() body: {
@@ -1541,6 +1629,9 @@ export class AdminController {
     }
     const fromStock = !!product && product.category !== 'rental' && product.stock != null;
     if (amount <= 0) throw new BadRequestException('Сумма должна быть больше нуля');
+    // Продают только товары из учёта (заказчик, 19.09.2026): иначе остаток не
+    // списывается и цена вписывается руками
+    if (!product) throw new BadRequestException('Выберите товар из списка — свои позиции не записываются');
 
     // Кому продажа (решение заказчика 19.09.2026, D28): к брони или клиенту.
     // Без человека продажу не записать. Задним числом — тоже:

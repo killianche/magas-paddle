@@ -888,6 +888,49 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .hist.heat tbody tr td:first-child,.heat tbody tr:nth-child(even) td:first-child{background:none}
 .hist tfoot td{border-top:.5px solid var(--line-strong);padding:8px 10px;background:var(--surface)}
 .hist tfoot tr:first-child td{border-top:1px solid var(--line-strong)}
+/* ── касса ─────────────────────────────────────────────────────────── */
+.pos{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.pos-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.pt{position:relative;display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;border:0;border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow);color:var(--text);overflow:hidden;transition:transform .08s,box-shadow .12s}
+.pt:hover{box-shadow:0 0 0 .5px var(--line),0 6px 18px rgba(0,0,0,.08)}
+.pt:active{transform:scale(.98)}
+.pt.in{box-shadow:0 0 0 2px var(--lime)}
+.pt[disabled]{opacity:.45;cursor:default}
+.pt .ph{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;background:var(--surface-3);overflow:hidden}
+.pt .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.pt .ph em,.pt .ph s{z-index:1}
+.pt .ph i{font-style:normal;font-size:34px;font-weight:700;color:var(--dim-2)}
+.pt .ph em{position:absolute;top:8px;right:8px;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--lime);
+  color:var(--on-lime);font-style:normal;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pt .ph s{position:absolute;left:8px;top:8px;text-decoration:none;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;
+  background:rgba(0,0,0,.55);color:#fff;backdrop-filter:blur(8px)}
+.pt > b{display:block;padding:10px 12px 2px;font-size:13px;font-weight:600;line-height:1.25;min-height:34px}
+.pt .pr{display:flex;align-items:center;gap:6px;padding:0 12px 11px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.pt .pr small{margin-left:auto;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px}
+.pt .pr small.low{background:var(--warn-bg);color:var(--amber)} .pt .pr small.out{background:var(--bad-bg);color:var(--red)}
+.pos-cart{position:sticky;top:calc(var(--top-h) + 16px);display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:16px;
+  background:var(--surface);box-shadow:var(--shadow);max-height:calc(100vh - var(--top-h) - 32px);overflow:auto}
+.pos-cart .bpick{margin-top:0}
+.pos-cart .bchosen{margin-top:0}
+.pos-lines{display:flex;flex-direction:column;border-top:.5px solid var(--line);padding-top:4px;min-height:60px}
+.pl2{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--line-soft)}
+.pl2 .th{width:36px;height:36px;border-radius:8px;background:var(--surface-3);overflow:hidden;flex:none}
+.pl2 .th img{width:100%;height:100%;object-fit:cover}
+.pl2 .nm{flex:1;min-width:0}
+.pl2 .nm b{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl2 .nm span{font-size:11.5px;color:var(--dim)}
+.pl2 .stepper input{width:34px}
+.pl2 .sm{min-width:64px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.pos-none{padding:14px 2px;color:var(--dim-2);font-size:12.5px;text-align:center}
+.pos-sum{display:flex;align-items:baseline;justify-content:space-between}
+.pos-sum span{color:var(--dim)}
+.pos-sum b{font-family:var(--disp);font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pos-ok{min-height:44px;font-size:15px}
+.pos-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px 20px;color:var(--dim);text-align:center}
+.pos-empty b{font-size:17px;color:var(--text)}
+@media(max-width:1180px){.pos{grid-template-columns:1fr}.pos-cart{position:static;max-height:none}}
 @media(max-width:1100px){:root{--side-w:196px}.gsearch{width:220px}}
 @media(max-width:860px){body:not(.showside){--side-w:0px}body:not(.showside) .side{display:none}}
 </style>
@@ -903,6 +946,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <button class="vw" data-view="clients"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="7" r="3"/><path d="M2.5 16.5c.6-2.8 2.9-4.5 5.5-4.5s4.9 1.7 5.5 4.5M13.5 4.2a3 3 0 0 1 0 5.6M15.5 12.4c1 .7 1.7 2 2 3.6"/></svg>Клиенты</button>
     <button class="vw" data-view="history"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg>История</button>
     <div class="sgroup">Деньги и события</div>
+    <button class="vw" data-view="pos"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="15" height="11" rx="2.5"/><path d="M2.5 9h15M6 13h3"/></svg>Касса</button>
     <button class="vw" data-view="sales"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h12l-1 10H5L4 7z"/><path d="M7.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>Продажи</button>
     <button class="vw" data-view="tourn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8v5a4 4 0 0 1-8 0V3z"/><path d="M6 5H3.5v1a3 3 0 0 0 3 3M14 5h2.5v1a3 3 0 0 1-3 3M10 12v3M7 17h6"/></svg>Турниры</button>
     <button class="vw" data-view="stats"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16V9M8 16V5M12 16v-6M16 16V7"/></svg>Аналитика</button>
@@ -1025,6 +1069,39 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div id="cpOut"><div class="center">Загружаю…</div></div>
   </div>
 
+  <!-- Касса: витрина товаров слева, корзина справа -->
+  <div id="viewPos" hidden>
+    <div class="pos">
+      <section class="pos-shop">
+        <div class="pos-bar">
+          <div class="gsearch" style="width:240px;background:var(--surface);box-shadow:var(--shadow)">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4 4"/></svg>
+            <input id="posQ" type="search" autocomplete="off" placeholder="Найти товар"></div>
+          <div class="seg small" id="posCat" style="margin:0"></div>
+        </div>
+        <div class="pos-grid" id="posGrid"></div>
+      </section>
+      <aside class="pos-cart">
+        <div class="seg" id="posTo" style="margin:0">
+          <button type="button" data-to="booking" class="on">К брони</button>
+          <button type="button" data-to="client">Клиенту</button>
+        </div>
+        <div id="posWho"></div>
+        <div class="pos-lines" id="posLines"></div>
+        <div class="pos-sum"><span>Итого</span><b id="posTotal">0 ₽</b></div>
+        <div id="posMethodRow" hidden>
+          <div class="seg small" id="posMethod" style="margin:0;display:flex">
+            <button type="button" data-m="cash" class="on">Наличными</button>
+            <button type="button" data-m="card">Картой</button>
+            <button type="button" data-m="sbp">СБП</button>
+          </div>
+        </div>
+        <div class="err" id="posErr"></div>
+        <button class="btn acc pos-ok" id="posOk" disabled>Выберите товар</button>
+      </aside>
+    </div>
+  </div>
+
   <!-- Продажи: прокат ракеток, мячи, бар — отдельно от аренды кортов -->
   <div id="viewSales" hidden>
     <div class="seg" style="max-width:360px;margin:0 0 14px" id="slSeg">
@@ -1053,8 +1130,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <!-- Мини-магазин: товары с фото, ценой и остатком -->
     <div id="slGoods" hidden>
       <div class="filters">
-        <span class="fnote" style="margin:0">Товар продаётся и уходит со склада. Прокат возвращается — остаток не меняется.
-          Привезли — «Приход», испортилось или потерялось — «Списать».</span>
+        
         <div style="flex:1"></div>
         <button class="btn" id="pdImport" hidden>Завести из прайса проката</button>
         <button class="btn acc" id="pdNew">Новый товар</button>
@@ -1097,7 +1173,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <label for="crmMsgBody">Текст</label>
     <textarea id="crmMsgBody" rows="4" maxlength="1000"
       placeholder="Приходите на «Ночной Mexicano» 21 сентября в 21:00. Запись — в приложении."></textarea>
-    <p class="hint">Придёт в приложение, в раздел «Уведомления».</p>
     <div class="err" id="crmMsgErr"></div>
     <div class="acts">
       <button class="btn" data-close>Отмена</button>
@@ -1110,13 +1185,13 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 <div class="modal" id="pdModal">
   <div class="sheet form">
     <div class="fhead"><h3 id="pdTitle">Товар</h3>
-      <p class="sub">Название и цена видны в окне «Продажа». Остаток — если ведёте склад.</p></div>
+      </div>
     <div class="pdPhoto">
       <div class="pdImg" id="pdImg"></div>
       <div>
         <label class="btn small" style="display:inline-block">Загрузить фото<input type="file" id="pdPhotoIn"
           accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
-        <p class="fnote" id="pdPhotoNote">Фото можно добавить после первого сохранения.</p>
+        <p class="fnote" id="pdPhotoNote"></p>
       </div>
     </div>
     <div class="ilist">
@@ -1138,7 +1213,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <div class="irow"><span class="ik">Продаётся</span>
         <div class="iv" style="display:flex;justify-content:flex-end"><label class="chk" style="margin:0"><input type="checkbox" id="pdActive" checked> показывать в «Продаже»</label></div></div>
     </div>
-    <p class="fnote" id="pdCatNote"></p>
     <div id="pdMovesBox" hidden>
       <div class="fsec" style="display:flex;align-items:center;gap:8px">Движения
         <span style="flex:1"></span>
@@ -1186,7 +1260,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 <div class="modal on" id="authModal">
   <div class="sheet">
     <h3>Вход для сотрудников</h3>
-    <p class="sub">Логин и пароль выдаёт владелец клуба. Вход сохранится в этом браузере.</p>
     <label for="loginInput">Логин</label>
     <input id="loginInput" autocomplete="username" placeholder="например, aslan">
     <label for="keyInput">Пароль</label>
@@ -1250,7 +1323,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 <div class="modal" id="addModal">
   <div class="sheet mid">
     <h3>Записать клиента</h3>
-    <p class="sub">На аккаунт приложения — клиент увидит запись у себя. Или гостем без приложения.</p>
 
     <div class="fgroup">
       <div class="fh">Когда и где</div>
@@ -1293,7 +1365,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         <div><label for="addComment">Заметка</label>
           <input id="addComment" placeholder="Необязательно"></div>
       </div>
-      <p class="hint" id="addWho">Запись на аккаунт: клиент увидит её в приложении и получит уведомления.</p>
+      <p class="hint" id="addWho" hidden></p>
     </div>
 
     <div class="sumBox">
@@ -1312,94 +1384,9 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 <div class="modal" id="pendModal">
   <div class="sheet wide">
     <h3 id="pendTitle">Новые брони</h3>
-    <p class="sub" id="pendSub">Из приложения, по всем датам. Ждут подтверждения.</p>
+    <p class="sub" id="pendSub"></p>
     <div class="list" id="pendList"></div>
     <div class="acts"><button class="btn" data-close>Закрыть</button></div>
-  </div>
-</div>
-
-<!-- прочая продажа -->
-<div class="modal" id="saleModal">
-  <div class="sheet mid form">
-    <div class="fhead">
-      <h3>Продажа</h3>
-      <p class="sub" id="saleSub">Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.</p>
-    </div>
-
-    <!-- Кому продажа (заказчик, 19.09.2026): к брони или клиенту. Без человека
-         продажу не записать. Задним числом — тоже нельзя: к брони — только
-         идущей, недавно закончившейся (2 ч) или сегодняшней; клиенту — «сейчас». -->
-    <div class="seg" id="saleTo">
-      <button type="button" data-to="booking" class="on">К брони</button>
-      <button type="button" data-to="client">Клиенту</button>
-    </div>
-    <div id="saleBkBox">
-      <div id="saleBkPick">
-        <div class="bpick" id="saleBkList"></div>
-        <p class="fnote" id="saleBkHint">Здесь идущие и будущие брони и те, что закончились не больше 2 часов назад.</p>
-      </div>
-      <div class="bchosen" id="saleBkChosen" hidden>
-        <div><b id="saleBkName"></b><span id="saleBkSub"></span></div>
-        <button type="button" class="copy" id="saleBkChange">сменить</button>
-      </div>
-    </div>
-    <div id="saleClBox" hidden>
-      <div class="ilist rel">
-        <div class="irow" id="saleClFindRow"><span class="ik">Клиент</span>
-          <input id="saleClQ" class="iv" autocomplete="off" placeholder="имя, телефон или ID">
-          <div class="sugg" id="saleClSugg" hidden></div></div>
-        <div class="irow" id="saleClPickRow" hidden><span class="ik">Клиент</span>
-          <b class="iv" id="saleClName"></b><button type="button" class="copy" id="saleClClear">сменить</button></div>
-        <div class="irow"><span class="ik">Оплата</span>
-          <div class="seg small iv" id="saleMethod" style="margin:0">
-            <button type="button" data-m="cash" class="on">Наличными</button>
-            <button type="button" data-m="card">Картой</button>
-            <button type="button" data-m="sbp">СБП</button>
-          </div></div>
-        <div class="irow"><span class="ik">Когда</span><b class="iv" id="saleWhen" style="font-weight:500"></b></div>
-      </div>
-      <p class="fnote">Дата и время ставятся сами — задним числом продажу не записать.</p>
-    </div>
-
-    <div class="fsec">Что продаём</div>
-    <div class="quick" id="saleQuick"></div>
-
-    <div class="ilist">
-      <div class="irow">
-        <span class="ik">Позиция</span>
-        <input id="saleItem" class="iv" maxlength="120" placeholder="или впишите своё: вода 0,5 л">
-      </div>
-      <div class="irow">
-        <span class="ik">Количество</span>
-        <div class="stepper iv">
-          <button type="button" id="saleMinus" aria-label="Меньше">−</button>
-          <input id="saleQty" type="number" min="1" max="999" value="1">
-          <button type="button" id="salePlus" aria-label="Больше">+</button>
-        </div>
-      </div>
-      <div class="irow">
-        <span class="ik">Сумма</span>
-        <div class="iv money-in"><input id="saleAmount" type="number" min="1" step="50" placeholder="0"><span>₽</span></div>
-      </div>
-      <div class="irow">
-        <span class="ik">Заметка</span>
-        <input id="saleNote" class="iv" placeholder="необязательно">
-      </div>
-    </div>
-    <select id="saleCat" hidden>
-      <option value="bar">Бар и вода</option><option value="rental">Прокат</option>
-      <option value="coaching">Тренировка</option><option value="shop">Товар</option>
-      <option value="other">Прочее</option>
-    </select>
-
-    <div class="err" id="saleErr"></div>
-    <div class="ffoot">
-      <div class="ftotal"><span id="saleTotalL">Итого</span><b id="saleTotal">0 ₽</b></div>
-      <div class="acts" style="margin:0">
-        <button class="btn" data-close>Отмена</button>
-        <button class="btn acc" id="saleOk">Записать</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1465,7 +1452,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <button class="tab" data-tab="contacts">Контакты</button>
       <button class="tab" data-tab="app">Приложение</button>
       <button class="tab" data-tab="notify">Уведомления</button>
-      <button class="tab" data-tab="clients">Клиенты</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
       </div>
@@ -1474,17 +1460,10 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div class="spanes">
 
     <div class="pane on" id="paneCourts" data-title="Площадки">
-      <p class="sub">Цены в рублях за час. Описание человек видит, когда открывает площадку
-        в приложении — напишите про покрытие и цвет пола, чем корт отличается от соседнего.
-        Выключенная площадка пропадает из приложения совсем, закрытая на ремонт
-        остаётся видимой, но занять её нельзя.</p>
       <div id="courtRows"></div>
     </div>
 
     <div class="pane" id="paneRules" data-title="Особые цены">
-      <p class="sub">Обычная цена задана на вкладке «Площадки». Правило здесь перекрывает её
-        на выбранные дни и часы: например, выходные дороже или утренняя цена до 17:00.
-        Час, под который не подошло ни одно правило, стоит обычную цену.</p>
 
       <div id="ruleRows"></div>
       <div class="acts" style="justify-content:flex-start;margin:6px 0 0">
@@ -1503,8 +1482,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneMoney" data-title="Расходы">
-      <p class="sub">Постоянные расходы за месяц: аренда, зарплаты, свет, кредит, реклама.
-        Без них аналитика показывает оборот, а не заработок.</p>
       <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
         <button class="btn acc" id="expNew">Записать расход</button>
       </div>
@@ -1512,7 +1489,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneClub" data-title="Часы и правила">
-      <p class="sub">Меняется сразу и в приложении, и в этой сетке.</p>
       <label>Часы работы</label>
       <div class="week" id="setWeek"></div>
       <div class="week-tools">
@@ -1529,10 +1505,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneContacts" data-title="Контакты">
-      <p class="sub">На контактах держится подтверждение брони: человек отправляет
-        заявку и связывается с менеджером. Пока номер не указан, кнопки в приложении
-        неактивны — выдуманный номер не показываем. Вводить можно как угодно:
-        «8 928…», «+7 928…», с пробелами.</p>
       <div class="grid2">
         <div><label for="setPhone">Телефон для звонков</label>
           <input id="setPhone" type="tel" placeholder="89289204029"></div>
@@ -1552,8 +1524,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneApp" data-title="Приложение">
-      <p class="sub">Что человек видит и читает в приложении. Меняется сразу,
-        новая версия в App Store для этого не нужна.</p>
       <div class="grid2">
         <div><label for="setPrepay">Предоплата, % от стоимости</label>
           <input id="setPrepay" type="number" min="0" max="100"></div>
@@ -1562,10 +1532,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       </div>
       <div class="hero-set">
         <label>Главный экран — большое фото</label>
-        <p class="sub" style="margin:2px 0 0">Первое, что видит человек в приложении. Внизу на фото
-          лежат две кнопки записи, поэтому главное в кадре — в верхней половине. Подойдёт снимок
-          с телефона: он сам уменьшится. Фото два, потому что человек выбирает тёмное или светлое
-          оформление: для светлого нужен светлый кадр.</p>
         <div class="hero-row">
           <div class="hero-card">
             <div class="hero-prev" id="heroPrev"></div>
@@ -1597,28 +1563,13 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
           placeholder="Хочу забронировать {корт} на {дата}, {время} ({часы}), {цена}."></textarea></div>
       <p class="sub" style="margin-top:4px">Подстановки: {корт} {дата} {время} {часы} {цена}.
         Пусто — текст по умолчанию. Имя клиента и номер заявки приложение добавит само.</p>
-      <p class="sub" style="margin-top:14px">Разделы приложения. Выключенный
-        пропадает у всех, кто откроет приложение.</p>
       <label class="chk"><input type="checkbox" id="setTourn"> Показывать турниры</label>
       <label class="chk"><input type="checkbox" id="setFoot"> Показывать мини-футбольное поле</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
     </div>
 
-    <div class="pane" id="paneClients" data-title="Клиенты">
-      <p class="sub">Клиенты теперь на отдельной странице: поиск, подборки («давно не
-        приходили», «постоянные», «участвовали в турнирах»), сортировка, выбор нескольких
-        и сообщение выбранным. Там же сброс пароля, если клиент его забыл.</p>
-      <div class="acts" style="justify-content:flex-start">
-        <button class="btn acc" id="clOpen">Открыть страницу «Клиенты»</button>
-      </div>
-    </div>
-
     <div class="pane" id="paneNotify" data-title="Уведомления">
-      <p class="sub">Сообщение приходит в приложение — человек видит его в разделе
-        «Уведомления». Пуш на экран телефона появится, когда подключим его у Apple;
-        текст и адресат останутся те же. Подтверждение и отмена брони уходят сами,
-        вручную писать про них не нужно.</p>
       <div class="grid2">
         <div><label for="ntPhone">Кому (номер телефона)</label>
           <input id="ntPhone" type="tel" placeholder="пусто — всем клиентам"></div>
@@ -1639,7 +1590,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneTourn" data-title="Турниры">
-      <p class="sub">Записавшихся видно с телефонами. Итоги появляются в приложении сразу после сохранения.</p>
       <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
         <button class="btn acc" id="tnNew">Новый турнир</button>
       </div>
@@ -1647,8 +1597,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
 
     <div class="pane" id="paneStaff" data-title="Сотрудники">
-      <p class="sub">У каждого свой вход. Права выдаёт владелец: смотреть день
-        и записывать клиентов может любой сотрудник, всё остальное — по разрешению.</p>
       <div id="staffRows"></div>
       <div class="acts" style="justify-content:flex-start;margin:6px 0 0">
         <button class="btn acc" id="staffNew">Завести сотрудника</button>
@@ -1678,8 +1626,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </select>
     <label for="expAmount">Сумма, ₽</label><input id="expAmount" type="number" min="1" step="100">
     <label for="expNote">Заметка</label><input id="expNote" placeholder="Необязательно">
-    <p class="hint">Закупку товаров на продажу (мячи, вода) сюда не вносите — оформляйте «Приходом» в «Товарах».
-      Она учтётся как себестоимость проданного, иначе посчитается дважды.</p>
+    <p class="hint">Закупку товаров сюда не вносите — только «Приходом» в «Товарах».</p>
     <div class="err" id="expErr"></div>
     <div class="acts">
       <button class="btn dg" id="expDel" hidden>Удалить</button>
@@ -1752,12 +1699,9 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         </div>
         <div class="fsec">Какие площадки занимает</div>
         <div class="days" id="tnCourts"></div>
-        <p class="fnote">Эти площадки станут занятыми в расписании на время турнира. Ничего не выбрано — турнир кортов не занимает.</p>
       </div>
 
       <div class="tn-pane" data-p="cover">
-        <p class="fnote" style="margin-top:12px">Обложка — на карточке турнира в приложении и на главной.
-          Выберите готовую картинку или загрузите своё фото: оно сожмётся до 2000 px, лишние данные из файла уберутся.</p>
         <input type="hidden" id="tnCover">
         <div class="covers" id="tnCovers"></div>
         <input type="file" id="tnCoverIn" accept="image/jpeg,image/png,image/webp,image/heic" hidden>
@@ -1768,7 +1712,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       </div>
 
       <div class="tn-pane" data-p="results">
-        <p class="fnote" style="margin-top:12px">Места, фото и баннер на главной приложения. Заполняют после турнира.</p>
         <div class="fsec">Призовые места</div>
         <div id="tnPlaces"></div>
         <button type="button" class="btn small" id="tnAddPlace">Добавить место</button>
@@ -1780,8 +1723,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
           <div class="irow"><span class="ik" style="flex:1">Баннер с итогами на главной приложения</span>
             <label class="chk" style="margin:0"><input type="checkbox" id="tnBanner"></label></div>
         </div>
-        <p class="fnote">Баннер один: включите его здесь — у другого турнира он выключится сам.
-          Выключите, когда итоги станут неактуальны.</p>
       </div>
     </div>
     <div class="tn-foot">
@@ -1804,7 +1745,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <button type="button" data-d="5">Пт</button><button type="button" data-d="6">Сб</button>
       <button type="button" data-d="7">Вс</button>
     </div>
-    <p class="sub" style="margin:4px 0 0">Ничего не выбрано — правило работает каждый день.</p>
     <div class="grid2">
       <div><label for="ruleFrom">С часа</label><select id="ruleFrom"></select></div>
       <div><label for="ruleTo">До часа</label><select id="ruleTo"></select></div>
@@ -1825,7 +1765,6 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 <div class="modal" id="shutModal">
   <div class="sheet">
     <h3 id="shutTitle">Закрыть площадку</h3>
-    <p class="sub">Площадка останется видимой в приложении, но занять её будет нельзя.</p>
     <label for="shutUntil">Закрыта до</label><input id="shutUntil" type="date">
     <label for="shutReason">Причина</label><input id="shutReason" placeholder="Ремонт покрытия">
     <div class="err" id="shutErr"></div>
@@ -2072,7 +2011,6 @@ async function start(){
   document.querySelector('.vw[data-view="tourn"]').hidden = !can('tournaments');
   document.querySelector('.vw[data-view="sales"]').hidden = !can('analytics');
   call('/admin/setup').then(st => { setup = st; applySalesSwitches(st.settings) }).catch(() => {});
-  document.querySelector('.tab[data-tab="clients"]').hidden = !can('clients');
   document.querySelector('.tab[data-tab="notify"]').hidden = !can('clients');
   $('#setupBtn').hidden = !(can('club') || can('prices') || can('tournaments') || can('staff') || can('clients'));
   document.querySelector('#payKind [data-k="refund"]')?.toggleAttribute('hidden', !can('refunds'));
@@ -2283,7 +2221,7 @@ async function openBooking(id){
       ${note ? `<div class="note ${noteCls}">${note}</div>` : ''}
       <div class="bki-lines">${lines}
         ${editable && b.saleOpen ? `<button type="button" class="btn plain small" id="bkAddExtra" style="margin-top:4px">+ Добавить к брони: ракетки, мячи, вода</button>`
-          : editable && ended ? `<div class="note" style="margin-top:4px">Игра закончилась больше 2 часов назад — задним числом не добавляют.</div>` : ''}
+          : ''}
       </div>
     </div>`;
 
@@ -2353,7 +2291,7 @@ async function openBooking(id){
   });
   on('#bkClient', e => { e.preventDefault(); $('#bkModal').classList.remove('on'); openClient(c) });
   on('#bkCopy', () => { navigator.clipboard?.writeText(phoneNice(c.phone)); $('#bkCopy').textContent = 'скопировано' });
-  on('#bkAddExtra', () => { $('#bkModal').classList.remove('on'); openSale({ bookingId: b.id }) });
+  on('#bkAddExtra', () => { $('#bkModal').classList.remove('on'); openPos({ bookingId: b.id }) });
   on('[data-move]', () => { $('#bkModal').classList.remove('on'); openMove(b) });
   on('[data-pay]', () => { $('#bkModal').classList.remove('on'); openPay(b) });
   on('[data-refund]', () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') });
@@ -2680,9 +2618,6 @@ function addSetWho(w){
   $('#addWhoSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.w === w));
   $('#addAppBox').hidden = w !== 'app';
   $('#addGuestBox').hidden = w !== 'none';
-  $('#addWho').textContent = w === 'app'
-    ? 'Запись на аккаунт: клиент увидит её в приложении и получит уведомления.'
-    : 'Гость без приложения: номер нужен, чтобы клиент нашёлся в поиске; можно и без него.';
 }
 $('#addWhoSeg').querySelectorAll('button').forEach(b => b.onclick = () => addSetWho(b.dataset.w));
 /** Выбрать аккаунт для записи. */
@@ -2924,8 +2859,6 @@ function toast(text, kind){
 function openBurnt(list, kind){
   const ret = kind === 'return';
   $('#pendTitle').textContent = ret ? 'Вернуть деньги' : 'Сгорели без ответа';
-  $('#pendSub').textContent = ret ? 'Отменённые брони этого дня, по которым внесённое решили вернуть. Откройте бронь и оформите возврат.'
-    : 'Заявки этого дня, которые не подтвердили вовремя. Пока время не прошло, их можно подтвердить заново.';
   $('#pendList').innerHTML = list.map(b => {
     const c = day.courts.find(x => x.id === b.courtId);
     return `<button class="it" data-id="${b.id}">
@@ -2941,9 +2874,6 @@ function openPending(kind){
   const tour = kind === 'tournament';
   const rows = pendRows.filter(r => (r.kind||'booking') === kind);
   $('#pendTitle').textContent = tour ? 'Заявки на турниры' : 'Новые брони';
-  $('#pendSub').textContent = tour
-    ? 'Из приложения, по всем турнирам. Ждут подтверждения — место держим 24 часа, но не дольше начала турнира.'
-    : 'Из приложения, по всем датам. Ждут подтверждения.';
   $('#pendList').innerHTML = rows.length ? rows.map(r => `
     <button class="it" data-date="${r.date}" data-id="${r.id}" data-t="${r.tournamentId||''}">
       <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${rub(r.price)}</span></div>
@@ -3132,7 +3062,7 @@ async function openSetup(){
             </div></div>`).join('')}
         <label class="btn small ph-add">+ Фото
           <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple hidden></label>
-        ${(c.photos||[]).length ? '' : '<span class="ph-none">Своих фото нет — в приложении временные</span>'}
+        ${(c.photos||[]).length ? '' : ''}
       </div>
       <div class="cfoot">
         <button class="btn small acc c-save">Сохранить</button>
@@ -3322,7 +3252,6 @@ let crmAll = [], crmShown = [], crmSel = new Set(), crmLoaded = false;
 const CRM_LIMIT = 400;
 const DAY_MS = 864e5;
 
-$('#clOpen').onclick = () => { $('#setupModal').classList.remove('on'); switchView('clients') };
 
 async function loadCrm(){
   $('#crmRows').innerHTML = '<div class="center">Загружаю…</div>';
@@ -3625,7 +3554,7 @@ function renderClient(){
   $('#cpAdd').onclick = () => { switchView('day');
     openAdd(null, undefined, { client: { id: d.id, name: d.name, phone: d.phone, hasPassword: d.hasPassword } }) };
   const cs = $('#cpSale');
-  if (cs) cs.onclick = () => openSale({ client: { id: d.id, name: d.name, phone: d.phone } });
+  if (cs) cs.onclick = () => openPos({ client: { id: d.id, name: d.name, phone: d.phone } });
   $('#cpCopy').onclick = () => { navigator.clipboard?.writeText(phoneNice(d.phone)); $('#cpCopy').textContent = 'скопировано' };
   const msg = $('#cpMsg');
   if (msg) msg.onclick = () => openCrmMsg([d.id], `Получатель: ${d.name}, ${phoneNice(d.phone)}`);
@@ -3961,7 +3890,7 @@ $('#tnAddPlace').onclick = () => {
 
 /** Фото с турнира. Загружаются сразу, поэтому нужен уже сохранённый турнир. */
 function renderTnPhotos(t){
-  if (!t) { $('#tnPhotos').innerHTML = '<span class="ph-none">Фото можно добавить после первого сохранения турнира.</span>'; return }
+  if (!t) { $('#tnPhotos').innerHTML = '<span class="ph-none">Сначала сохраните турнир</span>'; return }
   const list = t.photos ?? [];
   $('#tnPhotos').innerHTML = list.map((u, i) => `<div class="ph${i===0?' main':''}">
       <img src="${esc(u)}" alt="">
@@ -3969,7 +3898,7 @@ function renderTnPhotos(t){
         <a href="#" data-drop="${esc(u)}">удалить</a></div></div>`).join('')
     + (list.length < 12 ? `<label class="btn small">Загрузить фото<input type="file" id="tnPhotoIn"
         accept="image/jpeg,image/png,image/webp,image/heic" multiple hidden></label>` : '')
-    + (list.length ? '' : '<span class="ph-none">Пока нет фото. Первое встанет на баннер.</span>');
+    + (list.length ? '' : '');
   const inp = $('#tnPhotoIn');
   if (inp) inp.onchange = async () => {
     for (const f of [...inp.files]) {
@@ -4079,7 +4008,7 @@ $('#tnSave').onclick = async () => {
 let view = 'day';
 document.querySelectorAll('.vw').forEach(b => b.onclick = () => switchView(b.dataset.view));
 
-const VIEW_TITLE = { day:'День', history:'История', stats:'Аналитика', sales:'Продажи',
+const VIEW_TITLE = { day:'День', history:'История', stats:'Аналитика', sales:'Продажи', pos:'Касса',
   tourn:'Турниры', clients:'Клиенты', client:'Клиент' };
 function switchView(v){
   view = v;
@@ -4089,6 +4018,7 @@ function switchView(v){
   document.body.classList.remove('showside');
   window.scrollTo(0, 0);
   $('#viewClient').hidden = v!=='client';
+  $('#viewPos').hidden = v!=='pos';
   $('#viewDay').hidden = v!=='day';
   $('#viewHistory').hidden = v!=='history';
   $('#viewStats').hidden = v!=='stats';
@@ -4096,6 +4026,8 @@ function switchView(v){
   $('#viewTourn').hidden = v!=='tourn';
   $('#viewSales').hidden = v!=='sales';
   if(v==='sales') loadSales();
+  // Касса из боковой панели — с пустой корзиной; из брони или клиента — openPos сам
+  if(v==='pos' && !pos.busy){ pos.busy = true; openPos().finally(() => { pos.busy = false }) }
   if(v==='tourn') loadTourView();
   if(v==='clients' && !crmLoaded) loadCrm();
   if(v==='history' && !$('#hFrom').value){
@@ -4272,179 +4204,165 @@ function priceItems(text){
   }
   return out;
 }
-let saleUnit = null, saleBk = null, saleBkRows = [], saleTo = 'booking', saleCl = null, saleWindowH = 2;
+/* ── касса ────────────────────────────────────────────── */
+/* Полноценная страница, как в кассовых программах: слева витрина товаров
+   с фото, справа корзина. Продают только товары из учёта — остаток
+   списывается сам, цена из карточки. Кому: к брони (игра идёт, будет или
+   закончилась не больше 2 ч назад) или клиенту «сейчас». */
+let pos = { cat: 'all', q: '', cart: new Map(), to: 'booking', bk: null, cl: null, bks: [], from: null };
+const POS_CATS = [['all','Все'], ['rental','Прокат'], ['shop','Товары'], ['bar','Бар'], ['coaching','Тренировки'], ['other','Прочее']];
 
-/** Брони, к которым сейчас можно добавить продажу (сервер решает, какие). */
-async function saleLoadBookings(){
-  $('#saleBkList').innerHTML = '<div class="none">Загружаю…</div>';
-  try {
-    const r = await call('/admin/sale-bookings');
-    saleWindowH = r.windowHours;
-    saleBkRows = r.bookings;
-  } catch(e){ $('#saleBkList').innerHTML = `<div class="none">${esc(e.message)}</div>`; return }
-  $('#saleBkHint').textContent = `Здесь идущие и будущие брони и те, что закончились не больше ${saleWindowH} ${plural(saleWindowH,'часа','часов','часов')} назад. Более старые — нельзя: задним числом не записываем.`;
-  const now = Date.now();
-  $('#saleBkList').innerHTML = saleBkRows.length ? saleBkRows.map((b, i) => {
-    const cc = /^#[0-9a-f]{6}$/i.test(b.color?.hex || '') ? b.color.hex : '#8A968C';
-    const st = +new Date(b.startsAt) > now ? 'будет' : +new Date(b.endsAt) > now ? 'идёт сейчас' : 'закончилась';
-    return `<button type="button" data-i="${i}" style="--cc:${cc}"><span class="cdot"></span>
-      <div><b>${esc(b.name)}</b><span>${esc(b.courtName)} · ${b.date === todayStr() ? '' : pretty(b.date) + ', '}${hh(b.hour)}–${hh(b.hour + b.hours)} · ${st}</span></div>
-      <span class="ck">✓</span></button>`;
-  }).join('') : '<div class="none">Сейчас нет броней, к которым можно добавить продажу. Запишите продажу клиенту.</div>';
-  $('#saleBkList').querySelectorAll('button[data-i]').forEach(el => el.onclick = () => saleChoose(saleBkRows[+el.dataset.i]));
+async function openPos(preset){
+  const from = view;
+  pos.busy = true; switchView('pos'); pos.busy = false;
+  pos.from = preset?.bookingId ? 'day' : from === 'pos' ? pos.from : from;
+  pos.cart = new Map(); pos.bk = null; pos.cl = null; pos.q = ''; $('#posQ').value = '';
+  pos.to = preset?.client ? 'client' : 'booking';
+  if (preset?.client) pos.cl = preset.client;
+  $('#posErr').classList.remove('on');
+  try { products = await call('/admin/products') } catch(e){ fail('#posErr', e) }
+  await posLoadBookings();
+  if (preset?.bookingId) pos.bk = pos.bks.find(b => b.id === preset.bookingId) ?? null;
+  posRender();
 }
-function saleChoose(b){
-  saleBk = b;
-  $('#saleBkPick').hidden = !!b;
-  $('#saleBkChosen').hidden = !b;
-  if (b) {
-    $('#saleBkName').textContent = b.name;
-    $('#saleBkSub').textContent = `${b.courtName} · ${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)} · заявка №${b.id}`
-      + (b.clientId ? ' · попадёт и в карточку клиента' : '');
+async function posLoadBookings(){
+  try { pos.bks = (await call('/admin/sale-bookings')).bookings } catch { pos.bks = [] }
+}
+const posItems = () => products.filter(p => p.isActive);
+const posStockOk = (p, want) => p.category === 'rental' || p.stock == null || want <= p.stock;
+
+function posRender(){ posRenderShop(); posRenderCart() }
+
+function posRenderShop(){
+  const all = posItems();
+  const cats = POS_CATS.filter(([k]) => k === 'all' || all.some(p => p.category === k));
+  if (!cats.some(([k]) => k === pos.cat)) pos.cat = 'all';
+  $('#posCat').innerHTML = cats.map(([k, t]) => `<button type="button" data-c="${k}" class="${pos.cat === k ? 'on' : ''}">${t}</button>`).join('');
+  $('#posCat').querySelectorAll('button').forEach(b => b.onclick = () => { pos.cat = b.dataset.c; posRenderShop() });
+  const q = pos.q.trim().toLowerCase();
+  const list = all.filter(p => (pos.cat === 'all' || p.category === pos.cat) && (!q || p.name.toLowerCase().includes(q)));
+  if (!all.length) {
+    $('#posGrid').innerHTML = `<div class="pos-empty"><b>Товаров пока нет</b>
+      <span>Заведите товары и прокат — они появятся здесь с фото и ценой.</span>
+      ${can('prices') ? '<button class="btn acc" id="posGoods">Завести товары</button>' : ''}</div>`;
+    const g = $('#posGoods'); if (g) g.onclick = () => { switchView('sales'); $('#slSeg [data-v="goods"]').click() };
+    return;
   }
-  $('#saleErr').classList.remove('on');
+  $('#posGrid').innerHTML = list.length ? list.map(p => {
+    const inCart = pos.cart.get(p.id) ?? 0;
+    const out = p.category !== 'rental' && p.stock != null && p.stock <= 0;
+    const low = p.category !== 'rental' && p.stock != null && p.stock > 0 && p.stock <= 3;
+    return `<button type="button" class="pt${inCart ? ' in' : ''}" data-p="${p.id}"${out ? ' disabled' : ''}>
+      <span class="ph">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="" loading="lazy">` : `<i>${esc(p.name.replace(/^[^:]*:\s*/, '').slice(0, 1).toUpperCase())}</i>`}
+        ${inCart ? `<em>${inCart}</em>` : ''}${p.category === 'rental' ? '<s>прокат</s>' : ''}</span>
+      <b>${esc(p.name)}</b>
+      <span class="pr">${rub(p.price)}${out ? '<small class="out">нет</small>' : low ? `<small class="low">осталось ${p.stock}</small>` : ''}</span>
+    </button>`;
+  }).join('') : '<div class="pos-empty"><span>Ничего не нашлось</span></div>';
+  $('#posGrid').querySelectorAll('.pt').forEach(el => el.onclick = () => posAdd(+el.dataset.p, 1));
 }
-$('#saleBkChange').onclick = () => { saleChoose(null); saleLoadBookings() };
-
-function saleSetTo(to){
-  saleTo = to;
-  $('#saleTo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.to === to));
-  $('#saleBkBox').hidden = to !== 'booking';
-  $('#saleSub').textContent = to === 'booking'
-    ? 'Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.'
-    : 'Покупка без брони: оплачивается сразу и попадает в карточку клиента.';
-  $('#saleClBox').hidden = to !== 'client';
-  if (to === 'client') $('#saleWhen').textContent = 'сейчас, ' + new Date().toLocaleString('ru-RU',
-    { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Moscow' });
-  $('#saleErr').classList.remove('on');
-  saleTotal();
-}
-$('#saleTo').querySelectorAll('button').forEach(b => b.onclick = () => saleSetTo(b.dataset.to));
-$('#saleMethod').querySelectorAll('button').forEach(b => b.onclick = () =>
-  $('#saleMethod').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
-function saleClPick(c){
-  saleCl = c;
-  $('#saleClFindRow').hidden = !!c; $('#saleClPickRow').hidden = !c; $('#saleClSugg').hidden = true;
-  if (c) $('#saleClName').textContent = `${c.name || 'Без имени'} · ${phoneNice(c.phone)} · ID ${c.id}`;
-  else { $('#saleClQ').value = ''; $('#saleClQ').focus() }
-}
-$('#saleClClear').onclick = () => saleClPick(null);
-let saleClTimer = null;
-$('#saleClQ').oninput = () => {
-  clearTimeout(saleClTimer);
-  const q = $('#saleClQ').value.trim();
-  if (!q) { $('#saleClSugg').hidden = true; return }
-  saleClTimer = setTimeout(async () => {
-    try {
-      const rows = (await call('/admin/find?q=' + encodeURIComponent(q))).clients.slice(0, 8);
-      $('#saleClSugg').innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}">${esc(c.name || 'Без имени')}
-        <span>${phoneNice(c.phone)} · ID ${c.id} · игр: ${c.games}</span></button>`).join('')
-        : '<button type="button" disabled>Не нашёлся. Клиента заводят при записи на корт.</button>';
-      $('#saleClSugg').hidden = false;
-      $('#saleClSugg').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => saleClPick(rows[+b.dataset.i]));
-    } catch { $('#saleClSugg').hidden = true }
-  }, 220);
-};
-$('#saleClQ').onblur = () => setTimeout(() => { $('#saleClSugg').hidden = true }, 200);
-
-function saleTotal(){
-  const sum = +$('#saleAmount').value || 0;
-  $('#saleTotal').textContent = rub(sum * 100);
-  $('#saleTotalL').textContent = saleTo === 'booking' ? 'В счёт брони' : 'Итого';
+function posAdd(id, d){
+  const p = products.find(x => x.id === id); if (!p) return;
+  const n = Math.max(0, (pos.cart.get(id) ?? 0) + d);
+  if (d > 0 && !posStockOk(p, n)) { fail('#posErr', new Error(`«${p.name}»: на складе только ${p.stock} шт.`)); return }
+  $('#posErr').classList.remove('on');
+  if (n) pos.cart.set(id, n); else pos.cart.delete(id);
+  posRender();
 }
 
-let saleProduct = null;
-async function openSale(preset){
-  if (!setup) { try { setup = await call('/admin/setup') } catch {} }
-  try { products = await call('/admin/products') } catch {}
-  // Товары и прокат из учёта: группами, с остатком. Строки прайса проката
-  // показываем, только пока товары не заведены, — иначе одно и то же
-  // продавалось бы двумя путями и учёт расходился
-  const goods = products.filter(p => p.isActive);
-  const items = goods.length ? [] : priceItems(setup?.settings?.rentalsText);
-  const GROUPS = [['rental','Прокат — вещь вернут'], ['shop','Товары'], ['bar','Бар'], ['coaching','Тренировки'], ['other','Прочее']];
-  let html = '';
-  for (const [cat, title] of GROUPS) {
-    const list = goods.filter(p => p.category === cat);
-    if (!list.length) continue;
-    html += `<div class="qg">${title}</div>` + list.map(p => {
-      const st = cat === 'rental' ? { t: '', cls: '' } : stockNote(p);
-      return `<button type="button" data-p="${p.id}"${cat !== 'rental' && p.stock === 0 ? ' disabled' : ''}>${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}<b>${esc(p.name)}</b>${rub(p.price)}${cat !== 'rental' && p.stock != null ? `<span class="stk ${st.cls}">${st.t}</span>` : ''}</button>`;
-    }).join('');
-  }
-  let lastGroup = null;
-  html += items.map((it, i) => {
-    const g = it.group !== lastGroup ? `<div class="qg">${esc(it.group || 'Прочее')}</div>` : '';
-    lastGroup = it.group;
-    return `${g}<button type="button" data-i="${i}"><b>${esc(it.name)}</b>${rub(it.price*100)}</button>`;
-  }).join('');
-  if (items.length) html += `<span class="fnote" style="flex-basis:100%;margin:4px 0 0">Это строки прайса. Чтобы вести остатки и видеть прибыль, заведите их товарами: «Продажи» → «Товары и остатки».</span>`;
-  $('#saleQuick').innerHTML = html || '<span class="fnote" style="margin:0">Заведите товары в «Продажи» → «Товары» или заполните прайс проката в «Управление» → «Приложение».</span>';
-  $('#saleQuick').querySelectorAll('button').forEach(b => b.onclick = () => {
-    $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    if (b.dataset.p) {
-      const p = goods.find(x => x.id === +b.dataset.p);
-      saleProduct = p; saleUnit = p.price / 100;
-      $('#saleItem').value = p.name; $('#saleCat').value = p.category;
+function posRenderCart(){
+  $('#posTo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.to === pos.to));
+  // Кому
+  let who = '';
+  if (pos.to === 'booking') {
+    if (pos.bk) {
+      const b = pos.bk;
+      who = `<div class="bchosen"><div><b>${esc(b.name)}</b><span>${esc(b.courtName)} · ${b.date === todayStr() ? 'сегодня' : pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)}</span></div>
+        <button type="button" class="copy" id="posBkX">сменить</button></div>`;
     } else {
-      const it = items[+b.dataset.i];
-      saleProduct = null; saleUnit = it.price;
-      $('#saleItem').value = it.label; $('#saleCat').value = it.category;
+      const now = Date.now();
+      who = pos.bks.length ? `<div class="bpick" style="max-height:210px">${pos.bks.map((b, i) => {
+        const cc = /^#[0-9a-f]{6}$/i.test(b.color?.hex || '') ? b.color.hex : '#8A968C';
+        const st = +new Date(b.startsAt) > now ? '' : +new Date(b.endsAt) > now ? ' · идёт' : ' · закончилась';
+        return `<button type="button" data-i="${i}" style="--cc:${cc}"><span class="cdot"></span>
+          <div><b>${esc(b.name)}</b><span>${esc(b.courtName)} · ${b.date === todayStr() ? '' : pretty(b.date) + ', '}${hh(b.hour)}–${hh(b.hour + b.hours)}${st}</span></div></button>`;
+      }).join('')}</div>` : '<div class="pos-none">Подходящих броней нет</div>';
     }
-    $('#saleAmount').value = saleUnit * Math.max(1, +$('#saleQty').value || 1);
-    saleTotal();
-  });
-  saleUnit = null; saleProduct = null;
-  $('#saleItem').value = ''; $('#saleCat').value = 'rental';
-  $('#saleAmount').value = ''; $('#saleQty').value = 1; $('#saleNote').value = '';
-  $('#saleErr').classList.remove('on');
-  saleTotal();
-  // Из карточки брони приходим с готовой бронью; иначе выбираем бронь
-  // из тех, что сейчас открыты для продаж, или клиента
-  const bid = preset?.bookingId ?? null;
-  saleChoose(null); saleClPick(null); saleSetTo('booking');
-  $('#saleMethod').querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', i === 0));
-  await saleLoadBookings();
-  if (bid) saleChoose(saleBkRows.find(b => b.id === bid) ?? null);
-  // Со страницы клиента — сразу «Клиенту» с этим человеком
-  if (preset?.client) { saleSetTo('client'); saleClPick(preset.client) }
-  $('#saleModal').classList.add('on');
+  } else {
+    who = pos.cl
+      ? `<div class="bchosen"><div><b>${esc(pos.cl.name || 'Без имени')}</b><span>${phoneNice(pos.cl.phone)} · ID ${pos.cl.id}</span></div>
+          <button type="button" class="copy" id="posClX">сменить</button></div>`
+      : `<div class="rel"><input id="posClQ" autocomplete="off" placeholder="Имя или телефон клиента"><div class="sugg" id="posClSugg" hidden></div></div>`;
+  }
+  $('#posWho').innerHTML = who;
+  // Корзина
+  const lines = [...pos.cart.entries()].map(([id, n]) => ({ p: products.find(x => x.id === id), n })).filter(x => x.p);
+  const total = lines.reduce((s, x) => s + x.p.price * x.n, 0);
+  $('#posLines').innerHTML = lines.length ? lines.map(({ p, n }) => `<div class="pl2">
+      <span class="th">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}</span>
+      <div class="nm"><b>${esc(p.name)}</b><span>${rub(p.price)}${p.category === 'rental' ? ' · прокат' : ''}</span></div>
+      <div class="stepper"><button type="button" data-d="-1" data-id="${p.id}">−</button><input value="${n}" readonly><button type="button" data-d="1" data-id="${p.id}">+</button></div>
+      <b class="sm">${rub(p.price * n)}</b></div>`).join('')
+    : '<div class="pos-none">Нажмите на товар слева</div>';
+  $('#posTotal').textContent = rub(total);
+  $('#posMethodRow').hidden = pos.to !== 'client';
+  const ready = lines.length && (pos.to === 'booking' ? pos.bk : pos.cl);
+  $('#posOk').disabled = !ready;
+  $('#posOk').textContent = !lines.length ? 'Выберите товар'
+    : pos.to === 'booking' ? (pos.bk ? `В счёт брони · ${rub(total)}` : 'Выберите бронь')
+    : (pos.cl ? `Оплачено · ${rub(total)}` : 'Выберите клиента');
+
+  $('#posLines').querySelectorAll('[data-d]').forEach(b => b.onclick = () => posAdd(+b.dataset.id, +b.dataset.d));
+  const bx = $('#posBkX'); if (bx) bx.onclick = () => { pos.bk = null; posRenderCart() };
+  const cx = $('#posClX'); if (cx) cx.onclick = () => { pos.cl = null; posRenderCart(); $('#posClQ').focus() };
+  $('#posWho').querySelectorAll('.bpick button[data-i]').forEach(el => el.onclick = () => { pos.bk = pos.bks[+el.dataset.i]; posRenderCart() });
+  const q = $('#posClQ');
+  if (q) {
+    let t = null;
+    q.oninput = () => {
+      clearTimeout(t);
+      const v = q.value.trim(); if (!v) { $('#posClSugg').hidden = true; return }
+      t = setTimeout(async () => {
+        try {
+          const rows = (await call('/admin/find?q=' + encodeURIComponent(v))).clients.slice(0, 8);
+          $('#posClSugg').innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}">${esc(c.name || 'Без имени')}<span>${phoneNice(c.phone)} · ID ${c.id}</span></button>`).join('')
+            : '<button type="button" disabled>Не нашёлся</button>';
+          $('#posClSugg').hidden = false;
+          $('#posClSugg').querySelectorAll('button[data-i]').forEach(b => b.onmousedown = e => { e.preventDefault(); pos.cl = rows[+b.dataset.i]; posRenderCart() });
+        } catch { $('#posClSugg').hidden = true }
+      }, 220);
+    };
+    q.onblur = () => setTimeout(() => { const s2 = $('#posClSugg'); if (s2) s2.hidden = true }, 150);
+  }
 }
-$('#saleBtn').onclick = () => openSale();
-// Количество меняет сумму, пока выбрана позиция из прайса
-const saleQtyChanged = () => {
-  const q = Math.max(1, +$('#saleQty').value || 1); $('#saleQty').value = q;
-  if (saleUnit) $('#saleAmount').value = saleUnit * q;
-  saleTotal();
-};
-$('#saleQty').oninput = saleQtyChanged;
-$('#saleMinus').onclick = () => { $('#saleQty').value = Math.max(1, (+$('#saleQty').value || 1) - 1); saleQtyChanged() };
-$('#salePlus').onclick = () => { $('#saleQty').value = (+$('#saleQty').value || 1) + 1; saleQtyChanged() };
-$('#saleAmount').oninput = () => { saleUnit = null; saleTotal() };
-$('#saleItem').oninput = () => { $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.remove('on')); saleUnit = null; saleProduct = null };
-$('#saleOk').onclick = async () => {
-  if (saleTo === 'booking' && !saleBk) { fail('#saleErr', new Error('Выберите бронь — продажа запишется в её счёт')); return }
-  if (saleTo === 'client' && !saleCl) { fail('#saleErr', new Error('Найдите клиента по имени или телефону')); return }
+$('#posTo').querySelectorAll('button').forEach(b => b.onclick = () => { pos.to = b.dataset.to; $('#posErr').classList.remove('on'); posRenderCart() });
+$('#posQ').oninput = () => { pos.q = $('#posQ').value; posRenderShop() };
+$('#posMethod').querySelectorAll('button').forEach(b => b.onclick = () =>
+  $('#posMethod').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
+$('#posOk').onclick = async () => {
+  const lines = [...pos.cart.entries()].map(([productId, qty]) => ({ productId, qty }));
   try {
-    await call('/admin/sales', { method:'POST', body: JSON.stringify({
-      category: $('#saleCat').value,
-      amount: +$('#saleAmount').value, qty: +$('#saleQty').value,
-      note: $('#saleNote').value.trim() || undefined,
-      item: $('#saleItem').value.trim() || undefined,
-      bookingId: saleTo === 'booking' ? saleBk.id : undefined,
-      clientId: saleTo === 'client' ? saleCl.id : undefined,
-      method: saleTo === 'client' ? ($('#saleMethod').querySelector('button.on')?.dataset.m ?? 'cash') : undefined,
-      productId: saleProduct?.id,
-    })});
-    $('#saleModal').classList.remove('on');
-    if (view === 'sales') loadSales();
-    const back = saleTo === 'booking' ? saleBk : null; saleBk = null;
-    await load();
-    if (view === 'client' && cpData) openClient(cpData);
-    // Добавляли к брони — показываем её счёт
-    if (back && back.date === date && day.bookings.some(x => x.id === back.id)) openBooking(back.id);
-  } catch(e){ $('#saleErr').textContent = e.message; $('#saleErr').classList.add('on') }
+    const r = await call('/admin/sales/checkout', { method:'POST', body: JSON.stringify({
+      bookingId: pos.to === 'booking' ? pos.bk?.id : undefined,
+      clientId: pos.to === 'client' ? pos.cl?.id : undefined,
+      method: pos.to === 'client' ? ($('#posMethod').querySelector('button.on')?.dataset.m ?? 'cash') : undefined,
+      lines }) });
+    const bk = pos.to === 'booking' ? pos.bk : null;
+    posDone(`Записано: ${rub(r.total)}`);
+    // Продавали к брони со страницы дня — показываем её счёт
+    if (bk && pos.from === 'day') { switchView('day'); date = bk.date; await load(); openBooking(bk.id); return }
+    pos.cart = new Map(); pos.bk = null; pos.cl = null;
+    try { products = await call('/admin/products') } catch {}
+    posRender();
+  } catch(e){ fail('#posErr', e); try { products = await call('/admin/products'); posRenderShop() } catch {} }
 };
+function posDone(text){
+  let el = $('#posToast');
+  if (!el) { el = document.createElement('div'); el.id = 'posToast'; el.className = 'toast'; document.body.appendChild(el) }
+  el.textContent = '✓ ' + text; el.classList.add('on');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 3500);
+}
+$('#saleBtn').onclick = () => openPos();
 
 /* ── мини-магазин: товары и остатки ───────────────────── */
 let products = [], pdEdit = null;
@@ -4524,14 +4442,8 @@ $('#pdImport').onclick = async () => {
   } catch(e){ alert(e.message) }
 };
 
-const PD_NOTE = {
-  shop: 'Товар: при продаже уходит со склада. Закупка нужна, чтобы видеть прибыль.',
-  rental: 'Прокат: вещь возвращается, остаток при продаже не меняется. Можно указать, сколько таких вещей у клуба.',
-  bar: 'Бар: как товар — продажа уменьшает остаток.',
-};
 function pdCatUi(){
   const c = $('#pdCat').querySelector('button.on')?.dataset.c ?? 'shop';
-  $('#pdCatNote').textContent = PD_NOTE[c] || '';
   $('#pdCostRow').hidden = c === 'rental';
   $('#pdPriceL').textContent = c === 'rental' ? 'Цена проката' : 'Цена продажи';
 }
@@ -4552,7 +4464,7 @@ async function openProduct(p){
   $('#pdStockNow').textContent = p && tracked ? `${p.stock} шт.` : '';
   $('#pdActive').checked = p ? p.isActive : true;
   $('#pdImg').innerHTML = p?.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : '';
-  $('#pdPhotoNote').textContent = p ? 'JPEG, PNG или WebP до 8 МБ — сожмётся само.' : 'Фото можно добавить после первого сохранения.';
+  $('#pdPhotoNote').textContent = p ? '' : 'Фото — после сохранения';
   $('#pdPhotoIn').disabled = !p;
   $('#pdDel').hidden = !p;
   $('#pdErr').classList.remove('on');
@@ -4597,7 +4509,7 @@ $('#pdSave').onclick = async () => {
     if (!pdEdit || (pdEdit.stock == null) !== !track) body.stock = track ? (+$('#pdStock').value || 0) : null;
     const r = await call('/admin/products', { method:'POST', body: JSON.stringify(body) });
     await loadProducts();
-    if (!pdEdit) { openProduct(products.find(p => p.id === r.id)); $('#pdPhotoNote').textContent = 'Сохранено. Теперь можно загрузить фото.' }
+    if (!pdEdit) { openProduct(products.find(p => p.id === r.id)); $('#pdPhotoNote').textContent = '' }
     else $('#pdModal').classList.remove('on');
   } catch(e){ fail('#pdErr', e) }
 };
@@ -4610,9 +4522,6 @@ function openMove(p, kind){
               writeoff: ['Списание', 'Сколько списать', 'Списать'],
               count: ['Пересчёт', 'Сколько лежит на самом деле', 'Сохранить'] }[kind];
   $('#mvTitle').textContent = `${t[0]}: ${p.name}`;
-  $('#mvSub').textContent = kind === 'receipt' ? 'Товар привезли — остаток увеличится. Закупочная цена нужна для прибыли.'
-    : kind === 'writeoff' ? 'Брак, потеря, взяли для клуба. Остаток уменьшится, в выручку не пойдёт.'
-    : 'Посчитали полку — впишите, сколько есть. Разница запишется в журнал.';
   $('#mvQtyL').textContent = t[1];
   $('#mvOk').textContent = t[2];
   $('#mvQty').value = kind === 'count' ? (p.stock ?? 0) : 1;
@@ -4670,6 +4579,7 @@ function applySalesSwitches(set){
   $('#slOn').checked = !!set.salesOn;
 
   $('#saleBtn').hidden = !set.salesOn;
+  document.querySelector('.vw[data-view="pos"]').hidden = !set.salesOn;
   $('#slNew').hidden = !set.salesOn;
 }
 async function loadSales(){
@@ -4722,7 +4632,7 @@ async function loadSales(){
   } catch(e){ $('#slOut').innerHTML = `<div class="center">${esc(e.message)}</div>` }
 }
 $('#slGo').onclick = loadSales;
-$('#slNew').onclick = openSale;
+$('#slNew').onclick = () => openPos();
 document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => {
   $('#slTo').value = todayStr(); $('#slFrom').value = shift(todayStr(), -(+b.dataset.sp)); loadSales();
 });
@@ -4793,15 +4703,15 @@ async function loadStats(){
       <div class="card"><b>${rub(d.now.charged)}</b><span>заработано на кортах${d.kept ? ` · из них удержано ${rub(d.kept)}` : ''}</span>
         ${delta(d.now.charged, d.prev.charged)}</div>
       <div class="card${d.unpaid>0?' warn':''}"><b>${rub(Math.max(0,d.unpaid))}</b><span>не оплачено</span>
-        <div class="delta flat">долги за период</div></div>
+</div>
       <div class="card"><b>${pct(d.eveningOccupancy)}</b><span>загрузка вечера, с ${d.eveningFrom}:00</span>
         ${delta(d.now.hours, d.prev.hours)}</div>
       <div class="card"><b>${pct(d.occupancy)}</b><span>загрузка за весь день</span></div>
       <div class="card"><b>${rub(d.revPerCourtHour)}</b><span>выручка на корт-час</span>
-        <div class="delta flat">включая пустые часы</div></div>
+</div>
       <div class="card"><b>${rub(d.averageCheck)}</b><span>средний чек</span></div>
       ${d.kept ? `<div class="card"><b>${rub(d.kept)}</b><span>предоплаты остались клубу</span>
-        <div class="delta flat">неявки и поздние отмены</div></div>` : ''}
+</div>` : ''}
       <div class="card"><b>${rub(d.lost)}</b><span>упущено на отменах и неявках</span>
         <div class="delta flat">${d.now.cancels} отмен, из них ${d.lateCancels} поздних · ${d.now.noShows} неявок</div></div>
       ${d.discounts ? `<div class="card"><b>${rub(d.discounts)}</b><span>роздано скидками</span></div>` : ''}
@@ -4816,7 +4726,7 @@ async function loadStats(){
       <div class="bar"><div class="lbl">${EXPENSE[k]||k}</div>
         <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.spent)*100)}%;background:var(--red)"></div></div>
         <div class="val">${rub(v)}</div></div>`).join('') + '</div>'
-      : '<div class="empty" style="margin-bottom:10px">Расходы не заведены — прибыль показана без них. Вносятся в «Управление» → «Расходы».</div>'}
+      : ''}
 
 
     ${d.shop ? `<div class="sect">Магазин и прокат</div>
@@ -4919,8 +4829,7 @@ function moneyTable(d){
       <tr><td><b>${m.profit >= 0 ? 'Прибыль' : 'Убыток'}</b></td><td></td><td></td><td></td>
         <td class="money"><b style="color:${m.profit >= 0 ? 'var(--lime)' : 'var(--red)'}">${rub(m.profit)}</b></td><td></td><td class="money">${ch(m.profit, m.prev.profit)}</td></tr>
     </tfoot></table>
-    <p class="hint" style="margin:0 0 14px">Корты — по дню игры, продажи — по дню продажи, взносы — по дню турнира.
-      Ракетки и мячи из счёта брони — в «Прокате» и «Товарах», а не в аренде кортов. Закупка — по проданным товарам.</p>`;
+`;
 }
 function heatTable(d){
   const hours = d.heat[0]?.hours ?? [];
