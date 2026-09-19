@@ -126,11 +126,12 @@ export default function Bookings() {
               <Text style={s.name}>{t.name}</Text>
               <Text style={s.date}>{longDate(dateOfIso(t.startsAt))}</Text>
             </View>
-            <View style={s.tIcon}><IconTrophy size={17} color={C.accent} /></View>
+            <View style={s.tIcon}>{t.kind === 'class'
+              ? <IconRacket size={17} color={C.accent} /> : <IconTrophy size={17} color={C.accent} />}</View>
           </View>
           <View style={s.foot}>
             <Text style={s.time}>Начало {hh(hourOfIso(t.startsAt))}</Text>
-            <Text style={s.price}>взнос {rub(t.fee)}</Text>
+            <Text style={s.price}>{t.kind === 'class' ? '' : 'взнос '}{rub(t.fee)}</Text>
           </View>
           <Text style={s.note}>{st.note}</Text>
           <View style={s.actions}>

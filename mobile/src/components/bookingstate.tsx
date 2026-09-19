@@ -85,7 +85,8 @@ export function entryState(t: ApiTournament): BookingState {
   const start = new Date(t.startsAt);
   const ends = start.getTime() + (t.hours ?? 1) * 3600_000;
   const when = `${dayMonth(dateOfIso(t.startsAt))} к ${hh(hourOfIso(t.startsAt))}`;
-  const fee = t.fee > 0 ? ` Взнос ${rub(t.fee)} — в клубе.` : '';
+  const cls = t.kind === 'class';
+  const fee = t.fee > 0 ? ` ${cls ? 'Оплата' : 'Взнос'} ${rub(t.fee)} — в клубе.` : '';
 
   if (status === 'cancelled' && e?.byClub) return {
     key: 'cancelled', label: 'ЗАЯВКА ОТКЛОНЕНА', short: 'заявка отклонена',
@@ -103,8 +104,8 @@ export function entryState(t: ApiTournament): BookingState {
     bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
   };
   if (ends < Date.now()) return {
-    key: 'played', label: 'ТУРНИР ПРОШЁЛ', short: 'турнир прошёл',
-    note: 'Спасибо за игру. Ждём на следующем турнире.',
+    key: 'played', label: cls ? 'ТРЕНИРОВКА ПРОШЛА' : 'ТУРНИР ПРОШЁЛ', short: cls ? 'тренировка прошла' : 'турнир прошёл',
+    note: cls ? 'Спасибо за тренировку. Ждём снова.' : 'Спасибо за игру. Ждём на следующем турнире.',
     bg: C.surface2, fg: C.dim, dim: true, warn: false, canCancel: false,
   };
   if (status === 'confirmed') return {

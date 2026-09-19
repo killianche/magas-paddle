@@ -561,7 +561,7 @@ export class AdminController {
               : ` Предоплата ${rubs(paidBefore)} не возвращается.`)
           : ` Внесённые ${rubs(paidBefore)} вернём — напишите менеджеру, как удобнее.`;
       const text: Record<string, [string, string]> = {
-        confirmed: ['Бронь подтверждена',
+        confirmed: [coachName ? 'Тренировка подтверждена' : 'Бронь подтверждена',
           `${where}, ${when}. Ждём вас — до встречи на корте.`],
         cancelled: byClient
           ? ['Запись отменена по вашей просьбе', `${where}, ${when}.${moneyLine}`]
@@ -2520,13 +2520,16 @@ export class AdminController {
     if (e.status !== status) {
       const when = e.tournaments.starts_at.toLocaleString('ru-RU', {
         day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+      // Групповая тренировка — те же заявки, но слова свои: не «турнир» и не «взнос»
+      const cls = e.tournaments.kind === 'class';
+      const what = cls ? 'тренировку' : 'турнир', whatN = cls ? 'тренировку' : 'турнир';
       const fee = e.tournaments.fee > 0
-        ? ` Взнос ${(e.tournaments.fee / 100).toLocaleString('ru-RU')} ₽ оплачивается в клубе.` : '';
+        ? ` ${cls ? 'Оплата' : 'Взнос'} ${(e.tournaments.fee / 100).toLocaleString('ru-RU')} ₽ — в клубе.` : '';
       const t = status === 'confirmed'
-        ? ['Вы записаны на турнир', `«${e.tournaments.name}». Приходите ${when}.${fee}`]
+        ? [`Вы записаны на ${what}`, `«${e.tournaments.name}». Приходите ${when}.${fee}`]
         : e.status === 'confirmed'
-          ? ['Запись на турнир отменена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`]
-          : ['Заявка на турнир отклонена', `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`];
+          ? [`Запись на ${whatN} отменена`, `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`]
+          : [`Заявка на ${whatN} отклонена`, `«${e.tournaments.name}», ${when}. Если это ошибка, напишите менеджеру.`];
       await this.notes.toClient(e.client_id, 'tournament', t[0], t[1], { by: req.admin.name });
     }
     await this.auth.log(req.admin, status === 'confirmed' ? 'подтвердил участие в турнире' : 'отменил участие в турнире',

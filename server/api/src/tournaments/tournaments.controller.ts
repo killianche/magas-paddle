@@ -100,8 +100,10 @@ export class TournamentsController {
     await this.club.releaseExpired();
     const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
-    if (t.state !== 'open') throw new ConflictException('Запись на этот турнир закрыта');
-    if (t.starts_at < new Date()) throw new ConflictException('Турнир уже начался');
+    // Групповая тренировка — та же запись, но слова свои
+    const W = t.kind === 'class' ? { this: 'эту тренировку', one: 'Тренировка' } : { this: 'этот турнир', one: 'Турнир' };
+    if (t.state !== 'open') throw new ConflictException(`Запись на ${W.this} закрыта`);
+    if (t.starts_at < new Date()) throw new ConflictException(`${W.one} уже начал${t.kind === 'class' ? 'ась' : 'ся'}`);
 
     const pending = await this.db.tournament_entries.count({ where: {
       client_id: me.id, status: 'pending', hold_until: { gt: new Date() } } });
@@ -137,7 +139,7 @@ export class TournamentsController {
         where: { tournament_id_client_id: { tournament_id: t.id, client_id: client.id } } });
       if (prev && ['pending', 'confirmed'].includes(prev.status)) {
         throw new ConflictException(prev.status === 'confirmed'
-          ? 'Вы уже записаны на этот турнир' : 'Ваша заявка на этот турнир уже ждёт подтверждения');
+          ? `Вы уже записаны на ${W.this}` : `Ваша заявка на ${W.this} уже ждёт подтверждения`);
       }
       const e = prev
         ? await tx.tournament_entries.update({ where: { id: prev.id }, data })

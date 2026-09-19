@@ -285,7 +285,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .stale{margin:0 0 10px;padding:9px 13px;border-radius:10px;font-size:13px;
   background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--stale-text)}
 @media(max-width:900px){.search{width:150px}}
-@media(max-width:1600px){.who{display:none}}
+
 @media(max-width:1500px){.search{width:190px}}
 
 /* Полоса дня над сеткой: листалка, дата, «Продажа», «Записать клиента».
@@ -904,6 +904,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .pt .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pt .ph em,.pt .ph s{z-index:1}
 .pt .ph i{font-style:normal;font-size:34px;font-weight:700;color:var(--dim-2)}
+.pt .ph i.gl svg{width:46px;height:46px;color:var(--dim-2)}
 .pt .ph em{position:absolute;top:8px;right:8px;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--lime);
   color:var(--on-lime);font-style:normal;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .pt .ph s{position:absolute;left:8px;top:8px;text-decoration:none;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;
@@ -949,6 +950,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .co-top .co-av{display:flex;font-size:17px;color:#fff;margin-top:0}
 .cp-head{flex-wrap:wrap}
 .cp-head .acts{flex-wrap:wrap;justify-content:flex-end}
+.cp-head .acts .btn{flex:0 0 auto;min-width:0}
 .co-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .co-nums div{background:var(--surface-2);border-radius:10px;padding:8px 10px}
 :root[data-theme="dark"] .co-nums div{background:rgba(255,255,255,.05)}
@@ -2185,7 +2187,7 @@ $('#datePick').onchange = () => { if($('#datePick').value){ date = $('#datePick'
 
 async function load(){
   $('#dayTitle').textContent = date===todayStr() ? 'Сегодня' : pretty(date);
-  $('#daySub').textContent = pretty(date)+', '+weekday(date);
+  $('#daySub').textContent = date===todayStr() ? pretty(date)+', '+weekday(date) : weekday(date);
   $('#datePick').value = date;
   try {
     day = await call('/admin/day?date='+date);
@@ -2723,13 +2725,25 @@ function renderAddCourts(){
   });
 }
 
+/** До какого часа работает выбранный тренер в день записи (или клуб). */
+function coachClose(){
+  const co = coachBrief.find(c => c.id === addCoachId);
+  if (!co?.week) return wClose();
+  const d = new Date(($('#addDate').value || date) + 'T00:00:00Z').getUTCDay() || 7;
+  const r = co.week[d];
+  return r ? Math.min(wClose(), r[1]) : wClose();
+}
 function renderAddHours(){
   const hour = +$('#addHour').value;
-  const max = Math.max(1, wClose() - hour);
+  // С тренером — не дольше его рабочего дня: иначе запись всё равно не пройдёт
+  const max = Math.max(1, coachClose() - hour);
   if (addHoursN > max) addHoursN = max;
   let html = '';
   for (let n = 1; n <= max && n <= 6; n++) {
-    const p = priceFor(addCourtId, hour, n);
+    // Цена часов — с тренером, если он выбран: корт по тарифу или входит в цену
+    const co = coachBrief.find(c => c.id === addCoachId);
+    const court = priceFor(addCourtId, hour, n);
+    const p = court == null ? null : (co && !co.courtExtra ? 0 : court) + (co ? co.price * n : 0);
     html += `<button type="button" data-n="${n}"${n===addHoursN?' class="on"':''}>
       ${n} ${plural(n,'час','часа','часов')}${p!=null?` <small>${rub(p)}</small>`:''}</button>`;
   }
@@ -2762,7 +2776,7 @@ function renderAddCoaches(){
     + list.map(c => `<button type="button" data-c="${c.id}" style="--cc:${c.color || 'var(--dim-2)'}"${c.id === addCoachId ? ' class="on"' : ''}>
       <span class="cdot"></span>${esc(c.name)} <small>${rub(c.price)}/ч${c.courtExtra ? ' + корт' : ''}</small></button>`).join('');
   $('#addCoachPick').querySelectorAll('button').forEach(b => b.onclick = () => {
-    addCoachId = b.dataset.c ? +b.dataset.c : null; renderAddCoaches(); addTotal() });
+    addCoachId = b.dataset.c ? +b.dataset.c : null; renderAddCoaches(); renderAddHours(); addTotal() });
 }
 
 function openAdd(courtId, hour, preset){
@@ -3179,7 +3193,16 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab==='notify') loadNotifications();
 });
 
+/** Какое право нужно для вкладки «Управления». */
+const TAB_PERM = { courts:'club', rules:'prices', money:'prices', club:'club', contacts:'club', app:'club',
+  notify:'clients', tourn:'tournaments', staff:'staff' };
 async function openSetup(){
+  // Вкладки без права не показываем — раньше менеджер видел цены и настройки,
+  // которые всё равно не мог сохранить
+  const tabs = [...document.querySelectorAll('.snav .tab')];
+  tabs.forEach(t => t.hidden = !can(TAB_PERM[t.dataset.tab]));
+  const first = tabs.find(t => !t.hidden);
+  if (first && (!document.querySelector('.snav .tab.on') || document.querySelector('.snav .tab.on').hidden)) first.click();
   $('#setupModal').classList.add('on');
   try {
     setup = await call('/admin/setup');
@@ -3661,7 +3684,7 @@ function renderClient(){
     const hr = +dt.toLocaleTimeString('ru-RU', { hour:'2-digit', hour12:false, timeZone:'Europe/Moscow' });
     rows += `<div class="cp-row click" data-h="${h.id}" data-d="${ds}">
       <span class="d">${new Date(ds + 'T00:00:00Z').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})}, ${hh(hr)}–${hh(hr + h.hours)}</span>
-      <span class="c">${esc(h.courtName)}</span>
+      <span class="c">${esc(h.courtName)}${h.coachName ? ' · тренер ' + esc(h.coachName) : ''}</span>
       <span class="pill ${st.c}">${st.t}</span>
       <span class="m">${histMoney(h)}</span>
     </div>`;
@@ -3996,6 +4019,7 @@ async function openTournament(t, kind){
   $('#tnFormatL').textContent = cls ? 'Что за тренировка' : 'Формат';
   $('#tnFormat').placeholder = cls ? 'Группа, техника удара' : 'Americano';
   $('#tnTabs').querySelector('[data-t="results"]').style.display = cls ? 'none' : '';
+  $('#tnTabs').querySelector('[data-t="main"]').textContent = cls ? 'Тренировка' : 'Турнир';
   $('#tnTitle').textContent = t ? t.name : cls ? 'Групповая тренировка' : 'Новый турнир';
   $('#tnName').value = t?.name ?? '';
   // input datetime-local ждёт местное время без зоны
@@ -4136,7 +4160,7 @@ async function loadEntries(t){
     const feePaid = es.filter(e => e.paid > 0).reduce((n, e) => n + e.paid, 0);
     $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Заявок: ${active.length} из ${t.seats}` +
       ` · подтверждено ${es.filter(e => e.status==='confirmed').length}` +
-      (t.fee ? ` · взносов ${rub(feePaid)} из ${rub(t.fee * es.filter(e => e.status==='confirmed').length)}` : '') + `</div>` +
+      (t.fee ? ` · ${t.kind === 'class' ? 'оплачено' : 'взносов'} ${rub(feePaid)} из ${rub(t.fee * es.filter(e => e.status==='confirmed').length)}` : '') + `</div>` +
       (es.length ? es.map(e => {
         return `<div class="er" data-id="${e.id}">
           <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}${e.paid > 0 ? ` · <span style="color:var(--lime)">взнос ${rub(e.paid)}</span>` : ''}</span></div>
@@ -4235,6 +4259,7 @@ function switchView(v){
   $('#viewCoach').hidden = !(v==='coach' || v==='mycoach');
   if (v==='coaches') { const cls = $('#coSeg [data-v="classes"]').classList.contains('on');
     $('#coNew').hidden = cls || !can('coaches'); $('#clsNew').hidden = !cls || !can('tournaments');
+    $('#coFrom').parentElement.hidden = cls || !can('coaches'); $('#coTo').parentElement.hidden = cls || !can('coaches');
     if (!can('coaches')) $('#coSeg [data-v="classes"]').click(); else if (cls) loadCoachBrief().then(() => loadTourView('class')); else loadCoaches() }
   if (v==='mycoach' && myCoach) openCoachPage(myCoach.id, true);
   $('#viewDay').hidden = v!=='day';
@@ -4294,7 +4319,7 @@ async function loadHistory(){
     </tr></thead><tbody>` +
     r.rows.map(b => `<tr class="${b.status}" data-id="${b.id}" data-d="${b.date}" style="cursor:pointer" title="Открыть бронь">
       <td>${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour+b.hours)}</td>
-      <td>${esc(b.courtName)}</td>
+      <td>${esc(b.courtName)}${b.coachName ? `<br><small style="color:var(--dim)">тренер ${esc(b.coachName)}</small>` : ''}</td>
       <td>${esc(b.name)}</td>
       <td>${phoneNice(b.phone)}</td>
       <td>${STATUS[b.status]||b.status}</td>
@@ -4471,6 +4496,7 @@ $('#coSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#coSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   const cls = b.dataset.v === 'classes';
   $('#coRows').hidden = cls; $('#coClassRows').hidden = !cls;
+  $('#coFrom').parentElement.hidden = cls; $('#coTo').parentElement.hidden = cls;
   $('#coNew').hidden = cls || !can('coaches'); $('#clsNew').hidden = !cls || !can('tournaments');
   if (cls) { loadCoachBrief().then(() => loadTourView('class')) } else loadCoaches();
 });
@@ -4499,7 +4525,7 @@ async function openCoachPage(id, own){
   const manage = can('coaches');
   $('#coOut').innerHTML = `
     <div class="cp-head">
-      <span class="av" style="${c.photoUrl ? 'padding:0;overflow:hidden' : ''}">${c.photoUrl ? `<img src="${esc(c.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc(initials(c.name))}</span>
+      <span class="av" style="${c.photoUrl ? 'padding:0;overflow:hidden' : `background:${c.color || 'var(--dim-2)'}`}">${c.photoUrl ? `<img src="${esc(c.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc(initials(c.name))}</span>
       <div><h2>${esc(c.name)}</h2>
         <div class="sub2">${rub(c.price)} за час${c.courtExtra ? ' + корт' : ', корт включён'} · тренеру ${coachPayText(c)}${c.phone ? ' · ' + phoneNice(c.phone) : ''}</div></div>
       <div class="acts">
@@ -4665,6 +4691,14 @@ $('#poOk').onclick = async () => {
    списывается сам, цена из карточки. Кому: к брони (игра идёт, будет или
    закончилась не больше 2 ч назад) или клиенту «сейчас». */
 let pos = { cat: 'all', q: '', cart: new Map(), to: 'booking', bk: null, cl: null, bks: [], from: null };
+/** Значок товара без фото — по статье: мяч, бутылка, ракетка, свисток. */
+const POS_GLYPH = {
+  shop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><path d="M5.5 8.5c3 1.5 3 5.5 0 7M18.5 8.5c-3 1.5-3 5.5 0 7"/></svg>',
+  bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 3h4v3l2 3v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9l2-3V3z"/><path d="M8 12h8"/></svg>',
+  rental: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><ellipse cx="11" cy="9" rx="6" ry="6.5"/><path d="M14.5 14.5 20 20"/><circle cx="9" cy="8" r=".6"/><circle cx="12" cy="8" r=".6"/><circle cx="10.5" cy="11" r=".6"/></svg>',
+  coaching: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="6" r="2.5"/><path d="M7 21l2-8 3 2 3-2 2 8M9 11 6 9M15 11l4-3"/></svg>',
+  other: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 7V5h8v2"/></svg>',
+};
 const POS_CATS = [['all','Все'], ['rental','Прокат'], ['shop','Товары'], ['bar','Бар'], ['coaching','Тренировки'], ['other','Прочее']];
 
 async function openPos(preset){
@@ -4708,7 +4742,7 @@ function posRenderShop(){
     const out = p.category !== 'rental' && p.stock != null && p.stock <= 0;
     const low = p.category !== 'rental' && p.stock != null && p.stock > 0 && p.stock <= 3;
     return `<button type="button" class="pt${inCart ? ' in' : ''}" data-p="${p.id}"${out ? ' disabled' : ''}>
-      <span class="ph">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="" loading="lazy">` : `<i>${esc(p.name.replace(/^[^:]*:\s*/, '').slice(0, 1).toUpperCase())}</i>`}
+      <span class="ph">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="" loading="lazy">` : `<i class="gl">${POS_GLYPH[p.category] || POS_GLYPH.shop}</i>`}
         ${inCart ? `<em>${inCart}</em>` : ''}${p.category === 'rental' ? '<s>прокат</s>' : ''}</span>
       <b>${esc(p.name)}</b>
       <span class="pr">${rub(p.price)}${out ? '<small class="out">нет</small>' : low ? `<small class="low">осталось ${p.stock}</small>` : ''}</span>
@@ -4832,7 +4866,7 @@ async function loadProducts(){
   try {
     const [list, rep] = await Promise.all([
       call('/admin/products'),
-      call('/admin/shop-report').catch(() => null),
+      can('analytics') ? call('/admin/shop-report').catch(() => null) : Promise.resolve(null),
     ]);
     products = list;
     // Товары из прайса проката можно завести одной кнопкой — пока их нет
