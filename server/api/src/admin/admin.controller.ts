@@ -1866,6 +1866,9 @@ export class AdminController {
     const e = await this.db.tournament_entries.findUnique({
       where: { id: BigInt(id) }, include: { tournaments: true, clients: true } });
     if (!e) throw new NotFoundException('Заявка на турнир не найдена');
+    if (status === 'confirmed' && (['done', 'cancelled'].includes(e.tournaments.state) || e.tournaments.starts_at <= new Date())) {
+      throw new ConflictException('Турнир уже прошёл или отменён — подтверждать нечего');
+    }
 
     if (status === 'confirmed' && e.status !== 'confirmed') {
       // Истёкшую или отменённую заявку можно вернуть, если есть место

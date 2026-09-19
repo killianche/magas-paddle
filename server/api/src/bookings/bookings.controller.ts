@@ -228,7 +228,7 @@ export class BookingsController {
     const from = courts.find(c => c.id === exceptId);
     const busy = await this.db.bookings.findMany({
       where: {
-        status: { not: 'cancelled' },
+        status: { notIn: ['cancelled', 'expired'] },
         starts_at: { gte: clubHour(date, 0), lt: clubHour(date, 24) },
       },
       select: { court_id: true, starts_at: true, ends_at: true },

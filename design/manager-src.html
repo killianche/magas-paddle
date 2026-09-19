@@ -2005,9 +2005,10 @@ function openPay(b, kind = 'payment'){
   const left = kind === 'refund' ? b.paid : Math.max(0, due - b.paid);
   $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · к оплате ${rub(due)}${
     extrasOf(b) ? ` (корт ${rub(courtDue(b))} + доп. ${rub(extrasOf(b))})` : ''}`;
+  const prepay = Math.ceil(due * (setup?.settings?.prepayPercent ?? 50) / 100 / 100) * 100;
   $('#payLeft').textContent = b.paid
     ? `Уже внесено ${rub(b.paid)}, осталось ${rub(left)}. Сумму можно поменять.`
-    : 'Сумму можно поменять: скидка постоянному или платят частями.';
+    : `Предоплата по правилам клуба — ${rub(prepay)} (${setup?.settings?.prepayPercent ?? 50} %). Можно принять и всю сумму.`;
   $('#payAmount').value = (left || due)/100;
   $('#payReceipt').value = '';
   $('#payMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
