@@ -70,6 +70,8 @@ input,select{font-family:inherit;font-size:inherit}
 .stat b{display:block;font-family:var(--disp);font-size:26px;line-height:1.1}
 .stat span{font-size:12px;color:var(--dim-2)}
 .stat.warn{border-color:var(--warn-line);background:var(--warn-bg)}
+.stat.bad{border-color:var(--bad-line);background:var(--bad-bg);cursor:pointer;text-align:left;font-family:inherit}
+.stat.bad b{color:var(--red)}
 .stat.warn b{color:var(--amber)}
 
 /* Сетка дня. Правила только для #board: раньше они действовали на все таблицы,
@@ -124,6 +126,15 @@ input,select{font-family:inherit;font-size:inherit}
 .bk .st.warn{color:var(--amber)} .bk .st.bad{color:var(--red)} .bk .st.ok{color:var(--lime)}
 .bk .st.info{color:var(--info)} .bk .st.dim{color:var(--dim-2)}
 .bk .m s{color:var(--dim-2);margin-right:4px}
+/* Строки счёта брони в карточке */
+.extras{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}
+.extras .exh{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim-2);
+  text-transform:uppercase;letter-spacing:.06em}
+.extras .exrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line-soft);font-size:13.5px}
+.extras .exrow:first-of-type{border-top:0;margin-top:4px}
+.extras .exrow span{flex:1}
+.extras .exrow b{font-variant-numeric:tabular-nums}
+.extras .exempty{font-size:12.5px;color:var(--dim-2);margin-top:6px}
 .row b.stt-warn{color:var(--amber)} .row b.stt-bad{color:var(--red)} .row b.stt-ok{color:var(--lime)}
 .row b.stt-info{color:var(--info)} .row b.stt-dim{color:var(--dim)}
 
@@ -188,6 +199,41 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .sheet.wide{max-width:880px}
 .sheet.mid{max-width:620px}
 /* Окно записи: поля собраны в блоки, площадка и длительность — плитками */
+/* ── формы в духе системных окон Apple: заголовок, сегменты, вставные
+      списки строк «подпись — значение», итог внизу ─────────────────── */
+.form .fhead{margin-bottom:6px}
+.form .fhead .sub{margin-bottom:0}
+.fsec{margin:18px 4px 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim-2)}
+.fnote{margin:8px 4px 0;font-size:12.5px;color:var(--dim-2)}
+.seg{display:flex;padding:3px;border-radius:11px;background:var(--surface-3);margin-top:14px}
+.seg button{flex:1;padding:8px 10px;border:0;border-radius:9px;background:none;color:var(--dim);font-size:13.5px;font-weight:600}
+.seg button.on{background:var(--ink-2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+.seg.small{margin:0;padding:2px;width:auto}
+.seg.small button{padding:6px 10px;font-size:12.5px}
+.ilist{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:visible}
+.irow{display:flex;align-items:center;gap:12px;min-height:50px;padding:6px 14px;position:relative}
+.irow + .irow{border-top:1px solid var(--line-soft)}
+.irow .ik{flex:0 0 118px;font-size:14px;color:var(--text)}
+.irow .iv{flex:1;min-width:0}
+.irow input.iv,.irow select.iv{border:0;background:none;padding:8px 0;border-radius:0;text-align:right;font-size:15px;color:var(--text)}
+.irow input.iv:focus,.irow select.iv:focus{outline:none}
+.irow input.iv::placeholder{color:var(--dim-2)}
+.irow b.iv{text-align:right;font-weight:600}
+.irow .seg.iv{flex:0 0 auto;margin-left:auto}
+.stepper{display:flex;align-items:center;justify-content:flex-end;gap:0}
+.stepper button{width:34px;height:32px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);font-size:18px;line-height:1}
+.stepper button:first-child{border-radius:9px 0 0 9px}
+.stepper button:last-child{border-radius:0 9px 9px 0}
+.stepper input{width:54px;height:32px;border:1px solid var(--line);border-left:0;border-right:0;border-radius:0;text-align:center;padding:0;font-size:15px;background:var(--ink-2)}
+.money-in{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.money-in input{width:120px;border:0;background:none;text-align:right;font-size:17px;font-weight:600;padding:8px 0}
+.money-in input:focus{outline:none}
+.money-in span{color:var(--dim-2);font-size:15px}
+.ffoot{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.ftotal{display:flex;align-items:baseline;gap:10px}
+.ftotal span{color:var(--dim);font-size:13.5px}
+.ftotal b{font-family:var(--disp);font-size:28px}
+.ffoot .acts .btn{min-width:130px}
 .fgroup{margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 .fgroup > label:first-of-type{margin-top:0}
 .fh{font-family:var(--disp);font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
@@ -199,6 +245,11 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .picks button .cdot{width:9px;height:9px;border-radius:3px;background:var(--cc,var(--dim-2))}
 .picks button small{color:var(--dim-2);font-size:11.5px}
 .rel{position:relative}
+.picked{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px 14px;border-radius:12px;
+  border:1px solid var(--ok-line);background:var(--ok-bg)}
+.picked > div{flex:1;min-width:0}
+.picked b{display:block;font-size:14px}
+.picked span{display:block;font-size:12px;color:var(--dim-2)}
 .sugg{position:absolute;left:0;right:0;top:100%;z-index:5;margin-top:4px;padding:4px;
   border:1px solid var(--line-strong);border-radius:12px;background:var(--ink-2);
   box-shadow:0 12px 30px rgba(0,0,0,.18);max-height:210px;overflow:auto}
@@ -258,12 +309,57 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;justify-conten
 .hist td:first-child{white-space:nowrap}
 
 /* ── управление клубом ─────────────────────────────────────────────── */
-.tabs{display:flex;flex-wrap:wrap;gap:2px 6px;margin:12px 0 4px;
-  border-bottom:1px solid var(--line)}
-.tab{padding:8px 12px;border:0;background:none;color:var(--dim);
-  border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
-.tab.on{color:var(--lime);border-bottom-color:var(--lime);font-weight:700}
+/* ── «Управление клубом»: окно как системные настройки — список разделов
+      слева, содержимое справа, каждый раздел с заголовком ─────────────── */
+.sheet.settings{max-width:1060px;width:100%;height:88vh;max-height:88vh;padding:0;display:grid;
+  grid-template-columns:224px 1fr;overflow:hidden}
+.snav{background:var(--surface-2);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:4px;overflow:auto}
+.snav h3{font-size:20px;margin:4px 8px 10px}
+.snav .tabs{display:flex;flex-direction:column;gap:2px;margin:0;border:0}
+.snav .tab{text-align:left;padding:9px 12px;border-radius:10px;border:0;background:none;color:var(--text);font-size:14px}
+.snav .tab:hover{background:var(--surface-3)}
+.snav .tab.on{background:var(--lime);color:var(--on-lime);font-weight:600}
+.snav-close{margin-top:auto;align-self:flex-start}
+.spanes{overflow:auto;padding:22px 28px 28px}
 .pane{display:none}.pane.on{display:block}
+.pane::before{content:attr(data-title);display:block;font-family:var(--disp);font-size:26px;margin:0 0 6px}
+.pane > .sub{max-width:720px}
+.pane label{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim-2);margin:14px 0 6px}
+.pane input,.pane select,.pane textarea{background:var(--ink-2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;color:var(--text);font:inherit;font-size:14px;width:100%}
+.pane input:focus,.pane select:focus,.pane textarea:focus{outline:none;border-color:var(--lime);box-shadow:0 0 0 3px var(--ok-bg)}
+.pane .acts{justify-content:flex-start}
+/* Переключатели как в iOS */
+.pane .chk{font-size:14px;color:var(--text);text-transform:none;letter-spacing:0;gap:10px}
+.pane .chk input[type=checkbox]{appearance:none;-webkit-appearance:none;width:42px;height:26px;border-radius:13px;
+  background:var(--surface-3);border:0;position:relative;transition:background .18s;flex:none;cursor:pointer;margin:0;padding:0}
+.pane .chk input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .18s}
+.pane .chk input[type=checkbox]:checked{background:var(--lime)}
+.pane .chk input[type=checkbox]:checked::after{transform:translateX(16px)}
+/* Карточка площадки */
+.ccard{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.ccard.off{opacity:.6}
+.ccard .ch{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line-soft)}
+.ccard .ch .cdot{width:12px;height:12px;border-radius:4px;background:var(--cc,var(--dim-2));flex:none}
+.ccard .ch input.c-name{flex:1;border:0;background:none;padding:4px 0;font-size:17px;font-weight:700;border-radius:0}
+.ccard .ch input.c-name:focus{box-shadow:none;border-bottom:1px solid var(--lime)}
+.ccard .ch .tag{font-size:11px}
+.ccard .cbody{padding:4px 16px 14px}
+.ccard .crow2{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 0;border-bottom:1px solid var(--line-soft)}
+.ccard .crow2:last-child{border-bottom:0}
+.ccard .crow2 > span{flex:0 0 130px;font-size:13.5px;color:var(--dim)}
+.ccard .crow2 input,.ccard .crow2 select{flex:1;border:0;background:none;padding:8px 0;border-radius:0;font-size:14px}
+.ccard .crow2 input:focus,.ccard .crow2 select:focus{box-shadow:none}
+.ccard .crow2 .money{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.ccard .crow2 .money input{width:96px;text-align:right;font-weight:600;font-size:16px}
+.ccard .crow2 .money small{color:var(--dim-2)}
+.ccard .cfoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px 14px;background:var(--surface-2);border-top:1px solid var(--line-soft)}
+.ccard .cfoot .c-ord{margin-left:auto;display:inline-flex;gap:4px}
+.ccard .cfoot .c-ord .btn[disabled]{opacity:.35;cursor:default}
+.ccard .shut{font-size:12px;color:var(--amber)}
+.ccard .c-photos{padding:12px 16px 4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 /* Часы работы по дням недели */
 .week{display:grid;gap:6px;margin:6px 0 10px}
@@ -274,27 +370,6 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;justify-conten
 .wd .chk{padding:4px 0;margin-left:6px}
 .wd.off select,.wd.off .dash{opacity:.35}
 .week-tools{display:flex;gap:8px;margin-bottom:18px}
-/* Строка корта в три яруса: название, описание, цвет и особенности — во всю
-   ширину; ниже цены и кнопки; ниже фото. Без переноса блок фото сжимал всё
-   остальное в одну строку, и цены читались как «2». */
-.crow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;
-  border-radius:11px;border:1px solid var(--line);background:var(--surface)}
-.crow.off{opacity:.55}
-.crow .nm{flex:1 1 100%;min-width:0}
-.crow input[type=text]{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--text)}
-.crow .c-desc{margin-top:6px;font-size:12.5px;color:var(--dim)}
-.crow .c-look{display:flex;gap:6px;margin-top:6px}
-.crow .c-look select{flex:0 0 140px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);
-  background:var(--surface);color:var(--text);font:inherit;font-size:12.5px;width:auto}
-.crow .c-look .c-tags{font-size:12.5px}
-.crow .p{flex:0 0 110px}
-.crow .p input{width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--text);text-align:right}
-.crow .p small{display:block;font-size:10.5px;color:var(--dim-2);margin-bottom:3px}
-.crow .shut{font-size:11.5px;color:var(--amber);white-space:nowrap}
-.crow .c-ord{display:inline-flex;gap:4px}
-.crow .c-ord .btn[disabled]{opacity:.35;cursor:default}
 /* Фото главного экрана */
 .hero-set{margin-bottom:16px}
 /* Метки формы на этой вкладке растягиваются во всю ширину — кнопке это не нужно */
@@ -365,6 +440,23 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   padding:7px 10px;font-size:12.5px;text-align:left}
 .quick button b{display:block;font-size:13px}
 .quick button.on{border-color:var(--lime);background:var(--ok-bg)}
+.quick button img{width:34px;height:34px;object-fit:cover;border-radius:8px;float:left;margin:2px 8px 0 0}
+.quick button .stk{display:block;font-size:11px;color:var(--dim-2)}
+.quick button .stk.low{color:var(--amber)} .quick button .stk.out{color:var(--red)}
+.pds{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.pd{border:1px solid var(--line);background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.pd .pdi{height:130px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;color:var(--dim-2);font-size:12px}
+.pd .pdi img{width:100%;height:100%;object-fit:cover}
+.pd .pdb{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px}
+.pd .pdn{font-weight:600;font-size:14px}
+.pd .pdp{font-family:var(--disp);font-size:20px}
+.pd .pdm{font-size:12px;color:var(--dim-2)}
+.pd .pdm.low{color:var(--amber)} .pd .pdm.out{color:var(--red)}
+.pd .pda{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.pd.off{opacity:.55}
+.pdPhoto{display:flex;gap:14px;align-items:center;margin-top:12px}
+.pdImg{width:84px;height:84px;border-radius:14px;background:var(--surface-3);overflow:hidden;flex:none}
+.pdImg img{width:100%;height:100%;object-fit:cover}
 .quick .qg{flex-basis:100%;font-size:11px;color:var(--dim-2);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
 .slSwitch{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px}
 .slSwitch .chk{margin:0}
@@ -372,6 +464,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .tv{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:14px 16px;
   display:flex;flex-direction:column;gap:6px;border-top:4px solid var(--line-strong)}
 .tv.open{border-top-color:var(--lime)} .tv.closed{border-top-color:var(--amber)} .tv.done{opacity:.85}
+.tv.cancelled{opacity:.6;border-top-color:var(--red)}
 .tv-top{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tv-st{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
 .tv-n{font-family:var(--disp);font-size:21px;line-height:1.15}
@@ -516,6 +609,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <option value="cancelled">Отменённые</option>
         <option value="no_show">Неявки</option>
         <option value="expired">Не подтвердили вовремя</option>
+        <option value="done">Отыгранные</option>
       </select>
       <select id="hPaid">
         <option value="">Оплата: любая</option>
@@ -577,6 +671,11 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
   <!-- Продажи: прокат ракеток, мячи, бар — отдельно от аренды кортов -->
   <div id="viewSales" hidden>
+    <div class="seg" style="max-width:360px;margin:0 0 14px" id="slSeg">
+      <button type="button" data-v="sales" class="on">Продажи</button>
+      <button type="button" data-v="goods">Товары и остатки</button>
+    </div>
+    <div id="slSales">
     <div class="filters">
       <label>С <input type="date" id="slFrom"></label>
       <label>по <input type="date" id="slTo"></label>
@@ -593,6 +692,17 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <label class="chk"><input type="checkbox" id="slInStats"> Учитывать продажи в аналитике (выручка и прибыль)</label>
     </div>
     <div id="slOut"><div class="center">Загружаю…</div></div>
+    </div>
+
+    <!-- Мини-магазин: товары с фото, ценой и остатком -->
+    <div id="slGoods" hidden>
+      <div class="filters">
+        <span class="fnote" style="margin:0">Товары показываются кнопками в окне «Продажа». Остаток списывается при продаже.</span>
+        <div style="flex:1"></div>
+        <button class="btn acc" id="pdNew">Новый товар</button>
+      </div>
+      <div id="pdRows"><div class="center">Загружаю…</div></div>
+    </div>
   </div>
 
   <!-- Турниры: своя система, отдельно от броней кортов -->
@@ -649,6 +759,47 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   </div>
 </div>
 
+<!-- товар -->
+<div class="modal" id="pdModal">
+  <div class="sheet form">
+    <div class="fhead"><h3 id="pdTitle">Товар</h3>
+      <p class="sub">Название и цена видны в окне «Продажа». Остаток — если ведёте склад.</p></div>
+    <div class="pdPhoto">
+      <div class="pdImg" id="pdImg"></div>
+      <div>
+        <label class="btn small" style="display:inline-block">Загрузить фото<input type="file" id="pdPhotoIn"
+          accept="image/jpeg,image/png,image/webp,image/heic" hidden></label>
+        <p class="fnote" id="pdPhotoNote">Фото можно добавить после первого сохранения.</p>
+      </div>
+    </div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Название</span><input id="pdName" class="iv" maxlength="120" placeholder="Банка мячей (3 шт.)"></div>
+      <div class="irow"><span class="ik">Цена</span><div class="iv money-in"><input id="pdPrice" type="number" min="0" step="50" placeholder="0"><span>₽</span></div></div>
+      <div class="irow"><span class="ik">Статья</span>
+        <div class="seg small iv" id="pdCat">
+          <button type="button" data-c="shop" class="on">Товар</button>
+          <button type="button" data-c="rental">Прокат</button>
+          <button type="button" data-c="bar">Бар</button>
+        </div></div>
+      <div class="irow"><span class="ik">Остаток</span>
+        <div class="iv" style="display:flex;justify-content:flex-end;align-items:center;gap:10px">
+          <label class="chk" style="margin:0"><input type="checkbox" id="pdTrack"> вести остаток</label>
+          <input id="pdStock" type="number" min="0" max="100000" placeholder="0" style="width:90px;text-align:right" disabled>
+        </div></div>
+      <div class="irow"><span class="ik">Продаётся</span>
+        <div class="iv" style="display:flex;justify-content:flex-end"><label class="chk" style="margin:0"><input type="checkbox" id="pdActive" checked> показывать в «Продаже»</label></div></div>
+    </div>
+    <div class="err" id="pdErr"></div>
+    <div class="ffoot">
+      <button class="btn dg" id="pdDel" hidden>Убрать товар</button>
+      <div class="acts" style="margin:0;margin-left:auto">
+        <button class="btn" data-close>Отмена</button>
+        <button class="btn acc" id="pdSave">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ключ входа -->
 <div class="modal on" id="authModal">
   <div class="sheet">
@@ -695,13 +846,26 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
     <div class="fgroup">
       <div class="fh">Кто играет</div>
-      <div class="grid2">
+      <!-- Основной путь — запись на аккаунт приложения; без приложения — по номеру -->
+      <div class="seg" style="margin-top:10px" id="addWhoSeg">
+        <button type="button" data-w="app" class="on">Есть аккаунт в приложении</button>
+        <button type="button" data-w="none">Без приложения</button>
+      </div>
+      <div id="addAppBox">
         <div class="rel">
-          <label for="addPhone">Телефон</label>
-          <input id="addPhone" inputmode="tel" autocomplete="off" placeholder="89289204029">
+          <label for="addFind">Найти аккаунт</label>
+          <input id="addFind" autocomplete="off" placeholder="телефон, имя или ID">
           <div class="sugg" id="addSugg" hidden></div>
         </div>
+        <div class="picked" id="addPicked" hidden>
+          <div><b id="addPickedName"></b><span id="addPickedSub"></span></div>
+          <button type="button" class="copy" id="addPickedClear">сменить</button>
+        </div>
+      </div>
+      <div class="grid2" id="addGuestBox" hidden>
         <div><label for="addName">Имя</label><input id="addName" placeholder="Кто играет"></div>
+        <div><label for="addPhone">Телефон</label>
+          <input id="addPhone" inputmode="tel" autocomplete="off" placeholder="89289204029"></div>
       </div>
       <div class="grid2">
         <div><label for="addPlayers">Сколько человек</label>
@@ -709,7 +873,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
         <div><label for="addComment">Заметка</label>
           <input id="addComment" placeholder="Необязательно"></div>
       </div>
-      <p class="hint" id="addWho">Телефон нужен, чтобы клиент нашёлся в поиске и получил уведомление.</p>
+      <p class="hint" id="addWho">Запись на аккаунт: клиент увидит её в приложении и получит уведомления.</p>
     </div>
 
     <div class="sumBox">
@@ -746,35 +910,88 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
 <!-- прочая продажа -->
 <div class="modal" id="saleModal">
-  <div class="sheet">
-    <h3>Продажа</h3>
-    <p class="sub">Прокат ракеток, мячи, вода, тренировка — всё, что не аренда корта.
-      Нажмите позицию из прайса — сумма подставится сама.</p>
-    <label>Из прайса проката</label>
+  <div class="sheet mid form">
+    <div class="fhead">
+      <h3>Продажа</h3>
+      <p class="sub">Прокат, мячи, вода, тренировка — всё, кроме аренды корта.</p>
+    </div>
+
+    <!-- Кому: к брони (в её счёт), клиенту (в его карточку) или просто продажа -->
+    <div class="seg" id="saleTo">
+      <button type="button" data-to="booking" class="on">К брони</button>
+      <button type="button" data-to="client">Клиенту</button>
+      <button type="button" data-to="none">Просто продажа</button>
+    </div>
+    <div class="fnote" id="saleToNote"></div>
+
+    <div class="ilist" id="saleBookingBox">
+      <div class="irow">
+        <span class="ik">Бронь</span>
+        <select id="saleBooking" class="iv"></select>
+      </div>
+    </div>
+    <div class="ilist rel" id="saleClientBox" hidden>
+      <div class="irow">
+        <span class="ik">Клиент</span>
+        <input id="saleClientQ" class="iv" inputmode="tel" autocomplete="off" placeholder="телефон или имя">
+        <div class="sugg" id="saleSugg" hidden></div>
+      </div>
+      <div class="irow" id="saleClientPick" hidden>
+        <span class="ik">Выбран</span><b class="iv" id="saleClientName"></b>
+        <button type="button" class="copy" id="saleClientClear">сменить</button>
+      </div>
+    </div>
+
+    <div class="fsec">Что продаём</div>
     <div class="quick" id="saleQuick"></div>
-    <label for="saleItem">Позиция</label><input id="saleItem" maxlength="120" placeholder="Например, вода 0,5 л">
-    <label for="saleDay">День</label><input id="saleDay" type="date">
-    <label for="saleCat">Статья</label>
-    <select id="saleCat">
+
+    <div class="ilist">
+      <div class="irow">
+        <span class="ik">Позиция</span>
+        <input id="saleItem" class="iv" maxlength="120" placeholder="или впишите своё: вода 0,5 л">
+      </div>
+      <div class="irow">
+        <span class="ik">Количество</span>
+        <div class="stepper iv">
+          <button type="button" id="saleMinus" aria-label="Меньше">−</button>
+          <input id="saleQty" type="number" min="1" max="999" value="1">
+          <button type="button" id="salePlus" aria-label="Больше">+</button>
+        </div>
+      </div>
+      <div class="irow">
+        <span class="ik">Сумма</span>
+        <div class="iv money-in"><input id="saleAmount" type="number" min="1" step="50" placeholder="0"><span>₽</span></div>
+      </div>
+      <div class="irow" id="saleMethodRow">
+        <span class="ik">Оплата</span>
+        <div class="seg small iv" id="saleMethod">
+          <button type="button" data-m="cash" class="on">Наличными</button>
+          <button type="button" data-m="card">Картой</button>
+          <button type="button" data-m="sbp">СБП</button>
+        </div>
+      </div>
+      <div class="irow" id="saleDayRow">
+        <span class="ik">День</span>
+        <input id="saleDay" type="date" class="iv">
+      </div>
+      <div class="irow">
+        <span class="ik">Заметка</span>
+        <input id="saleNote" class="iv" placeholder="необязательно">
+      </div>
+    </div>
+    <select id="saleCat" hidden>
       <option value="bar">Бар и вода</option><option value="rental">Прокат</option>
       <option value="coaching">Тренировка</option><option value="shop">Товар</option>
       <option value="other">Прочее</option>
     </select>
-    <div class="grid2">
-      <div><label for="saleAmount">Сумма, ₽</label><input id="saleAmount" type="number" min="1" step="50"></div>
-      <div><label for="saleQty">Сколько штук</label><input id="saleQty" type="number" min="1" value="1"></div>
-    </div>
-    <label>Чем платят</label>
-    <div class="days" id="saleMethod">
-      <button type="button" data-m="cash" class="on">Наличными</button>
-      <button type="button" data-m="card">Картой</button>
-      <button type="button" data-m="sbp">По СБП</button>
-    </div>
-    <label for="saleNote">Заметка</label><input id="saleNote" placeholder="Необязательно">
+
     <div class="err" id="saleErr"></div>
-    <div class="acts">
-      <button class="btn" data-close>Отмена</button>
-      <button class="btn acc" id="saleOk">Записать</button>
+    <div class="ffoot">
+      <div class="ftotal"><span id="saleTotalL">Итого</span><b id="saleTotal">0 ₽</b></div>
+      <div class="acts" style="margin:0">
+        <button class="btn" data-close>Отмена</button>
+        <button class="btn acc" id="saleOk">Записать</button>
+      </div>
     </div>
   </div>
 </div>
@@ -831,9 +1048,10 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
 <!-- управление клубом: площадки, цены, часы, турниры -->
 <div class="modal" id="setupModal">
-  <div class="sheet wide">
-    <h3>Управление клубом</h3>
-    <div class="tabs">
+  <div class="sheet settings">
+    <aside class="snav">
+      <h3>Управление</h3>
+      <div class="tabs">
       <button class="tab on" data-tab="courts">Площадки</button>
       <button class="tab" data-tab="rules">Особые цены</button>
       <button class="tab" data-tab="money">Расходы</button>
@@ -844,9 +1062,12 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <button class="tab" data-tab="clients">Клиенты</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
-    </div>
+      </div>
+      <button class="btn small snav-close" data-close>Закрыть</button>
+    </aside>
+    <div class="spanes">
 
-    <div class="pane on" id="paneCourts">
+    <div class="pane on" id="paneCourts" data-title="Площадки">
       <p class="sub">Цены в рублях за час. Описание человек видит, когда открывает площадку
         в приложении — напишите про покрытие и цвет пола, чем корт отличается от соседнего.
         Выключенная площадка пропадает из приложения совсем, закрытая на ремонт
@@ -854,7 +1075,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div id="courtRows"></div>
     </div>
 
-    <div class="pane" id="paneRules">
+    <div class="pane" id="paneRules" data-title="Особые цены">
       <p class="sub">Обычная цена задана на вкладке «Площадки». Правило здесь перекрывает её
         на выбранные дни и часы: например, выходные дороже или утренняя цена до 17:00.
         Час, под который не подошло ни одно правило, стоит обычную цену.</p>
@@ -875,7 +1096,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
     </div>
 
-    <div class="pane" id="paneMoney">
+    <div class="pane" id="paneMoney" data-title="Расходы">
       <p class="sub">Постоянные расходы за месяц: аренда, зарплаты, свет, кредит, реклама.
         Без них аналитика показывает оборот, а не заработок.</p>
       <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
@@ -884,7 +1105,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div id="expRows"></div>
     </div>
 
-    <div class="pane" id="paneClub">
+    <div class="pane" id="paneClub" data-title="Часы и правила">
       <p class="sub">Меняется сразу и в приложении, и в этой сетке.</p>
       <label>Часы работы</label>
       <div class="week" id="setWeek"></div>
@@ -901,7 +1122,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div class="acts"><button class="btn acc" id="setSave">Сохранить</button></div>
     </div>
 
-    <div class="pane" id="paneContacts">
+    <div class="pane" id="paneContacts" data-title="Контакты">
       <p class="sub">На контактах держится подтверждение брони: человек отправляет
         заявку и связывается с менеджером. Пока номер не указан, кнопки в приложении
         неактивны — выдуманный номер не показываем. Вводить можно как угодно:
@@ -924,7 +1145,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div class="acts"><button class="btn acc" id="cnSave">Сохранить контакты</button></div>
     </div>
 
-    <div class="pane" id="paneApp">
+    <div class="pane" id="paneApp" data-title="Приложение">
       <p class="sub">Что человек видит и читает в приложении. Меняется сразу,
         новая версия в App Store для этого не нужна.</p>
       <div class="grid2">
@@ -978,7 +1199,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
     </div>
 
-    <div class="pane" id="paneClients">
+    <div class="pane" id="paneClients" data-title="Клиенты">
       <p class="sub">Клиенты теперь на отдельной странице: поиск, подборки («давно не
         приходили», «постоянные», «участвовали в турнирах»), сортировка, выбор нескольких
         и сообщение выбранным. Там же сброс пароля, если клиент его забыл.</p>
@@ -987,7 +1208,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
     </div>
 
-    <div class="pane" id="paneNotify">
+    <div class="pane" id="paneNotify" data-title="Уведомления">
       <p class="sub">Сообщение приходит в приложение — человек видит его в разделе
         «Уведомления». Пуш на экран телефона появится, когда подключим его у Apple;
         текст и адресат останутся те же. Подтверждение и отмена брони уходят сами,
@@ -1011,7 +1232,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
     </div>
 
-    <div class="pane" id="paneTourn">
+    <div class="pane" id="paneTourn" data-title="Турниры">
       <p class="sub">Записавшихся видно с телефонами. Итоги появляются в приложении сразу после сохранения.</p>
       <div class="acts" style="justify-content:flex-start;margin:0 0 10px">
         <button class="btn acc" id="tnNew">Новый турнир</button>
@@ -1019,7 +1240,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div id="tournRows"></div>
     </div>
 
-    <div class="pane" id="paneStaff">
+    <div class="pane" id="paneStaff" data-title="Сотрудники">
       <p class="sub">У каждого свой вход. Права выдаёт владелец: смотреть день
         и записывать клиентов может любой сотрудник, всё остальное — по разрешению.</p>
       <div id="staffRows"></div>
@@ -1033,7 +1254,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       </div>
     </div>
 
-    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
+    </div>
   </div>
 </div>
 
@@ -1110,6 +1331,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <option value="open">Запись открыта</option>
       <option value="closed">Запись закрыта</option>
       <option value="done">Завершён</option>
+      <option value="cancelled">Отменён — заявки снимутся, участники получат уведомление</option>
     </select>
     <label for="tnCover">Обложка</label>
     <select id="tnCover">
@@ -1249,8 +1471,11 @@ function holdText(min){
   return `осталось ${Math.floor(min/60)} ч ${min%60} мин`;
 }
 
-/** Сколько должен заплатить клиент: цена минус скидка. */
-const dueOf = b => Math.max(0, (b.price || 0) - (b.discount || 0));
+/** Сколько должен заплатить клиент: корт минус скидка плюс строки счёта
+ *  (прокат, мячи), прикреплённые к брони. */
+const extrasOf = b => typeof b.extras === 'number' ? b.extras : (b.extras?.sum || 0);
+const courtDue = b => Math.max(0, (b.price || 0) - (b.discount || 0));
+const dueOf = b => courtDue(b) + extrasOf(b);
 
 /** Когда игра по этой брони: началась ли, закончилась ли (по московскому времени). */
 function timing(b){
@@ -1303,6 +1528,24 @@ function priceFor(courtId, hour, hours){
   return sum;
 }
 /** Спросить перед необратимым действием. */
+/** Отмена: по просьбе клиента или по инициативе клуба. Возвращает 'client' | 'club' | null. */
+function askWho(title, text){
+  return new Promise(res => {
+    $('#askTitle').textContent = title;
+    $('#askText').textContent = text;
+    const acts = $('#askModal').querySelector('.acts');
+    const saved = acts.innerHTML;
+    acts.innerHTML = `<button class="btn" data-close>Не отменять</button>
+      <button class="btn" id="askClient">По просьбе клиента</button>
+      <button class="btn dg" id="askClub">Клуб отменяет</button>`;
+    const done = v => { $('#askModal').classList.remove('on'); acts.innerHTML = saved;
+      $('#askModal').querySelectorAll('[data-close]').forEach(b => b.onclick = null); res(v) };
+    $('#askClient').onclick = () => done('client');
+    $('#askClub').onclick = () => done('club');
+    $('#askModal').querySelectorAll('[data-close]').forEach(b => b.onclick = () => done(null));
+    $('#askModal').classList.add('on');
+  });
+}
 function ask(title, text){
   return new Promise(res => {
     $('#askTitle').textContent = title;
@@ -1459,10 +1702,13 @@ function render(){
   const bar = $('#staleBar'); if(bar) bar.remove();
   const alive = day.bookings.filter(b => b.status!=='cancelled' && b.status!=='expired');
   const pending = alive.filter(b => b.status==='pending');
-  // Две разные цифры: сколько должны заплатить и сколько уже в кассе.
-  // Раньше была одна, и она включала неоплаченные заявки.
-  const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+dueOf(b),0);
-  const got = day.bookings.reduce((s,b)=>s+(b.paid||0),0);
+  // Деньги считаем по подтверждённым и отыгранным: заявка, которую никто не
+  // подтвердил, — ещё не долг. Ждущие — отдельной цифрой.
+  const money = alive.filter(b => ['confirmed','done'].includes(b.status) && !b.tournamentId).reduce((s,b)=>s+dueOf(b),0);
+  const got = day.bookings.filter(b => ['confirmed','done','no_show'].includes(b.status)).reduce((s,b)=>s+(b.paid||0),0);
+  const pendingSum = pending.reduce((s,b)=>s+dueOf(b),0);
+  // Сгоревшие сегодня заявки: менеджер должен их видеть, а не узнавать по пустому корту
+  const burnt = day.bookings.filter(b => b.status==='expired');
   // Считаем только реально открытые площадки: закрытый на ремонт корт
   // занижал занятость и цифра переставала что-либо значить.
   const open = day.courts.filter(c =>
@@ -1476,12 +1722,15 @@ function render(){
   const cancelled = day.bookings.filter(b => b.status==='cancelled').length;
 
   $('#stats').innerHTML = `
-    <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения</span></div>
+    <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения${pendingSum ? ' · ' + rub(pendingSum) : ''}</span></div>
     <div class="stat"><b>${alive.length}</b><span>записей на день</span></div>
     <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
     <div class="stat"><b>${cancelled}</b><span>отмен за день</span></div>
+    ${burnt.length ? `<button type="button" class="stat bad" id="burntBtn" title="Показать сгоревшие заявки"><b>${burnt.length}</b><span>сгорело без ответа</span></button>` : ''}
     <div class="stat"><b>${rub(got)}</b><span>получено</span></div>
-    <div class="stat"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
+    <div class="stat${money-got>0?' warn':''}"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
+  const burntBtn = $('#burntBtn');
+  if (burntBtn) burntBtn.onclick = () => openBurnt(burnt);
 
   const courts = day.courts;
   // Цвет дорожки корта: цвет покрытия из настроек, у поля без цвета — нейтральный.
@@ -1494,7 +1743,17 @@ function render(){
     ? `<div class="center" style="padding:14px 0 18px">Выходной по расписанию — запись закрыта.
         Часы работы меняются в настройках клуба.</div>` : '';
   if (day.closeHour <= day.openHour) { $('#board').innerHTML = off || '<div class="center">Нет рабочих часов</div>'; return }
-  let html = off + '<table><thead><tr><th></th>';
+  // Ширина столбца — по типу корта: одиночный уже, ультраширокий шире.
+  // Так в сетке видно, какой корт какой, ещё до того, как прочитал название.
+  const weightOf = c => {
+    const tags = (c.tags ?? []).map(t => String(t).toLowerCase());
+    if (tags.some(t => t.startsWith('одиноч'))) return 0.78;
+    if (tags.some(t => t.startsWith('ультра') || t.startsWith('панорам'))) return 1.3;
+    return 1;
+  };
+  const wsum = courts.reduce((n, c) => n + weightOf(c), 0);
+  let html = off + '<table><colgroup><col style="width:56px">' + courts.map(c =>
+    `<col style="width:calc((100% - 56px) * ${(weightOf(c) / wsum).toFixed(4)})">`).join('') + '</colgroup><thead><tr><th></th>';
   for(const c of courts){
     // Значок ремонта только пока закрытие действует: раньше он оставался
     // навсегда, а корт при этом спокойно бронировался.
@@ -1516,7 +1775,7 @@ function render(){
           const stt = bkState(b);
           html += `<td class="lane" style="${laneOf(c)}" rowspan="${b.hours}"><button class="bk ${stt.cls}" data-id="${b.id}" title="${nm} · ${esc(stt.label)}">
             <div class="n">${nm}${flags}</div>
-            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price)}</s>` : ''}${rub(dueOf(b))}</div>
+            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price)}</s>` : ''}${rub(dueOf(b))}${extrasOf(b) ? ' <small title="с доп. позициями">+доп.</small>' : ''}</div>
             <div class="st ${stt.tone}">${esc(stt.label)}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
@@ -1552,8 +1811,9 @@ async function openBooking(id){
     + (b.client ? ' · ID '+b.client.id : '');
   $('#bkRows').innerHTML = `
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
-    <div class="row"><span>К оплате</span><b>${rub(b.price - (b.discount||0))}${
-      b.discount ? ` <span style="color:var(--dim-2);font-weight:400">вместо ${rub(b.price)}</span>` : ''}</b></div>
+    <div class="row"><span>К оплате</span><b>${rub(dueOf(b))}${
+      (b.discount || extrasOf(b)) ? ` <span style="color:var(--dim-2);font-weight:400">корт ${rub(courtDue(b))}${
+        b.discount ? ` (было ${rub(b.price)})` : ''}${extrasOf(b) ? ` + доп. ${rub(extrasOf(b))}` : ''}</span>` : ''}</b></div>
     <div class="row"><span>Состояние</span><b class="stt-${bkState(b).tone}">${esc(bkState(b).label)}${
       b.statusAt && b.status !== 'pending' ? ` <small style="color:var(--dim-2);font-weight:400">· ${new Date(b.statusAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}${b.statusBy ? ', ' + esc(b.statusBy) : ''}</small>` : ''
     }</b></div>
@@ -1571,7 +1831,26 @@ async function openBooking(id){
           : `<span style="color:var(--amber)">внесено ${rub(b.paid)} из ${rub(dueOf(b))}</span>`)
       : `<span style="color:${timing(b).ended && ['confirmed','done'].includes(b.status) ? 'var(--red)' : 'var(--amber)'}">не оплачено</span>`}</b></div>
     <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
-    ${b.comment?`<div class="row"><span>Заметка</span><b>${esc(b.comment)}</b></div>`:''}`;
+    ${b.comment?`<div class="row"><span>Заметка</span><b>${esc(b.comment)}</b></div>`:''}
+    <div class="extras">
+      <div class="exh"><span>К брони</span>${['pending','confirmed','done'].includes(b.status)
+        ? `<button type="button" class="copy" id="bkAddExtra">+ Добавить</button>` : ''}</div>
+      ${(b.extras?.items ?? []).length ? b.extras.items.map(x => `<div class="exrow" data-x="${x.id}">
+          <span>${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}</span>
+          <b>${rub(x.amount)}</b>
+          ${['pending','confirmed','done'].includes(b.status) ? `<button type="button" class="copy" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}
+        </div>`).join('')
+        : `<div class="exempty">Ракетки, мячи, вода — добавьте, и они попадут в счёт этой брони.</div>`}
+    </div>`;
+  // Строки счёта: добавить или убрать
+  const addX = $('#bkAddExtra');
+  if (addX) addX.onclick = () => { $('#bkModal').classList.remove('on'); openSale({ bookingId: b.id }) };
+  $('#bkRows').querySelectorAll('[data-xdel]').forEach(el => el.onclick = async () => {
+    try {
+      await call(`/admin/sales/${el.dataset.xdel}/delete`, { method:'POST', body:'{}' });
+      await load(); openBooking(id);
+    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
+  });
 
   $('#bkHist').innerHTML = '';
   if(b.client){
@@ -1586,8 +1865,9 @@ async function openBooking(id){
         const t = new Date(h.startsAt);
         const when = t.toLocaleDateString('ru-RU') + ', '
           + t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
+        const money = h.due != null ? `${rub(h.due)}${h.paid >= h.due ? ' ✓' : h.paid > 0 ? ` (внесено ${rub(h.paid)})` : ['confirmed','done'].includes(h.status) ? ' · не оплачено' : ''}` : rub(h.price);
         return `<div><span>${when} · ${esc(h.courtName)}</span>
-         <span>${STATUS[h.status]||esc(h.status)} · ${rub(h.price)}</span></div>`;
+         <span>${STATUS[h.status]||esc(h.status)} · ${money}</span></div>`;
       }).join('') || '<div><span style="color:var(--dim-2)">других записей нет</span></div>';
       $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Последние записи</div>${rows}`;
     } catch {}
@@ -1600,9 +1880,25 @@ async function openBooking(id){
   const live = b.status === 'pending' || b.status === 'confirmed';
   const acts = [];
   const owes = b.paid < dueOf(b);
+  if (b.tournamentId) {
+    // Корт под турниром: время, цена и отмена — только в самом турнире
+    acts.push(`<button class="btn acc" data-tourn="${b.tournamentId}">Открыть турнир</button>`);
+    $('#bkActs').innerHTML = acts.join('');
+    $('#bkActs').querySelector('[data-tourn]').onclick = async () => {
+      $('#bkModal').classList.remove('on');
+      const ts = await call('/admin/tournaments');
+      const t = ts.find(x => x.id === b.tournamentId); if (t) openTournament(t);
+    };
+    $('#bkErr').classList.remove('on'); $('#bkModal').classList.add('on');
+    return;
+  }
   if (live || b.status === 'done' || b.status === 'no_show') {
     acts.push(owes ? `<button class="btn acc" data-pay>Принять оплату</button>`
                    : `<button class="btn" data-pay>Ещё платёж</button>`);
+  }
+  // По отменённой брони с внесёнными деньгами — вернуть
+  if ((b.status === 'cancelled' || b.status === 'expired') && b.paid > 0 && can('refunds')) {
+    acts.push(`<button class="btn acc" data-refund>Вернуть ${rub(b.paid)}</button>`);
   }
   if (b.status === 'pending' && !ended) acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
   if (b.status === 'expired' && !ended) acts.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
@@ -1647,6 +1943,8 @@ async function openBooking(id){
 
   const payBtn = $('#bkActs').querySelector('[data-pay]');
   if(payBtn) payBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b) };
+  const refBtn = $('#bkActs').querySelector('[data-refund]');
+  if(refBtn) refBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') };
 
   // Список платежей: по нему видно, кто и когда принял деньги
   if(b.paid !== 0){
@@ -1656,7 +1954,7 @@ async function openBooking(id){
         ps.map(x => `<div class="logRow">
           <div>${x.amount<0?'возврат ':''}${rub(Math.abs(x.amount))} ${METHOD[x.method]||esc(x.method)} · ${esc(x.by)}
             ${can('cancel') ? `<button class="copy" data-pay-del="${x.id}">убрать</button>` : ''}</div>
-          <span>${new Date(x.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+          <span>${new Date(x.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}</span>
         </div>`).join('');
       $('#bkHist').querySelectorAll('[data-pay-del]').forEach(el => el.onclick = async () => {
         if(!await ask('Убрать платёж?', 'Это исправление ошибки. Запись останется в журнале.')) return;
@@ -1669,33 +1967,49 @@ async function openBooking(id){
   $('#bkActs').querySelectorAll('[data-s]').forEach(el => el.onclick = async () => {
     const st = el.dataset.s;
     // Отмена и неявка необратимы одним кликом — раньше это делалось без вопроса
-    if(st==='cancelled' && !await ask('Отменить бронь?',
-        `${who(b)}, ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)}. Время станет свободным.`)) return;
+    let by = null;
+    if(st==='cancelled'){
+      const lateMin = (setup?.settings?.cancelHours ?? 2) * 60;
+      const startMs = new Date(`${date}T${String(b.hour).padStart(2,'0')}:00:00+03:00`).getTime();
+      const late = startMs - Date.now() < lateMin * 60e3;
+      by = await askWho('Отменить бронь?',
+        `${who(b)}, ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)}. Время станет свободным.`
+        + (b.paid > 0 ? ` Внесено ${rub(b.paid)}${late ? ' — отмена поздняя, по правилам предоплата не возвращается' : ' — после отмены предложу вернуть'}.` : ''));
+      if(!by) return;
+    }
     if(st==='no_show' && !await ask('Отметить неявку?',
         `${who(b)} получит отметку «не пришёл». Это видно в его карточке.`)) return;
     try {
-      await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: st }) });
+      const r = await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: st, by: by ?? undefined }) });
       $('#bkModal').classList.remove('on');
-      load();
+      await load();
+      // Отменили бронь с деньгами: сразу предлагаем возврат (если не поздняя отмена клиента)
+      if (st === 'cancelled' && r.paid > 0 && can('refunds') && !(by === 'client' && r.late)) {
+        if (await ask('Вернуть деньги?', `По этой брони внесено ${rub(r.paid)}. Оформить возврат сейчас?`)) {
+          const fresh = day.bookings.find(x => x.id === id) ?? b; openPay(fresh, 'refund');
+        }
+      }
     } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
   });
 }
 
 /* ── приём оплаты ─────────────────────────────────────── */
 let paying = null;
-function openPay(b){
+function openPay(b, kind = 'payment'){
   paying = b;
   const court = day.courts.find(c => c.id===b.courtId);
-  const due = b.price - (b.discount || 0);
-  const left = Math.max(0, due - b.paid);
-  $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · к оплате ${rub(due)}`;
+  const due = dueOf(b);
+  const left = kind === 'refund' ? b.paid : Math.max(0, due - b.paid);
+  $('#paySub').textContent = `${who(b)} · ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)} · к оплате ${rub(due)}${
+    extrasOf(b) ? ` (корт ${rub(courtDue(b))} + доп. ${rub(extrasOf(b))})` : ''}`;
   $('#payLeft').textContent = b.paid
     ? `Уже внесено ${rub(b.paid)}, осталось ${rub(left)}. Сумму можно поменять.`
     : 'Сумму можно поменять: скидка постоянному или платят частями.';
   $('#payAmount').value = (left || due)/100;
   $('#payReceipt').value = '';
   $('#payMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
-  $('#payKind').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
+  $('#payKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === kind));
+  if (kind === 'refund') $('#payLeft').textContent = `Бронь отменена, внесено ${rub(b.paid)} — вернуть клиенту.`;
   $('#payErr').classList.remove('on');
   $('#payModal').classList.add('on');
 }
@@ -1850,46 +2164,66 @@ function openAdd(courtId, hour){
   addTotal();
   $('#addErr').classList.remove('on');
   $('#addSugg').hidden = true;
+  addClient = null; $('#addPicked').hidden = true; $('#addFind').value = '';
+  addSetWho(can('clients') ? 'app' : 'none');
   $('#addModal').classList.add('on');
-  $('#addPhone').focus();
+  (addWho === 'app' ? $('#addFind') : $('#addName')).focus();
 }
 
 $('#addHour').onchange = () => { renderAddHours(); addTotal() };
 $('#addDate').onchange = () => { date = $('#addDate').value; load() };
 
-/** Подсказка по номеру: постоянного клиента не надо вводить заново.
- *  Нет права на клиентов — подсказок просто не будет. */
-let addSuggTimer = null;
-$('#addPhone').oninput = () => {
+/** Кто играет: аккаунт приложения (ищем и выбираем) или гость без приложения
+ *  (имя и номер). Нет права на клиентов — поиск не сработает, останется гость. */
+let addWho = 'app', addClient = null, addSuggTimer = null;
+function addSetWho(w){
+  addWho = w;
+  $('#addWhoSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.w === w));
+  $('#addAppBox').hidden = w !== 'app';
+  $('#addGuestBox').hidden = w !== 'none';
+  $('#addWho').textContent = w === 'app'
+    ? 'Запись на аккаунт: клиент увидит её в приложении и получит уведомления.'
+    : 'Гость без приложения: номер нужен, чтобы клиент нашёлся в поиске; можно и без него.';
+}
+$('#addWhoSeg').querySelectorAll('button').forEach(b => b.onclick = () => addSetWho(b.dataset.w));
+$('#addFind').oninput = () => {
   clearTimeout(addSuggTimer);
-  const q = $('#addPhone').value.replace(/\D/g, '');
-  if (q.length < 4) { $('#addSugg').hidden = true; return }
+  const q = $('#addFind').value.trim();
+  if (q.length < 2) { $('#addSugg').hidden = true; return }
   addSuggTimer = setTimeout(async () => {
     try {
-      const rows = await call('/admin/clients?q=' + encodeURIComponent(q));
-      const list = rows.slice(0, 6);
-      if (!list.length) { $('#addSugg').hidden = true; return }
-      $('#addSugg').innerHTML = list.map(c => `<button type="button" data-p="${esc(c.phone)}"
-        data-n="${esc([c.name, c.surname].filter(Boolean).join(' '))}">
+      const rows = (await call('/admin/clients?q=' + encodeURIComponent(q))).slice(0, 6);
+      if (!rows.length) {
+        $('#addSugg').innerHTML = '<button type="button" disabled>Не нашёлся — запишите как «без приложения»</button>';
+        $('#addSugg').hidden = false; return;
+      }
+      $('#addSugg').innerHTML = rows.map(c => `<button type="button" data-id="${c.id}" data-p="${esc(c.phone)}"
+        data-n="${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}" data-app="${c.hasPassword ? 1 : 0}">
         ${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}
-        <span>${phoneNice(c.phone)} · игр: ${c.bookings}${c.noShows ? ' · неявок: ' + c.noShows : ''}</span></button>`).join('');
+        <span>${phoneNice(c.phone)} · ID ${c.id} · ${c.hasPassword ? 'есть приложение' : 'без приложения'} · игр: ${c.bookings}${c.noShows ? ' · неявок: ' + c.noShows : ''}</span></button>`).join('');
       $('#addSugg').hidden = false;
-      $('#addSugg').querySelectorAll('button').forEach(b => b.onclick = () => {
-        $('#addPhone').value = b.dataset.p.replace(/\D/g, '');
-        $('#addName').value = b.dataset.n;
-        $('#addSugg').hidden = true;
+      $('#addSugg').querySelectorAll('button[data-id]').forEach(b => b.onclick = () => {
+        addClient = { id: +b.dataset.id, name: b.dataset.n, phone: b.dataset.p, app: b.dataset.app === '1' };
+        $('#addPickedName').textContent = addClient.name;
+        $('#addPickedSub').textContent = `${phoneNice(addClient.phone)} · ID ${addClient.id} · ${addClient.app ? 'аккаунт в приложении' : 'без приложения'}`;
+        $('#addPicked').hidden = false; $('#addSugg').hidden = true; $('#addFind').value = '';
       });
     } catch { $('#addSugg').hidden = true }
   }, 300);
 };
-$('#addPhone').onblur = () => setTimeout(() => { $('#addSugg').hidden = true }, 200);
+$('#addFind').onblur = () => setTimeout(() => { $('#addSugg').hidden = true }, 200);
+$('#addPickedClear').onclick = () => { addClient = null; $('#addPicked').hidden = true; $('#addFind').focus() };
 
 $('#addOk').onclick = async () => {
   const when = $('#addDate').value || date;
   const hour = +$('#addHour').value;
-  const phone = $('#addPhone').value.replace(/\D/g,'');
-  if(phone && !/^[78]?\d{10}$/.test(phone)){
+  const phone = addWho === 'none' ? $('#addPhone').value.replace(/\D/g,'') : '';
+  if(phone && !/^\d{10,15}$/.test(phone)){
     $('#addErr').textContent = 'Номер неполный: нужно 10 цифр после кода страны';
+    $('#addErr').classList.add('on'); return;
+  }
+  if(addWho === 'app' && !addClient){
+    $('#addErr').textContent = 'Найдите аккаунт клиента или переключите на «Без приложения»';
     $('#addErr').classList.add('on'); return;
   }
   // Прошедшее время раньше записывалось молча
@@ -1900,8 +2234,9 @@ $('#addOk').onclick = async () => {
   const body = {
     courtId: addCourtId, date: when,
     hour, hours: addHoursN,
-    name: $('#addName').value.trim() || undefined,
+    name: addWho === 'none' ? ($('#addName').value.trim() || undefined) : undefined,
     phone: phone || undefined,
+    clientId: addWho === 'app' ? addClient.id : undefined,
     players: +$('#addPlayers').value || undefined,
     comment: $('#addComment').value.trim() || undefined,
   };
@@ -2033,6 +2368,21 @@ function toast(text, kind){
   el.classList.add('on');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('on'), 12000);
+}
+/** Сгоревшие за день заявки: открыть карточку, чтобы подтвердить заново или позвонить. */
+function openBurnt(list){
+  $('#pendTitle').textContent = 'Сгорели без ответа';
+  $('#pendSub').textContent = 'Заявки этого дня, которые не подтвердили вовремя. Пока время не прошло, их можно подтвердить заново.';
+  $('#pendList').innerHTML = list.map(b => {
+    const c = day.courts.find(x => x.id === b.courtId);
+    return `<button class="it" data-id="${b.id}">
+      <div class="who"><b>${esc(who(b))}</b><span>${b.client ? phoneNice(b.client.phone) + ' · ' : ''}${esc(c?.name ?? '')} · ${rub(dueOf(b))}</span></div>
+      <div class="when">${hh(b.hour)}–${hh(b.hour+b.hours)}<br>${timing(b).ended ? 'время прошло' : 'ещё можно вернуть'}</div>
+    </button>`}).join('');
+  $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = () => {
+    $('#pendModal').classList.remove('on'); openBooking(+el.dataset.id);
+  });
+  $('#pendModal').classList.add('on');
 }
 function openPending(kind){
   const tour = kind === 'tournament';
@@ -2194,31 +2544,32 @@ async function openSetup(){
 
   $('#courtRows').innerHTML = setup.courts.map((c, ci, all) => {
     const shut = c.closedUntil && new Date(c.closedUntil) > new Date();
-    return `<div class="crow${c.isActive?'':' off'}" data-id="${c.id}">
-      <div class="nm">
-        <input type="text" class="c-name" value="${esc(c.name)}">
-        <input type="text" class="c-desc" placeholder="Описание: покрытие, цвет пола, чем отличается"
-               value="${esc(c.description||'')}">
-        ${c.isFootball ? '' : `<div class="c-look">
-          <select class="c-color" title="Цвет покрытия — метка на карточке корта">
-            <option value="">Цвет не указан</option>
-            ${(setup.colors||[]).map(k => `<option value="${esc(k.key)}"${k.key===c.color?' selected':''}>${esc(k.name)}</option>`).join('')}
-          </select>
-          <input type="text" class="c-tags" placeholder="Особенности через запятую: Ультраширокий, Одиночный"
-                 value="${esc((c.tags||[]).join(', '))}">
-        </div>`}
+    const hex = (setup.colors||[]).find(k => k.key === c.color)?.hex;
+    return `<div class="ccard${c.isActive?'':' off'}" data-id="${c.id}">
+      <div class="ch" style="${hex ? `--cc:${hex}` : ''}">
+        <span class="cdot"></span>
+        <input type="text" class="c-name" value="${esc(c.name)}" aria-label="Название">
+        ${c.isActive ? '' : '<span class="tag">выключена</span>'}
+        ${shut ? `<span class="tag warn">на ремонте до ${new Date(c.closedUntil).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}</span>` : ''}
+        <span class="saved" hidden>сохранено</span>
       </div>
-      <div class="p"><small>утро, ₽</small><input type="number" class="c-m" min="0" step="100" value="${c.priceMorning/100}"></div>
-      <div class="p"><small>дальше, ₽</small><input type="number" class="c-s" min="0" step="100" value="${c.priceStandard/100}"></div>
-      <button class="btn small c-save">Сохранить</button>
-      <button class="btn small c-act">${c.isActive?'Выключить':'Включить'}</button>
-      <button class="btn small c-shut">${shut?'Открыть':'На ремонт'}</button>
-      <span class="c-ord" title="Порядок площадок в приложении">
-        <button class="btn small c-up"${ci===0?' disabled':''} aria-label="Выше">↑</button>
-        <button class="btn small c-down"${ci===all.length-1?' disabled':''} aria-label="Ниже">↓</button>
-      </span>
-      ${shut?`<span class="shut">до ${new Date(c.closedUntil).toLocaleDateString('ru-RU')}</span>`:''}
-      <span class="saved" hidden>сохранено</span>
+      <div class="cbody">
+        <div class="crow2"><span>Описание</span>
+          <input type="text" class="c-desc" placeholder="покрытие, цвет пола, чем отличается — видно в приложении"
+                 value="${esc(c.description||'')}"></div>
+        ${c.isFootball ? '' : `<div class="crow2"><span>Цвет покрытия</span>
+          <select class="c-color" title="Цвет покрытия — метка на карточке корта">
+            <option value="">не указан</option>
+            ${(setup.colors||[]).map(k => `<option value="${esc(k.key)}"${k.key===c.color?' selected':''}>${esc(k.name)}</option>`).join('')}
+          </select></div>
+        <div class="crow2"><span>Особенности</span>
+          <input type="text" class="c-tags" placeholder="через запятую: Ультраширокий, Одиночный"
+                 value="${esc((c.tags||[]).join(', '))}"></div>`}
+        <div class="crow2"><span>Цена за час</span>
+          <div class="money"><small>утро</small><input type="number" class="c-m" min="0" step="100" value="${c.priceMorning/100}"><small>₽</small></div>
+          <div class="money"><small>дальше</small><input type="number" class="c-s" min="0" step="100" value="${c.priceStandard/100}"><small>₽</small></div>
+        </div>
+      </div>
       <div class="c-photos">
         ${(c.photos||[]).map((ph, i) => `<div class="ph${i===0?' main':''}">
             <img src="${esc(ph.url)}" alt="">
@@ -2230,10 +2581,19 @@ async function openSetup(){
           <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple hidden></label>
         ${(c.photos||[]).length ? '' : '<span class="ph-none">Своих фото нет — в приложении временные</span>'}
       </div>
+      <div class="cfoot">
+        <button class="btn small acc c-save">Сохранить</button>
+        <button class="btn small c-act">${c.isActive?'Выключить':'Включить'}</button>
+        <button class="btn small c-shut">${shut?'Открыть':'На ремонт'}</button>
+        <span class="c-ord" title="Порядок площадок в приложении">
+          <button class="btn small c-up"${ci===0?' disabled':''} aria-label="Выше">↑</button>
+          <button class="btn small c-down"${ci===all.length-1?' disabled':''} aria-label="Ниже">↓</button>
+        </span>
+      </div>
     </div>`;
   }).join('');
 
-  document.querySelectorAll('.crow').forEach(row => {
+  document.querySelectorAll('.ccard').forEach(row => {
     const id = row.dataset.id;
     const mark = () => { const s=row.querySelector('.saved'); s.hidden=false; setTimeout(()=>s.hidden=true,1800) };
     row.querySelector('.c-save').onclick = async () => {
@@ -2605,9 +2965,15 @@ async function openClientCard(c){
     $('#crmCardHist').innerHTML = '<div style="color:var(--dim-2);font-size:12px">Последние записи</div>' +
       (d.history.slice(0, 10).map(h => {
         const t = new Date(h.startsAt);
+        const money = h.due != null ? `${rub(h.due)}${h.paid >= h.due ? ' ✓' : h.paid > 0 ? ` (внесено ${rub(h.paid)})` : ['confirmed','done'].includes(h.status) ? ' · не оплачено' : ''}` : rub(h.price);
         return `<div><span>${t.toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}, ${t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})} · ${esc(h.courtName)}</span>
-          <span>${STATUS[h.status]||esc(h.status)} · ${rub(h.price)}</span></div>`;
+          <span>${STATUS[h.status]||esc(h.status)} · ${money}</span></div>`;
       }).join('') || '<div><span>записей нет</span></div>');
+    if (d.purchases?.length) {
+      const sum = d.purchases.reduce((n, x) => n + x.amount, 0);
+      $('#crmCardHist').innerHTML += `<div style="margin-top:12px;color:var(--dim-2);font-size:12px">Покупки · ${rub(sum)}</div>` +
+        d.purchases.slice(0, 10).map(x => `<div><span>${pretty(x.day)} · ${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}${x.bookingId ? ` · к брони №${x.bookingId}` : ''}</span><span>${rub(x.amount)}</span></div>`).join('');
+    }
   } catch {}
 }
 
@@ -2776,7 +3142,9 @@ $('#shutOk').onclick = async () => {
 };
 
 /* турниры */
-const TSTATE = { soon:'скоро', open:'запись открыта', closed:'запись закрыта', done:'завершён' };
+const TSTATE = { soon:'скоро', open:'запись открыта', closed:'запись закрыта', done:'завершён', cancelled:'отменён' };
+/** Состояние с учётом даты: «запись открыта» у прошедшего турнира — обман. */
+const tstateOf = t => (['open','soon','closed'].includes(t.state) && new Date(t.startsAt) <= new Date()) ? 'прошёл, не закрыт' : (TSTATE[t.state] || t.state);
 async function loadTournaments(){
   try {
     const rows = await call('/admin/tournaments');
@@ -2807,7 +3175,7 @@ async function loadTourView(){
       const pct = t.seats ? Math.min(100, Math.round(t.taken / t.seats * 100)) : 0;
       return `<div class="tv ${t.state}">
         <div class="tv-top">
-          <span class="tv-st">${TSTATE[t.state] || esc(t.state)}</span>
+          <span class="tv-st">${esc(tstateOf(t))}</span>
           ${t.bannerOn ? '<span class="tag ok">баннер на главной</span>' : ''}
           ${t.pending ? `<span class="tag warn">ждут подтверждения: ${t.pending}</span>` : ''}
         </div>
@@ -2825,8 +3193,9 @@ async function loadTourView(){
     const now = rows.filter(t => t.state === 'open' || t.state === 'closed').sort((a,b) => +new Date(a.startsAt) - +new Date(b.startsAt));
     const soon = rows.filter(t => t.state === 'soon').sort((a,b) => +new Date(a.startsAt) - +new Date(b.startsAt));
     const done = rows.filter(t => t.state === 'done');
+    const off = rows.filter(t => t.state === 'cancelled');
     $('#tvRows').innerHTML = rows.length
-      ? group('Идёт запись', now) + group('Скоро', soon) + group('Завершённые', done)
+      ? group('Идёт запись', now) + group('Скоро', soon) + group('Завершённые', done) + group('Отменённые', off)
       : '<div class="center">Турниров пока нет. Нажмите «Новый турнир».</div>';
     $('#tvRows').querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
       await openTournament(rows.find(t => t.id === +b.dataset.id));
@@ -2934,17 +3303,27 @@ async function loadEntries(t){
   try {
     const es = await call(`/admin/tournaments/${t.id}/entries`);
     const active = es.filter(e => e.status==='pending' || e.status==='confirmed');
+    const feePaid = es.filter(e => e.paid > 0).reduce((n, e) => n + e.paid, 0);
     $('#tnEntries').innerHTML = `<div class="ent"><div class="h">Заявок: ${active.length} из ${t.seats}` +
-      ` · подтверждено ${es.filter(e => e.status==='confirmed').length}</div>` +
+      ` · подтверждено ${es.filter(e => e.status==='confirmed').length}` +
+      (t.fee ? ` · взносов ${rub(feePaid)} из ${rub(t.fee * es.filter(e => e.status==='confirmed').length)}` : '') + `</div>` +
       (es.length ? es.map(e => {
         return `<div class="er" data-id="${e.id}">
-          <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}</span></div>
+          <div class="who"><b>${esc(e.name)}</b><span>${phoneNice(e.phone)} · ID ${e.clientId}${e.paid > 0 ? ` · <span style="color:var(--lime)">взнос ${rub(e.paid)}</span>` : ''}</span></div>
           <span class="stt ${e.status}">${ENTRY_STATE[e.status]||e.status}</span>
-          ${e.status!=='confirmed' ? `<button type="button" class="btn small acc" data-st="confirmed">Подтвердить</button>` : ''}
+          ${e.status!=='confirmed' && t.state !== 'cancelled' ? `<button type="button" class="btn small acc" data-st="confirmed">Подтвердить</button>` : ''}
+          ${e.status==='confirmed' && t.fee > 0 && !e.paid ? `<button type="button" class="btn small" data-fee>Взнос получен</button>` : ''}
           ${e.status==='pending' ? `<button type="button" class="btn small" data-st="cancelled">Отклонить</button>` : ''}
           ${e.status==='confirmed' ? `<button type="button" class="btn small" data-st="cancelled">Отменить</button>` : ''}
         </div>`}).join('')
       : '<div class="e"><span style="color:var(--dim-2)">пока никто</span></div>') + '</div>';
+    $('#tnEntries').querySelectorAll('button[data-fee]').forEach(b => b.onclick = async () => {
+      const id = b.closest('.er').dataset.id;
+      try {
+        await call(`/admin/entries/${id}/pay`, { method:'POST', body: JSON.stringify({}) });
+        loadEntries(t);
+      } catch(e){ $('#tnErr').textContent = e.message; $('#tnErr').classList.add('on') }
+    });
     $('#tnEntries').querySelectorAll('button[data-st]').forEach(b => b.onclick = async () => {
       const id = b.closest('.er').dataset.id;
       try {
@@ -3045,7 +3424,7 @@ async function loadHistory(){
     <div class="stat"><b>${r.total}</b><span>записей за период</span></div>
     <div class="stat"><b>${rub(r.charged)}</b><span>начислено</span></div>
     <div class="stat"><b>${rub(r.received)}</b><span>получено</span></div>
-    <div class="stat${r.charged-r.received>0?' warn':''}"><b>${rub(Math.max(0,r.charged-r.received))}</b><span>не оплачено</span></div>`;
+    <div class="stat${r.charged-r.received>0?' warn':''}"><b>${rub(Math.max(0,r.charged-r.received))}</b><span>не оплачено по состоявшимся</span></div>`;
 
   if(!r.rows.length){ $('#hRows').innerHTML = '<div class="center">За этот период ничего нет</div>'; return }
 
@@ -3077,13 +3456,13 @@ $('#hSearch').addEventListener('keydown', e => { if(e.key==='Enter') loadHistory
    на русской раскладке кладёт всю строку в одну ячейку. */
 $('#hCsv').onclick = () => {
   if(!histRows.length) return;
-  const head = ['Дата','Время','Площадка','Клиент','Телефон','Состояние','Откуда','Цена','Оплачено','Статус поставил'];
+  const head = ['Дата','Время','Площадка','Клиент','Телефон','Состояние','Откуда','Цена по прайсу','Скидка','Доп.','К оплате','Оплачено','Статус поставил'];
   const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
   const lines = [head.join(';')].concat(histRows.map(b => [
     b.date, `${hh(b.hour)}-${hh(b.hour+b.hours)}`, b.courtName, b.name,
-    phoneNice(b.phone), STATUS[b.status]||b.status, b.source==='app'?'приложение':'менеджер',
-    (b.price/100).toFixed(0), (b.paid/100).toFixed(0),
-    b.statusBy === 'client' ? 'клиент' : (b.statusBy || ''),
+    phoneNice(b.phone), STATUS[b.status]||b.status, b.source==='app'?'приложение':b.source==='tournament'?'турнир':'менеджер',
+    (b.price/100).toFixed(0), ((b.discount||0)/100).toFixed(0), ((b.extras||0)/100).toFixed(0), (dueOf(b)/100).toFixed(0), (b.paid/100).toFixed(0),
+    (b.statusBy||'').startsWith('client') ? 'клиент' : (b.statusBy || ''),
   ].map(esc).join(';')));
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -3176,41 +3555,134 @@ function priceItems(text){
   }
   return out;
 }
-let saleUnit = null;
-async function openSale(){
+let saleUnit = null, saleTo = 'booking', saleClient = null;
+
+/** Брони дня, к которым можно добавить строку счёта. */
+function saleBookingOptions(selectedId){
+  const live = (day?.bookings ?? []).filter(b => ['pending','confirmed','done'].includes(b.status));
+  return live.map(b => {
+    const c = day.courts.find(x => x.id === b.courtId);
+    return `<option value="${b.id}"${b.id===selectedId?' selected':''}>${esc(who(b))} · ${esc(c?.name ?? '')} ${hh(b.hour)}–${hh(b.hour+b.hours)}</option>`;
+  }).join('');
+}
+
+function saleSetTo(to){
+  saleTo = to;
+  $('#saleTo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.to === to));
+  $('#saleBookingBox').hidden = to !== 'booking';
+  $('#saleClientBox').hidden = to !== 'client';
+  // Строка счёта брони оплачивается вместе с кортом — способ оплаты не нужен,
+  // день — день игры
+  $('#saleMethodRow').hidden = to === 'booking';
+  $('#saleDayRow').hidden = to === 'booking';
+  $('#saleToNote').textContent = to === 'booking'
+    ? 'Попадёт в счёт брони и оплатится вместе с кортом.'
+    : to === 'client' ? 'Запишется в карточку клиента: видно, что он покупал.'
+    : 'Без привязки: вода, случайный гость.';
+  saleTotal();
+}
+
+function saleTotal(){
+  const sum = +$('#saleAmount').value || 0;
+  $('#saleTotal').textContent = rub(sum * 100);
+  $('#saleTotalL').textContent = saleTo === 'booking' ? 'В счёт брони' : 'Итого';
+}
+
+let saleProduct = null;
+async function openSale(preset){
   if (!setup) { try { setup = await call('/admin/setup') } catch {} }
+  try { products = await call('/admin/products') } catch {}
+  // Сначала товары магазина (с фото и остатком), потом строки прайса проката
+  const goods = products.filter(p => p.isActive);
   const items = priceItems(setup?.settings?.rentalsText);
+  let html = '';
+  if (goods.length) html += '<div class="qg">Магазин</div>' + goods.map(p => {
+    const st = stockNote(p);
+    return `<button type="button" data-p="${p.id}"${p.stock === 0 ? ' disabled' : ''}>${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}<b>${esc(p.name)}</b>${rub(p.price)}${p.stock != null ? `<span class="stk ${st.cls}">${st.t}</span>` : ''}</button>`;
+  }).join('');
   let lastGroup = null;
-  $('#saleQuick').innerHTML = items.length ? items.map((it, i) => {
+  html += items.map((it, i) => {
     const g = it.group !== lastGroup ? `<div class="qg">${esc(it.group || 'Прочее')}</div>` : '';
     lastGroup = it.group;
     return `${g}<button type="button" data-i="${i}"><b>${esc(it.name)}</b>${rub(it.price*100)}</button>`;
-  }).join('') : '<span class="hint" style="margin:0">Прайс проката пуст — заполняется в «Управление» → «Приложение».</span>';
+  }).join('');
+  $('#saleQuick').innerHTML = html || '<span class="fnote" style="margin:0">Заведите товары в «Продажи» → «Товары» или заполните прайс проката в «Управление» → «Приложение».</span>';
   $('#saleQuick').querySelectorAll('button').forEach(b => b.onclick = () => {
-    const it = items[+b.dataset.i];
     $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    saleUnit = it.price;
-    $('#saleItem').value = it.label;
-    $('#saleCat').value = it.category;
-    $('#saleAmount').value = it.price * Math.max(1, +$('#saleQty').value || 1);
+    if (b.dataset.p) {
+      const p = goods.find(x => x.id === +b.dataset.p);
+      saleProduct = p; saleUnit = p.price / 100;
+      $('#saleItem').value = p.name; $('#saleCat').value = p.category;
+    } else {
+      const it = items[+b.dataset.i];
+      saleProduct = null; saleUnit = it.price;
+      $('#saleItem').value = it.label; $('#saleCat').value = it.category;
+    }
+    $('#saleAmount').value = saleUnit * Math.max(1, +$('#saleQty').value || 1);
+    saleTotal();
   });
-  saleUnit = null;
+  saleUnit = null; saleClient = null; saleProduct = null;
   $('#saleDay').value = date;
   $('#saleItem').value = ''; $('#saleCat').value = 'rental';
   $('#saleAmount').value = ''; $('#saleQty').value = 1; $('#saleNote').value = '';
+  $('#saleClientQ').value = ''; $('#saleClientPick').hidden = true; $('#saleSugg').hidden = true;
   $('#saleMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
   $('#saleErr').classList.remove('on');
+  // Из карточки брони приходим с готовой бронью; иначе — к брони, если сегодня они есть
+  const bid = preset?.bookingId ?? null;
+  $('#saleBooking').innerHTML = saleBookingOptions(bid);
+  saleSetTo(bid || $('#saleBooking').options.length ? 'booking' : 'none');
   $('#saleModal').classList.add('on');
 }
-$('#saleBtn').onclick = openSale;
+$('#saleBtn').onclick = () => openSale();
+$('#saleTo').querySelectorAll('button').forEach(b => b.onclick = () => saleSetTo(b.dataset.to));
 // Количество меняет сумму, пока выбрана позиция из прайса
-$('#saleQty').oninput = () => { if (saleUnit) $('#saleAmount').value = saleUnit * Math.max(1, +$('#saleQty').value || 1) };
-$('#saleAmount').oninput = () => { saleUnit = null; $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.remove('on')) };
+const saleQtyChanged = () => {
+  const q = Math.max(1, +$('#saleQty').value || 1); $('#saleQty').value = q;
+  if (saleUnit) $('#saleAmount').value = saleUnit * q;
+  saleTotal();
+};
+$('#saleQty').oninput = saleQtyChanged;
+$('#saleMinus').onclick = () => { $('#saleQty').value = Math.max(1, (+$('#saleQty').value || 1) - 1); saleQtyChanged() };
+$('#salePlus').onclick = () => { $('#saleQty').value = (+$('#saleQty').value || 1) + 1; saleQtyChanged() };
+$('#saleAmount').oninput = () => { saleUnit = null; saleTotal() };
+$('#saleItem').oninput = () => { $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.remove('on')); saleUnit = null; saleProduct = null };
 $('#saleMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#saleMethod').querySelectorAll('button').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
 });
+// Клиент: подсказка по номеру или имени
+let saleSuggTimer = null;
+$('#saleClientQ').oninput = () => {
+  clearTimeout(saleSuggTimer);
+  const q = $('#saleClientQ').value.trim();
+  if (q.length < 2) { $('#saleSugg').hidden = true; return }
+  saleSuggTimer = setTimeout(async () => {
+    try {
+      const rows = (await call('/admin/clients?q=' + encodeURIComponent(q))).slice(0, 6);
+      if (!rows.length) { $('#saleSugg').hidden = true; return }
+      $('#saleSugg').innerHTML = rows.map(c => `<button type="button" data-id="${c.id}"
+        data-n="${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}">
+        ${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}<span>${phoneNice(c.phone)} · ID ${c.id}</span></button>`).join('');
+      $('#saleSugg').hidden = false;
+      $('#saleSugg').querySelectorAll('button').forEach(b => b.onclick = () => {
+        saleClient = { id: +b.dataset.id, name: b.dataset.n };
+        $('#saleClientName').textContent = saleClient.name;
+        $('#saleClientPick').hidden = false; $('#saleSugg').hidden = true;
+        $('#saleClientQ').value = '';
+      });
+    } catch { $('#saleSugg').hidden = true }
+  }, 300);
+};
+$('#saleClientClear').onclick = () => { saleClient = null; $('#saleClientPick').hidden = true; $('#saleClientQ').focus() };
 $('#saleOk').onclick = async () => {
+  if (saleTo === 'booking' && !$('#saleBooking').value) {
+    $('#saleErr').textContent = 'Сегодня нет броней — выберите «Клиенту» или «Просто продажа»';
+    $('#saleErr').classList.add('on'); return;
+  }
+  if (saleTo === 'client' && !saleClient) {
+    $('#saleErr').textContent = 'Найдите клиента по телефону или имени'; $('#saleErr').classList.add('on'); return;
+  }
   try {
     await call('/admin/sales', { method:'POST', body: JSON.stringify({
       day: $('#saleDay').value, category: $('#saleCat').value,
@@ -3218,11 +3690,105 @@ $('#saleOk').onclick = async () => {
       method: $('#saleMethod').querySelector('button.on')?.dataset.m ?? 'cash',
       note: $('#saleNote').value.trim() || undefined,
       item: $('#saleItem').value.trim() || undefined,
+      bookingId: saleTo === 'booking' ? +$('#saleBooking').value : undefined,
+      clientId: saleTo === 'client' ? saleClient.id : undefined,
+      productId: saleProduct?.id,
     })});
     $('#saleModal').classList.remove('on');
     if (view === 'sales') loadSales();
+    if (saleTo === 'booking') load();
   } catch(e){ $('#saleErr').textContent = e.message; $('#saleErr').classList.add('on') }
 };
+
+/* ── мини-магазин: товары и остатки ───────────────────── */
+let products = [], pdEdit = null;
+const PD_CAT = { shop:'товар', rental:'прокат', bar:'бар', coaching:'тренировка', other:'прочее' };
+function stockNote(p){
+  if (p.stock == null) return { t: 'остаток не ведём', cls: '' };
+  if (p.stock === 0) return { t: 'закончился', cls: 'out' };
+  if (p.stock <= 3) return { t: `осталось ${p.stock} шт.`, cls: 'low' };
+  return { t: `на складе ${p.stock} шт.`, cls: '' };
+}
+async function loadProducts(){
+  try {
+    products = await call('/admin/products');
+    $('#pdRows').innerHTML = products.length ? `<div class="pds">${products.map(p => {
+      const st = stockNote(p);
+      return `<div class="pd${p.isActive ? '' : ' off'}" data-id="${p.id}">
+        <div class="pdi">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : 'без фото'}</div>
+        <div class="pdb">
+          <div class="pdn">${esc(p.name)}${p.isActive ? '' : ' <span class="tag">скрыт</span>'}</div>
+          <div class="pdp">${rub(p.price)}</div>
+          <div class="pdm ${st.cls}">${PD_CAT[p.category] || esc(p.category)} · ${st.t}</div>
+          <div class="pda">
+            ${p.stock != null && can('prices') ? `<button class="btn small" data-stk="-1">−1</button><button class="btn small" data-stk="1">+1</button><button class="btn small" data-stk="10">+10</button>` : ''}
+            ${can('prices') ? `<button class="btn small" data-edit>Изменить</button>` : ''}
+          </div>
+        </div></div>`;
+    }).join('')}</div>` : '<div class="center">Товаров пока нет. Нажмите «Новый товар».</div>';
+    $('#pdRows').querySelectorAll('[data-edit]').forEach(b => b.onclick = () =>
+      openProduct(products.find(p => p.id === +b.closest('.pd').dataset.id)));
+    $('#pdRows').querySelectorAll('[data-stk]').forEach(b => b.onclick = async () => {
+      const id = +b.closest('.pd').dataset.id;
+      try { await call(`/admin/products/${id}/stock`, { method:'POST', body: JSON.stringify({ delta: +b.dataset.stk }) }); loadProducts() }
+      catch(e){ alert(e.message) }
+    });
+  } catch(e){ $('#pdRows').innerHTML = `<div class="center">${esc(e.message)}</div>` }
+}
+function openProduct(p){
+  pdEdit = p ?? null;
+  $('#pdTitle').textContent = p ? p.name : 'Новый товар';
+  $('#pdName').value = p?.name ?? '';
+  $('#pdPrice').value = p ? p.price / 100 : '';
+  $('#pdCat').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === (p?.category ?? 'shop')));
+  $('#pdTrack').checked = p ? p.stock != null : false;
+  $('#pdStock').value = p?.stock ?? '';
+  $('#pdStock').disabled = !$('#pdTrack').checked;
+  $('#pdActive').checked = p ? p.isActive : true;
+  $('#pdImg').innerHTML = p?.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : '';
+  $('#pdPhotoNote').textContent = p ? 'JPEG, PNG или WebP до 8 МБ.' : 'Фото можно добавить после первого сохранения.';
+  $('#pdPhotoIn').disabled = !p;
+  $('#pdDel').hidden = !p;
+  $('#pdErr').classList.remove('on');
+  $('#pdModal').classList.add('on');
+}
+$('#pdNew').onclick = () => openProduct(null);
+$('#pdCat').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#pdCat').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+});
+$('#pdTrack').onchange = () => { $('#pdStock').disabled = !$('#pdTrack').checked; if ($('#pdTrack').checked) $('#pdStock').focus() };
+$('#pdSave').onclick = async () => {
+  try {
+    const r = await call('/admin/products', { method:'POST', body: JSON.stringify({
+      id: pdEdit?.id, name: $('#pdName').value, price: +$('#pdPrice').value,
+      category: $('#pdCat').querySelector('button.on')?.dataset.c ?? 'shop',
+      stock: $('#pdTrack').checked ? (+$('#pdStock').value || 0) : null,
+      isActive: $('#pdActive').checked }) });
+    await loadProducts();
+    if (!pdEdit) { openProduct(products.find(p => p.id === r.id)); $('#pdPhotoNote').textContent = 'Сохранено. Теперь можно загрузить фото.' }
+    else $('#pdModal').classList.remove('on');
+  } catch(e){ fail('#pdErr', e) }
+};
+$('#pdPhotoIn').onchange = async () => {
+  const f = $('#pdPhotoIn').files[0]; if (!f || !pdEdit) return;
+  try {
+    const data = await shrink(f);
+    const r = await call(`/admin/products/${pdEdit.id}/photo`, { method:'POST', body: JSON.stringify({ data }) });
+    $('#pdImg').innerHTML = `<img src="${esc(r.url)}" alt="">`; loadProducts();
+  } catch(e){ fail('#pdErr', e) }
+  $('#pdPhotoIn').value = '';
+};
+$('#pdDel').onclick = async () => {
+  if (!pdEdit || !await ask('Убрать товар?', 'Если по нему были продажи, он просто скроется из окна «Продажа» — история останется.')) return;
+  try { await call(`/admin/products/${pdEdit.id}/delete`, { method:'POST', body:'{}' }); $('#pdModal').classList.remove('on'); loadProducts() }
+  catch(e){ fail('#pdErr', e) }
+};
+$('#slSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#slSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  $('#slSales').hidden = b.dataset.v !== 'sales';
+  $('#slGoods').hidden = b.dataset.v !== 'goods';
+  if (b.dataset.v === 'goods') loadProducts();
+});
 
 /* ── продажи ──────────────────────────────────────────── */
 let salesRows = [];
@@ -3267,7 +3833,9 @@ async function loadSales(){
       ${rows.length ? `<table class="hist"><thead><tr><th>День</th><th>Позиция</th><th>Статья</th>
         <th class="money">Шт.</th><th class="money">Сумма</th><th>Оплата</th><th>Кто записал</th><th></th></tr></thead><tbody>
         ${rows.map(r => `<tr>
-          <td>${pretty(r.day)}</td><td>${esc(r.item || '—')}${r.note ? ` <span style="color:var(--dim-2)">· ${esc(r.note)}</span>` : ''}</td>
+          <td>${pretty(r.day)}</td><td>${esc(r.item || '—')}${r.note ? ` <span style="color:var(--dim-2)">· ${esc(r.note)}</span>` : ''}${
+            r.booking ? `<br><span style="color:var(--dim-2);font-size:12px">к брони №${r.booking.id} · ${esc(r.booking.name)} · ${esc(r.booking.court)} ${hh(r.booking.hour)}</span>`
+            : r.client ? `<br><span style="color:var(--dim-2);font-size:12px">клиент: ${esc(r.client.name)} · ID ${r.client.id}</span>` : ''}</td>
           <td>${SALE[r.category] || esc(r.category)}</td><td class="money">${r.qty}</td>
           <td class="money">${rub(r.amount)}</td><td>${METHOD[r.method] || esc(r.method)}</td><td>${esc(r.by)}</td>
           <td>${can('cancel') ? `<button class="copy" data-del="${r.id}">удалить</button>` : ''}</td></tr>`).join('')}
@@ -3308,7 +3876,7 @@ $('#slCsv').onclick = () => {
 /* ── аналитика ────────────────────────────────────────── */
 const WD = ['','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
 const WDS = ['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-const METHOD = { cash:'наличные', card:'карта', sbp:'СБП', transfer:'перевод', invoice:'счёт' };
+const METHOD = { cash:'наличные', card:'карта', sbp:'СБП', transfer:'перевод', invoice:'счёт', bill:'в счёт брони' };
 const EXPENSE = { rent:'аренда', salary:'зарплаты', utilities:'коммуналка', loan:'кредит',
   marketing:'реклама', equipment:'инвентарь', tax:'налоги', other:'прочее' };
 const SALE = { bar:'бар', rental:'прокат', coaching:'тренировки', shop:'товар', other:'прочее' };
@@ -3469,7 +4037,7 @@ async function loadStaff(){
     const rights = u.role === 'owner' ? 'все права'
       : (u.perms.length ? u.perms.map(p => permNames[p]).join(', ') : 'только запись клиентов');
     const seen = u.lastLoginAt
-      ? 'заходил ' + new Date(u.lastLoginAt).toLocaleDateString('ru-RU')
+      ? 'заходил ' + new Date(u.lastLoginAt).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})
       : 'ни разу не заходил';
     return `<div class="srow${u.isActive?'':' off'}">
       <div class="sd"><b>${esc(u.name)}</b><span>${esc(u.login)} · ${rights} · ${seen}</span></div>
@@ -3489,7 +4057,7 @@ async function loadLog(){
     $('#logRows').innerHTML = rows.length ? rows.slice(0,60).map(r => `
       <div class="logRow">
         <div><b>${esc(r.name)}</b> ${esc(r.action)}${r.details ? ' · ' + esc(r.details) : ''}</div>
-        <span>${new Date(r.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+        <span>${new Date(r.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}</span>
       </div>`).join('') : '<div class="empty">Пока пусто.</div>';
   } catch(e){ $('#logRows').innerHTML = `<div class="empty">${esc(e.message)}</div>` }
 }

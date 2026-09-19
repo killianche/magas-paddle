@@ -144,6 +144,10 @@ export type ApiBooking = {
   cancelledByClub?: boolean;
   startsAt: string; endsAt: string; hour: number; hours: number;
   price: number;
+  /** Скидка клуба и что уже внесено — чтобы «к оплате» совпадало с админкой. */
+  discount?: number; paid?: number;
+  /** Строки счёта к брони: прокат ракетки, мячи. */
+  extras?: { item: string; qty: number; amount: number }[];
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
   /** До какого времени клуб держит неподтверждённую заявку. */
   holdUntil?: string | null;
@@ -154,7 +158,7 @@ export type ApiBooking = {
 export type ApiTournament = {
   id: number; name: string; startsAt: string; format: string;
   fee: number; seats: number; taken: number;
-  state: 'soon' | 'open' | 'closed' | 'done';
+  state: 'soon' | 'open' | 'closed' | 'done' | 'cancelled';
   coverUrl: string | null; result: string | null; entered: boolean;
   /** Сколько часов идёт турнир. */
   hours?: number;

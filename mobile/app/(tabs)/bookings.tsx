@@ -32,6 +32,10 @@ function NeedLogin({ note }: { note: string }) {
   );
 }
 
+/** Сколько платить: корт со скидкой плюс строки счёта — как считает клуб. */
+const dueOf = (b: ApiBooking) =>
+  Math.max(0, b.price - (b.discount ?? 0)) + (b.extras ?? []).reduce((n, x) => n + x.amount, 0);
+
 export default function Bookings() {
   useTheme();
   const { profile, ready, signedIn } = useProfile();
@@ -164,8 +168,20 @@ export default function Bookings() {
               </View>
               <View style={s.foot}>
                 <Text style={s.time}>{hh(b.hour)} – {hh(b.hour + b.hours)}</Text>
-                <Text style={s.price}>{rub(b.price)}</Text>
+                <Text style={s.price}>{rub(dueOf(b))}</Text>
               </View>
+              {/* Из чего сложилась сумма: скидка клуба и что добавили к игре */}
+              {(!!b.discount || !!b.extras?.length || !!b.paid) && (
+                <View style={s.bill}>
+                  {!!b.discount && <Text style={s.billT}>Корт {rub(b.price)} · скидка −{rub(b.discount)}</Text>}
+                  {(b.extras ?? []).map((x, i) => (
+                    <Text key={i} style={s.billT}>+ {x.item}{x.qty > 1 ? ` × ${x.qty}` : ''} · {rub(x.amount)}</Text>
+                  ))}
+                  {!!b.paid && <Text style={[s.billT, { color: C.limeDim }]}>
+                    {b.paid >= dueOf(b) ? 'Оплачено' : `Внесено ${rub(b.paid)}, осталось ${rub(dueOf(b) - b.paid)}`}
+                  </Text>}
+                </View>
+              )}
 
               <Text style={[s.note, st.warn && { color: C.amber }]}>{st.note}</Text>
 
@@ -209,6 +225,8 @@ const s = sheet(() => ({
   bandT: { ...EYEBROW },
   body: { padding: 14 },
   note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
+  bill: { marginTop: 6, gap: 2 },
+  billT: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 17 },
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
   emptyIcon: { width: 62, height: 62, borderRadius: R.xl, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft,

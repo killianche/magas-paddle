@@ -40,7 +40,8 @@ export class TournamentsController {
   async list(@Query('phone') phone?: string, @Headers('authorization') header?: string) {
     // Просроченные заявки не должны занимать места и значиться «ждёт»
     await this.club.releaseExpired();
-    const rows = await this.db.tournaments.findMany({ orderBy: { starts_at: 'asc' } });
+    const rows = await this.db.tournaments.findMany({
+      where: { state: { not: 'cancelled' } }, orderBy: { starts_at: 'asc' } });
     const counts = await this.db.tournament_entries.groupBy({
       by: ['tournament_id'], where: ACTIVE_ENTRY, _count: { _all: true },
     });
@@ -153,6 +154,11 @@ export class TournamentsController {
               @Headers('authorization') header?: string) {
     const client = await this.whose(header, phone);
     if (!client) throw new NotFoundException('Запись не найдена');
+    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    if (!t) throw new NotFoundException('Турнир не найден');
+    if (t.starts_at <= new Date() || ['done', 'cancelled'].includes(t.state)) {
+      throw new ConflictException('Турнир уже начался — отменить запись можно только через менеджера');
+    }
     // Строку не удаляем, а отмечаем отменённой: заявку можно подать снова,
     // а у менеджера остаётся след, кто передумал
     const res = await this.db.tournament_entries.updateMany({

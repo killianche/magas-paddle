@@ -26,8 +26,10 @@ export default function Tournaments() {
   if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
 
   const all = q.data ?? [];
-  const upcoming = all.filter(t => t.state !== 'done');
-  const past = all.filter(t => t.state === 'done');
+  // Прошедший по дате турнир — в прошлых, даже если в админке ещё не «завершён»
+  const isPast = (t: ApiTournament) => t.state === 'done' || new Date(t.startsAt).getTime() <= Date.now();
+  const upcoming = all.filter(t => !isPast(t));
+  const past = all.filter(isPast);
   const [hero, ...rest] = upcoming;
 
   const open = (t: ApiTournament) => {

@@ -57,12 +57,21 @@ export class BookingsController {
     // не копим — только свежие и будущие.
     const rows = await this.db.bookings.findMany({
       where: { client_id: client.id, OR: [
-        { status: { not: 'cancelled' } },
-        { status: 'cancelled', status_at: { gt: new Date(Date.now() - 7 * 864e5) } },
+        { status: { in: ['pending', 'confirmed', 'done'] } },
+        // Отменённые, сгоревшие и неявки показываем неделю, потом убираем
+        { status: { in: ['cancelled', 'expired', 'no_show'] }, ends_at: { gt: new Date(Date.now() - 7 * 864e5) } },
       ] },
       orderBy: { starts_at: 'asc' },
     });
     const courts = new Map((await this.db.courts.findMany()).map(c => [c.id, c.name]));
+    // Строки счёта (прокат, мячи) и внесённые деньги — человек видит, сколько
+    // должен и за что, теми же цифрами, что и менеджер
+    const ids = rows.map(r => r.id);
+    const [extras, paid] = ids.length ? await Promise.all([
+      this.db.sales.findMany({ where: { booking_id: { in: ids } }, orderBy: { id: 'asc' } }),
+      this.db.payments.groupBy({ by: ['booking_id'], where: { booking_id: { in: ids } }, _sum: { amount: true } }),
+    ]) : [[], []];
+    const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
 
     return rows.map(b => ({
       id: Number(b.id),
@@ -75,6 +84,10 @@ export class BookingsController {
       hour: hourOf(b.starts_at),
       hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
       price: b.price,
+      discount: b.discount,
+      paid: paidBy.get(String(b.id)) ?? 0,
+      extras: extras.filter(x => x.booking_id === b.id)
+        .map(x => ({ item: x.item ?? x.category, qty: x.qty, amount: x.amount })),
       status: b.status,
       holdUntil: b.hold_until,
     }));

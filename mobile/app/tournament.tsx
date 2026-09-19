@@ -44,8 +44,9 @@ export default function TournamentScreen() {
 
   const date = dateOfIso(t.startsAt);
   const left = Math.max(0, t.seats - t.taken);
-  const done = t.state === 'done';
-  const canEnter = t.state === 'open' && left > 0 && !t.entered;
+  const started = new Date(t.startsAt).getTime() <= Date.now();
+  const done = t.state === 'done' || started;
+  const canEnter = t.state === 'open' && !started && left > 0 && !t.entered;
 
   const pending = t.entry?.status === 'pending';
   const confirmed = t.entry?.status === 'confirmed';

@@ -190,7 +190,7 @@ export class ClientsController {
         data: { status: 'cancelled', status_at: now, status_by: 'клиент удалил аккаунт' },
       }),
       this.db.tournament_entries.updateMany({
-        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] } },
+        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, tournaments: { starts_at: { gt: now } } },
         data: { status: 'cancelled', hold_until: null, status_at: now, status_by: 'клиент удалил аккаунт' },
       }),
       this.db.notifications.deleteMany({ where: { client_id: c.id } }),

@@ -21,6 +21,8 @@ import {
 } from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
+import { openLink } from '../src/components/contacts';
+import { whatsappUrl } from '../src/club';
 import { ThemePicker } from '../src/components/themepicker';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
 
@@ -81,8 +83,29 @@ function Enter({ onDone, why, prefill }: {
   const [wa, setWa] = useState(prefill?.whatsapp ? plainPhone(prefill.whatsapp) : '');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
+  const [more, setMore] = useState(!!(prefill?.surname || prefill?.whatsapp));
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+
+  /** Забыл пароль — пишет менеджеру в WhatsApp готовым текстом: кто он,
+   *  номер и ID. Кода по SMS нет, пароль сбрасывает менеджер в админке. */
+  const forgot = () => {
+    const wa = whatsappUrl();
+    const me = prefill;
+    const text = [
+      'Здравствуйте! Я забыл пароль от аккаунта в приложении Magas Padel.',
+      `Мой номер: ${clean ? prettyPhone(clean) : (me ? prettyPhone(me.phone) : '')}.`,
+      me?.name ? `Меня зовут ${fullName(me)}.` : '',
+      me?.id ? `ID аккаунта ${me.id}.` : '',
+      'Сбросьте, пожалуйста, пароль — я задам новый в приложении.',
+    ].filter(Boolean).join('\n');
+    if (!wa) {
+      const m = 'WhatsApp клуба пока не указан. Позвоните в клуб — менеджер сбросит пароль.';
+      Platform.OS === 'web' ? alert(m) : Alert.alert('Забыли пароль', m);
+      return;
+    }
+    openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp: он сбросит пароль.');
+  };
 
   /** Что делать с этим номером: клуб его ещё не знает, знает без пароля
    *  или на нём уже стоит пароль. Пока не спросили — 'unknown'. */
@@ -170,16 +193,27 @@ function Enter({ onDone, why, prefill }: {
               autoCapitalize="words" textContentType="givenName"
               accessibilityLabel="Имя" />
 
-            <Text style={s.label}>Фамилия</Text>
-            <TextInput style={s.input} value={surname} onChangeText={setSurname}
-              placeholder="Необязательно" placeholderTextColor={C.busy}
-              autoCapitalize="words" textContentType="familyName"
-              accessibilityLabel="Фамилия" />
+            {/* Регистрация быстрая: фамилия и второй номер — по желанию,
+                свёрнуты, чтобы не занимать место (заказчик, 19.09.2026) */}
+            {!more ? (
+              <Pressable onPress={() => setMore(true)} hitSlop={8} accessibilityRole="button"
+                style={({ pressed }) => [s.moreBtn, pressed && { opacity: 0.6 }]}>
+                <Text style={s.moreT}>+ фамилия и WhatsApp, если нужно</Text>
+              </Pressable>
+            ) : (
+              <>
+                <Text style={s.label}>Фамилия <Text style={s.opt}>по желанию</Text></Text>
+                <TextInput style={s.input} value={surname} onChangeText={setSurname}
+                  placeholder="Для списка участников турниров" placeholderTextColor={C.busy}
+                  autoCapitalize="words" textContentType="familyName"
+                  accessibilityLabel="Фамилия" />
 
-            <Text style={s.label}>WhatsApp</Text>
-            <TextInput style={s.input} value={wa} onChangeText={setWa}
-              placeholder="Если номер другой" placeholderTextColor={C.busy}
-              keyboardType="phone-pad" accessibilityLabel="Номер WhatsApp" />
+                <Text style={s.label}>WhatsApp <Text style={s.opt}>если номер другой</Text></Text>
+                <TextInput style={s.input} value={wa} onChangeText={setWa}
+                  placeholder="89289204029" placeholderTextColor={C.busy}
+                  keyboardType="phone-pad" accessibilityLabel="Номер WhatsApp" />
+              </>
+            )}
           </>
         )}
 
@@ -199,6 +233,12 @@ function Enter({ onDone, why, prefill }: {
           accessibilityLabel="Пароль" />
 
 
+        {login && (
+          <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button"
+            style={({ pressed }) => [s.moreBtn, pressed && { opacity: 0.6 }]}>
+            <Text style={s.moreT}>Забыли пароль? Написать менеджеру в WhatsApp</Text>
+          </Pressable>
+        )}
         {state === 'known' && (
           <Text style={s.found}>
             Клуб уже знает этот номер — данные подставились. Осталось придумать пароль.
@@ -639,6 +679,9 @@ const s = sheet(() => ({
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  moreBtn: { marginHorizontal: S.xl, marginTop: 12, minHeight: 36, justifyContent: 'center' },
+  moreT: { fontFamily: DISP_MED, color: C.accent, fontSize: 13 },
+  opt: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 0, textTransform: 'none' },
   delRow: { marginTop: 12, minHeight: HIT, justifyContent: 'center' },
   delT: { color: C.red, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },

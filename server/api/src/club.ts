@@ -166,8 +166,10 @@ export class ClubService {
     // десятками минут, поэтому чаще раза в 20 секунд смотреть незачем.
     if (Date.now() - this.sweptAt < 20_000) return 0;
     this.sweptAt = Date.now();
+    // Заявка, по которой уже приняли деньги, не сгорает: её просто не успели
+    // подтвердить кнопкой (а приём оплаты подтверждает сам)
     const r = await this.db.bookings.updateMany({
-      where: { status: 'pending', hold_until: { lt: new Date() } },
+      where: { status: 'pending', hold_until: { lt: new Date() }, payments: { none: {} } },
       data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
     });
     // Заявки на турниры держат место так же и так же его отпускают
