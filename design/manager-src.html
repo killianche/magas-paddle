@@ -5,15 +5,19 @@
   /* Светлая тема — основная (заказчик, 17.09.2026). Тёмная — по кнопке в шапке.
      --lime — акцент: в светлой теме тёмно-зелёный, как в приложении,
      салатовый на белом не читается. */
-  --ink:#F2F4EF; --ink-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F3F5F0; --surface-3:#E8ECE4;
-  --line:#DCE2D6; --line-soft:#E8ECE4; --line-strong:#B4C0AD;
-  --lime:#1B5E20; --lime-dim:#2E7D32; --green-deep:#1B5E20; --green-mid:#7DB585; --on-lime:#FFFFFF;
-  --text:#0B130D; --dim:#4A564E; --dim-2:#5F6B63; --amber:#A35C00; --red:#C0392B;
-  --top-bg:rgba(255,255,255,.94); --scrim:rgba(20,28,22,.45); --scheme:light;
+  /* Тона светлые, как в интерфейсах Apple: белые поверхности, серая подложка,
+     волосяные линии вместо рамок, цвет — точками и акцентной кнопкой. */
+  --ink:#F5F5F7; --ink-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F7F9; --surface-3:#EDEDF0;
+  --line:rgba(0,0,0,.09); --line-soft:rgba(0,0,0,.05); --line-strong:rgba(0,0,0,.18);
+  --lime:#1B7A32; --lime-dim:#2E7D32; --green-deep:#1B5E20; --green-mid:#8FC79A; --on-lime:#FFFFFF;
+  --text:#1D1D1F; --dim:#6E6E73; --dim-2:#8E8E93; --amber:#B25E00; --red:#D0342C;
+  --top-bg:rgba(255,255,255,.8); --scrim:rgba(0,0,0,.28); --scheme:light;
+  --shadow:0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.04);
   --warn-bg:rgba(240,169,59,.16); --warn-line:rgba(190,110,10,.45);
   --bad-bg:rgba(229,100,75,.10); --bad-line:rgba(192,57,43,.40); --err-text:#9B2C1E;
   --ok-bg:rgba(27,94,32,.08); --ok-line:rgba(27,94,32,.45);
-  --hatch:rgba(0,0,0,.05); --stale-text:#6B4A10; --heat:27,94,32;
+  --info:#0A66C2; --info-bg:rgba(10,102,194,.07); --info-line:rgba(10,102,194,.45);
+  --hatch:rgba(0,0,0,.04); --stale-text:#8A5B00; --heat:27,122,50;
   --top-h:59px; --stats-h:73px;
   --disp:'Oswald','Arial Narrow',sans-serif;
   --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
@@ -25,9 +29,11 @@
   --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A; --on-lime:#0B0F0C;
   --text:#EDF2E9; --dim:#9AA795; --dim-2:#889085; --amber:#F0A93B; --red:#E5644B;
   --top-bg:rgba(11,15,12,.94); --scrim:rgba(4,7,5,.72); --scheme:dark;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
   --warn-bg:rgba(240,169,59,.10); --warn-line:rgba(240,169,59,.45);
   --bad-bg:rgba(229,100,75,.10); --bad-line:rgba(229,100,75,.45); --err-text:#F0B6A8;
   --ok-bg:rgba(198,240,51,.09); --ok-line:rgba(198,240,51,.5);
+  --info:#6FB3FF; --info-bg:rgba(111,179,255,.10); --info-line:rgba(111,179,255,.5);
   --hatch:rgba(255,255,255,.03); --stale-text:#DFCCA8; --heat:198,240,51;
 }
 html{color-scheme:var(--scheme)}
@@ -38,7 +44,7 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 input,select{font-family:inherit;font-size:inherit}
 
 .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;
-  padding:12px 20px;background:var(--top-bg);backdrop-filter:blur(10px);
+  padding:12px 20px;background:var(--top-bg);backdrop-filter:saturate(180%) blur(20px);
   border-bottom:1px solid var(--line)}
 .brand{font-family:var(--disp);font-size:17px;letter-spacing:.08em;text-transform:uppercase}
 .brand b{color:var(--lime)}
@@ -59,7 +65,8 @@ input,select{font-family:inherit;font-size:inherit}
 
 .wrap{padding:18px 20px 60px;max-width:1500px;margin:0 auto}
 .stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.stat{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 16px;min-width:130px}
+.stat{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 16px;
+  min-width:130px;box-shadow:var(--shadow)}
 .stat b{display:block;font-family:var(--disp);font-size:26px;line-height:1.1}
 .stat span{font-size:12px;color:var(--dim-2)}
 .stat.warn{border-color:var(--warn-line);background:var(--warn-bg)}
@@ -70,21 +77,12 @@ input,select{font-family:inherit;font-size:inherit}
 #board table{width:100%;border-collapse:separate;border-spacing:5px 0;table-layout:fixed}
 /* Каждый корт — своя дорожка цвета покрытия: синий корт обведён синим,
    зелёный — зелёным. Заказчик путал столбцы, когда они были одинаковыми. */
-#board th.lane{border-top:4px solid var(--cc);border-radius:10px 10px 0 0;padding:8px 4px 6px;
-  color:var(--text);background:linear-gradient(color-mix(in srgb,var(--cc) 16%,transparent),
-  color-mix(in srgb,var(--cc) 16%,transparent)),var(--ink);
-  box-shadow:inset 2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
-             inset -2px 0 color-mix(in srgb,var(--cc) 45%,transparent)}
+#board th.lane{border-top:3px solid var(--cc);border-radius:12px 12px 0 0;padding:9px 4px 7px;
+  color:var(--text);background:var(--surface);box-shadow:inset 0 -1px var(--line)}
 /* Тонкая линия по низу каждого часа: видно, где кончается час */
-#board td.lane{padding:3px 4px;
-  background-image:linear-gradient(to top,var(--line) 1px,transparent 1px);
-  background-color:color-mix(in srgb,var(--cc) 6%,transparent);
-  box-shadow:inset 2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
-             inset -2px 0 color-mix(in srgb,var(--cc) 45%,transparent)}
-#board tr.last td.lane{border-radius:0 0 10px 10px;
-  box-shadow:inset 2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
-             inset -2px 0 color-mix(in srgb,var(--cc) 45%,transparent),
-             inset 0 -2px color-mix(in srgb,var(--cc) 45%,transparent)}
+#board td.lane{padding:3px 4px;background-color:var(--surface);
+  background-image:linear-gradient(to top,var(--line-soft) 1px,transparent 1px)}
+#board tr.last td.lane{border-radius:0 0 12px 12px;background-image:none}
 #board th .cdot{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--cc);
   margin-right:6px;vertical-align:1px}
 #board th{font-size:11.5px;color:var(--dim);font-weight:700;padding-bottom:4px;text-align:center}
@@ -93,13 +91,13 @@ input,select{font-family:inherit;font-size:inherit}
 #board td{vertical-align:top;height:52px}
 #board tbody tr{height:52px}
 .hcell{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);padding-top:6px;text-align:right;padding-right:6px}
-.slot{height:100%;min-height:46px;border-radius:10px;border:1px dashed var(--line-soft);
+.slot{height:100%;min-height:46px;border-radius:10px;border:1px solid transparent;
   background:transparent;width:100%;color:var(--dim-2);font-size:11.5px;
-  display:flex;align-items:center;justify-content:center}
+  display:flex;align-items:center;justify-content:center;transition:background .12s}
 /* В пустой ячейке плюс, под курсором — её время: менеджер попадает
    в нужный час, не сверяясь глазами с левым столбцом */
 .slot b{display:none;font-family:var(--mono);font-size:12px;color:var(--text)}
-.slot:hover{border-color:var(--line-strong);background:var(--surface)}
+.slot:hover{border-color:var(--line);background:var(--surface-2)}
 .slot:hover span{display:none}
 .slot:hover b{display:block}
 .slot.closed{height:100%;min-height:46px;border-style:solid;border-color:var(--line);
@@ -108,13 +106,26 @@ input,select{font-family:inherit;font-size:inherit}
 .bk{height:100%;min-height:46px;border-radius:10px;padding:6px 8px;text-align:left;width:100%;
   border:1px solid var(--line);background:var(--surface-2);color:var(--text);
   display:flex;flex-direction:column;justify-content:flex-start;gap:2px}
+.bk{box-shadow:var(--shadow)}
 .bk:hover{border-color:var(--line-strong)}
 .bk .n{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bk .m{font-size:11px;color:var(--dim-2);margin-top:2px}
+/* Состояние брони одним цветом: ждёт — янтарный, подтверждена без оплаты —
+   синий контур, оплачена — зелёная, долг после игры — красная, отыграна —
+   серая, неявка — красная с чертой. Считает bkState(), тот же расчёт и в карточке. */
 .bk.pending{border-color:var(--warn-line);background:var(--warn-bg)}
-.bk.confirmed{border-color:var(--ok-line);background:var(--ok-bg)}
-.bk.no_show{border-color:var(--bad-line);background:var(--bad-bg)}
+.bk.unpaid{border-color:var(--info-line);background:var(--info-bg)}
+.bk.part{border-color:var(--warn-line);background:var(--warn-bg)}
+.bk.paid{border-color:var(--ok-line);background:var(--ok-bg)}
+.bk.debt{border-color:var(--bad-line);background:var(--bad-bg)}
+.bk.done{border-color:var(--line);background:var(--surface-2);opacity:.8}
+.bk.no_show{border-color:var(--bad-line);background:var(--bad-bg);text-decoration:line-through}
 .bk.cancelled{opacity:.4;text-decoration:line-through}
+.bk .st.warn{color:var(--amber)} .bk .st.bad{color:var(--red)} .bk .st.ok{color:var(--lime)}
+.bk .st.info{color:var(--info)} .bk .st.dim{color:var(--dim-2)}
+.bk .m s{color:var(--dim-2);margin-right:4px}
+.row b.stt-warn{color:var(--amber)} .row b.stt-bad{color:var(--red)} .row b.stt-ok{color:var(--lime)}
+.row b.stt-info{color:var(--info)} .row b.stt-dim{color:var(--dim)}
 
 /* Окна с одинаковым z-index перекрываются по порядку в разметке: то, что ниже,
    оказывается сверху. Поэтому окно, открываемое поверх другого (например,
@@ -166,7 +177,7 @@ td.hcell{position:sticky;left:0;z-index:12;background:var(--ink)}
 /* Прошедшие часы приглушены, текущий отбит линией */
 tr.past td.hcell,tr.past .slot{opacity:.45}
 /* Строка часа под курсором подсвечивается целиком — сразу видно, какой час */
-#board tbody tr:hover td.lane{background-color:color-mix(in srgb,var(--cc) 16%,transparent)}
+#board tbody tr:hover td.lane{background-color:color-mix(in srgb,var(--cc) 8%,transparent)}
 #board tbody tr:hover td.hcell{color:var(--text);font-weight:700}
 tr.now td{border-top:2px solid var(--lime)}
 tr.now td.hcell{color:var(--lime);font-weight:700}
@@ -433,7 +444,8 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .hist .ok{color:var(--lime)}
 .hist .no{color:var(--amber)}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:18px}
-.card{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px;
+  box-shadow:var(--shadow)}
 .card b{display:block;font-family:var(--disp);font-size:27px;line-height:1.1}
 .card span{display:block;font-size:12.5px;color:var(--dim-2);margin-top:5px}
 .card .delta{font-size:12px;margin-top:6px}
@@ -1237,6 +1249,40 @@ function holdText(min){
   return `осталось ${Math.floor(min/60)} ч ${min%60} мин`;
 }
 
+/** Сколько должен заплатить клиент: цена минус скидка. */
+const dueOf = b => Math.max(0, (b.price || 0) - (b.discount || 0));
+
+/** Когда игра по этой брони: началась ли, закончилась ли (по московскому времени). */
+function timing(b){
+  const d = b.date || date;
+  const start = new Date(`${d}T${String(b.hour).padStart(2,'0')}:00:00+03:00`).getTime();
+  const end = start + b.hours * 3600e3;
+  const now = Date.now();
+  return { begun: start <= now, ended: end <= now };
+}
+
+/** Состояние брони одним словом и одним цветом — для сетки и карточки.
+ *  Учитывает статус, оплату (с учётом скидки) и прошло ли время игры. */
+function bkState(b){
+  const due = dueOf(b), paid = b.paid || 0;
+  const { ended } = timing(b);
+  const left = holdLeft(b);
+  if (b.status === 'cancelled') return { cls:'cancelled', tone:'dim', label:'Отменена' };
+  if (b.status === 'expired')   return { cls:'cancelled', tone:'dim', label:'Не подтвердили вовремя' };
+  if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', label: paid > 0 ? `Не пришёл · внесено ${rub(paid)}` : 'Не пришёл' };
+  if (b.status === 'pending')   return { cls:'pending', tone:'warn',
+    label: left !== null ? `⏳ ${holdText(left)}` : 'Ждёт подтверждения' };
+  const fullyPaid = paid >= due;
+  if (b.status === 'done') return fullyPaid
+    ? { cls:'done', tone:'dim', label:'Отыграна · оплачено' }
+    : { cls:'debt', tone:'bad', label:`Отыграна · долг ${rub(due - paid)}` };
+  // confirmed
+  if (fullyPaid) return { cls:'paid', tone:'ok', label:'✓ Оплачено' };
+  if (paid > 0)  return { cls:'part', tone:'warn', label:`Внесено ${rub(paid)} из ${rub(due)}` };
+  if (ended)     return { cls:'debt', tone:'bad', label:`Сыграно · долг ${rub(due)}` };
+  return { cls:'unpaid', tone:'info', label:'Подтверждена · не оплачено' };
+}
+
 /** Имя на записи: клиент, гость без телефона или прочерк. */
 function who(b){ return (b.client && b.client.name) || b.guestName || 'Без имени' }
 /** Тарифы площадок приходят с сервера — здесь их не выдумываем. */
@@ -1415,7 +1461,7 @@ function render(){
   const pending = alive.filter(b => b.status==='pending');
   // Две разные цифры: сколько должны заплатить и сколько уже в кассе.
   // Раньше была одна, и она включала неоплаченные заявки.
-  const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+b.price,0);
+  const money = alive.filter(b => b.status!=='no_show').reduce((s,b)=>s+dueOf(b),0);
   const got = day.bookings.reduce((s,b)=>s+(b.paid||0),0);
   // Считаем только реально открытые площадки: закрытый на ремонт корт
   // занижал занятость и цифра переставала что-либо значить.
@@ -1467,13 +1513,11 @@ function render(){
         if(b.hour===h){
           const nm = esc(who(b));
           const flags = b.client && (b.client.noShows>0||b.client.cancels>1) ? ' ⚠' : '';
-          html += `<td class="lane" style="${laneOf(c)}" rowspan="${b.hours}"><button class="bk ${b.status}" data-id="${b.id}" title="${nm}">
+          const stt = bkState(b);
+          html += `<td class="lane" style="${laneOf(c)}" rowspan="${b.hours}"><button class="bk ${stt.cls}" data-id="${b.id}" title="${nm} · ${esc(stt.label)}">
             <div class="n">${nm}${flags}</div>
-            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${rub(b.price)}</div>
-            <div class="st">${b.paid >= b.price ? '✓ оплачено'
-              : b.paid > 0 ? '½ ' + rub(b.paid)
-              : holdLeft(b) !== null ? '⏳ ' + holdText(holdLeft(b))
-              : (STATUS[b.status]||b.status)}</div>
+            <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price)}</s>` : ''}${rub(dueOf(b))}</div>
+            <div class="st ${stt.tone}">${esc(stt.label)}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
         }
@@ -1510,8 +1554,8 @@ async function openBooking(id){
     <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
     <div class="row"><span>К оплате</span><b>${rub(b.price - (b.discount||0))}${
       b.discount ? ` <span style="color:var(--dim-2);font-weight:400">вместо ${rub(b.price)}</span>` : ''}</b></div>
-    <div class="row"><span>Состояние</span><b>${STATUS[b.status]||b.status}${
-      holdLeft(b) !== null ? ` · <span style="color:var(--amber)">держим, ${holdText(holdLeft(b))}</span>` : ''
+    <div class="row"><span>Состояние</span><b class="stt-${bkState(b).tone}">${esc(bkState(b).label)}${
+      b.statusAt && b.status !== 'pending' ? ` <small style="color:var(--dim-2);font-weight:400">· ${new Date(b.statusAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}${b.statusBy ? ', ' + esc(b.statusBy) : ''}</small>` : ''
     }</b></div>
     ${b.discount ? `<div class="row"><span>Скидка</span><b style="color:var(--amber)">−${rub(b.discount)}${b.discountReason?' · '+esc(b.discountReason):''}</b></div>` : ''}
     ${b.players ? `<div class="row"><span>Играет</span><b>${b.players} чел.</b></div>` : ''}
@@ -1522,10 +1566,10 @@ async function openBooking(id){
           ? `<small style="color:var(--dim)">WhatsApp: ${phoneNice(b.client.whatsapp)}</small>` : '')
       : '—'}</b></div>
     <div class="row"><span>Оплата</span><b>${b.paid > 0
-      ? (b.paid >= b.price
+      ? (b.paid >= dueOf(b)
           ? `<span style="color:var(--lime)">оплачено ${rub(b.paid)}</span>`
-          : `<span style="color:var(--amber)">внесено ${rub(b.paid)} из ${rub(b.price)}</span>`)
-      : '<span style="color:var(--amber)">не оплачено</span>'}</b></div>
+          : `<span style="color:var(--amber)">внесено ${rub(b.paid)} из ${rub(dueOf(b))}</span>`)
+      : `<span style="color:${timing(b).ended && ['confirmed','done'].includes(b.status) ? 'var(--red)' : 'var(--amber)'}">не оплачено</span>`}</b></div>
     <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
     ${b.comment?`<div class="row"><span>Заметка</span><b>${esc(b.comment)}</b></div>`:''}`;
 
@@ -1543,24 +1587,35 @@ async function openBooking(id){
         const when = t.toLocaleDateString('ru-RU') + ', '
           + t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
         return `<div><span>${when} · ${esc(h.courtName)}</span>
-         <span>${STATUS[h.status]||h.status}</span></div>`;
+         <span>${STATUS[h.status]||esc(h.status)} · ${rub(h.price)}</span></div>`;
       }).join('') || '<div><span style="color:var(--dim-2)">других записей нет</span></div>';
       $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Последние записи</div>${rows}`;
     } catch {}
   }
 
+  // Что можно сделать с бронью, зависит от её состояния и от того, прошло ли
+  // время игры. Раньше сгоревшую заявку прошлой недели можно было «подтвердить»
+  // или «перенести» — сервер тоже это не пропустит, но кнопок быть не должно.
+  const { begun, ended } = timing(b);
+  const live = b.status === 'pending' || b.status === 'confirmed';
   const acts = [];
-  if(b.paid < b.price - (b.discount||0)) acts.push(`<button class="btn acc" data-pay>Принять оплату</button>`);
-  else acts.push(`<button class="btn" data-pay>Ещё платёж</button>`);
-  if(b.status!=='confirmed') acts.push(`<button class="btn" data-s="confirmed">Подтвердить</button>`);
-  acts.push(`<button class="btn" data-move>Перенести</button>`);
-  if(can('prices')) acts.push(`<button class="btn" data-disc>Скидка</button>`);
-  // «Не пришёл» имеет смысл только после начала игры
-  const started = date < todayStr() || (date === todayStr() && b.hour <= nowHour());
-  if(b.status!=='no_show' && started) acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
-  // «Сбросить пароль» переехал в карточку клиента на странице «Клиенты»:
-  // в карточке брони кнопка сбивала с толку — к брони она отношения не имеет
-  acts.push(`<button class="btn dg" data-s="cancelled">Отменить бронь</button>`);
+  const owes = b.paid < dueOf(b);
+  if (live || b.status === 'done' || b.status === 'no_show') {
+    acts.push(owes ? `<button class="btn acc" data-pay>Принять оплату</button>`
+                   : `<button class="btn" data-pay>Ещё платёж</button>`);
+  }
+  if (b.status === 'pending' && !ended) acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
+  if (b.status === 'expired' && !ended) acts.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
+  if (live && !ended) acts.push(`<button class="btn" data-move>Перенести</button>`);
+  if (can('prices') && b.status !== 'cancelled' && b.status !== 'expired') acts.push(`<button class="btn" data-disc>Скидка</button>`);
+  if (b.status === 'confirmed' && begun) {
+    acts.push(`<button class="btn" data-s="done">Отыграна</button>`);
+    acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
+  }
+  if (b.status === 'no_show') acts.push(`<button class="btn" data-s="done">Всё же пришёл</button>`);
+  if (live && !ended) acts.push(`<button class="btn dg" data-s="cancelled">Отменить бронь</button>`);
+  if (!acts.length) acts.push(`<span class="hint" style="margin:0">${ended
+    ? 'Игра прошла, эту запись уже не меняют.' : 'Действий нет.'}</span>`);
   $('#bkActs').innerHTML = acts.join('');
   $('#bkErr').classList.remove('on');
   $('#bkModal').classList.add('on');
@@ -1569,18 +1624,6 @@ async function openBooking(id){
   if(copy) copy.onclick = () => {
     navigator.clipboard?.writeText(phoneNice(b.client.phone));
     copy.textContent = 'скопировано';
-  };
-
-  const pw = $('#bkActs').querySelector('[data-pw]');
-  if(pw) pw.onclick = async () => {
-    if(!await ask('Сбросить пароль?',
-      `${who(b)} задаст новый пароль сам в приложении. Прежние входы закроются.`)) return;
-    try {
-      await call('/admin/clients/'+encodeURIComponent(b.client.phone)+'/reset-password',
-        { method:'POST' });
-      pw.textContent = 'пароль сброшен';
-      pw.disabled = true;
-    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
   };
 
   const mv = $('#bkActs').querySelector('[data-move]');
@@ -3017,8 +3060,8 @@ async function loadHistory(){
       <td>${phoneNice(b.phone)}</td>
       <td>${STATUS[b.status]||b.status}</td>
       <td>${b.source==='app'?'приложение':'менеджер'}</td>
-      <td class="money">${rub(b.price)}</td>
-      <td class="money ${b.paid>=b.price?'ok':b.paid>0?'':'no'}">${b.paid ? rub(b.paid) : '—'}</td>
+      <td class="money">${b.discount ? `<s style="color:var(--dim-2)">${rub(b.price)}</s> ` : ''}${rub(dueOf(b))}</td>
+      <td class="money ${b.paid>=dueOf(b)?'ok':b.paid>0?'':'no'}">${b.paid ? rub(b.paid) : '—'}</td>
     </tr>`).join('') +
     `</tbody></table>` +
     (r.total > r.rows.length

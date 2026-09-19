@@ -298,6 +298,23 @@ export class AdminController {
     // Два менеджера нажали одно и то же — второй раз ничего не делаем
     if (b.status === dto.status) return { id: Number(b.id), status: dto.status };
 
+    // Что можно менять задним числом, а что нет. Раньше сгоревшую заявку
+    // прошлой недели можно было «подтвердить», а отыгранную — «отменить».
+    const now = new Date();
+    const ended = b.ends_at <= now, begun = b.starts_at <= now;
+    if (dto.status === 'cancelled' && ended) {
+      throw new ConflictException('Игра уже прошла. Отметьте «отыграна» или «не пришёл»');
+    }
+    if (dto.status === 'confirmed' && ended) {
+      throw new ConflictException('Время уже прошло — подтвердить нельзя');
+    }
+    if ((dto.status === 'no_show' || dto.status === 'done') && !begun) {
+      throw new ConflictException('Игра ещё не началась');
+    }
+    if ((dto.status === 'no_show' || dto.status === 'done') && !['confirmed', 'no_show', 'done'].includes(b.status)) {
+      throw new ConflictException('Так отмечают только подтверждённую бронь');
+    }
+
     // Отмена и неявка бьют по клиенту и по выручке — отдельное право
     if ((dto.status === 'cancelled' || dto.status === 'no_show')
         && !this.auth.can(req.admin, 'cancel')) {
@@ -579,6 +596,12 @@ export class AdminController {
     const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     if (!isValidDate(body.date)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
+    if (!['pending', 'confirmed'].includes(b.status)) {
+      throw new ConflictException('Переносят только ждущую или подтверждённую бронь');
+    }
+    if (b.ends_at <= new Date()) throw new ConflictException('Игра уже прошла — переносить нечего');
+    const target = clubHour(body.date, Number(body.hour));
+    if (target < new Date()) throw new BadRequestException('Нельзя перенести на прошедшее время');
 
     const court = await this.db.courts.findUnique({ where: { id: body.courtId } });
     if (!court) throw new NotFoundException('Площадка не найдена');
@@ -664,8 +687,8 @@ export class AdminController {
     const [rows, total, charged, received] = await Promise.all([
       this.db.bookings.findMany({ where, orderBy: { starts_at: 'desc' }, take, skip }),
       this.db.bookings.count({ where }),
-      // Итоги по всему периоду, а не по показанной странице
-      this.db.bookings.aggregate({ where, _sum: { price: true } }),
+      // Итоги по всему периоду, а не по показанной странице; скидки вычтены
+      this.db.bookings.aggregate({ where, _sum: { price: true, discount: true } }),
       this.db.payments.aggregate({
         where: { bookings: where }, _sum: { amount: true },
       }),
@@ -685,7 +708,7 @@ export class AdminController {
 
     return {
       total, from, to,
-      charged: charged._sum.price ?? 0,
+      charged: (charged._sum.price ?? 0) - (charged._sum.discount ?? 0),
       received: received._sum.amount ?? 0,
       rows: rows.map(b => {
         const cl = b.client_id ? byId.get(String(b.client_id)) : null;
