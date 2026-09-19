@@ -22,12 +22,11 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR ?? '/app/uploads';
 
 /** Сколько часов после конца игры к брони ещё можно добавить продажу. */
 export const SALE_WINDOW_H = 2;
-/** Бронь открыта для продаж: идёт, закончилась не раньше SALE_WINDOW_H часов
- *  назад или начнётся сегодня (ракетку берут перед игрой). */
-function saleWindowOk(starts: Date, ends: Date, now = new Date()): boolean {
-  if (+ends < +now - SALE_WINDOW_H * 3600_000) return false;
-  const endOfToday = clubHour(shiftDate(clubToday(), 1), 0);
-  return +starts < +endOfToday;
+/** Бронь открыта для продаж, если закончилась не раньше SALE_WINDOW_H часов
+ *  назад. Будущие и идущие — можно; давно прошедшие — нет: задним числом
+ *  не записываем (заказчик, 19.09.2026). */
+function saleWindowOk(_starts: Date, ends: Date, now = new Date()): boolean {
+  return +ends >= +now - SALE_WINDOW_H * 3600_000;
 }
 
 /** Фото из строки base64. Тип — по первым байтам файла, а не по тому, что
@@ -286,6 +285,9 @@ export class AdminController {
     const byId = new Map(clients.map(c => [String(c.id), c]));
     const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
     const extrasBy = await this.extrasOf(rows.map(r => r.id));
+    // Продажи клиентам без брони за этот день — это тоже деньги дня
+    const direct = await this.db.sales.aggregate({
+      where: { day: new Date(d), method: { not: 'bill' } }, _sum: { amount: true }, _count: { _all: true } });
 
     // Часы этого дня недели. Сетку растягиваем на уже существующие брони:
     // если день сократили или сделали выходным, записи не должны пропасть
@@ -303,6 +305,7 @@ export class AdminController {
 
     return {
       date: d,
+      directSales: { sum: direct._sum.amount ?? 0, count: direct._count._all },
       openHour: gridOpen,
       closeHour: gridClose,
       /** Рабочие часы клуба в этот день; вне их запись закрыта. */
@@ -437,9 +440,10 @@ export class AdminController {
         hold_until: dto.status === 'confirmed' ? null : b.hold_until,
       }}),
     ];
-    // Отменённая бронь не тянет за собой неоплаченные строки счёта. Товар
-    // из этих строк возвращается на склад — с записью в журнале движений.
-    if (dto.status === 'cancelled') {
+    // Отменённая бронь и неявка не тянут за собой строки счёта: человек не
+    // играл — ракетку и мячи не брал. Товар из этих строк возвращается на
+    // склад — с записью в журнале движений.
+    if (dto.status === 'cancelled' || dto.status === 'no_show') {
       const lines = await this.db.sales.findMany({
         where: { booking_id: b.id, method: 'bill', product_id: { not: null } }, include: { products: true } });
       const back = new Map<string, number>();
@@ -451,7 +455,7 @@ export class AdminController {
         ops.push(this.db.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
         ops.push(this.db.stock_moves.create({ data: {
           product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
-          note: `бронь №${Number(b.id)} отменена`, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+          note: `бронь №${Number(b.id)} ${dto.status === 'no_show' ? '— не пришёл' : 'отменена'}`, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
         }}));
       }
       ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, method: 'bill' } }));
@@ -1087,9 +1091,16 @@ export class AdminController {
     });
 
     /** Прочие продажи периода: бар, прокат, тренировки. */
+    /** Все продажи периода (по дню продажи; у строки счёта брони — день игры). */
     const otherSales = async (a: string, b: string) => this.db.sales.findMany({
       where: { day: { gte: new Date(a), lte: new Date(b) } },
-      select: { category: true, amount: true, method: true },
+      select: { category: true, amount: true, method: true, qty: true, cost: true, booking_id: true,
+                bookings: { select: { status: true } } },
+    });
+    /** Взносы за турниры, начавшиеся в периоде. */
+    const fees = async (a: string, b: string) => this.db.tournament_entries.findMany({
+      where: { paid_amount: { gt: 0 }, tournaments: { starts_at: { gte: clubHour(a, 0), lt: clubHour(shiftDate(b, 1), 0) } } },
+      select: { paid_amount: true, paid_method: true },
     });
     /** Расходы за период: расход месяца берётся пропорционально дням периода
      *  в этом месяце — неделя не должна «нести» аренду за весь месяц. */
@@ -1109,9 +1120,10 @@ export class AdminController {
       });
     };
 
-    const [rows, prevRows, pays, prevPays, salesAll, prevSalesAll, exp, prevExp] = await Promise.all([
+    const [rows, prevRows, pays, prevPays, salesAll, prevSalesAll, exp, prevExp, feeRows, prevFeeRows] = await Promise.all([
       load(from, to), load(prevFrom, prevTo), money(from, to), money(prevFrom, prevTo),
       otherSales(from, to), otherSales(prevFrom, prevTo), costs(from, to), costs(prevFrom, prevTo),
+      fees(from, to), fees(prevFrom, prevTo),
     ]);
     const paidTotal = (list: { amount: number }[]) => list.reduce((n, p) => n + p.amount, 0);
 
@@ -1132,8 +1144,13 @@ export class AdminController {
     const [extrasNow, extrasPrev] = await Promise.all([extrasFor(rows), extrasFor(prevRows)]);
     const dueOf = (b: typeof rows[number], ex: Map<string, { sum: number }>) =>
       Math.max(0, b.price - b.discount) + (ex.get(String(b.id))?.sum ?? 0);
-    const sales = salesAll.filter(x => x.method !== 'bill');
-    const prevSales = prevSalesAll.filter(x => x.method !== 'bill');
+    // Продажа — выручка, если она состоялась: строка счёта брони — только
+    // у сыгранной брони (у отменённой и неявки строки убираются), продажа
+    // клиенту — всегда
+    const realSale = (x: typeof salesAll[number]) =>
+      x.method !== 'bill' || (x.bookings != null && PLAYED.has(x.bookings.status));
+    const sales = salesAll.filter(realSale);
+    const prevSales = prevSalesAll.filter(realSale);
 
     /** Сколько денег пришло по каждой броне. */
     const paidPer = (payList: { amount: number; booking_id: bigint }[]) => {
@@ -1161,10 +1178,14 @@ export class AdminController {
       return {
         bookings: live.filter(isClientBooking).length,
         hours: bookedHours,
-        // Начислено с учётом ручных скидок и строк счёта: иначе цифра расходится
-        // с кассой. Плюс удержанные предоплаты — их клуб тоже заработал
-        charged: played.reduce((n, b) => n + dueOf(b, ex), 0) + keptOf(list, payList),
+        // Аренда кортов: цена минус скидка по сыгранным броням плюс удержанные
+        // предоплаты. Ракетки и мячи из счёта брони сюда НЕ входят — они
+        // в своих категориях продаж, иначе посчитались бы дважды.
+        charged: played.filter(isClientBooking).reduce((n, b) => n + Math.max(0, b.price - b.discount), 0) + keptOf(list, payList),
         kept: keptOf(list, payList),
+        // К оплате по сыгранным: корт и строки счёта — с этим сравнивают кассу
+        due: played.filter(isClientBooking).reduce((n, b) => n + dueOf(b, ex), 0),
+        playedCount: played.filter(isClientBooking).length,
         received: paidTotal(payList),
         // Получено по состоявшимся броням — только это сравнивают с «начислено»
         receivedPlayed: paidTotal(payList.filter(p => playedIds.has(String(p.booking_id)))),
@@ -1176,13 +1197,44 @@ export class AdminController {
     const now = sum(rows, pays, extrasNow);
     const prev = sum(prevRows, prevPays, extrasPrev);
 
-    const salesTotal = (list: { amount: number }[]) => list.reduce((n, x) => n + x.amount, 0);
-    // Продажи можно не учитывать в аналитике — переключатель на странице «Продажи»
-    const withSales = set.salesInStats;
-    const otherRevenue = withSales ? salesTotal(sales) : 0;
-    const prevOther = withSales ? salesTotal(prevSales) : 0;
-    const spent = exp.reduce((n, x) => n + x.amount, 0);
-    const prevSpent = prevExp.reduce((n, x) => n + x.amount, 0);
+    // ── Деньги клуба по категориям. Каждый рубль — ровно в одной категории:
+    //    аренда кортов, удержанные предоплаты, прокат, товары, бар,
+    //    тренировки, прочее, турнирные взносы. Выручка − себестоимость
+    //    проданных товаров − расходы = прибыль. Переключателя «учитывать
+    //    продажи» больше нет: из-за него цифры расходились.
+    const SALE_CATS: [string, string][] = [['rental', 'Прокат'], ['shop', 'Товары'], ['bar', 'Бар'],
+      ['coaching', 'Тренировки'], ['other', 'Прочее']];
+    const moneyOf = (s0: ReturnType<typeof sum>, list: typeof sales, feeList: typeof feeRows, expList: typeof exp) => {
+      const cats = [
+        { key: 'courts', label: 'Аренда кортов', revenue: s0.charged - s0.kept, cost: 0, qty: s0.hours, unit: 'ч' },
+        { key: 'kept', label: 'Удержанные предоплаты', revenue: s0.kept, cost: 0, qty: s0.noShows, unit: '' },
+        ...SALE_CATS.map(([key, label]) => {
+          const l = list.filter(x => x.category === key);
+          return { key, label, revenue: l.reduce((n, x) => n + x.amount, 0), cost: l.reduce((n, x) => n + (x.cost ?? 0), 0),
+            qty: l.reduce((n, x) => n + x.qty, 0), unit: key === 'rental' ? 'раз' : 'шт.',
+            costMissing: key !== 'rental' && l.some(x => x.cost == null) };
+        }),
+        { key: 'fees', label: 'Турнирные взносы', revenue: feeList.reduce((n, x) => n + x.paid_amount, 0), cost: 0,
+          qty: feeList.length, unit: 'чел.' },
+      ];
+      const revenue = cats.reduce((n, c) => n + c.revenue, 0);
+      const cogs = cats.reduce((n, c) => n + c.cost, 0);
+      const expenses = expList.reduce((n, x) => n + x.amount, 0);
+      return { cats, revenue, cogs, expenses, profit: revenue - cogs - expenses };
+    };
+    const moneyNow = moneyOf(now, sales, feeRows, exp);
+    const moneyPrev = moneyOf(prev, prevSales, prevFeeRows, prevExp);
+    // Прежние поля — для совместимости экранов
+    const otherRevenue = moneyNow.revenue - now.charged;
+    const prevOther = moneyPrev.revenue - prev.charged;
+    const spent = moneyNow.expenses;
+    const prevSpent = moneyPrev.expenses;
+    // Деньги, пришедшие не через бронь: продажи клиенту и взносы — в «получено»
+    const directSales = sales.filter(x => x.method !== 'bill');
+    const receivedAll = now.received + directSales.reduce((n, x) => n + x.amount, 0)
+      + feeRows.reduce((n, x) => n + x.paid_amount, 0);
+    const prevReceivedAll = prev.received + prevSales.filter(x => x.method !== 'bill').reduce((n, x) => n + x.amount, 0)
+      + prevFeeRows.reduce((n, x) => n + x.paid_amount, 0);
 
     const hoursOf = (b: typeof rows[number]) => Math.round((+b.ends_at - +b.starts_at) / 3600_000);
     const played = rows.filter(b => PLAYED.has(b.status));
@@ -1208,7 +1260,8 @@ export class AdminController {
         byHour.set(h, { hours: cur.hours + 1, revenue: cur.revenue + perHour });
       }
       const c = byCourt.get(b.court_id) ?? { hours: 0, revenue: 0 };
-      byCourt.set(b.court_id, { hours: c.hours + n, revenue: c.revenue + b.price });
+      // Выручка площадки — со скидкой, как в своде по категориям
+      byCourt.set(b.court_id, { hours: c.hours + n, revenue: c.revenue + net });
       const w = byWeekday.get(wd) ?? { hours: 0, revenue: 0 };
       byWeekday.set(wd, { hours: w.hours + n, revenue: w.revenue + Math.max(0, b.price - b.discount) });
     }
@@ -1220,6 +1273,8 @@ export class AdminController {
       byMethod[p.method] = (byMethod[p.method] ?? 0) + p.amount;
       if (p.kind === 'refund') refunded += -p.amount;
     }
+    for (const x of directSales) byMethod[x.method] = (byMethod[x.method] ?? 0) + x.amount;
+    for (const f of feeRows) if (f.paid_method) byMethod[f.paid_method] = (byMethod[f.paid_method] ?? 0) + f.paid_amount;
 
     // Тепловая карта «час × день недели» — по ней видно, где провал
     const heat = new Map<string, number>();
@@ -1309,25 +1364,32 @@ export class AdminController {
       now, prev,
       // Выручка на корт-час: сколько приносит один час одной площадки в среднем,
       // включая пустые часы. Главная цифра для сравнения периодов.
-      revPerCourtHour: capacity ? Math.round(now.charged / capacity) : 0,
-      averageCheck: now.bookings ? Math.round(now.charged / now.bookings) : 0,
+      // Только аренда: удержанные предоплаты и продажи здесь не нужны
+      revPerCourtHour: capacity ? Math.round((now.charged - now.kept) / capacity) : 0,
+      // Средний чек сыгранной брони: корт со скидкой плюс её строки счёта
+      averageCheck: now.playedCount ? Math.round(now.due / now.playedCount) : 0,
       occupancy: capacity ? now.hours / capacity : 0,
       eveningOccupancy: eveningCapacity ? eveningSold / eveningCapacity : 0,
-      // Удержанные предоплаты уже получены — долгом их не считаем
-      unpaid: Math.max(0, now.charged - now.kept - now.receivedPlayed),
+      // Долг: к оплате по сыгранным броням (корт + строки счёта) минус внесённое по ним
+      unpaid: Math.max(0, now.due - now.receivedPlayed),
+      // Получено всего: по броням, продажи клиентам и турнирные взносы
+      receivedAll, prevReceivedAll,
+      // Деньги по категориям — главный свод: выручка, себестоимость, расходы, прибыль
+      money: { ...moneyNow, prev: { revenue: moneyPrev.revenue, cogs: moneyPrev.cogs, profit: moneyPrev.profit,
+        cats: moneyPrev.cats.map(c => ({ key: c.key, revenue: c.revenue })) } },
       byMethod, refunded, kept: now.kept, lost, bookingDepth, lateCancels, discounts,
       // Магазин и прокат за период: продано, выручка, прибыль, остатки
       shop: await this.shopSummary(from, to),
       // Деньги клуба целиком: аренда кортов плюс бар, прокат и тренировки,
       // минус расходы месяцев, попавших в период
       otherRevenue, prevOther, spent, prevSpent,
-      profit: now.charged + otherRevenue - spent,
-      prevProfit: prev.charged + prevOther - prevSpent,
+      profit: moneyNow.profit,
+      prevProfit: moneyPrev.profit,
       byExpense: groupSum(exp),
-      bySale: withSales ? groupSum(sales) : {},
-      salesInStats: withSales,
+      bySale: groupSum(sales),
+      salesInStats: true,
       guests, guestsKnown: withPlayers, playedCount: played.length,
-      revPerGuest: guests ? Math.round(now.charged / guests) : 0,
+      revPerGuest: guests ? Math.round(now.due / guests) : 0,
       heat: Array.from({ length: 7 }, (_, w) => ({
         weekday: w + 1,
         days: weekdayCount.get(w + 1) ?? 0,
@@ -1496,7 +1558,7 @@ export class AdminController {
         throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
       }
       if (!saleWindowOk(booking.starts_at, booking.ends_at)) {
-        throw new ConflictException(`К брони добавляют в день игры — до неё, во время и не позже ${SALE_WINDOW_H} ч после. Задним числом нельзя`);
+        throw new ConflictException(`Игра закончилась больше ${SALE_WINDOW_H} ч назад — задним числом к брони не добавляют. Запишите продажу клиенту`);
       }
       clientId = booking.client_id;
     } else if (body.clientId) {
@@ -1538,13 +1600,13 @@ export class AdminController {
       return sale;
     });
     await this.auth.log(req.admin, booking ? 'добавил к брони' : 'продал клиенту',
-      `${body.item ? String(body.item).slice(0, 120) : SALE_WORD[category]}, ${(amount / 100).toLocaleString('ru-RU')} ₽`
+      `${body.item ? String(body.item).slice(0, 120) : product?.name ?? SALE_WORD[category]}${qty > 1 ? ` × ${qty}` : ''}, ${(amount / 100).toLocaleString('ru-RU')} ₽`
       + (booking ? `, бронь №${Number(booking.id)}` : `, клиент ID ${Number(clientId)}`));
     return { id: Number(r.id) };
   }
 
-  /** Брони, к которым прямо сейчас можно добавить продажу: идут, кончились
-   *  не раньше SALE_WINDOW_H часов назад или будут сегодня. Для окна «Продажа». */
+  /** Брони, к которым прямо сейчас можно добавить продажу: идущие, будущие
+   *  и закончившиеся не раньше SALE_WINDOW_H часов назад. Для окна «Продажа». */
   @Get('sale-bookings')
   async saleBookings() {
     const now = new Date();
@@ -1552,9 +1614,8 @@ export class AdminController {
       where: {
         status: { in: ['pending', 'confirmed', 'done'] }, tournament_id: null,
         ends_at: { gte: new Date(+now - SALE_WINDOW_H * 3600_000) },
-        starts_at: { lt: clubHour(shiftDate(clubToday(), 1), 0) },
       },
-      orderBy: { starts_at: 'asc' }, include: { clients: true, courts: true },
+      orderBy: { starts_at: 'asc' }, include: { clients: true, courts: true }, take: 300,
     });
     return {
       windowHours: SALE_WINDOW_H,

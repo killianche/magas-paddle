@@ -886,6 +886,8 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .ccard .crow2 input:focus,.ccard .crow2 select:focus,.ccard .ch input.c-name:focus{box-shadow:0 0 0 3px var(--ring);border-radius:6px}
 .ccard .crow2 select{background-color:transparent}
 .hist.heat tbody tr td:first-child,.heat tbody tr:nth-child(even) td:first-child{background:none}
+.hist tfoot td{border-top:.5px solid var(--line-strong);padding:8px 10px;background:var(--surface)}
+.hist tfoot tr:first-child td{border-top:1px solid var(--line-strong)}
 @media(max-width:1100px){:root{--side-w:196px}.gsearch{width:220px}}
 @media(max-width:860px){body:not(.showside){--side-w:0px}body:not(.showside) .side{display:none}}
 </style>
@@ -1043,7 +1045,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
     <div class="slSwitch">
       <label class="chk"><input type="checkbox" id="slOn"> Вести продажи — кнопка «Продажа» на экране дня</label>
-      <label class="chk"><input type="checkbox" id="slInStats"> Учитывать продажи в аналитике (выручка и прибыль)</label>
+
     </div>
     <div id="slOut"><div class="center">Загружаю…</div></div>
     </div>
@@ -1334,7 +1336,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div id="saleBkBox">
       <div id="saleBkPick">
         <div class="bpick" id="saleBkList"></div>
-        <p class="fnote" id="saleBkHint">Здесь брони, которые идут сейчас, закончились не больше 2 часов назад или будут сегодня.</p>
+        <p class="fnote" id="saleBkHint">Здесь идущие и будущие брони и те, что закончились не больше 2 часов назад.</p>
       </div>
       <div class="bchosen" id="saleBkChosen" hidden>
         <div><b id="saleBkName"></b><span id="saleBkSub"></span></div>
@@ -1676,6 +1678,8 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </select>
     <label for="expAmount">Сумма, ₽</label><input id="expAmount" type="number" min="1" step="100">
     <label for="expNote">Заметка</label><input id="expNote" placeholder="Необязательно">
+    <p class="hint">Закупку товаров на продажу (мячи, вода) сюда не вносите — оформляйте «Приходом» в «Товарах».
+      Она учтётся как себестоимость проданного, иначе посчитается дважды.</p>
     <div class="err" id="expErr"></div>
     <div class="acts">
       <button class="btn dg" id="expDel" hidden>Удалить</button>
@@ -2148,7 +2152,7 @@ function render(){
     <div class="stat"><b>${cancelled}</b><span>${plural(cancelled,'отмена','отмены','отмен')} за день</span></div>
     ${burnt.length ? `<button type="button" class="stat bad" id="burntBtn" title="Показать сгоревшие заявки"><b>${burnt.length}</b><span>сгорело без ответа</span></button>` : ''}
     ${toReturn.length ? `<button type="button" class="stat bad" id="returnBtn" title="Кому вернуть деньги"><b>${rub(toReturn.reduce((n,b)=>n+b.paid,0))}</b><span>вернуть клиентам</span></button>` : ''}
-    <div class="stat"><b>${rub(got)}</b><span>получено</span></div>
+    <div class="stat"><b>${rub(got + (day.directSales?.sum || 0))}</b><span>получено${day.directSales?.sum ? ` · из них продажи ${rub(day.directSales.sum)}` : ''}</span></div>
     <div class="stat${money-got>0?' warn':''}"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
   const burntBtn = $('#burntBtn');
   if (burntBtn) burntBtn.onclick = () => openBurnt(burnt);
@@ -2279,7 +2283,7 @@ async function openBooking(id){
       ${note ? `<div class="note ${noteCls}">${note}</div>` : ''}
       <div class="bki-lines">${lines}
         ${editable && b.saleOpen ? `<button type="button" class="btn plain small" id="bkAddExtra" style="margin-top:4px">+ Добавить к брони: ракетки, мячи, вода</button>`
-          : editable && ended ? `<div class="note" style="margin-top:4px">Добавлять к брони можно во время игры и 2 часа после неё.</div>` : ''}
+          : editable && ended ? `<div class="note" style="margin-top:4px">Игра закончилась больше 2 часов назад — задним числом не добавляют.</div>` : ''}
       </div>
     </div>`;
 
@@ -4278,7 +4282,7 @@ async function saleLoadBookings(){
     saleWindowH = r.windowHours;
     saleBkRows = r.bookings;
   } catch(e){ $('#saleBkList').innerHTML = `<div class="none">${esc(e.message)}</div>`; return }
-  $('#saleBkHint').textContent = `Здесь брони, которые идут сейчас, закончились не больше ${saleWindowH} ${plural(saleWindowH,'часа','часов','часов')} назад или будут сегодня. Раньше — нельзя: задним числом не записываем.`;
+  $('#saleBkHint').textContent = `Здесь идущие и будущие брони и те, что закончились не больше ${saleWindowH} ${plural(saleWindowH,'часа','часов','часов')} назад. Более старые — нельзя: задним числом не записываем.`;
   const now = Date.now();
   $('#saleBkList').innerHTML = saleBkRows.length ? saleBkRows.map((b, i) => {
     const cc = /^#[0-9a-f]{6}$/i.test(b.color?.hex || '') ? b.color.hex : '#8A968C';
@@ -4664,7 +4668,7 @@ $('#slSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
 let salesRows = [];
 function applySalesSwitches(set){
   $('#slOn').checked = !!set.salesOn;
-  $('#slInStats').checked = !!set.salesInStats;
+
   $('#saleBtn').hidden = !set.salesOn;
   $('#slNew').hidden = !set.salesOn;
 }
@@ -4693,7 +4697,7 @@ async function loadSales(){
         <div class="stat"><b>${rows.length}</b><span>${plural(rows.length,'продажа','продажи','продаж')}</span></div>
         <div class="stat"><b>${rub(byCat.rental ?? 0)}</b><span>прокат</span></div>
         <div class="stat"><b>${rub((byCat.shop ?? 0) + (byCat.bar ?? 0))}</b><span>товары и бар</span></div>
-        ${st.settings.salesInStats ? '' : '<div class="stat warn"><b>выкл.</b><span>в аналитике не учитываются</span></div>'}
+
       </div>
       ${items.length ? `<div class="sect">Что продаётся</div><div class="bars">${items.map(([k, v]) => `
         <div class="bar"><div class="lbl" style="width:220px;white-space:normal">${esc(k)}</div>
@@ -4725,14 +4729,14 @@ document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => {
 async function saveSalesSwitch(){
   try {
     const r = await call('/admin/sales-settings', { method:'POST', body: JSON.stringify({
-      salesOn: $('#slOn').checked, salesInStats: $('#slInStats').checked }) });
+      salesOn: $('#slOn').checked }) });
     if (setup) Object.assign(setup.settings, r);
     applySalesSwitches(r); loadSales();
     if (view !== 'sales' || $('#sFrom').value) { /* аналитика пересчитается при следующем открытии */ }
   } catch(e){ alert(e.message) }
 }
 $('#slOn').onchange = saveSalesSwitch;
-$('#slInStats').onchange = saveSalesSwitch;
+
 $('#slCsv').onclick = () => {
   const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
   const lines = [['День','Позиция','Статья','Штук','Сумма, ₽','Оплата','Заметка','Кто записал'].join(';')]
@@ -4780,8 +4784,12 @@ async function loadStats(){
 
   $('#sOut').innerHTML = `
     <div class="cards">
-      <div class="card"><b>${rub(d.now.received)}</b><span>получено денег</span>
-        ${delta(d.now.received, d.prev.received)}</div>
+      <div class="card"><b>${rub(d.money.revenue)}</b><span>выручка клуба — все категории</span>
+        ${delta(d.money.revenue, d.money.prev.revenue)}</div>
+      <div class="card ${d.money.profit >= 0 ? '' : 'warn'}"><b>${rub(d.money.profit)}</b><span>${d.money.profit >= 0 ? 'прибыль' : 'убыток'} после закупки и расходов</span>
+        ${delta(d.money.profit, d.money.prev.profit)}</div>
+      <div class="card"><b>${rub(d.receivedAll)}</b><span>получено денег</span>
+        ${delta(d.receivedAll, d.prevReceivedAll)}</div>
       <div class="card"><b>${rub(d.now.charged)}</b><span>заработано на кортах${d.kept ? ` · из них удержано ${rub(d.kept)}` : ''}</span>
         ${delta(d.now.charged, d.prev.charged)}</div>
       <div class="card${d.unpaid>0?' warn':''}"><b>${rub(Math.max(0,d.unpaid))}</b><span>не оплачено</span>
@@ -4801,28 +4809,15 @@ async function loadStats(){
         <div class="delta flat">${d.guests} ${plural(d.guests,'человек','человека','человек')} за ${d.guestsKnown} ${plural(d.guestsKnown,'игру','игры','игр')}</div></div>` : ''}
     </div>
 
-    <div class="sect">Сходится ли клуб</div>
-    <div class="cards">
-      <div class="card"><b>${rub(d.now.charged)}</b><span>аренда площадок</span></div>
-      ${d.salesInStats === false
-        ? `<div class="card"><b>—</b><span>продажи не учитываются</span><div class="delta flat">включаются в разделе «Продажи»</div></div>`
-        : `<div class="card"><b>${rub(d.otherRevenue)}</b><span>прокат, мячи, бар, тренировки</span>
-        ${delta(d.otherRevenue, d.prevOther)}</div>`}
-      <div class="card"><b>${rub(d.spent)}</b><span>расходы за месяцы периода</span></div>
-      <div class="card ${d.profit>=0?'':'warn'}"><b>${rub(d.profit)}</b><span>${d.profit>=0?'прибыль':'убыток'}</span>
-        ${delta(d.profit, d.prevProfit)}</div>
-    </div>
+    <div class="sect">Деньги по категориям</div>
+    ${moneyTable(d)}
     ${Object.keys(d.byExpense).length ? `<div class="bars" style="margin-bottom:8px">` +
       Object.entries(d.byExpense).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
       <div class="bar"><div class="lbl">${EXPENSE[k]||k}</div>
         <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.spent)*100)}%;background:var(--red)"></div></div>
         <div class="val">${rub(v)}</div></div>`).join('') + '</div>'
       : '<div class="empty" style="margin-bottom:10px">Расходы не заведены — прибыль показана без них. Вносятся в «Управление» → «Расходы».</div>'}
-    ${Object.keys(d.bySale).length ? `<div class="bars">` +
-      Object.entries(d.bySale).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `
-      <div class="bar"><div class="lbl">${SALE[k]||k}</div>
-        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.otherRevenue)*100)}%"></div></div>
-        <div class="val">${rub(v)}</div></div>`).join('') + '</div>' : ''}
+
 
     ${d.shop ? `<div class="sect">Магазин и прокат</div>
     <div class="cards">
@@ -4867,7 +4862,7 @@ async function loadStats(){
     <div class="bars">${Object.entries(d.byMethod).filter(([,v]) => v).map(([k,v]) => `
       <div class="bar">
         <div class="lbl">${METHOD[k]||k}</div>
-        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.now.received)*100)}%"></div></div>
+        <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.receivedAll)*100)}%"></div></div>
         <div class="val">${rub(v)}</div>
       </div>`).join('') || '<div class="empty">Оплат за период нет.</div>'}
       ${d.refunded ? `<div class="bar"><div class="lbl">возвращено</div><div class="track"></div><div class="val">−${rub(d.refunded)}</div></div>` : ''}
@@ -4898,6 +4893,35 @@ async function loadStats(){
 }
 
 /** Тепловая карта: где провал, туда и бить ценой или группами. */
+/** Свод денег по категориям: каждый рубль — в одной строке. Выручка −
+ *  себестоимость проданных товаров − расходы = прибыль. У каждой строки —
+ *  сравнение с прошлым таким же периодом. */
+function moneyTable(d){
+  const m = d.money;
+  const prevOf = k => m.prev.cats.find(c => c.key === k)?.revenue ?? 0;
+  const ch = (a, b) => { if (!b) return a ? '<span class="delta up">новое</span>' : '<span style="color:var(--dim-2)">—</span>';
+    const pct = Math.round((a - b) / b * 100); return `<span class="delta ${pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat'}">${pct > 0 ? '+' : ''}${pct}%</span>` };
+  const rows = m.cats.filter(c => c.revenue || prevOf(c.key)).map(c => `<tr>
+      <td>${esc(c.label)}${c.costMissing ? ' <span class="tag warn" title="У части товаров не указана закупка — прибыль по ним не посчитать">нет закупки</span>' : ''}</td>
+      <td class="money">${c.qty ? `${c.qty} ${c.unit}` : ''}</td>
+      <td class="money"><b>${rub(c.revenue)}</b></td>
+      <td class="money">${c.cost ? '−' + rub(c.cost) : ''}</td>
+      <td class="money">${rub(c.revenue - c.cost)}</td>
+      <td class="money">${m.revenue ? Math.round(c.revenue / m.revenue * 100) + '%' : ''}</td>
+      <td class="money">${ch(c.revenue, prevOf(c.key))}</td></tr>`).join('');
+  return `<table class="hist" style="margin-bottom:6px"><thead><tr><th>Категория</th><th class="money">Сколько</th>
+      <th class="money">Выручка</th><th class="money">Закупка</th><th class="money">Заработано</th><th class="money">Доля</th><th class="money">К прошлому</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" style="color:var(--dim-2)">За период денег нет</td></tr>'}</tbody>
+    <tfoot>
+      <tr><td><b>Выручка</b></td><td></td><td class="money"><b>${rub(m.revenue)}</b></td><td class="money">${m.cogs ? '−' + rub(m.cogs) : ''}</td>
+        <td class="money"><b>${rub(m.revenue - m.cogs)}</b></td><td></td><td class="money">${ch(m.revenue, m.prev.revenue)}</td></tr>
+      <tr><td>Расходы клуба</td><td></td><td></td><td></td><td class="money">${m.expenses ? '−' + rub(m.expenses) : '0 ₽'}</td><td></td><td></td></tr>
+      <tr><td><b>${m.profit >= 0 ? 'Прибыль' : 'Убыток'}</b></td><td></td><td></td><td></td>
+        <td class="money"><b style="color:${m.profit >= 0 ? 'var(--lime)' : 'var(--red)'}">${rub(m.profit)}</b></td><td></td><td class="money">${ch(m.profit, m.prev.profit)}</td></tr>
+    </tfoot></table>
+    <p class="hint" style="margin:0 0 14px">Корты — по дню игры, продажи — по дню продажи, взносы — по дню турнира.
+      Ракетки и мячи из счёта брони — в «Прокате» и «Товарах», а не в аренде кортов. Закупка — по проданным товарам.</p>`;
+}
 function heatTable(d){
   const hours = d.heat[0]?.hours ?? [];
   if(!hours.length) return '<div class="empty">Нет данных.</div>';
