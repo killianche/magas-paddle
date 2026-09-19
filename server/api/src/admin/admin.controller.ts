@@ -20,6 +20,16 @@ import { join } from 'path';
  *  папка сайта: nginx отдаёт её сам, без участия приложения. */
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? '/app/uploads';
 
+/** Сколько часов после конца игры к брони ещё можно добавить продажу. */
+export const SALE_WINDOW_H = 2;
+/** Бронь открыта для продаж: идёт, закончилась не раньше SALE_WINDOW_H часов
+ *  назад или начнётся сегодня (ракетку берут перед игрой). */
+function saleWindowOk(starts: Date, ends: Date, now = new Date()): boolean {
+  if (+ends < +now - SALE_WINDOW_H * 3600_000) return false;
+  const endOfToday = clubHour(shiftDate(clubToday(), 1), 0);
+  return +starts < +endOfToday;
+}
+
 /** Фото из строки base64. Тип — по первым байтам файла, а не по тому, что
  *  прислал браузер: иначе под видом картинки можно положить что угодно.
  *  Разрешены JPEG, PNG и WebP до 8 МБ. */
@@ -321,6 +331,9 @@ export class AdminController {
           holdUntil: b.hold_until,
           // Отменённая или неявочная бронь: предоплата остаётся клубу или ждёт возврата
           keptPrepay: b.kept_prepay,
+          // Можно ли сейчас добавить к брони продажу (окно SALE_WINDOW_H)
+          saleOpen: !b.tournament_id && ['pending', 'confirmed', 'done'].includes(b.status)
+            && saleWindowOk(b.starts_at, b.ends_at),
           players: b.players, discount: b.discount, discountReason: b.discount_reason,
           createdBy: b.created_by,
           // Строки счёта брони: прокат, мячи — оплачиваются вместе с кортом
@@ -424,8 +437,23 @@ export class AdminController {
         hold_until: dto.status === 'confirmed' ? null : b.hold_until,
       }}),
     ];
-    // Отменённая бронь не тянет за собой неоплаченные строки счёта
+    // Отменённая бронь не тянет за собой неоплаченные строки счёта. Товар
+    // из этих строк возвращается на склад — с записью в журнале движений.
     if (dto.status === 'cancelled') {
+      const lines = await this.db.sales.findMany({
+        where: { booking_id: b.id, method: 'bill', product_id: { not: null } }, include: { products: true } });
+      const back = new Map<string, number>();
+      for (const l of lines) {
+        const pr = l.products;
+        if (!pr || pr.category === 'rental' || pr.stock == null) continue;
+        const after = (back.get(String(pr.id)) ?? pr.stock) + l.qty;
+        back.set(String(pr.id), after);
+        ops.push(this.db.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
+        ops.push(this.db.stock_moves.create({ data: {
+          product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
+          note: `бронь №${Number(b.id)} отменена`, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+        }}));
+      }
       ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, method: 'bill' } }));
     }
     // Возврат — отдельной строкой в платежах, минусом: видно, кто и когда вернул
@@ -1288,6 +1316,8 @@ export class AdminController {
       // Удержанные предоплаты уже получены — долгом их не считаем
       unpaid: Math.max(0, now.charged - now.kept - now.receivedPlayed),
       byMethod, refunded, kept: now.kept, lost, bookingDepth, lateCancels, discounts,
+      // Магазин и прокат за период: продано, выручка, прибыль, остатки
+      shop: await this.shopSummary(from, to),
       // Деньги клуба целиком: аренда кортов плюс бар, прокат и тренировки,
       // минус расходы месяцев, попавших в период
       otherRevenue, prevOther, spent, prevSpent,
@@ -1436,63 +1466,107 @@ export class AdminController {
     let amount = rubToKop(body.amount);
 
     // Товар из магазина: имя, статья и цена — из карточки товара, остаток списываем
-    let product: { id: bigint; name: string; price: number; category: string; stock: number | null } | null = null;
+    let product: { id: bigint; name: string; price: number; category: string; stock: number | null; cost: number | null } | null = null;
     if (body.productId) {
-      product = await this.db.products.findUnique({ where: { id: BigInt(body.productId) } });
+      product = await this.db.products.findUnique({ where: { id: bigId(String(body.productId)) } });
       if (!product) throw new NotFoundException('Товар не найден');
       category = product.category;
       if (amount <= 0) amount = product.price * qty;
-      if (product.stock != null && product.stock < qty) {
+      // Прокат вещь не забирает — остаток не трогаем
+      if (product.category !== 'rental' && product.stock != null && product.stock < qty) {
         throw new ConflictException(`На складе только ${product.stock} шт.`);
       }
     }
+    const fromStock = !!product && product.category !== 'rental' && product.stock != null;
     if (amount <= 0) throw new BadRequestException('Сумма должна быть больше нуля');
 
-    // Прикреплённая к брони продажа — строка её счёта: платят вместе с кортом,
-    // отдельного способа оплаты у неё нет, день — день игры
-    // Продажа всегда к брони (решение заказчика 19.09.2026, D28): у брони
-    // есть клиент, и покупка сама попадает в его карточку. Как счёт номера
-    // в гостинице: всё, что взял гость, — строкой к его брони.
-    if (!body.bookingId) throw new BadRequestException('Выберите бронь, к которой относится продажа');
-    const booking: { id: bigint; starts_at: Date; status: string; tournament_id: bigint | null } | null =
-      await this.db.bookings.findUnique({ where: { id: bigId(String(body.bookingId)) } });
-    if (!booking) throw new NotFoundException('Бронь не найдена');
-    if (booking.tournament_id) throw new ConflictException('Это корт под турниром — к нему продажи не записывают');
-    if (!['pending', 'confirmed', 'done'].includes(booking.status)) {
-      throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
-    }
-    // Покупка без брони, но на человека: в его карточке будет видно, что брал
-    let clientId: bigint | null = booking ? (await this.db.bookings.findUnique({
-      where: { id: booking.id }, select: { client_id: true } }))?.client_id ?? null : null;
-    if (!booking && body.clientId) {
-      const c = await this.db.clients.findUnique({ where: { id: BigInt(body.clientId) } });
+    // Кому продажа (решение заказчика 19.09.2026, D28): к брони или клиенту.
+    // Без человека продажу не записать. Задним числом — тоже:
+    //  • к брони — только к той, что идёт сейчас, закончилась не больше
+    //    SALE_WINDOW_H часов назад или ещё будет сегодня;
+    //  • клиенту — дата и время ставятся сами, «сейчас», выбрать другие нельзя.
+    let booking: { id: bigint; starts_at: Date; ends_at: Date; status: string;
+                   tournament_id: bigint | null; client_id: bigint | null } | null = null;
+    let clientId: bigint | null = null;
+    if (body.bookingId) {
+      booking = await this.db.bookings.findUnique({ where: { id: bigId(String(body.bookingId)) } });
+      if (!booking) throw new NotFoundException('Бронь не найдена');
+      if (booking.tournament_id) throw new ConflictException('Это корт под турниром — к нему продажи не записывают');
+      if (!['pending', 'confirmed', 'done'].includes(booking.status)) {
+        throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
+      }
+      if (!saleWindowOk(booking.starts_at, booking.ends_at)) {
+        throw new ConflictException(`К брони добавляют в день игры — до неё, во время и не позже ${SALE_WINDOW_H} ч после. Задним числом нельзя`);
+      }
+      clientId = booking.client_id;
+    } else if (body.clientId) {
+      const c = await this.db.clients.findUnique({ where: { id: bigId(String(body.clientId)) } });
       if (!c) throw new NotFoundException('Клиент не найден');
       clientId = c.id;
+    } else {
+      throw new BadRequestException('Выберите бронь или клиента');
     }
+    // К брони — строка её счёта, платят вместе с кортом; клиенту — сразу на стойке
     const method = booking ? 'bill' : String(body.method ?? 'cash');
     if (!booking && !PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
-    const day = booking ? this.dateOf(booking.starts_at)
-      : body.day && isValidDate(body.day) ? body.day : clubToday();
+    const day = booking ? this.dateOf(booking.starts_at) : clubToday();
 
     const r = await this.db.$transaction(async tx => {
-      if (product?.stock != null) {
+      if (fromStock) {
         // Списание под блокировкой: два кассира не продадут последнюю банку дважды
         const upd = await tx.products.updateMany({
-          where: { id: product.id, stock: { gte: qty } }, data: { stock: { decrement: qty } } });
+          where: { id: product!.id, stock: { gte: qty } }, data: { stock: { decrement: qty } } });
         if (!upd.count) throw new ConflictException('Товар закончился');
       }
-      return tx.sales.create({ data: {
+      const sale = await tx.sales.create({ data: {
         day: new Date(day), category, amount, method, qty,
         note: body.note ? String(body.note).trim().slice(0, 200) : null,
         item: (body.item ? String(body.item).trim().slice(0, 120) : null) ?? product?.name ?? null,
         booking_id: booking?.id ?? null, client_id: clientId, product_id: product?.id ?? null,
+        // Себестоимость — только у товара с известной закупкой; у проката её нет
+        cost: product && product.category !== 'rental' && product.cost != null ? product.cost * qty : null,
         admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
       }});
+      if (fromStock) {
+        const after = await tx.products.findUnique({ where: { id: product!.id }, select: { stock: true } });
+        await tx.stock_moves.create({ data: {
+          product_id: product!.id, kind: 'sale', qty: -qty, stock_after: after?.stock ?? null,
+          sale_id: sale.id, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+          note: booking ? `к брони №${Number(booking.id)}` : `клиенту ID ${Number(clientId)}`,
+        }});
+      }
+      return sale;
     });
-    await this.auth.log(req.admin, booking ? 'добавил к брони' : 'продал',
+    await this.auth.log(req.admin, booking ? 'добавил к брони' : 'продал клиенту',
       `${body.item ? String(body.item).slice(0, 120) : SALE_WORD[category]}, ${(amount / 100).toLocaleString('ru-RU')} ₽`
-      + (booking ? `, бронь №${Number(booking.id)}` : ''));
+      + (booking ? `, бронь №${Number(booking.id)}` : `, клиент ID ${Number(clientId)}`));
     return { id: Number(r.id) };
+  }
+
+  /** Брони, к которым прямо сейчас можно добавить продажу: идут, кончились
+   *  не раньше SALE_WINDOW_H часов назад или будут сегодня. Для окна «Продажа». */
+  @Get('sale-bookings')
+  async saleBookings() {
+    const now = new Date();
+    const rows = await this.db.bookings.findMany({
+      where: {
+        status: { in: ['pending', 'confirmed', 'done'] }, tournament_id: null,
+        ends_at: { gte: new Date(+now - SALE_WINDOW_H * 3600_000) },
+        starts_at: { lt: clubHour(shiftDate(clubToday(), 1), 0) },
+      },
+      orderBy: { starts_at: 'asc' }, include: { clients: true, courts: true },
+    });
+    return {
+      windowHours: SALE_WINDOW_H,
+      bookings: rows.map(b => ({
+        id: Number(b.id), date: this.dateOf(b.starts_at), hour: hourOf(b.starts_at),
+        hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000), status: b.status,
+        startsAt: b.starts_at, endsAt: b.ends_at,
+        courtName: b.courts?.name ?? b.court_id, color: colorOf(b.courts?.color ?? null),
+        name: [b.clients?.name, b.clients?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени',
+        clientId: b.client_id ? Number(b.client_id) : null,
+      })),
+    };
   }
 
   /* ── мини-магазин ─────────────────────────────────────────────────── */
@@ -1500,17 +1574,26 @@ export class AdminController {
   @Get('products')
   async products() {
     const rows = await this.db.products.findMany({ orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] });
+    // Сколько продано и принесло за 30 дней — видно прямо на карточке товара
+    const since = new Date(shiftDate(clubToday(), -29));
+    const sold = await this.db.sales.groupBy({
+      by: ['product_id'], where: { product_id: { not: null }, day: { gte: since } },
+      _sum: { qty: true, amount: true, cost: true },
+    });
+    const by = new Map(sold.map(x => [String(x.product_id), x._sum]));
     return rows.map(p => ({
-      id: Number(p.id), name: p.name, price: p.price, category: p.category,
+      id: Number(p.id), name: p.name, price: p.price, category: p.category, cost: p.cost,
       photoUrl: p.photo_url, stock: p.stock, isActive: p.is_active, sortOrder: p.sort_order,
+      sold30: by.get(String(p.id))?.qty ?? 0, revenue30: by.get(String(p.id))?.amount ?? 0,
     }));
   }
 
-  /** Завести товар или поправить: название, цена, статья, остаток. */
+  /** Завести товар или поправить: название, цена, закупка, статья, остаток.
+   *  Статья «прокат» — вещь возвращается, со склада не уходит. */
   @Post('products')
   @Needs('prices')
   async saveProduct(@Req() req: any, @Body() body: Partial<{
-    id: number; name: string; price: number; category: string; stock: number | null; isActive: boolean;
+    id: number; name: string; price: number; cost: number | null; category: string; stock: number | null; isActive: boolean;
   }>) {
     const data: any = { updated_at: new Date() };
     if (body.name != null) {
@@ -1519,43 +1602,165 @@ export class AdminController {
       data.name = n;
     }
     if (body.price != null) data.price = rubToKop(Math.max(0, Number(body.price)));
+    if (body.cost !== undefined) data.cost = body.cost == null || body.cost === ('' as any)
+      ? null : rubToKop(Math.max(0, Number(body.cost)));
     if (body.category != null) {
       if (!['shop', 'rental', 'bar', 'coaching', 'other'].includes(String(body.category))) {
         throw new BadRequestException('Неизвестная статья');
       }
       data.category = String(body.category);
     }
-    if (body.stock !== undefined) data.stock = body.stock == null || body.stock === ('' as any)
-      ? null : int(body.stock, 0, 0, 100000);
+    const stock = body.stock === undefined ? undefined
+      : body.stock == null || body.stock === ('' as any) ? null : int(body.stock, 0, 0, 100000);
     if (body.isActive != null) data.is_active = !!body.isActive;
 
     if (body.id) {
-      const p = await this.db.products.update({ where: { id: BigInt(body.id) }, data });
+      const before = await this.db.products.findUnique({ where: { id: bigId(String(body.id)) } });
+      if (!before) throw new NotFoundException('Товар не найден');
+      // Остаток правится через приход, списание и пересчёт — у каждого
+      // изменения есть строка в журнале. Здесь можно только включить или
+      // выключить учёт остатка.
+      if (stock === null) data.stock = null;
+      else if (stock !== undefined && before.stock == null) data.stock = stock;
+      const p = await this.db.$transaction(async tx => {
+        const upd = await tx.products.update({ where: { id: before.id }, data });
+        if (before.stock == null && upd.stock != null && upd.stock > 0) {
+          await tx.stock_moves.create({ data: { product_id: upd.id, kind: 'count', qty: upd.stock,
+            stock_after: upd.stock, note: 'начали вести остаток', admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
+        }
+        return upd;
+      });
       await this.auth.log(req.admin, 'изменил товар', p.name);
       return { id: Number(p.id) };
     }
     if (!data.name || data.price == null) throw new BadRequestException('Нужны название и цена');
     const last = await this.db.products.findFirst({ orderBy: { sort_order: 'desc' } });
-    const p = await this.db.products.create({ data: {
-      name: data.name, price: data.price, category: data.category ?? 'shop',
-      stock: data.stock ?? null, is_active: data.is_active ?? true,
-      sort_order: (last?.sort_order ?? 0) + 1,
-    }});
+    const p = await this.db.$transaction(async tx => {
+      const c = await tx.products.create({ data: {
+        name: data.name, price: data.price, category: data.category ?? 'shop', cost: data.cost ?? null,
+        stock: stock ?? null, is_active: data.is_active ?? true,
+        sort_order: (last?.sort_order ?? 0) + 1,
+      }});
+      // Первый остаток — это приход: он попадает в журнал движений
+      if (c.stock != null && c.stock > 0) {
+        await tx.stock_moves.create({ data: { product_id: c.id, kind: 'receipt', qty: c.stock, stock_after: c.stock,
+          unit_cost: c.cost, note: 'начальный остаток', admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
+      }
+      return c;
+    });
     await this.auth.log(req.admin, 'завёл товар', `${p.name}, ${(p.price / 100).toLocaleString('ru-RU')} ₽`);
     return { id: Number(p.id) };
   }
 
-  /** Приход или списание: остаток меняется на delta (можно и минус). */
+  /** Движение остатка: привезли (receipt), списали (writeoff: брак, потеря,
+   *  взяли себе) или пересчитали (count: сколько реально лежит). */
+  @Post('products/:id/move')
+  @Needs('prices')
+  async productMove(@Req() req: any, @Param('id') id: string, @Body() body: {
+    kind?: string; qty?: number; unitCost?: number | null; note?: string;
+  }) {
+    const kind = String(body.kind ?? '');
+    if (!['receipt', 'writeoff', 'count'].includes(kind)) throw new BadRequestException('Неизвестное движение');
+    const n = int(body.qty, -1, 0, 100000);
+    if (n < 0 || (kind !== 'count' && n === 0)) throw new BadRequestException('Укажите количество');
+    const note = body.note ? String(body.note).trim().slice(0, 200) : null;
+    const unitCost = kind === 'receipt' && body.unitCost != null && body.unitCost !== ('' as any)
+      ? rubToKop(Math.max(0, Number(body.unitCost))) : null;
+    const res = await this.db.$transaction(async tx => {
+      const p = await tx.products.findUnique({ where: { id: bigId(id) } });
+      if (!p) throw new NotFoundException('Товар не найден');
+      const cur = p.stock ?? 0;
+      const next = kind === 'receipt' ? cur + n : kind === 'writeoff' ? cur - n : n;
+      if (next < 0) throw new ConflictException(`На складе только ${cur} шт. — столько не списать`);
+      const upd = await tx.products.update({ where: { id: p.id }, data: {
+        stock: next, updated_at: new Date(), ...(unitCost != null ? { cost: unitCost } : {}) } });
+      await tx.stock_moves.create({ data: {
+        product_id: p.id, kind, qty: next - cur, unit_cost: unitCost, stock_after: next, note,
+        admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+      }});
+      return { p: upd, cur, next };
+    });
+    const word = kind === 'receipt' ? 'приход товара' : kind === 'writeoff' ? 'списал товар' : 'пересчитал товар';
+    await this.auth.log(req.admin, word, `${res.p.name}: ${res.cur} → ${res.next}${note ? ' · ' + note : ''}`);
+    return { id: Number(res.p.id), stock: res.next };
+  }
+
+  /** Прежняя кнопка «±1»: плюс — приход, минус — списание. */
   @Post('products/:id/stock')
   @Needs('prices')
   async productStock(@Req() req: any, @Param('id') id: string, @Body() body: { delta?: number; set?: number }) {
-    const p = await this.db.products.findUnique({ where: { id: bigId(id) } });
-    if (!p) throw new NotFoundException('Товар не найден');
-    const next = body.set != null ? int(body.set, 0, 0, 100000)
-      : Math.max(0, (p.stock ?? 0) + Math.trunc(Number(body.delta ?? 0)));
-    await this.db.products.update({ where: { id: p.id }, data: { stock: next, updated_at: new Date() } });
-    await this.auth.log(req.admin, 'изменил остаток', `${p.name}: ${p.stock ?? '—'} → ${next}`);
-    return { id: Number(p.id), stock: next };
+    if (body.set != null) return this.productMove(req, id, { kind: 'count', qty: body.set });
+    const d = Math.trunc(Number(body.delta ?? 0));
+    if (!d) throw new BadRequestException('Укажите количество');
+    return this.productMove(req, id, { kind: d > 0 ? 'receipt' : 'writeoff', qty: Math.abs(d) });
+  }
+
+  /** Журнал движений товара: приходы, продажи, возвраты, списания. */
+  @Get('products/:id/moves')
+  async productMoves(@Param('id') id: string) {
+    const rows = await this.db.stock_moves.findMany({
+      where: { product_id: bigId(id) }, orderBy: { id: 'desc' }, take: 300,
+      include: { sales: { include: { bookings: { include: { clients: true } }, clients: true } } },
+    });
+    return rows.map(m => ({
+      id: Number(m.id), kind: m.kind, qty: m.qty, unitCost: m.unit_cost, stockAfter: m.stock_after,
+      note: m.note, by: m.admin_name, at: m.created_at,
+      who: m.sales?.clients ? [m.sales.clients.name, m.sales.clients.surname].filter(Boolean).join(' ')
+        : m.sales?.bookings?.guest_name ?? null,
+      amount: m.sales?.amount ?? null,
+    }));
+  }
+
+  /** Отчёт магазина и проката за период: по каждому товару — продано,
+   *  выручка, себестоимость, прибыль; привезено; остаток и его стоимость. */
+  @Get('shop-report')
+  @Needs('analytics')
+  async shopReport(@Query('from') fromQ?: string, @Query('to') toQ?: string) {
+    const to = toQ && isValidDate(toQ) ? toQ : clubToday();
+    const from = fromQ && isValidDate(fromQ) ? fromQ : shiftDate(to, -29);
+    return this.shopSummary(from, to);
+  }
+
+  private async shopSummary(from: string, to: string) {
+    const [products, sales, moves] = await Promise.all([
+      this.db.products.findMany({ orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] }),
+      this.db.sales.findMany({ where: { day: { gte: new Date(from), lte: new Date(to) } },
+        select: { product_id: true, category: true, qty: true, amount: true, cost: true, item: true } }),
+      this.db.stock_moves.findMany({ where: { kind: 'receipt',
+        created_at: { gte: clubHour(from, 0), lt: clubHour(shiftDate(to, 1), 0) } },
+        select: { product_id: true, qty: true, unit_cost: true } }),
+    ]);
+    const rows = products.map(p => {
+      const mine = sales.filter(x => x.product_id === p.id);
+      const rec = moves.filter(m => m.product_id === p.id);
+      const revenue = mine.reduce((n, x) => n + x.amount, 0);
+      const costKnown = mine.every(x => x.cost != null);
+      const cost = mine.reduce((n, x) => n + (x.cost ?? 0), 0);
+      return {
+        id: Number(p.id), name: p.name, category: p.category, price: p.price, photoUrl: p.photo_url,
+        isActive: p.is_active, stock: p.stock, unitCost: p.cost,
+        qty: mine.reduce((n, x) => n + x.qty, 0), revenue,
+        cost: p.category === 'rental' || !costKnown ? null : cost,
+        profit: p.category === 'rental' ? revenue : costKnown ? revenue - cost : null,
+        received: rec.reduce((n, m) => n + m.qty, 0),
+        receivedCost: rec.every(m => m.unit_cost != null) ? rec.reduce((n, m) => n + m.qty * (m.unit_cost ?? 0), 0) : null,
+        stockValue: p.stock != null && p.cost != null && p.category !== 'rental' ? p.stock * p.cost : null,
+      };
+    });
+    // Продажи без карточки товара (строки прайса, свои позиции) — одной строкой по статье
+    const loose = sales.filter(x => x.product_id == null);
+    const byCat = (cats: string[], list = sales) => list.filter(x => cats.includes(x.category))
+      .reduce((a, x) => ({ qty: a.qty + x.qty, revenue: a.revenue + x.amount }), { qty: 0, revenue: 0 });
+    return {
+      from, to, products: rows,
+      loose: { qty: loose.reduce((n, x) => n + x.qty, 0), revenue: loose.reduce((n, x) => n + x.amount, 0) },
+      goods: byCat(['shop', 'bar', 'other']),
+      rental: byCat(['rental']),
+      coaching: byCat(['coaching']),
+      stockValue: rows.reduce((n, r) => n + (r.stockValue ?? 0), 0),
+      lowStock: rows.filter(r => r.isActive && r.category !== 'rental' && r.stock != null && r.stock <= 3)
+        .map(r => ({ id: r.id, name: r.name, stock: r.stock })),
+    };
   }
 
   @Post('products/:id/photo')
@@ -1613,13 +1818,26 @@ export class AdminController {
     if (row.method !== 'bill' && !this.auth.can(req.admin, 'cancel')) {
       throw new ForbiddenException('Нет доступа: удалять продажи');
     }
+    // Строку счёта брони после окна продаж убрать может только тот, кто
+    // может отменять: задним числом счёт не правят
+    if (row.method === 'bill' && row.booking_id && !this.auth.can(req.admin, 'cancel')) {
+      const b = await this.db.bookings.findUnique({ where: { id: row.booking_id } });
+      if (b && !saleWindowOk(b.starts_at, b.ends_at)) {
+        throw new ForbiddenException('Игра давно прошла — убрать строку счёта может только тот, у кого есть право отменять');
+      }
+    }
     await this.db.$transaction(async tx => {
-      await tx.sales.delete({ where: { id: row.id } });
       if (row.product_id) {
         const pr = await tx.products.findUnique({ where: { id: row.product_id } });
-        if (pr?.stock != null) await tx.products.update({
-          where: { id: pr.id }, data: { stock: { increment: row.qty } } });
+        if (pr && pr.category !== 'rental' && pr.stock != null) {
+          const upd = await tx.products.update({ where: { id: pr.id }, data: { stock: { increment: row.qty } } });
+          await tx.stock_moves.create({ data: {
+            product_id: pr.id, kind: 'return', qty: row.qty, stock_after: upd.stock, sale_id: row.id,
+            note: 'продажу убрали', admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+          }});
+        }
       }
+      await tx.sales.delete({ where: { id: row.id } });
     });
     await this.auth.log(req.admin, 'удалил продажу', `№${id}`);
     return { ok: true };

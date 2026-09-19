@@ -1051,10 +1051,13 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <!-- Мини-магазин: товары с фото, ценой и остатком -->
     <div id="slGoods" hidden>
       <div class="filters">
-        <span class="fnote" style="margin:0">Товары показываются кнопками в окне «Продажа». Остаток списывается при продаже.</span>
+        <span class="fnote" style="margin:0">Товар продаётся и уходит со склада. Прокат возвращается — остаток не меняется.
+          Привезли — «Приход», испортилось или потерялось — «Списать».</span>
         <div style="flex:1"></div>
+        <button class="btn" id="pdImport" hidden>Завести из прайса проката</button>
         <button class="btn acc" id="pdNew">Новый товар</button>
       </div>
+      <div class="stats" id="pdStats" style="position:static"></div>
       <div id="pdRows"><div class="center">Загружаю…</div></div>
     </div>
   </div>
@@ -1116,20 +1119,31 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     </div>
     <div class="ilist">
       <div class="irow"><span class="ik">Название</span><input id="pdName" class="iv" maxlength="120" placeholder="Банка мячей (3 шт.)"></div>
-      <div class="irow"><span class="ik">Цена</span><div class="iv money-in"><input id="pdPrice" type="number" min="0" step="50" placeholder="0"><span>₽</span></div></div>
       <div class="irow"><span class="ik">Статья</span>
-        <div class="seg small iv" id="pdCat">
+        <div class="seg small iv" id="pdCat" style="margin:0">
           <button type="button" data-c="shop" class="on">Товар</button>
           <button type="button" data-c="rental">Прокат</button>
           <button type="button" data-c="bar">Бар</button>
         </div></div>
+      <div class="irow"><span class="ik" id="pdPriceL">Цена продажи</span><div class="iv money-in"><input id="pdPrice" type="number" min="0" step="50" placeholder="0"><span>₽</span></div></div>
+      <div class="irow" id="pdCostRow"><span class="ik">Закупка за шт.</span><div class="iv money-in"><input id="pdCost" type="number" min="0" step="10" placeholder="не знаю"><span>₽</span></div></div>
       <div class="irow"><span class="ik">Остаток</span>
         <div class="iv" style="display:flex;justify-content:flex-end;align-items:center;gap:10px">
-          <label class="chk" style="margin:0"><input type="checkbox" id="pdTrack"> вести остаток</label>
-          <input id="pdStock" type="number" min="0" max="100000" placeholder="0" style="width:90px;text-align:right" disabled>
+          <span id="pdStockNow" class="hint" style="margin:0"></span>
+          <label class="chk" style="margin:0" id="pdTrackL"><input type="checkbox" id="pdTrack"> вести</label>
+          <input id="pdStock" type="number" min="0" max="100000" placeholder="сколько есть" style="width:120px;text-align:right" disabled>
         </div></div>
       <div class="irow"><span class="ik">Продаётся</span>
         <div class="iv" style="display:flex;justify-content:flex-end"><label class="chk" style="margin:0"><input type="checkbox" id="pdActive" checked> показывать в «Продаже»</label></div></div>
+    </div>
+    <p class="fnote" id="pdCatNote"></p>
+    <div id="pdMovesBox" hidden>
+      <div class="fsec" style="display:flex;align-items:center;gap:8px">Движения
+        <span style="flex:1"></span>
+        <button type="button" class="btn small" data-mv="receipt">Приход</button>
+        <button type="button" class="btn small" data-mv="writeoff">Списать</button>
+        <button type="button" class="btn small" data-mv="count">Пересчитать</button></div>
+      <div class="bpick" id="pdMoves" style="max-height:220px"></div>
     </div>
     <div class="err" id="pdErr"></div>
     <div class="ffoot">
@@ -1138,6 +1152,30 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         <button class="btn" data-close>Отмена</button>
         <button class="btn acc" id="pdSave">Сохранить</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- движение товара: приход, списание, пересчёт -->
+<div class="modal" id="mvModal">
+  <div class="sheet form" style="max-width:440px">
+    <div class="fhead"><h3 id="mvTitle">Приход</h3><p class="sub" id="mvSub"></p></div>
+    <div class="ilist">
+      <div class="irow"><span class="ik" id="mvQtyL">Сколько привезли</span>
+        <div class="stepper iv">
+          <button type="button" id="mvMinus" aria-label="Меньше">−</button>
+          <input id="mvQty" type="number" min="0" max="100000" value="1">
+          <button type="button" id="mvPlus" aria-label="Больше">+</button>
+        </div></div>
+      <div class="irow" id="mvCostRow"><span class="ik">Закупка за шт.</span>
+        <div class="iv money-in"><input id="mvCost" type="number" min="0" step="10" placeholder="необязательно"><span>₽</span></div></div>
+      <div class="irow"><span class="ik">Заметка</span><input id="mvNote" class="iv" maxlength="200" placeholder="необязательно"></div>
+      <div class="irow"><span class="ik">Остаток</span><b class="iv" id="mvAfter"></b></div>
+    </div>
+    <div class="err" id="mvErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="mvOk">Записать</button>
     </div>
   </div>
 </div>
@@ -1283,21 +1321,42 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
   <div class="sheet mid form">
     <div class="fhead">
       <h3>Продажа</h3>
-      <p class="sub">Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.</p>
+      <p class="sub" id="saleSub">Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.</p>
     </div>
 
-    <!-- Продажа всегда к брони (заказчик, 19.09.2026): у брони есть клиент,
-         покупка попадает в её счёт и в карточку этого клиента -->
-    <div class="fsec" style="margin-top:12px">К какой брони</div>
-    <div id="saleBkPick">
-      <div class="ilist" style="margin-top:0">
-        <div class="irow"><span class="ik">День игры</span><input id="saleBkDate" type="date" class="iv"></div>
-      </div>
-      <div class="bpick" id="saleBkList"></div>
+    <!-- Кому продажа (заказчик, 19.09.2026): к брони или клиенту. Без человека
+         продажу не записать. Задним числом — тоже нельзя: к брони — только
+         идущей, недавно закончившейся (2 ч) или сегодняшней; клиенту — «сейчас». -->
+    <div class="seg" id="saleTo">
+      <button type="button" data-to="booking" class="on">К брони</button>
+      <button type="button" data-to="client">Клиенту</button>
     </div>
-    <div class="bchosen" id="saleBkChosen" hidden>
-      <div><b id="saleBkName"></b><span id="saleBkSub"></span></div>
-      <button type="button" class="copy" id="saleBkChange">сменить</button>
+    <div id="saleBkBox">
+      <div id="saleBkPick">
+        <div class="bpick" id="saleBkList"></div>
+        <p class="fnote" id="saleBkHint">Здесь брони, которые идут сейчас, закончились не больше 2 часов назад или будут сегодня.</p>
+      </div>
+      <div class="bchosen" id="saleBkChosen" hidden>
+        <div><b id="saleBkName"></b><span id="saleBkSub"></span></div>
+        <button type="button" class="copy" id="saleBkChange">сменить</button>
+      </div>
+    </div>
+    <div id="saleClBox" hidden>
+      <div class="ilist rel">
+        <div class="irow" id="saleClFindRow"><span class="ik">Клиент</span>
+          <input id="saleClQ" class="iv" autocomplete="off" placeholder="имя, телефон или ID">
+          <div class="sugg" id="saleClSugg" hidden></div></div>
+        <div class="irow" id="saleClPickRow" hidden><span class="ik">Клиент</span>
+          <b class="iv" id="saleClName"></b><button type="button" class="copy" id="saleClClear">сменить</button></div>
+        <div class="irow"><span class="ik">Оплата</span>
+          <div class="seg small iv" id="saleMethod" style="margin:0">
+            <button type="button" data-m="cash" class="on">Наличными</button>
+            <button type="button" data-m="card">Картой</button>
+            <button type="button" data-m="sbp">СБП</button>
+          </div></div>
+        <div class="irow"><span class="ik">Когда</span><b class="iv" id="saleWhen" style="font-weight:500"></b></div>
+      </div>
+      <p class="fnote">Дата и время ставятся сами — задним числом продажу не записать.</p>
     </div>
 
     <div class="fsec">Что продаём</div>
@@ -2207,7 +2266,7 @@ async function openBooking(id){
     `<div class="bki-line"><span>Корт, ${b.hours} ${plural(b.hours,'час','часа','часов')}</span><b>${rub(b.price)}</b></div>`,
     b.discount ? `<div class="bki-line"><span>Скидка${b.discountReason ? ' · ' + esc(b.discountReason) : ''}</span><b style="color:var(--amber)">−${rub(b.discount)}</b></div>` : '',
     ...(b.extras?.items ?? []).map(x => `<div class="bki-line"><span>${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}</span><b>${rub(x.amount)}</b>${
-      editable ? `<button type="button" class="x" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}</div>`),
+      editable && (b.saleOpen || can('cancel')) ? `<button type="button" class="x" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}</div>`),
   ].join('');
   const moneyHtml = b.tournamentId ? `<div class="bki-money"><div class="note">${note}</div></div>` : `
     <div class="bki-money">
@@ -2219,7 +2278,8 @@ async function openBooking(id){
       ${closed ? '' : `<div class="bki-bar"><i style="width:${due ? Math.min(100, Math.round(paid / due * 100)) : 0}%"></i></div>`}
       ${note ? `<div class="note ${noteCls}">${note}</div>` : ''}
       <div class="bki-lines">${lines}
-        ${editable ? `<button type="button" class="btn plain small" id="bkAddExtra" style="margin-top:4px">+ Добавить к брони: ракетки, мячи, вода</button>` : ''}
+        ${editable && b.saleOpen ? `<button type="button" class="btn plain small" id="bkAddExtra" style="margin-top:4px">+ Добавить к брони: ракетки, мячи, вода</button>`
+          : editable && ended ? `<div class="note" style="margin-top:4px">Добавлять к брони можно во время игры и 2 часа после неё.</div>` : ''}
       </div>
     </div>`;
 
@@ -3505,6 +3565,7 @@ function renderClient(){
         <a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">WhatsApp</a>
         <a class="btn" href="tel:+${esc((d.phone||'').replace(/\D/g,''))}">Позвонить</a>
         ${can('clients') ? '<button class="btn" id="cpMsg">Написать в приложение</button>' : ''}
+        ${setup?.settings?.salesOn ? '<button class="btn" id="cpSale">Продажа</button>' : ''}
         <button class="btn acc" id="cpAdd">Записать</button>
       </div>
     </div>
@@ -3559,6 +3620,8 @@ function renderClient(){
   });
   $('#cpAdd').onclick = () => { switchView('day');
     openAdd(null, undefined, { client: { id: d.id, name: d.name, phone: d.phone, hasPassword: d.hasPassword } }) };
+  const cs = $('#cpSale');
+  if (cs) cs.onclick = () => openSale({ client: { id: d.id, name: d.name, phone: d.phone } });
   $('#cpCopy').onclick = () => { navigator.clipboard?.writeText(phoneNice(d.phone)); $('#cpCopy').textContent = 'скопировано' };
   const msg = $('#cpMsg');
   if (msg) msg.onclick = () => openCrmMsg([d.id], `Получатель: ${d.name}, ${phoneNice(d.phone)}`);
@@ -4205,24 +4268,25 @@ function priceItems(text){
   }
   return out;
 }
-let saleUnit = null, saleBk = null, saleBkRows = [];
+let saleUnit = null, saleBk = null, saleBkRows = [], saleTo = 'booking', saleCl = null, saleWindowH = 2;
 
-/** Брони выбранного дня, к которым можно добавить строку счёта. */
-async function saleLoadDay(d){
+/** Брони, к которым сейчас можно добавить продажу (сервер решает, какие). */
+async function saleLoadBookings(){
   $('#saleBkList').innerHTML = '<div class="none">Загружаю…</div>';
   try {
-    const src = d === date && day ? day : await call('/admin/day?date=' + d);
-    saleBkRows = src.bookings
-      .filter(b => ['pending','confirmed','done'].includes(b.status) && !b.tournamentId)
-      .sort((a, b) => a.hour - b.hour)
-      .map(b => ({ ...b, date: d, court: src.courts.find(c => c.id === b.courtId) }));
+    const r = await call('/admin/sale-bookings');
+    saleWindowH = r.windowHours;
+    saleBkRows = r.bookings;
   } catch(e){ $('#saleBkList').innerHTML = `<div class="none">${esc(e.message)}</div>`; return }
+  $('#saleBkHint').textContent = `Здесь брони, которые идут сейчас, закончились не больше ${saleWindowH} ${plural(saleWindowH,'часа','часов','часов')} назад или будут сегодня. Раньше — нельзя: задним числом не записываем.`;
+  const now = Date.now();
   $('#saleBkList').innerHTML = saleBkRows.length ? saleBkRows.map((b, i) => {
-    const cc = /^#[0-9a-f]{6}$/i.test(b.court?.color?.hex || '') ? b.court.color.hex : '#8A968C';
+    const cc = /^#[0-9a-f]{6}$/i.test(b.color?.hex || '') ? b.color.hex : '#8A968C';
+    const st = +new Date(b.startsAt) > now ? 'будет' : +new Date(b.endsAt) > now ? 'идёт сейчас' : 'закончилась';
     return `<button type="button" data-i="${i}" style="--cc:${cc}"><span class="cdot"></span>
-      <div><b>${esc(who(b))}</b><span>${esc(b.court?.name ?? '')} · ${hh(b.hour)}–${hh(b.hour + b.hours)} · ${esc(bkState(b).label)}</span></div>
+      <div><b>${esc(b.name)}</b><span>${esc(b.courtName)} · ${b.date === todayStr() ? '' : pretty(b.date) + ', '}${hh(b.hour)}–${hh(b.hour + b.hours)} · ${st}</span></div>
       <span class="ck">✓</span></button>`;
-  }).join('') : '<div class="none">В этот день броней нет. Выберите другой день.</div>';
+  }).join('') : '<div class="none">Сейчас нет броней, к которым можно добавить продажу. Запишите продажу клиенту.</div>';
   $('#saleBkList').querySelectorAll('button[data-i]').forEach(el => el.onclick = () => saleChoose(saleBkRows[+el.dataset.i]));
 }
 function saleChoose(b){
@@ -4230,39 +4294,87 @@ function saleChoose(b){
   $('#saleBkPick').hidden = !!b;
   $('#saleBkChosen').hidden = !b;
   if (b) {
-    $('#saleBkName').textContent = who(b) + (b.client ? '' : ' · без приложения');
-    $('#saleBkSub').textContent = `${b.court?.name ?? ''} · ${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)} · заявка №${b.id}`
-      + (b.client ? ` · покупка попадёт в карточку клиента` : '');
+    $('#saleBkName').textContent = b.name;
+    $('#saleBkSub').textContent = `${b.courtName} · ${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)} · заявка №${b.id}`
+      + (b.clientId ? ' · попадёт и в карточку клиента' : '');
   }
   $('#saleErr').classList.remove('on');
 }
-$('#saleBkDate').onchange = () => { if ($('#saleBkDate').value) saleLoadDay($('#saleBkDate').value) };
-$('#saleBkChange').onclick = () => { saleChoose(null); saleLoadDay($('#saleBkDate').value || date) };
+$('#saleBkChange').onclick = () => { saleChoose(null); saleLoadBookings() };
+
+function saleSetTo(to){
+  saleTo = to;
+  $('#saleTo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.to === to));
+  $('#saleBkBox').hidden = to !== 'booking';
+  $('#saleSub').textContent = to === 'booking'
+    ? 'Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.'
+    : 'Покупка без брони: оплачивается сразу и попадает в карточку клиента.';
+  $('#saleClBox').hidden = to !== 'client';
+  if (to === 'client') $('#saleWhen').textContent = 'сейчас, ' + new Date().toLocaleString('ru-RU',
+    { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Moscow' });
+  $('#saleErr').classList.remove('on');
+  saleTotal();
+}
+$('#saleTo').querySelectorAll('button').forEach(b => b.onclick = () => saleSetTo(b.dataset.to));
+$('#saleMethod').querySelectorAll('button').forEach(b => b.onclick = () =>
+  $('#saleMethod').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
+function saleClPick(c){
+  saleCl = c;
+  $('#saleClFindRow').hidden = !!c; $('#saleClPickRow').hidden = !c; $('#saleClSugg').hidden = true;
+  if (c) $('#saleClName').textContent = `${c.name || 'Без имени'} · ${phoneNice(c.phone)} · ID ${c.id}`;
+  else { $('#saleClQ').value = ''; $('#saleClQ').focus() }
+}
+$('#saleClClear').onclick = () => saleClPick(null);
+let saleClTimer = null;
+$('#saleClQ').oninput = () => {
+  clearTimeout(saleClTimer);
+  const q = $('#saleClQ').value.trim();
+  if (!q) { $('#saleClSugg').hidden = true; return }
+  saleClTimer = setTimeout(async () => {
+    try {
+      const rows = (await call('/admin/find?q=' + encodeURIComponent(q))).clients.slice(0, 8);
+      $('#saleClSugg').innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}">${esc(c.name || 'Без имени')}
+        <span>${phoneNice(c.phone)} · ID ${c.id} · игр: ${c.games}</span></button>`).join('')
+        : '<button type="button" disabled>Не нашёлся. Клиента заводят при записи на корт.</button>';
+      $('#saleClSugg').hidden = false;
+      $('#saleClSugg').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => saleClPick(rows[+b.dataset.i]));
+    } catch { $('#saleClSugg').hidden = true }
+  }, 220);
+};
+$('#saleClQ').onblur = () => setTimeout(() => { $('#saleClSugg').hidden = true }, 200);
 
 function saleTotal(){
   const sum = +$('#saleAmount').value || 0;
   $('#saleTotal').textContent = rub(sum * 100);
-  $('#saleTotalL').textContent = 'В счёт брони';
+  $('#saleTotalL').textContent = saleTo === 'booking' ? 'В счёт брони' : 'Итого';
 }
 
 let saleProduct = null;
 async function openSale(preset){
   if (!setup) { try { setup = await call('/admin/setup') } catch {} }
   try { products = await call('/admin/products') } catch {}
-  // Сначала товары магазина (с фото и остатком), потом строки прайса проката
+  // Товары и прокат из учёта: группами, с остатком. Строки прайса проката
+  // показываем, только пока товары не заведены, — иначе одно и то же
+  // продавалось бы двумя путями и учёт расходился
   const goods = products.filter(p => p.isActive);
-  const items = priceItems(setup?.settings?.rentalsText);
+  const items = goods.length ? [] : priceItems(setup?.settings?.rentalsText);
+  const GROUPS = [['rental','Прокат — вещь вернут'], ['shop','Товары'], ['bar','Бар'], ['coaching','Тренировки'], ['other','Прочее']];
   let html = '';
-  if (goods.length) html += '<div class="qg">Магазин</div>' + goods.map(p => {
-    const st = stockNote(p);
-    return `<button type="button" data-p="${p.id}"${p.stock === 0 ? ' disabled' : ''}>${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}<b>${esc(p.name)}</b>${rub(p.price)}${p.stock != null ? `<span class="stk ${st.cls}">${st.t}</span>` : ''}</button>`;
-  }).join('');
+  for (const [cat, title] of GROUPS) {
+    const list = goods.filter(p => p.category === cat);
+    if (!list.length) continue;
+    html += `<div class="qg">${title}</div>` + list.map(p => {
+      const st = cat === 'rental' ? { t: '', cls: '' } : stockNote(p);
+      return `<button type="button" data-p="${p.id}"${cat !== 'rental' && p.stock === 0 ? ' disabled' : ''}>${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}<b>${esc(p.name)}</b>${rub(p.price)}${cat !== 'rental' && p.stock != null ? `<span class="stk ${st.cls}">${st.t}</span>` : ''}</button>`;
+    }).join('');
+  }
   let lastGroup = null;
   html += items.map((it, i) => {
     const g = it.group !== lastGroup ? `<div class="qg">${esc(it.group || 'Прочее')}</div>` : '';
     lastGroup = it.group;
     return `${g}<button type="button" data-i="${i}"><b>${esc(it.name)}</b>${rub(it.price*100)}</button>`;
   }).join('');
+  if (items.length) html += `<span class="fnote" style="flex-basis:100%;margin:4px 0 0">Это строки прайса. Чтобы вести остатки и видеть прибыль, заведите их товарами: «Продажи» → «Товары и остатки».</span>`;
   $('#saleQuick').innerHTML = html || '<span class="fnote" style="margin:0">Заведите товары в «Продажи» → «Товары» или заполните прайс проката в «Управление» → «Приложение».</span>';
   $('#saleQuick').querySelectorAll('button').forEach(b => b.onclick = () => {
     $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
@@ -4283,13 +4395,15 @@ async function openSale(preset){
   $('#saleAmount').value = ''; $('#saleQty').value = 1; $('#saleNote').value = '';
   $('#saleErr').classList.remove('on');
   saleTotal();
-  // Из карточки брони приходим с готовой бронью; иначе выбираем бронь дня
+  // Из карточки брони приходим с готовой бронью; иначе выбираем бронь
+  // из тех, что сейчас открыты для продаж, или клиента
   const bid = preset?.bookingId ?? null;
-  const d = view === 'day' || bid ? date : todayStr();
-  $('#saleBkDate').value = d;
-  saleChoose(null);
-  await saleLoadDay(d);
+  saleChoose(null); saleClPick(null); saleSetTo('booking');
+  $('#saleMethod').querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', i === 0));
+  await saleLoadBookings();
   if (bid) saleChoose(saleBkRows.find(b => b.id === bid) ?? null);
+  // Со страницы клиента — сразу «Клиенту» с этим человеком
+  if (preset?.client) { saleSetTo('client'); saleClPick(preset.client) }
   $('#saleModal').classList.add('on');
 }
 $('#saleBtn').onclick = () => openSale();
@@ -4305,22 +4419,26 @@ $('#salePlus').onclick = () => { $('#saleQty').value = (+$('#saleQty').value || 
 $('#saleAmount').oninput = () => { saleUnit = null; saleTotal() };
 $('#saleItem').oninput = () => { $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.remove('on')); saleUnit = null; saleProduct = null };
 $('#saleOk').onclick = async () => {
-  if (!saleBk) { fail('#saleErr', new Error('Выберите бронь — продажа записывается в её счёт')); return }
+  if (saleTo === 'booking' && !saleBk) { fail('#saleErr', new Error('Выберите бронь — продажа запишется в её счёт')); return }
+  if (saleTo === 'client' && !saleCl) { fail('#saleErr', new Error('Найдите клиента по имени или телефону')); return }
   try {
     await call('/admin/sales', { method:'POST', body: JSON.stringify({
       category: $('#saleCat').value,
       amount: +$('#saleAmount').value, qty: +$('#saleQty').value,
       note: $('#saleNote').value.trim() || undefined,
       item: $('#saleItem').value.trim() || undefined,
-      bookingId: saleBk.id,
+      bookingId: saleTo === 'booking' ? saleBk.id : undefined,
+      clientId: saleTo === 'client' ? saleCl.id : undefined,
+      method: saleTo === 'client' ? ($('#saleMethod').querySelector('button.on')?.dataset.m ?? 'cash') : undefined,
       productId: saleProduct?.id,
     })});
     $('#saleModal').classList.remove('on');
     if (view === 'sales') loadSales();
-    const back = saleBk; saleBk = null;
+    const back = saleTo === 'booking' ? saleBk : null; saleBk = null;
     await load();
-    // Добавляли из карточки брони — возвращаемся в неё
-    if (back.date === date && day.bookings.some(x => x.id === back.id)) openBooking(back.id);
+    if (view === 'client' && cpData) openClient(cpData);
+    // Добавляли к брони — показываем её счёт
+    if (back && back.date === date && day.bookings.some(x => x.id === back.id)) openBooking(back.id);
   } catch(e){ $('#saleErr').textContent = e.message; $('#saleErr').classList.add('on') }
 };
 
@@ -4335,63 +4453,191 @@ function stockNote(p){
 }
 async function loadProducts(){
   try {
-    products = await call('/admin/products');
-    $('#pdRows').innerHTML = products.length ? `<div class="pds">${products.map(p => {
-      const st = stockNote(p);
-      return `<div class="pd${p.isActive ? '' : ' off'}" data-id="${p.id}">
-        <div class="pdi">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : 'без фото'}</div>
-        <div class="pdb">
-          <div class="pdn">${esc(p.name)}${p.isActive ? '' : ' <span class="tag">скрыт</span>'}</div>
-          <div class="pdp">${rub(p.price)}</div>
-          <div class="pdm ${st.cls}">${PD_CAT[p.category] || esc(p.category)} · ${st.t}</div>
-          <div class="pda">
-            ${p.stock != null && can('prices') ? `<button class="btn small" data-stk="-1">−1</button><button class="btn small" data-stk="1">+1</button><button class="btn small" data-stk="10">+10</button>` : ''}
-            ${can('prices') ? `<button class="btn small" data-edit>Изменить</button>` : ''}
-          </div>
-        </div></div>`;
-    }).join('')}</div>` : '<div class="center">Товаров пока нет. Нажмите «Новый товар».</div>';
-    $('#pdRows').querySelectorAll('[data-edit]').forEach(b => b.onclick = () =>
-      openProduct(products.find(p => p.id === +b.closest('.pd').dataset.id)));
-    $('#pdRows').querySelectorAll('[data-stk]').forEach(b => b.onclick = async () => {
-      const id = +b.closest('.pd').dataset.id;
-      try { await call(`/admin/products/${id}/stock`, { method:'POST', body: JSON.stringify({ delta: +b.dataset.stk }) }); loadProducts() }
-      catch(e){ alert(e.message) }
+    const [list, rep] = await Promise.all([
+      call('/admin/products'),
+      call('/admin/shop-report').catch(() => null),
+    ]);
+    products = list;
+    // Товары из прайса проката можно завести одной кнопкой — пока их нет
+    const fromPrice = priceItems(setup?.settings?.rentalsText)
+      .filter(it => !products.some(p => p.name.toLowerCase() === it.label.toLowerCase()));
+    $('#pdImport').hidden = !can('prices') || !fromPrice.length;
+    $('#pdImport').textContent = `Завести из прайса проката · ${fromPrice.length}`;
+    $('#pdStats').innerHTML = rep ? `
+      <div class="stat"><b>${rub(rep.goods.revenue)}</b><span>товары за 30 дней · ${rep.goods.qty} шт.</span></div>
+      <div class="stat"><b>${rub(rep.rental.revenue)}</b><span>прокат за 30 дней · ${rep.rental.qty} раз</span></div>
+      <div class="stat"><b>${rub(rep.stockValue)}</b><span>на складе по закупке</span></div>
+      ${rep.lowStock.length ? `<div class="stat warn"><b>${rep.lowStock.length}</b><span>заканчивается: ${rep.lowStock.slice(0,3).map(x => esc(x.name)).join(', ')}</span></div>` : ''}` : '';
+    const rows = rep?.products ?? [];
+    const repOf = id => rows.find(r => r.id === id);
+    const CAT = { shop:'Товар', rental:'Прокат', bar:'Бар', coaching:'Тренировка', other:'Прочее' };
+    $('#pdRows').innerHTML = products.length ? `<table class="hist"><thead><tr>
+        <th>Товар</th><th>Статья</th><th class="money">Цена</th><th class="money">Закупка</th>
+        <th class="money">Остаток</th><th class="money">Продано, 30 дн.</th><th class="money">Выручка</th><th class="money">Прибыль</th><th></th>
+      </tr></thead><tbody>` + products.map(p => {
+        const r = repOf(p.id);
+        const st = p.category === 'rental' ? null : stockNote(p);
+        return `<tr data-id="${p.id}" style="cursor:pointer${p.isActive ? '' : ';opacity:.5'}">
+          <td><span style="display:inline-flex;align-items:center;gap:10px">${p.photoUrl
+            ? `<img src="${esc(p.photoUrl)}" alt="" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`
+            : '<span style="width:34px;height:34px;border-radius:8px;background:var(--surface-3);display:inline-block"></span>'}
+            <b>${esc(p.name)}</b>${p.isActive ? '' : ' <span class="tag">скрыт</span>'}</span></td>
+          <td>${CAT[p.category] || esc(p.category)}</td>
+          <td class="money">${rub(p.price)}</td>
+          <td class="money">${p.category === 'rental' ? '—' : p.cost != null ? rub(p.cost) : '<span style="color:var(--dim-2)">не указана</span>'}</td>
+          <td class="money">${p.category === 'rental' ? `<span style="color:var(--dim-2)">${p.stock != null ? p.stock + ' шт. в прокате' : 'не ведём'}</span>`
+            : p.stock == null ? '<span style="color:var(--dim-2)">не ведём</span>'
+            : `<b style="color:${st.cls === 'out' ? 'var(--red)' : st.cls === 'low' ? 'var(--amber)' : 'inherit'}">${p.stock} шт.</b>`}</td>
+          <td class="money">${p.sold30}</td>
+          <td class="money">${rub(p.revenue30)}</td>
+          <td class="money">${r && r.profit != null ? rub(r.profit) : '<span style="color:var(--dim-2)">—</span>'}</td>
+          <td style="white-space:nowrap;text-align:right">${can('prices') && p.category !== 'rental'
+            ? `<button class="btn small" data-mv="receipt">Приход</button> <button class="btn small" data-mv="writeoff"${p.stock ? '' : ' disabled'}>Списать</button>` : ''}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>'
+      : '<div class="center">Товаров пока нет. Нажмите «Новый товар» или заведите их из прайса проката.</div>';
+    $('#pdRows').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = e => {
+      const p = products.find(x => x.id === +tr.dataset.id);
+      const mv = e.target.closest('[data-mv]');
+      if (mv) { e.stopPropagation(); openMove(p, mv.dataset.mv); return }
+      if (can('prices')) openProduct(p);
     });
   } catch(e){ $('#pdRows').innerHTML = `<div class="center">${esc(e.message)}</div>` }
 }
-function openProduct(p){
+
+/** Завести товары из прайса проката клуба — те строки, которых ещё нет.
+ *  Статью берём из самого прайса: «прокат/аренда» — прокат, остальное — товар. */
+$('#pdImport').onclick = async () => {
+  const list = priceItems(setup?.settings?.rentalsText)
+    .filter(it => !products.some(p => p.name.toLowerCase() === it.label.toLowerCase()));
+  if (!list.length) return;
+  if (!await ask('Завести из прайса?', list.map(it => `${it.label} — ${it.price} ₽ (${it.category === 'rental' ? 'прокат' : 'товар'})`).join('; ')
+    + '. Остаток товаров потом укажите приходом.')) return;
+  try {
+    for (const it of list) await call('/admin/products', { method:'POST', body: JSON.stringify({
+      name: it.label, price: it.price, category: it.category }) });
+    loadProducts();
+  } catch(e){ alert(e.message) }
+};
+
+const PD_NOTE = {
+  shop: 'Товар: при продаже уходит со склада. Закупка нужна, чтобы видеть прибыль.',
+  rental: 'Прокат: вещь возвращается, остаток при продаже не меняется. Можно указать, сколько таких вещей у клуба.',
+  bar: 'Бар: как товар — продажа уменьшает остаток.',
+};
+function pdCatUi(){
+  const c = $('#pdCat').querySelector('button.on')?.dataset.c ?? 'shop';
+  $('#pdCatNote').textContent = PD_NOTE[c] || '';
+  $('#pdCostRow').hidden = c === 'rental';
+  $('#pdPriceL').textContent = c === 'rental' ? 'Цена проката' : 'Цена продажи';
+}
+async function openProduct(p){
   pdEdit = p ?? null;
   $('#pdTitle').textContent = p ? p.name : 'Новый товар';
   $('#pdName').value = p?.name ?? '';
   $('#pdPrice').value = p ? p.price / 100 : '';
+  $('#pdCost').value = p?.cost != null ? p.cost / 100 : '';
   $('#pdCat').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === (p?.category ?? 'shop')));
-  $('#pdTrack').checked = p ? p.stock != null : false;
-  $('#pdStock').value = p?.stock ?? '';
-  $('#pdStock').disabled = !$('#pdTrack').checked;
+  // Остаток у заведённого товара меняется только движениями — так у каждого
+  // изменения есть строка в журнале
+  const tracked = p ? p.stock != null : false;
+  $('#pdTrack').checked = tracked;
+  $('#pdStock').value = '';
+  $('#pdStock').hidden = !!(p && tracked);
+  $('#pdStock').disabled = !tracked;
+  $('#pdStockNow').textContent = p && tracked ? `${p.stock} шт.` : '';
   $('#pdActive').checked = p ? p.isActive : true;
   $('#pdImg').innerHTML = p?.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : '';
-  $('#pdPhotoNote').textContent = p ? 'JPEG, PNG или WebP до 8 МБ.' : 'Фото можно добавить после первого сохранения.';
+  $('#pdPhotoNote').textContent = p ? 'JPEG, PNG или WebP до 8 МБ — сожмётся само.' : 'Фото можно добавить после первого сохранения.';
   $('#pdPhotoIn').disabled = !p;
   $('#pdDel').hidden = !p;
   $('#pdErr').classList.remove('on');
+  pdCatUi();
+  $('#pdMovesBox').hidden = !(p && tracked);
   $('#pdModal').classList.add('on');
+  if (p && tracked) loadMoves(p);
+}
+const MOVE = { receipt:'Приход', sale:'Продажа', return:'Возврат', writeoff:'Списание', count:'Пересчёт' };
+async function loadMoves(p){
+  $('#pdMoves').innerHTML = '<div class="none">Загружаю…</div>';
+  try {
+    const ms = await call(`/admin/products/${p.id}/moves`);
+    $('#pdMoves').innerHTML = ms.length ? ms.map(m => `<button type="button" style="cursor:default">
+      <div><b>${MOVE[m.kind] || m.kind} ${m.qty > 0 ? '+' : ''}${m.qty} шт.${m.unitCost != null ? ` · закупка ${rub(m.unitCost)}` : ''}${m.amount != null ? ` · ${rub(m.amount)}` : ''}</b>
+        <span>${fmtAt(m.at)} · ${esc(m.by)}${m.who ? ' · ' + esc(m.who) : ''}${m.note ? ' · ' + esc(m.note) : ''}</span></div>
+      <span style="color:var(--dim);font-variant-numeric:tabular-nums">${m.stockAfter ?? ''}</span></button>`).join('')
+      : '<div class="none">Движений пока не было.</div>';
+  } catch(e){ $('#pdMoves').innerHTML = `<div class="none">${esc(e.message)}</div>` }
 }
 $('#pdNew').onclick = () => openProduct(null);
 $('#pdCat').querySelectorAll('button').forEach(b => b.onclick = () => {
-  $('#pdCat').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  $('#pdCat').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); pdCatUi();
 });
-$('#pdTrack').onchange = () => { $('#pdStock').disabled = !$('#pdTrack').checked; if ($('#pdTrack').checked) $('#pdStock').focus() };
+$('#pdTrack').onchange = () => {
+  const on = $('#pdTrack').checked;
+  $('#pdStock').hidden = false; $('#pdStock').disabled = !on;
+  if (on) $('#pdStock').focus();
+};
+$('#pdModal').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+  if (pdEdit) { $('#pdModal').classList.remove('on'); openMove(pdEdit, b.dataset.mv) }
+});
 $('#pdSave').onclick = async () => {
   try {
-    const r = await call('/admin/products', { method:'POST', body: JSON.stringify({
-      id: pdEdit?.id, name: $('#pdName').value, price: +$('#pdPrice').value,
+    const track = $('#pdTrack').checked;
+    const body = { id: pdEdit?.id, name: $('#pdName').value, price: +$('#pdPrice').value,
+      cost: $('#pdCost').value === '' ? null : +$('#pdCost').value,
       category: $('#pdCat').querySelector('button.on')?.dataset.c ?? 'shop',
-      stock: $('#pdTrack').checked ? (+$('#pdStock').value || 0) : null,
-      isActive: $('#pdActive').checked }) });
+      isActive: $('#pdActive').checked };
+    // Остаток: новый товар — сколько есть сейчас; заведённый — только включить
+    // или выключить учёт (дальше приход, списание, пересчёт)
+    if (!pdEdit || (pdEdit.stock == null) !== !track) body.stock = track ? (+$('#pdStock').value || 0) : null;
+    const r = await call('/admin/products', { method:'POST', body: JSON.stringify(body) });
     await loadProducts();
     if (!pdEdit) { openProduct(products.find(p => p.id === r.id)); $('#pdPhotoNote').textContent = 'Сохранено. Теперь можно загрузить фото.' }
     else $('#pdModal').classList.remove('on');
   } catch(e){ fail('#pdErr', e) }
+};
+
+/** Приход, списание, пересчёт. Остаток «до → после» виден сразу. */
+let moving2 = null;
+function openMove(p, kind){
+  moving2 = { p, kind };
+  const t = { receipt: ['Приход', 'Сколько привезли', 'Записать приход'],
+              writeoff: ['Списание', 'Сколько списать', 'Списать'],
+              count: ['Пересчёт', 'Сколько лежит на самом деле', 'Сохранить'] }[kind];
+  $('#mvTitle').textContent = `${t[0]}: ${p.name}`;
+  $('#mvSub').textContent = kind === 'receipt' ? 'Товар привезли — остаток увеличится. Закупочная цена нужна для прибыли.'
+    : kind === 'writeoff' ? 'Брак, потеря, взяли для клуба. Остаток уменьшится, в выручку не пойдёт.'
+    : 'Посчитали полку — впишите, сколько есть. Разница запишется в журнал.';
+  $('#mvQtyL').textContent = t[1];
+  $('#mvOk').textContent = t[2];
+  $('#mvQty').value = kind === 'count' ? (p.stock ?? 0) : 1;
+  $('#mvCost').value = p.cost != null ? p.cost / 100 : '';
+  $('#mvCostRow').hidden = kind !== 'receipt';
+  $('#mvNote').value = '';
+  $('#mvErr').classList.remove('on');
+  mvAfter();
+  $('#mvModal').classList.add('on');
+  $('#mvQty').select();
+}
+function mvAfter(){
+  const { p, kind } = moving2; const n = Math.max(0, +$('#mvQty').value || 0); const cur = p.stock ?? 0;
+  const next = kind === 'receipt' ? cur + n : kind === 'writeoff' ? cur - n : n;
+  $('#mvAfter').textContent = `${cur} → ${next} шт.`;
+  $('#mvAfter').style.color = next < 0 ? 'var(--red)' : '';
+}
+$('#mvQty').oninput = mvAfter;
+$('#mvMinus').onclick = () => { $('#mvQty').value = Math.max(0, (+$('#mvQty').value || 0) - 1); mvAfter() };
+$('#mvPlus').onclick = () => { $('#mvQty').value = (+$('#mvQty').value || 0) + 1; mvAfter() };
+$('#mvOk').onclick = async () => {
+  const { p, kind } = moving2;
+  try {
+    await call(`/admin/products/${p.id}/move`, { method:'POST', body: JSON.stringify({
+      kind, qty: +$('#mvQty').value, note: $('#mvNote').value.trim() || undefined,
+      unitCost: kind === 'receipt' && $('#mvCost').value !== '' ? +$('#mvCost').value : undefined }) });
+    $('#mvModal').classList.remove('on');
+    await loadProducts();
+  } catch(e){ fail('#mvErr', e) }
 };
 $('#pdPhotoIn').onchange = async () => {
   const f = $('#pdPhotoIn').files[0]; if (!f || !pdEdit) return;
@@ -4577,6 +4823,25 @@ async function loadStats(){
       <div class="bar"><div class="lbl">${SALE[k]||k}</div>
         <div class="track"><div class="fill" style="width:${Math.round(v/Math.max(1,d.otherRevenue)*100)}%"></div></div>
         <div class="val">${rub(v)}</div></div>`).join('') + '</div>' : ''}
+
+    ${d.shop ? `<div class="sect">Магазин и прокат</div>
+    <div class="cards">
+      <div class="card"><b>${rub(d.shop.goods.revenue)}</b><span>товары и бар · ${d.shop.goods.qty} шт.</span></div>
+      <div class="card"><b>${rub(d.shop.rental.revenue)}</b><span>прокат · ${d.shop.rental.qty} раз</span></div>
+      ${(() => { const pr = d.shop.products.filter(x => x.category !== 'rental' && x.qty);
+        const known = pr.filter(x => x.profit != null);
+        return known.length ? `<div class="card"><b>${rub(known.reduce((n, x) => n + x.profit, 0))}</b><span>прибыль на товарах${known.length < pr.length ? ' · без товаров без закупки' : ''}</span></div>` : '' })()}
+      <div class="card"><b>${rub(d.shop.stockValue)}</b><span>на складе по закупке</span></div>
+    </div>
+    ${d.shop.products.some(x => x.qty) ? `<table class="hist" style="margin-bottom:8px"><thead><tr><th>Товар</th><th class="money">Продано</th>
+      <th class="money">Выручка</th><th class="money">Себестоимость</th><th class="money">Прибыль</th><th class="money">Привезли</th><th class="money">Остаток</th></tr></thead><tbody>
+      ${d.shop.products.filter(x => x.qty || x.received).sort((a, b) => b.revenue - a.revenue).map(x => `<tr>
+        <td>${esc(x.name)}${x.category === 'rental' ? ' <span class="tag">прокат</span>' : ''}</td>
+        <td class="money">${x.qty} ${x.category === 'rental' ? 'раз' : 'шт.'}</td><td class="money">${rub(x.revenue)}</td>
+        <td class="money">${x.cost != null ? rub(x.cost) : '—'}</td><td class="money">${x.profit != null ? rub(x.profit) : '—'}</td>
+        <td class="money">${x.received ? x.received + ' шт.' : '—'}</td>
+        <td class="money">${x.category === 'rental' || x.stock == null ? '—' : x.stock + ' шт.'}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="empty" style="margin-bottom:10px">За период товары и прокат не продавались.</div>'}` : ''}
 
     <div class="sect">Когда играют: час × день недели</div>
     ${heatTable(d)}
