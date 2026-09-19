@@ -146,6 +146,10 @@ export type ApiBooking = {
   price: number;
   /** Скидка клуба и что уже внесено — чтобы «к оплате» совпадало с админкой. */
   discount?: number; paid?: number;
+  /** Отмена или неявка: внесённое осталось клубу (true) или ждёт возврата. */
+  keptPrepay?: boolean;
+  /** Сколько клуб вернул по этой брони. */
+  refunded?: number;
   /** Строки счёта к брони: прокат ракетки, мячи. */
   extras?: { item: string; qty: number; amount: number }[];
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';

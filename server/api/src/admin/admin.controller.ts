@@ -12,6 +12,7 @@ import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
+import sharp from 'sharp';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -35,6 +36,30 @@ function imageFrom(data?: string): { buf: Buffer; ext: string } {
   return { buf, ext };
 }
 
+/** Сохранить фото как положено: развернуть по EXIF, уменьшить до maxSide
+ *  по длинной стороне, пережать в JPEG (mozjpeg) и убрать метаданные —
+ *  в EXIF телефона бывают координаты съёмки. Прозрачный фон PNG — белый.
+ *  Имя файла случайное: кэш nginx не покажет старое фото под тем же адресом. */
+async function saveImage(data: string | undefined, folder: string, maxSide = 2000, prefix = ''): Promise<string> {
+  const { buf } = imageFrom(data);
+  let out: Buffer;
+  try {
+    out = await sharp(buf, { failOn: 'error' })
+      .rotate()
+      .resize({ width: maxSide, height: maxSide, fit: 'inside', withoutEnlargement: true })
+      .flatten({ background: '#ffffff' })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+  } catch {
+    throw new BadRequestException('Не получилось прочитать фото — сохраните его в JPEG и загрузите снова');
+  }
+  const name = `${prefix}${Date.now()}-${randomBytes(4).toString('hex')}.jpg`;
+  const dir = join(UPLOAD_DIR, folder);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, name), out);
+  return `/uploads/${folder}/${name}`;
+}
+
 /** Убрать загруженный файл с диска; чужие и встроенные пути не трогаем. */
 async function dropUpload(url: string | null | undefined) {
   if (!url?.startsWith('/uploads/')) return;
@@ -50,6 +75,15 @@ class StatusDto {
    *  текст уведомления и счётчик отмен у клиента. */
   @IsOptional() @IsIn(['client', 'club'])
   by?: 'client' | 'club';
+  /** Внесённые деньги при отмене или неявке: вернуть клиенту или оставить
+   *  клубу. Не передали — по правилу клуба (см. keptByRule). */
+  //   refund — вернуть сейчас (запишется возврат), keep — оставить клубу,
+  //   later — вернуть позже: деньги числятся долгом клуба перед клиентом
+  @IsOptional() @IsIn(['refund', 'keep', 'later'])
+  money?: 'refund' | 'keep' | 'later';
+  /** Как вернули деньги: наличными, картой, по СБП, переводом. */
+  @IsOptional() @IsString() @MaxLength(20)
+  refundMethod?: string;
 }
 
 class CloseCourtDto {
@@ -285,6 +319,8 @@ export class AdminController {
           paid: paidBy.get(String(b.id)) ?? 0,
           statusAt: b.status_at, statusBy: b.status_by,
           holdUntil: b.hold_until,
+          // Отменённая или неявочная бронь: предоплата остаётся клубу или ждёт возврата
+          keptPrepay: b.kept_prepay,
           players: b.players, discount: b.discount, discountReason: b.discount_reason,
           createdBy: b.created_by,
           // Строки счёта брони: прокат, мячи — оплачиваются вместе с кортом
@@ -352,10 +388,38 @@ export class AdminController {
       throw new ForbiddenException('Нет доступа: отменять брони и отмечать неявку');
     }
 
+    // Судьба внесённой предоплаты (решение заказчика 19.09.2026, D27).
+    // Штрафов нет: клуб просто не возвращает то, что человек уже внёс.
+    //   не пришёл                       → остаётся клубу
+    //   отмена клиентом позже срока     → остаётся клубу (правило D13)
+    //   отмена клубом или вовремя       → возвращаем
+    //   бронь снова живая               → возвращаем к обычному расчёту
+    const byRule = dto.status === 'no_show' ? true
+      : dto.status === 'cancelled' ? (byClient && late)
+      : false;
+    // Менеджер может решить иначе: вернуть деньги неявившемуся или оставить
+    // клубу предоплату при отмене. Это бывает редко, но должно быть можно.
+    const closing = dto.status === 'cancelled' || dto.status === 'no_show';
+    const paidBefore = closing ? await this.paidOf(b.id) : 0;
+    const refundNow = closing && paidBefore > 0 && dto.money === 'refund';
+    if (refundNow && !this.auth.can(req.admin, 'refunds')) {
+      throw new ForbiddenException('Нет доступа: возвращать деньги');
+    }
+    const refundMethod = String(dto.refundMethod ?? 'cash');
+    if (refundNow && !PAY_METHODS.includes(refundMethod)) {
+      throw new BadRequestException('Такого способа возврата нет');
+    }
+    const kept = !closing ? false
+      : refundNow ? false
+      : dto.money === 'keep' ? paidBefore > 0
+      : dto.money === 'later' ? false
+      : byRule;
+
     const ops: any[] = [
       this.db.bookings.update({ where: { id: b.id }, data: {
         status: dto.status, status_at: new Date(),
         status_by: byClient ? `client via ${req.admin.login}${late ? ', поздняя отмена' : ''}` : req.admin.login,
+        kept_prepay: kept,
         // Подтвердили — место больше не «на удержании», срок снимаем
         hold_until: dto.status === 'confirmed' ? null : b.hold_until,
       }}),
@@ -363,6 +427,14 @@ export class AdminController {
     // Отменённая бронь не тянет за собой неоплаченные строки счёта
     if (dto.status === 'cancelled') {
       ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, method: 'bill' } }));
+    }
+    // Возврат — отдельной строкой в платежах, минусом: видно, кто и когда вернул
+    if (refundNow) {
+      ops.push(this.db.payments.create({ data: {
+        booking_id: b.id, amount: -paidBefore, method: refundMethod, kind: 'refund',
+        note: dto.status === 'no_show' ? 'возврат при неявке' : 'возврат при отмене',
+        admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+      }}));
     }
     // История поведения клиента: менеджер должен видеть, кто часто пропадает.
     // Считаем только то, что на совести клиента: неявку и отмену подтверждённой
@@ -402,17 +474,24 @@ export class AdminController {
       const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
       const when = whenText(b.starts_at, b.ends_at);
       const where = court?.name ?? b.court_id;
-      const paidNow = await this.paidOf(b.id);
+      const rubs = (k: number) => `${(k / 100).toLocaleString('ru-RU')} ₽`;
+      // Что стало с деньгами — одной фразой, без сюрпризов для клиента
+      const moneyLine = !closing || paidBefore <= 0 ? ''
+        : refundNow ? ` Внесённые ${rubs(paidBefore)} возвращены.`
+        : kept
+          ? (dto.status === 'cancelled' && late
+              ? ` Отмена позже чем за ${set.cancelHours} ч — предоплата ${rubs(paidBefore)} не возвращается.`
+              : ` Предоплата ${rubs(paidBefore)} не возвращается.`)
+          : ` Внесённые ${rubs(paidBefore)} вернём — напишите менеджеру, как удобнее.`;
       const text: Record<string, [string, string]> = {
         confirmed: ['Бронь подтверждена',
           `${where}, ${when}. Ждём вас — до встречи на корте.`],
         cancelled: byClient
-          ? ['Запись отменена по вашей просьбе',
-             `${where}, ${when}.${late && paidNow > 0 ? ' Отмена позже чем за ' + set.cancelHours + ' ч — предоплата не возвращается.' : ''}`]
+          ? ['Запись отменена по вашей просьбе', `${where}, ${when}.${moneyLine}`]
           : ['Бронь отменена клубом',
-             `${where}, ${when}. Время снова свободно.${paidNow > 0 ? ' Внесённые деньги вернём — напишите менеджеру, как удобнее.' : ''} Если это ошибка, напишите менеджеру.`],
+             `${where}, ${when}. Время снова свободно.${moneyLine} Если это ошибка, напишите менеджеру.`],
         no_show: ['Отмечено, что вы не пришли',
-          `${where}, ${when}. Если это ошибка, скажите менеджеру — поправим.`],
+          `${where}, ${when}.${moneyLine} Если это ошибка, скажите менеджеру — поправим.`],
         done: ['Спасибо за игру',
           `${where}, ${when}. Будем рады видеть вас снова.`],
       };
@@ -424,10 +503,12 @@ export class AdminController {
     }
 
     await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
-      `бронь №${Number(b.id)}${byClient ? ', по просьбе клиента' : ''}${late ? ', поздняя отмена' : ''}`);
-    // Внесённые деньги при отмене: админке нужно предложить возврат
-    const paid = dto.status === 'cancelled' ? await this.paidOf(b.id) : 0;
-    return { id: Number(b.id), status: dto.status, late, paid, cancelHours: set.cancelHours };
+      `бронь №${Number(b.id)}${byClient ? ', по просьбе клиента' : ''}${late ? ', поздняя отмена' : ''}`
+      + (refundNow ? `, возвращено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽`
+        : kept && paidBefore > 0 ? `, предоплата ${(paidBefore / 100).toLocaleString('ru-RU')} ₽ осталась клубу` : ''));
+    const paid = closing ? await this.paidOf(b.id) : 0;
+    return { id: Number(b.id), status: dto.status, late, paid, kept, refunded: refundNow ? paidBefore : 0,
+             cancelHours: set.cancelHours };
   }
 
   /** Скидка постоянному или по договорённости. Цена по прайсу остаётся —
@@ -508,11 +589,6 @@ export class AdminController {
     if (['cancelled', 'expired'].includes(b.status) && kind !== 'refund') {
       throw new ConflictException('Бронь отменена — по ней можно только вернуть деньги');
     }
-    // Удержать деньги клиента — это как отмена: то же право
-    if (kind === 'penalty' && !this.auth.can(req.admin, 'cancel')) {
-      throw new ForbiddenException('Нет доступа: удерживать деньги за неявку');
-    }
-
     let amount = rubToKop(Math.abs(Number(body.amount ?? 0)));
     if (amount === 0) throw new BadRequestException('Сумма не может быть нулевой');
     // Возврат хранится минусом: так остаётся след, кто и когда вернул деньги
@@ -542,6 +618,9 @@ export class AdminController {
       }}),
       ...(confirmNow ? [this.db.bookings.update({ where: { id: b.id }, data: {
         status: 'confirmed', status_at: new Date(), status_by: req.admin.login, hold_until: null } })] : []),
+      // Вернули всё — удерживать больше нечего
+      ...(kind === 'refund' && paid + amount === 0 && b.kept_prepay
+        ? [this.db.bookings.update({ where: { id: b.id }, data: { kept_prepay: false } })] : []),
     ]);
     await this.auth.log(req.admin, KIND_WORD[kind],
       `бронь №${Number(b.id)}, ${(Math.abs(amount) / 100).toLocaleString('ru-RU')} ₽, ${PAY_WORD[method]}${confirmNow ? ', бронь подтверждена' : ''}`);
@@ -550,14 +629,31 @@ export class AdminController {
       const sum = (Math.abs(amount) / 100).toLocaleString('ru-RU');
       const [title, text] = kind === 'refund'
         ? ['Деньги возвращены', `Возврат ${sum} ₽ по брони ${when}.`]
-        : kind === 'penalty'
-          ? ['Удержание за неявку', `${sum} ₽ удержано по брони ${when}.`]
-          : confirmNow
-            ? ['Оплата принята, бронь подтверждена', `${sum} ₽ получено. ${when} — ждём вас на корте.`]
-            : ['Оплата принята', `${sum} ₽ получено по брони ${when}.`];
+        : confirmNow
+          ? ['Оплата принята, бронь подтверждена', `${sum} ₽ получено. ${when} — ждём вас на корте.`]
+          : ['Оплата принята', `${sum} ₽ получено по брони ${when}.`];
       await this.notes.toClient(b.client_id, 'booking', title, text, { bookingId: b.id, by: req.admin.name });
     }
     return { ok: true, paid: paid + amount, price: b.price, confirmed: confirmNow };
+  }
+
+  /** Судьба предоплаты по несостоявшейся брони: остаётся клубу или возвращается.
+   *  Денег это не двигает — меняется только то, чем считать уже внесённое. */
+  @Post('bookings/:id/keep')
+  @Needs('cancel')
+  async keepPrepay(@Req() req: any, @Param('id') id: string, @Body() body: { keep?: boolean }) {
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
+    if (!b) throw new NotFoundException('Запись не найдена');
+    if (!['cancelled', 'expired', 'no_show'].includes(b.status)) {
+      throw new ConflictException('Так решают только по отменённой брони или неявке');
+    }
+    const keep = body.keep !== false;
+    const paid = await this.paidOf(b.id);
+    if (keep && paid <= 0) throw new ConflictException('По этой брони денег не внесено');
+    await this.db.bookings.update({ where: { id: b.id }, data: { kept_prepay: keep } });
+    await this.auth.log(req.admin, keep ? 'оставил предоплату клубу' : 'снял удержание предоплаты',
+      `бронь №${Number(b.id)}, ${(paid / 100).toLocaleString('ru-RU')} ₽`);
+    return { ok: true, keptPrepay: keep, paid };
   }
 
   /** Убрать ошибочный платёж. Это исправление, а не рядовое действие. */
@@ -634,6 +730,65 @@ export class AdminController {
         phone: cl?.phone ?? null,
       };
     });
+  }
+
+  /** Быстрый поиск клиента — для верхней строки поиска и окна «Записать
+   *  клиента». Сначала люди (имя, фамилия, любые цифры номера, «ID 12»),
+   *  потом брони по номеру заявки. Без отдельного права: это работа стойки. */
+  @Get('find')
+  async find(@Query('q') q?: string) {
+    const text = String(q ?? '').trim().slice(0, 60);
+    if (!text) return { clients: [], bookings: [] };
+    const digits = text.replace(/\D/g, '');
+    const letters = text.replace(/[\d\s()+\-#№]/g, '');
+    const accountId = accountIdOf(text);
+    // Номер ищем по «голым» цифрам. 8 в начале полного номера — это 7.
+    const phoneDigits = digits.length === 11 && digits.startsWith('8') ? '7' + digits.slice(1) : digits;
+    const words = letters ? text.split(/\s+/).filter(w => /\D/.test(w)) : [];
+    const where: any = accountId != null ? { id: accountId } : { OR: [
+      ...words.map(w => ({ name: { contains: w, mode: 'insensitive' } })),
+      ...words.map(w => ({ surname: { contains: w, mode: 'insensitive' } })),
+      ...(phoneDigits.length >= 2 ? [{ phone: { contains: phoneDigits } }, { whatsapp: { contains: phoneDigits } }] : []),
+    ] };
+    if (!where.OR?.length && accountId == null) return { clients: [], bookings: [] };
+    const found = await this.db.clients.findMany({ where, take: 200 });
+
+    // Порядок: полное совпадение номера, потом номер кончается на эти цифры,
+    // потом имя начинается с текста, потом остальные — и внутри по свежести
+    const lower = letters.toLowerCase();
+    const rank = (c: typeof found[number]) =>
+      phoneDigits.length >= 2 && c.phone === phoneDigits ? 0
+      : phoneDigits.length >= 2 && c.phone.endsWith(phoneDigits) ? 1
+      : lower && (c.name ?? '').toLowerCase().startsWith(lower) ? 2 : 3;
+    const ids = found.map(c => c.id);
+    const stats = ids.length ? await this.db.bookings.groupBy({
+      by: ['client_id'], where: { client_id: { in: ids }, status: { in: ['confirmed', 'done'] } },
+      _count: { _all: true }, _max: { starts_at: true },
+    }) : [];
+    const st = new Map(stats.map(x => [String(x.client_id), x]));
+    const clients = found
+      .map(c => ({ c, r: rank(c), last: st.get(String(c.id))?._max.starts_at ?? null }))
+      .sort((a, b) => a.r - b.r || (+(b.last ?? 0) - +(a.last ?? 0)))
+      .slice(0, 12)
+      .map(({ c, last }) => ({
+        id: Number(c.id), name: [c.name, c.surname].filter(Boolean).join(' '), phone: c.phone,
+        hasPassword: !!c.pass_hash, games: st.get(String(c.id))?._count._all ?? 0, lastAt: last,
+      }));
+
+    // «№96» или «96» — номер заявки из WhatsApp
+    const asNumber = accountId == null && /^\D*\d{1,9}\D*$/.test(text) && digits.length <= 6 ? BigInt(digits) : null;
+    const bookings = asNumber != null ? await this.db.bookings.findMany({
+      where: { id: asNumber }, include: { clients: true, courts: true } }) : [];
+    return {
+      clients,
+      bookings: bookings.map(b => ({
+        id: Number(b.id), date: this.dateOf(b.starts_at), hour: hourOf(b.starts_at),
+        hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000), status: b.status,
+        courtName: b.courts?.name ?? b.court_id,
+        name: [b.clients?.name, b.clients?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени',
+        phone: b.clients?.phone ?? null,
+      })),
+    };
   }
 
   /** Заявки, ждущие подтверждения, по всем датам сразу.
@@ -847,6 +1002,7 @@ export class AdminController {
           createdBy: b.created_by,
           comment: b.comment,
           extras: extrasBy.get(String(b.id))?.sum ?? 0,
+          keptPrepay: b.kept_prepay,
         };
       }),
     };
@@ -892,6 +1048,7 @@ export class AdminController {
         id: true, court_id: true, client_id: true, starts_at: true, ends_at: true,
         status: true, price: true, source: true, created_at: true,
         discount: true, players: true, status_at: true, status_by: true,
+        kept_prepay: true,
       },
     });
 
@@ -950,6 +1107,21 @@ export class AdminController {
     const sales = salesAll.filter(x => x.method !== 'bill');
     const prevSales = prevSalesAll.filter(x => x.method !== 'bill');
 
+    /** Сколько денег пришло по каждой броне. */
+    const paidPer = (payList: { amount: number; booking_id: bigint }[]) => {
+      const m = new Map<string, number>();
+      for (const p of payList) m.set(String(p.booking_id), (m.get(String(p.booking_id)) ?? 0) + p.amount);
+      return m;
+    };
+    /** Удержанные предоплаты: человек не пришёл или отменил поздно, деньги
+     *  остались клубу. Это выручка, но не «начислено по прайсу»: клуб получил
+     *  ровно то, что было внесено. Новых платежей при удержании не создаётся. */
+    const keptOf = (list: typeof rows, payList: { amount: number; booking_id: bigint }[]) => {
+      const per = paidPer(payList);
+      return list.filter(b => b.kept_prepay && !PLAYED.has(b.status) && isClientBooking(b))
+        .reduce((n, b) => n + Math.max(0, per.get(String(b.id)) ?? 0), 0);
+    };
+
     /** Свод по набору броней. */
     const sum = (list: typeof rows, payList: { amount: number; booking_id: bigint }[], ex: Map<string, { sum: number }>) => {
       const live = list.filter(b => REAL.has(b.status));
@@ -961,8 +1133,10 @@ export class AdminController {
       return {
         bookings: live.filter(isClientBooking).length,
         hours: bookedHours,
-        // Начислено с учётом ручных скидок и строк счёта: иначе цифра расходится с кассой
-        charged: played.reduce((n, b) => n + dueOf(b, ex), 0),
+        // Начислено с учётом ручных скидок и строк счёта: иначе цифра расходится
+        // с кассой. Плюс удержанные предоплаты — их клуб тоже заработал
+        charged: played.reduce((n, b) => n + dueOf(b, ex), 0) + keptOf(list, payList),
+        kept: keptOf(list, payList),
         received: paidTotal(payList),
         // Получено по состоявшимся броням — только это сравнивают с «начислено»
         receivedPlayed: paidTotal(payList.filter(p => playedIds.has(String(p.booking_id)))),
@@ -1013,11 +1187,10 @@ export class AdminController {
 
     // Кто платил и чем: СБП отдельно от карты — комиссии разные
     const byMethod: Record<string, number> = Object.fromEntries(PAY_METHODS.map(m => [m, 0]));
-    let refunded = 0, penalties = 0;
+    let refunded = 0;
     for (const p of pays) {
       byMethod[p.method] = (byMethod[p.method] ?? 0) + p.amount;
       if (p.kind === 'refund') refunded += -p.amount;
-      if (p.kind === 'penalty') penalties += p.amount;
     }
 
     // Тепловая карта «час × день недели» — по ней видно, где провал
@@ -1037,9 +1210,12 @@ export class AdminController {
       weekdayCount.set(wd, (weekdayCount.get(wd) ?? 0) + 1);
     }
 
-    // Упущенное: отменённые и неявочные часы в рублях
+    // Упущенное: отменённые и неявочные часы в рублях за вычетом того,
+    // что клуб всё-таки удержал с этих броней
+    const paidByBooking = paidPer(pays);
     const lost = rows.filter(b => (b.status === 'cancelled' || b.status === 'no_show') && isClientBooking(b))
-      .reduce((n, b) => n + Math.max(0, b.price - b.discount), 0);
+      .reduce((n, b) => n + Math.max(0, b.price - b.discount
+        - (b.kept_prepay ? Math.max(0, paidByBooking.get(String(b.id)) ?? 0) : 0)), 0);
 
     // Поздние отмены — по просьбе клиента позже бесплатной границы.
     // Отмены самим клубом сюда не входят.
@@ -1109,8 +1285,9 @@ export class AdminController {
       averageCheck: now.bookings ? Math.round(now.charged / now.bookings) : 0,
       occupancy: capacity ? now.hours / capacity : 0,
       eveningOccupancy: eveningCapacity ? eveningSold / eveningCapacity : 0,
-      unpaid: Math.max(0, now.charged - now.receivedPlayed),
-      byMethod, refunded, penalties, lost, bookingDepth, lateCancels, discounts,
+      // Удержанные предоплаты уже получены — долгом их не считаем
+      unpaid: Math.max(0, now.charged - now.kept - now.receivedPlayed),
+      byMethod, refunded, kept: now.kept, lost, bookingDepth, lateCancels, discounts,
       // Деньги клуба целиком: аренда кортов плюс бар, прокат и тренировки,
       // минус расходы месяцев, попавших в период
       otherRevenue, prevOther, spent, prevSpent,
@@ -1273,13 +1450,16 @@ export class AdminController {
 
     // Прикреплённая к брони продажа — строка её счёта: платят вместе с кортом,
     // отдельного способа оплаты у неё нет, день — день игры
-    let booking: { id: bigint; starts_at: Date; status: string } | null = null;
-    if (body.bookingId) {
-      booking = await this.db.bookings.findUnique({ where: { id: BigInt(body.bookingId) } });
-      if (!booking) throw new NotFoundException('Бронь не найдена');
-      if (!['pending', 'confirmed', 'done'].includes(booking.status)) {
-        throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
-      }
+    // Продажа всегда к брони (решение заказчика 19.09.2026, D28): у брони
+    // есть клиент, и покупка сама попадает в его карточку. Как счёт номера
+    // в гостинице: всё, что взял гость, — строкой к его брони.
+    if (!body.bookingId) throw new BadRequestException('Выберите бронь, к которой относится продажа');
+    const booking: { id: bigint; starts_at: Date; status: string; tournament_id: bigint | null } | null =
+      await this.db.bookings.findUnique({ where: { id: bigId(String(body.bookingId)) } });
+    if (!booking) throw new NotFoundException('Бронь не найдена');
+    if (booking.tournament_id) throw new ConflictException('Это корт под турниром — к нему продажи не записывают');
+    if (!['pending', 'confirmed', 'done'].includes(booking.status)) {
+      throw new ConflictException('К отменённой или сгоревшей брони ничего не добавить');
     }
     // Покупка без брони, но на человека: в его карточке будет видно, что брал
     let clientId: bigint | null = booking ? (await this.db.bookings.findUnique({
@@ -1383,12 +1563,7 @@ export class AdminController {
   async productPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
     const p = await this.db.products.findUnique({ where: { id: bigId(id) } });
     if (!p) throw new NotFoundException('Товар не найден');
-    const { buf, ext } = imageFrom(body.data);
-    const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-    const dir = join(UPLOAD_DIR, 'products');
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, name), buf);
-    const url = `/uploads/products/${name}`;
+    const url = await saveImage(body.data, 'products', 1000);
     await this.db.products.update({ where: { id: p.id }, data: { photo_url: url, updated_at: new Date() } });
     await dropUpload(p.photo_url);
     return { url };
@@ -1587,17 +1762,12 @@ export class AdminController {
   async addPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
     const court = await this.db.courts.findUnique({ where: { id } });
     if (!court) throw new NotFoundException('Площадка не найдена');
-    const { buf, ext } = imageFrom(body.data);
-
-    const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-    const dir = join(UPLOAD_DIR, 'courts', court.id);
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, name), buf);
+    const url = await saveImage(body.data, `courts/${court.id}`, 2000);
 
     const last = await this.db.court_photos.findFirst({
       where: { court_id: court.id }, orderBy: { sort: 'desc' } });
     const ph = await this.db.court_photos.create({ data: {
-      court_id: court.id, url: `/uploads/courts/${court.id}/${name}`,
+      court_id: court.id, url,
       sort: (last?.sort ?? -1) + 1,
     }});
     await this.auth.log(req.admin, 'загрузил фото площадки', court.name);
@@ -1637,19 +1807,14 @@ export class AdminController {
   @Needs('club')
   async setHero(@Req() req: any, @Body() body: { data?: string; light?: boolean }) {
     const light = !!body.light;
-    const { buf, ext } = imageFrom(body.data);
-    const name = `hero${light ? '-light' : ''}-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-    const dir = join(UPLOAD_DIR, 'club');
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, name), buf);
+    const url = await saveImage(body.data, 'club', 2400, `hero${light ? '-light' : ''}-`);
     const cur = await this.club.get();
-    const url = `/uploads/club/${name}`;
     await this.db.settings.update({ where: { id: 1 },
       data: { [light ? 'hero_light_url' : 'hero_url']: url, updated_at: new Date() } });
     this.club.forget();
     await dropUpload(light ? cur.heroLightUrl : cur.heroUrl);
     await this.auth.log(req.admin,
-      light ? 'сменил фото главного экрана (светлая тема)' : 'сменил фото главного экрана', name);
+      light ? 'сменил фото главного экрана (светлая тема)' : 'сменил фото главного экрана', url);
     return { heroUrl: light ? null : url, heroLightUrl: light ? url : null };
   }
 
@@ -1791,6 +1956,17 @@ export class AdminController {
     }));
   }
 
+  /** Обложка турнира: своё фото вместо готовых картинок. Загружается до
+   *  сохранения турнира (новый турнир ещё без номера), путь приходит в форму
+   *  и сохраняется вместе с турниром. Сжимается как все фото — до 2000 px. */
+  @Post('tournaments/cover')
+  @Needs('tournaments')
+  async tournamentCover(@Req() req: any, @Body() body: { data?: string }) {
+    const url = await saveImage(body.data, 'covers', 2000);
+    await this.auth.log(req.admin, 'загрузил обложку турнира', url);
+    return { url };
+  }
+
   /** Фото с турнира — для итогов и баннера на главной. Не больше 12. */
   @Post('tournaments/:id/photos')
   @Needs('tournaments')
@@ -1798,12 +1974,7 @@ export class AdminController {
     const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     if (t.result_photos.length >= 12) throw new BadRequestException('Не больше 12 фото — удалите лишние');
-    const { buf, ext } = imageFrom(body.data);
-    const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
-    const dir = join(UPLOAD_DIR, 'tournaments', String(t.id));
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, name), buf);
-    const url = `/uploads/tournaments/${t.id}/${name}`;
+    const url = await saveImage(body.data, `tournaments/${t.id}`, 2000);
     await this.db.tournaments.update({ where: { id: t.id },
       data: { result_photos: [...t.result_photos, url] } });
     await this.auth.log(req.admin, 'загрузил фото турнира', t.name);
@@ -1937,7 +2108,15 @@ export class AdminController {
       if (known.length !== ids.length) throw new BadRequestException('Среди площадок есть неизвестная');
       data.court_ids = ids;
     }
-    if (body.coverUrl != null) data.cover_url = String(body.coverUrl).trim().slice(0, 200) || null;
+    if (body.coverUrl != null) {
+      // Обложка — встроенная картинка приложения (t1…t4) или загруженное
+      // клубом фото. Чужие ссылки не принимаем: приложение их не покажет.
+      const c = String(body.coverUrl).trim();
+      if (c && !/^t[1-4]$/.test(c) && !/^\/uploads\/covers\/[\w.-]+\.jpg$/.test(c)) {
+        throw new BadRequestException('Обложку выберите из готовых или загрузите фото');
+      }
+      data.cover_url = c || null;
+    }
     if (body.resultText != null) data.result_text = String(body.resultText).trim().slice(0, 2000) || null;
     if (body.results != null) {
       if (!Array.isArray(body.results)) throw new BadRequestException('Итоги должны быть списком мест');
@@ -1994,6 +2173,8 @@ export class AdminController {
             `«${t.name}» теперь ${when}. Если не сможете — отмените запись в приложении.`, { by: req.admin.name });
         }
       }
+      // Сменили загруженную обложку — старый файл больше никому не нужен
+      if (data.cover_url !== undefined && before.cover_url !== data.cover_url) await dropUpload(before.cover_url);
       if (data.banner_on !== undefined && data.banner_on !== before.banner_on) {
         await this.auth.log(req.admin, data.banner_on ? 'включил баннер итогов турнира' : 'выключил баннер итогов турнира', t.name);
       }
@@ -2106,11 +2287,13 @@ export class AdminController {
     if (body.phone && !phone) throw new BadRequestException('Номер телефона неполный');
 
     let clientId: bigint | null = null;
+    let accountName: string | null = null;
     if (body.clientId) {
       // Человек с приложением: запись на его аккаунт, анкету не трогаем
-      const c = await this.db.clients.findUnique({ where: { id: BigInt(body.clientId) } });
+      const c = await this.db.clients.findUnique({ where: { id: bigId(String(body.clientId)) } });
       if (!c) throw new NotFoundException('Аккаунт не найден');
       clientId = c.id;
+      accountName = [c.name, c.surname].filter(Boolean).join(' ') || null;
     } else if (phone) {
       // Без приложения: заводим или находим по номеру. Имя того, у кого уже
       // есть аккаунт с паролем, не переписываем — он сам его задал
@@ -2135,7 +2318,7 @@ export class AdminController {
         guest_name: clientId == null ? name : null,
       }});
       await this.auth.log(req.admin, 'записал клиента',
-        `№${Number(b.id)}: ${name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}`);
+        `№${Number(b.id)}: ${accountName ?? name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}`);
       // Человеку с приложением бронь придёт уведомлением, а не «появится сама»
       if (clientId) {
         const c = await this.db.clients.findUnique({ where: { id: clientId } });
@@ -2276,7 +2459,9 @@ export class AdminController {
     const where: any = accountId != null ? { id: accountId } : text ? { OR: [
       { name: { contains: text, mode: 'insensitive' } },
       { surname: { contains: text, mode: 'insensitive' } },
-      ...(digits.length >= 3
+      // Номер ищем по цифрам: «299-99-72», «2999972» и «+7 (928) 299 99 72»
+      // находят одного и того же человека. Хватает двух цифр — хвоста номера.
+      ...(digits.length >= 2
         ? [{ phone: { contains: digits } }, { whatsapp: { contains: digits } }] : []),
     ] } : {};
     const rows = await this.db.clients.findMany({ where, orderBy: { created_at: 'desc' }, take: 5000 });
@@ -2316,10 +2501,15 @@ export class AdminController {
   async client(@Param('phone') phone: string) {
     const c = await this.db.clients.findUnique({ where: { phone: normalizePhone(phone) ?? phone } });
     if (!c) throw new NotFoundException('Клиент не найден');
+    // Вся история, а не последние 50: карточка клиента — отдельная страница
+    // с прокруткой, и длинная история там уместна
     const rows = await this.db.bookings.findMany({
-      where: { client_id: c.id }, orderBy: { starts_at: 'desc' }, take: 50,
+      where: { client_id: c.id }, orderBy: { starts_at: 'desc' }, take: 2000,
     });
     const courts = new Map((await this.db.courts.findMany()).map(x => [x.id, x.name]));
+    const entries = await this.db.tournament_entries.findMany({
+      where: { client_id: c.id }, orderBy: { created_at: 'desc' }, include: { tournaments: true }, take: 200,
+    });
     return {
       id: Number(c.id), name: [c.name, c.surname].filter(Boolean).join(' '),
       phone: c.phone, whatsapp: c.whatsapp, hasPassword: !!c.pass_hash,
@@ -2331,16 +2521,21 @@ export class AdminController {
           by: ['booking_id'], where: { booking_id: { in: rows.map(r => r.id) } }, _sum: { amount: true } }) : [];
         const paidBy = new Map(paid.map(x => [String(x.booking_id), x._sum.amount ?? 0]));
         return rows.map(b => ({
-          id: Number(b.id), courtName: courts.get(b.court_id) ?? b.court_id,
+          id: Number(b.id), courtId: b.court_id, courtName: courts.get(b.court_id) ?? b.court_id,
           startsAt: b.starts_at, hours: Math.round((+b.ends_at - +b.starts_at) / 3600_000),
           price: b.price, discount: b.discount, extras: extrasBy.get(String(b.id))?.sum ?? 0,
           due: Math.max(0, b.price - b.discount) + (extrasBy.get(String(b.id))?.sum ?? 0),
-          paid: paidBy.get(String(b.id)) ?? 0, status: b.status,
+          paid: paidBy.get(String(b.id)) ?? 0, status: b.status, keptPrepay: b.kept_prepay,
+          tournamentId: b.tournament_id ? Number(b.tournament_id) : null, source: b.source,
         }));
       })(),
+      tournaments: entries.map(e => ({
+        id: Number(e.tournament_id), name: e.tournaments.name, startsAt: e.tournaments.starts_at,
+        status: e.status, fee: e.tournaments.fee,
+      })),
       // Что покупал: прокат, мячи, товары — и к броням, и просто так
       purchases: (await this.db.sales.findMany({
-        where: { client_id: c.id }, orderBy: { id: 'desc' }, take: 50 }))
+        where: { client_id: c.id }, orderBy: { id: 'desc' }, take: 1000 }))
         .map(x => ({ id: Number(x.id), day: x.day.toISOString().slice(0, 10),
           item: x.item ?? SALE_WORD[x.category] ?? x.category, qty: x.qty, amount: x.amount,
           bookingId: x.booking_id ? Number(x.booking_id) : null })),
@@ -2430,7 +2625,9 @@ function checkPassword(pw: string): string {
  *  и руководителю важно видеть, куда смещается доля. */
 export const PAY_METHODS = ['cash', 'card', 'sbp', 'transfer', 'invoice'];
 /** 'bill' — не способ оплаты, а «в счёт брони»: платят вместе с кортом. */
-export const PAY_KINDS = ['payment', 'refund', 'penalty'];
+// Штрафов у клуба нет: при неявке удерживается уже внесённая предоплата
+// (флаг kept_prepay у брони), новых денег это не создаёт.
+export const PAY_KINDS = ['payment', 'refund'];
 
 const PAY_WORD: Record<string, string> = {
   cash: 'наличными', card: 'картой', sbp: 'по СБП',
@@ -2438,7 +2635,7 @@ const PAY_WORD: Record<string, string> = {
 };
 
 const KIND_WORD: Record<string, string> = {
-  payment: 'принял оплату', refund: 'вернул деньги', penalty: 'удержал за неявку',
+  payment: 'принял оплату', refund: 'вернул деньги',
 };
 
 const EXPENSE_WORD: Record<string, string> = {

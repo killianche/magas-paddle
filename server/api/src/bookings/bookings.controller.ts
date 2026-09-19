@@ -69,11 +69,13 @@ export class BookingsController {
     // Строки счёта (прокат, мячи) и внесённые деньги — человек видит, сколько
     // должен и за что, теми же цифрами, что и менеджер
     const ids = rows.map(r => r.id);
-    const [extras, paid] = ids.length ? await Promise.all([
+    const [extras, paid, refunds] = ids.length ? await Promise.all([
       this.db.sales.findMany({ where: { booking_id: { in: ids } }, orderBy: { id: 'asc' } }),
       this.db.payments.groupBy({ by: ['booking_id'], where: { booking_id: { in: ids } }, _sum: { amount: true } }),
-    ]) : [[], []];
+      this.db.payments.groupBy({ by: ['booking_id'], where: { booking_id: { in: ids }, kind: 'refund' }, _sum: { amount: true } }),
+    ]) : [[], [], []];
     const paidBy = new Map(paid.map(p => [String(p.booking_id), p._sum.amount ?? 0]));
+    const refundBy = new Map(refunds.map(p => [String(p.booking_id), -(p._sum.amount ?? 0)]));
 
     return rows.map(b => ({
       id: Number(b.id),
@@ -88,6 +90,9 @@ export class BookingsController {
       price: b.price,
       discount: b.discount,
       paid: paidBy.get(String(b.id)) ?? 0,
+      // Отмена или неявка: предоплата осталась клубу или её вернули
+      keptPrepay: b.kept_prepay,
+      refunded: refundBy.get(String(b.id)) ?? 0,
       extras: extras.filter(x => x.booking_id === b.id)
         .map(x => ({ item: x.item ?? x.category, qty: x.qty, amount: x.amount })),
       status: b.status,

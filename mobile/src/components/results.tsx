@@ -22,10 +22,14 @@ const MEDAL = [
   { bg: '#D29A6A', fg: '#35200C' },
 ];
 
+/** Обложка турнира: своё фото клуба (/uploads/covers/…) или готовая картинка t1…t4. */
+export const coverOf = (url?: string | null) =>
+  url?.startsWith('/uploads/') ? { uri: mediaUrl(url) } : (TOURN_IMG[url ?? 't1'] ?? TOURN_IMG.t1);
+
 export const photosOfTournament = (t: ApiTournament) =>
   (t.photos ?? []).length
     ? t.photos!.map(u => ({ uri: mediaUrl(u) }))
-    : [TOURN_IMG[t.coverUrl ?? 't1'] ?? TOURN_IMG.t1];
+    : [coverOf(t.coverUrl)];
 
 /** Места с медалями. dark — поверх тёмного баннера. */
 export function Podium({ results, dark, max = 10 }: {

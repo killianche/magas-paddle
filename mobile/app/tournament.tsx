@@ -11,11 +11,11 @@ import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } f
 import { api, rub, ApiError } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useProfile } from '../src/profile';
-import { TOURN_IMG } from '../src/images';
+
 import { IconCheck, IconClock } from '../src/components/icons';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
-import { Podium, photosOfTournament } from '../src/components/results';
+import { Podium, photosOfTournament, coverOf } from '../src/components/results';
 import { Gallery } from '../src/components/gallery';
 import { hh, dayMonth, weekday, dateOfIso, hourOfIso } from '../src/dates';
 
@@ -86,7 +86,7 @@ export default function TournamentScreen() {
 
         <View style={s.cover}>
           {/* У прошедшего турнира с фото на обложке первый снимок с турнира */}
-          <Image source={done && t.photos?.length ? photosOfTournament(t)[0] : (TOURN_IMG[t.coverUrl ?? 't1'] ?? TOURN_IMG.t1)}
+          <Image source={done && t.photos?.length ? photosOfTournament(t)[0] : coverOf(t.coverUrl)}
             style={s.coverImg} resizeMode="cover" />
           <LinearGradient colors={['rgba(9,13,10,.12)', 'rgba(9,13,10,.58)', 'rgba(9,13,10,.94)']}
             locations={[0, 0.5, 1]} style={s.fill} />

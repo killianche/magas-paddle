@@ -171,15 +171,13 @@ export default function Bookings() {
                 <Text style={s.price}>{rub(dueOf(b))}</Text>
               </View>
               {/* Из чего сложилась сумма: скидка клуба и что добавили к игре */}
-              {(!!b.discount || !!b.extras?.length || !!b.paid) && (
+              {(!!b.discount || !!b.extras?.length || !!b.paid || !!b.refunded) && (
                 <View style={s.bill}>
                   {!!b.discount && <Text style={s.billT}>Корт {rub(b.price)} · скидка −{rub(b.discount)}</Text>}
                   {(b.extras ?? []).map((x, i) => (
                     <Text key={i} style={s.billT}>+ {x.item}{x.qty > 1 ? ` × ${x.qty}` : ''} · {rub(x.amount)}</Text>
                   ))}
-                  {!!b.paid && <Text style={[s.billT, { color: C.limeDim }]}>
-                    {b.paid >= dueOf(b) ? 'Оплачено' : `Внесено ${rub(b.paid)}, осталось ${rub(dueOf(b) - b.paid)}`}
-                  </Text>}
+                  <MoneyLine b={b} />
                 </View>
               )}
 
@@ -217,6 +215,23 @@ function Empty() {
       </Pressable>
     </View>
   );
+}
+
+/** Что с деньгами по брони — одной строкой. Для отменённой брони и неявки
+ *  человек видит, осталась ли предоплата у клуба или её вернули. */
+function MoneyLine({ b }: { b: ApiBooking }) {
+  const paid = b.paid ?? 0, back = b.refunded ?? 0;
+  const closed = b.status === 'cancelled' || b.status === 'no_show' || b.status === 'expired';
+  if (closed) {
+    if (paid > 0 && b.keptPrepay) return <Text style={[s.billT, { color: C.amber }]}>Предоплата {rub(paid)} не возвращается</Text>;
+    if (paid > 0) return <Text style={s.billT}>Внесено {rub(paid)} — клуб вернёт</Text>;
+    if (back > 0) return <Text style={[s.billT, { color: C.limeDim }]}>Возвращено {rub(back)}</Text>;
+    return null;
+  }
+  if (paid <= 0) return null;
+  return <Text style={[s.billT, { color: C.limeDim }]}>
+    {paid >= dueOf(b) ? 'Оплачено' : `Внесено ${rub(paid)}, осталось ${rub(dueOf(b) - paid)}`}
+  </Text>;
 }
 
 const s = sheet(() => ({

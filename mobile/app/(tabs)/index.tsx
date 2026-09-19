@@ -18,12 +18,12 @@ import { api, rub, mediaUrl, type ApiBooking, type ApiTournament } from '../../s
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
-import { IMG, HERO, HERO_LIGHT, TOURN_IMG } from '../../src/images';
+import { IMG, HERO, HERO_LIGHT } from '../../src/images';
 import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../src/components/icons';
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
 import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
-import { ResultsBanner } from '../../src/components/results';
+import { ResultsBanner, coverOf } from '../../src/components/results';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
 import { today, hh, plural, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
 import { upcomingGrid } from '../../src/upcoming';
@@ -358,7 +358,7 @@ export default function Home() {
           </View>
           <Pressable onPress={() => go('/tournament', { id: String(tourn.id) })}
             style={({ pressed }) => [st.tourn, { height: bigCardH }, pressed && { opacity: 0.88 }]}>
-            <Image source={TOURN_IMG[tourn.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
+            <Image source={coverOf(tourn.coverUrl)}
               style={st.fillImg} resizeMode="cover" />
             <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.8)']}
               locations={[0.45, 1]} style={st.fill} />

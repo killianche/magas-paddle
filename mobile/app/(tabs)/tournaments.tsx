@@ -11,7 +11,7 @@ import { useApi } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
 import { Pill, SectionTitle } from '../../src/components/ui';
-import { TOURN_IMG } from '../../src/images';
+import { coverOf } from '../../src/components/results';
 import { IconCheck } from '../../src/components/icons';
 import { hh, dayMonth, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
@@ -46,7 +46,7 @@ export default function Tournaments() {
         <Pressable onPress={() => open(hero)}
           accessibilityRole="button" accessibilityLabel={`Турнир «${hero.name}»`}
           style={({ pressed }) => [s.hero, pressed && { transform: [{ scale: 0.99 }] }]}>
-          <Image source={TOURN_IMG[hero.coverUrl ?? 't1'] ?? TOURN_IMG.t1}
+          <Image source={coverOf(hero.coverUrl)}
             style={s.heroImg} resizeMode="cover" />
           <LinearGradient colors={['rgba(9,13,10,.10)', 'rgba(9,13,10,.55)', 'rgba(9,13,10,.92)']}
             locations={[0, 0.5, 1]} style={s.fill} />

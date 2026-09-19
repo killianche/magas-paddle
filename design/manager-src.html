@@ -2,39 +2,44 @@
 <title>Magas Padel — рабочее место менеджера</title>
 <style>
 :root{
-  /* Светлая тема — основная (заказчик, 17.09.2026). Тёмная — по кнопке в шапке.
-     --lime — акцент: в светлой теме тёмно-зелёный, как в приложении,
-     салатовый на белом не читается. */
-  /* Тона светлые, как в интерфейсах Apple: белые поверхности, серая подложка,
-     волосяные линии вместо рамок, цвет — точками и акцентной кнопкой. */
-  --ink:#F5F5F7; --ink-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F7F7F9; --surface-3:#EDEDF0;
-  --line:rgba(0,0,0,.09); --line-soft:rgba(0,0,0,.05); --line-strong:rgba(0,0,0,.18);
+  /* Оформление — как у приложений последней macOS (macOS 27, Liquid Glass):
+     системный шрифт SF Pro, боковая панель во всю высоту окна, панель
+     инструментов сверху, капсульные кнопки, сгруппированные списки, тонкие
+     разделители вместо рамок. Акцент — фирменный зелёный клуба. */
+  --ink:#F5F5F7; --ink-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F7; --surface-3:#E8E8ED;
+  --line:rgba(0,0,0,.1); --line-soft:rgba(0,0,0,.06); --line-strong:rgba(0,0,0,.2);
   --lime:#1B7A32; --lime-dim:#2E7D32; --green-deep:#1B5E20; --green-mid:#8FC79A; --on-lime:#FFFFFF;
-  --text:#1D1D1F; --dim:#6E6E73; --dim-2:#8E8E93; --amber:#B25E00; --red:#D0342C;
-  --top-bg:rgba(255,255,255,.8); --scrim:rgba(0,0,0,.28); --scheme:light;
-  --shadow:0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.04);
-  --warn-bg:rgba(240,169,59,.16); --warn-line:rgba(190,110,10,.45);
-  --bad-bg:rgba(229,100,75,.10); --bad-line:rgba(192,57,43,.40); --err-text:#9B2C1E;
-  --ok-bg:rgba(27,94,32,.08); --ok-line:rgba(27,94,32,.45);
-  --info:#0A66C2; --info-bg:rgba(10,102,194,.07); --info-line:rgba(10,102,194,.45);
+  --text:#1D1D1F; --dim:#6E6E73; --dim-2:#8E8E93; --amber:#B25E00; --red:#D70015;
+  --top-bg:rgba(255,255,255,.78); --scrim:rgba(0,0,0,.22); --scheme:light;
+  --shadow:0 0 0 .5px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.06);
+  --warn-bg:rgba(255,159,10,.14); --warn-line:rgba(201,120,0,.45);
+  --bad-bg:rgba(255,59,48,.09); --bad-line:rgba(215,0,21,.35); --err-text:#B3000F;
+  --ok-bg:rgba(27,122,50,.09); --ok-line:rgba(27,122,50,.4);
+  --info:#0066CC; --info-bg:rgba(0,122,255,.08); --info-line:rgba(0,102,204,.4);
   --hatch:rgba(0,0,0,.04); --stale-text:#8A5B00; --heat:27,122,50;
-  --top-h:59px; --stats-h:73px;
-  --disp:'Oswald','Arial Narrow',sans-serif;
-  --body:-apple-system,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --top-h:52px; --stats-h:73px; --side-w:224px;
+  --side-bg:rgba(242,242,245,.82); --fill:rgba(0,0,0,.055); --fill-2:rgba(0,0,0,.09);
+  --field:#FFFFFF; --ring:rgba(27,122,50,.32); --sel:rgba(0,0,0,.075);
+  --sheet-shadow:0 0 0 .5px rgba(0,0,0,.18), 0 24px 64px rgba(0,0,0,.22), 0 4px 14px rgba(0,0,0,.08);
+  --disp:-apple-system,BlinkMacSystemFont,'SF Pro Display','Golos Text','Segoe UI',system-ui,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,'SF Pro Text','Golos Text','Segoe UI',system-ui,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,'IBM Plex Mono',monospace;
 }
 :root[data-theme="dark"]{
-  --ink:#0B0F0C; --ink-2:#12180F; --surface:#171E16; --surface-2:#212A1F; --surface-3:#2A3427;
-  --line:#2C3729; --line-soft:#222B20; --line-strong:#576D51;
-  --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A; --on-lime:#0B0F0C;
-  --text:#EDF2E9; --dim:#9AA795; --dim-2:#889085; --amber:#F0A93B; --red:#E5644B;
-  --top-bg:rgba(11,15,12,.94); --scrim:rgba(4,7,5,.72); --scheme:dark;
-  --shadow:0 1px 2px rgba(0,0,0,.3);
-  --warn-bg:rgba(240,169,59,.10); --warn-line:rgba(240,169,59,.45);
-  --bad-bg:rgba(229,100,75,.10); --bad-line:rgba(229,100,75,.45); --err-text:#F0B6A8;
-  --ok-bg:rgba(198,240,51,.09); --ok-line:rgba(198,240,51,.5);
-  --info:#6FB3FF; --info-bg:rgba(111,179,255,.10); --info-line:rgba(111,179,255,.5);
-  --hatch:rgba(255,255,255,.03); --stale-text:#DFCCA8; --heat:198,240,51;
+  --ink:#1C1C1E; --ink-2:#262628; --surface:#2A2A2C; --surface-2:#323234; --surface-3:#3A3A3C;
+  --line:rgba(255,255,255,.12); --line-soft:rgba(255,255,255,.07); --line-strong:rgba(255,255,255,.24);
+  --lime:#C6F033; --lime-dim:#9BC020; --green-deep:#1B5E20; --green-mid:#3DA84A; --on-lime:#101410;
+  --text:#F5F5F7; --dim:#AEAEB2; --dim-2:#8E8E93; --amber:#FFB340; --red:#FF6961;
+  --top-bg:rgba(30,30,32,.78); --scrim:rgba(0,0,0,.5); --scheme:dark;
+  --shadow:0 0 0 .5px rgba(255,255,255,.08), 0 1px 3px rgba(0,0,0,.3);
+  --warn-bg:rgba(255,179,64,.12); --warn-line:rgba(255,179,64,.45);
+  --bad-bg:rgba(255,105,97,.12); --bad-line:rgba(255,105,97,.45); --err-text:#FFB4AE;
+  --ok-bg:rgba(198,240,51,.1); --ok-line:rgba(198,240,51,.45);
+  --info:#64B5FF; --info-bg:rgba(100,181,255,.12); --info-line:rgba(100,181,255,.45);
+  --hatch:rgba(255,255,255,.04); --stale-text:#FFD68A; --heat:198,240,51;
+  --side-bg:rgba(38,38,40,.86); --fill:rgba(255,255,255,.09); --fill-2:rgba(255,255,255,.14);
+  --field:rgba(255,255,255,.06); --ring:rgba(198,240,51,.35); --sel:rgba(255,255,255,.1);
+  --sheet-shadow:0 0 0 .5px rgba(255,255,255,.14), 0 24px 64px rgba(0,0,0,.55);
 }
 html{color-scheme:var(--scheme)}
 *{box-sizing:border-box}
@@ -282,7 +287,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 @media(max-width:900px){.search{width:150px}}
 @media(max-width:1600px){.who{display:none}}
 @media(max-width:1500px){.search{width:190px}}
-@media(max-width:1340px){.brand{display:none}.search{width:150px}.vw{padding:7px 10px}}
+
 /* Полоса дня над сеткой: листалка, дата, «Продажа», «Записать клиента».
    Раньше всё это стояло в шапке, и на ноутбуке страница ехала вбок. */
 .dayBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -559,29 +564,367 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 .heat th{font-size:11px;padding:6px 4px}
 .heat td:first-child{color:var(--dim);white-space:nowrap}
 .card.warn{border-color:var(--warn-line);background:var(--warn-bg)}
+
+/* ════════════════════════════════════════════════════════════════════
+   macOS 27 — слой оформления поверх базовых правил (заказчик, 19.09.2026:
+   «все шрифты, весь дизайн, весь подход к UX/UI — как делает macOS»).
+   Боковая панель на всю высоту окна, панель инструментов с заголовком
+   раздела и поиском, капсульные кнопки Liquid Glass, сгруппированные
+   списки, системный шрифт. Базовые правила выше не удалены: здесь только
+   то, что меняет вид, поведение прежнее.
+   ════════════════════════════════════════════════════════════════════ */
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-size:13px;line-height:1.4;letter-spacing:-.003em;font-feature-settings:"kern"}
+::selection{background:var(--ring)}
+b,strong{font-weight:600}
+
+/* Никаких заглавных и разрядки: в macOS заголовки — обычный текст */
+.brand,.fh,.fsec,.extras .exh,.hero-cap,.tv-st,.quick .qg,.pane label,.sect,.bk .st,
+.toast span,.day-cur,.card b,.stat b,.ftotal b,.sumPrice,.pdp,.rrow .rp,.res-h,.tv-n,.pane::before,
+.sheet h3,.pl .pl-i{text-transform:none;letter-spacing:-.01em}
+.sheet h3{font-family:var(--disp);font-size:19px;font-weight:700;margin:0 0 3px}
+.sheet .sub{font-size:12.5px;color:var(--dim);margin-bottom:14px}
+.fh,.fsec,.pane label,.extras .exh,.quick .qg{font-family:var(--body);font-size:12px;font-weight:600;color:var(--dim)}
+.sect{font-family:var(--disp);font-size:17px;font-weight:700;margin:26px 0 10px}
+.pane::before{font-family:var(--disp);font-size:24px;font-weight:700}
+
+/* ── окно: боковая панель + содержимое ─────────────────────────────── */
+.side{position:fixed;inset:0 auto 0 0;width:var(--side-w);z-index:30;display:flex;flex-direction:column;
+  background:var(--side-bg);backdrop-filter:saturate(180%) blur(30px);-webkit-backdrop-filter:saturate(180%) blur(30px);
+  border-right:.5px solid var(--line);padding:14px 10px 12px}
+.sbrand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px}
+.sbrand .logo{width:30px;height:30px;border-radius:8px}
+.sbrand b{display:block;font-family:var(--disp);font-size:14px;font-weight:700;letter-spacing:-.01em}
+.sbrand span{display:block;font-size:11px;color:var(--dim-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.sgroup{font-size:11px;font-weight:600;color:var(--dim-2);padding:12px 10px 4px}
+.snavm{display:flex;flex-direction:column;gap:1px}
+.side .vw,.side .sitem{display:flex;align-items:center;gap:9px;width:100%;height:30px;padding:0 10px;border:0;border-radius:8px;
+  background:none;color:var(--text);font-size:13px;font-weight:500;text-align:left}
+.side .vw svg,.side .sitem svg{width:17px;height:17px;flex:none;color:var(--lime)}
+.side .vw:hover,.side .sitem:hover{background:var(--fill)}
+.side .vw.on{background:var(--sel);color:var(--text);font-weight:600}
+.side .vw .cnt{margin-left:auto;font-size:11px;font-weight:600;color:var(--dim-2);font-variant-numeric:tabular-nums}
+.sfoot{margin-top:auto;display:flex;flex-direction:column;gap:1px;padding-top:10px;border-top:.5px solid var(--line)}
+.main{margin-left:var(--side-w);min-height:100vh}
+body.noside{--side-w:0px}
+body.noside .side{display:none}
+
+/* панель инструментов */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;
+  height:52px;padding:0 18px 0 14px;background:var(--top-bg);
+  backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);
+  border-bottom:.5px solid var(--line)}
+.top h1{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.015em;margin:0 0 0 2px;white-space:nowrap}
+.tbtn{width:32px;height:28px;padding:0;border:0;border-radius:999px;background:none;color:var(--dim);
+  display:inline-flex;align-items:center;justify-content:center}
+.tbtn:hover{background:var(--fill);color:var(--text)}
+.tbtn svg{width:18px;height:18px}
+.gsearch{position:relative;display:flex;align-items:center;width:280px;height:30px;border-radius:999px;
+  background:var(--fill);padding:0 10px 0 30px}
+.gsearch svg{position:absolute;left:10px;top:7px;width:15px;height:15px;color:var(--dim-2)}
+.gsearch input{border:0;background:none;padding:0;height:30px;width:100%;box-shadow:none;font-size:13px}
+.gsearch input:focus{box-shadow:none}
+.gsearch:focus-within{background:var(--field);box-shadow:0 0 0 3.5px var(--ring),0 0 0 .5px var(--lime)}
+.gs-pop{position:absolute;right:0;top:36px;width:420px;max-height:70vh;overflow:auto;z-index:40;padding:6px;
+  border-radius:14px;background:var(--ink-2);box-shadow:var(--sheet-shadow)}
+.gs-h{font-size:11px;font-weight:600;color:var(--dim-2);padding:8px 10px 4px}
+.gs-it{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;border:0;border-radius:8px;
+  background:none;color:var(--text);text-align:left}
+.gs-it:hover,.gs-it.on{background:var(--lime);color:var(--on-lime)}
+.gs-it:hover span,.gs-it.on span{color:inherit;opacity:.8}
+.gs-it .av{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--fill-2);color:var(--text);font-size:12px;font-weight:600}
+.gs-it:hover .av,.gs-it.on .av{background:rgba(255,255,255,.25);color:inherit}
+.gs-it div{flex:1;min-width:0}
+.gs-it b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gs-it span{display:block;font-size:11.5px;color:var(--dim)}
+.gs-it .go{flex:none;font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--fill);color:inherit}
+.gs-empty{padding:14px 10px;color:var(--dim);font-size:12.5px}
+.wrap{padding:18px 22px 60px;max-width:none}
+
+/* ── кнопки Liquid Glass: капсулы с мягкой заливкой ────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:28px;padding:4px 14px;white-space:nowrap;
+  border:0;border-radius:999px;background:var(--fill);color:var(--text);font-size:13px;font-weight:500;
+  box-shadow:0 0 0 .5px var(--line-soft) inset;transition:background .12s,transform .06s}
+.btn:hover{background:var(--fill-2)}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:none;box-shadow:0 0 0 3.5px var(--ring)}
+.btn.acc{background:var(--lime);color:var(--on-lime);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.btn.acc:hover{opacity:1;filter:brightness(1.06)}
+.btn.dg{color:var(--red);border:0}
+.btn.small{min-height:24px;padding:2px 11px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn.pend{background:var(--warn-bg);color:var(--amber);box-shadow:inset 0 0 0 .5px var(--warn-line);font-weight:600}
+.btn.plain{background:none;box-shadow:none;color:var(--lime);padding-left:6px;padding-right:6px}
+.btn.plain:hover{background:var(--fill)}
+.copy{font-size:11.5px;padding:2px 9px;border-radius:999px;border:0;background:var(--fill);color:var(--text)}
+.copy:hover{background:var(--fill-2)}
+a.copy{text-decoration:none}
+
+/* ── поля ввода и всплывающие меню ─────────────────────────────────── */
+input,select,textarea,.pane input,.pane select,.pane textarea,.filters input,.filters select,
+.checkRow input,.checkRow select,.search,.dpick{background:var(--field);border:0;border-radius:8px;
+  padding:6px 10px;min-height:30px;font-size:13px;color:var(--text);
+  box-shadow:inset 0 0 0 .5px var(--line-strong),0 .5px 1px rgba(0,0,0,.04)}
+input:focus,select:focus,textarea:focus,.pane input:focus,.pane select:focus,.pane textarea:focus{outline:none;
+  box-shadow:0 0 0 3.5px var(--ring),inset 0 0 0 .5px var(--lime)}
+select{-webkit-appearance:none;appearance:none;padding-right:28px;background-repeat:no-repeat;background-position:right 9px center;
+  background-size:9px 12px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 12'%3E%3Cpath d='M1.5 4.5 4.5 1.5l3 3M1.5 7.5l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+input[type=checkbox],input[type=radio],input[type=file]{min-height:0;box-shadow:none}
+label{font-size:12px;color:var(--dim);margin:12px 0 5px}
+.hint,.fnote{font-size:12px;color:var(--dim-2)}
+.err{border:0;border-radius:10px;background:var(--bad-bg);color:var(--err-text)}
+.tag{border:0;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;letter-spacing:0;background:var(--fill);color:var(--dim)}
+.tag.warn{background:var(--warn-bg);color:var(--amber)} .tag.bad{background:var(--bad-bg);color:var(--red)}
+.tag.ok{background:var(--ok-bg);color:var(--lime)}
+
+/* сегменты: капсула с «бегунком» */
+.seg{border-radius:999px;background:var(--fill);padding:2px;margin-top:12px}
+.seg button{border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap}
+.seg button.on{background:var(--ink-2);box-shadow:0 1px 3px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.05);font-weight:600}
+:root[data-theme="dark"] .seg button.on{background:#636366}
+.seg.small button{padding:3px 10px;font-size:12px}
+.days button,.picks button,.quick button{border:0;border-radius:999px;background:var(--fill);box-shadow:none;color:var(--text)}
+.days button:hover,.picks button:hover,.quick button:hover{background:var(--fill-2)}
+.days button.on,.picks button.on{background:var(--lime);color:var(--on-lime)}
+.picks button.on small{color:inherit;opacity:.8}
+.picks button.on .cdot{box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.quick button{border-radius:10px;padding:7px 11px}
+.quick button.on{background:var(--ok-bg);box-shadow:inset 0 0 0 1.5px var(--lime)}
+
+/* переключатели macOS: маленькие капсулы */
+.chk input[type=checkbox],.pane .chk input[type=checkbox]{appearance:none;-webkit-appearance:none;width:32px;height:19px;
+  border-radius:999px;background:var(--fill-2);position:relative;transition:background .16s;flex:none;cursor:pointer;margin:0;padding:0;border:0}
+.chk input[type=checkbox]::after,.pane .chk input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;
+  width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .16s}
+.chk input[type=checkbox]:checked,.pane .chk input[type=checkbox]:checked{background:var(--lime)}
+.chk input[type=checkbox]:checked::after,.pane .chk input[type=checkbox]:checked::after{transform:translateX(13px)}
+
+/* ── окна (sheets) ─────────────────────────────────────────────────── */
+.modal{background:var(--scrim);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.modal.on .sheet{animation:sheetIn .18s ease-out}
+@keyframes sheetIn{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:none}}
+.sheet{border:0;border-radius:18px;background:var(--ink-2);box-shadow:var(--sheet-shadow);padding:22px 24px}
+.acts{gap:8px;margin-top:18px}
+.acts .btn{min-height:30px}
+.ilist,.fgroup{border:0;border-radius:10px;background:var(--surface-2);box-shadow:none}
+:root[data-theme="dark"] .ilist,:root[data-theme="dark"] .fgroup{background:rgba(255,255,255,.05)}
+.irow{min-height:40px;padding:4px 12px}
+.irow + .irow{border-top:.5px solid var(--line)}
+.irow .ik{font-size:13px}
+.irow input.iv,.irow select.iv{box-shadow:none;background:none;min-height:0;font-size:13px}
+.irow select.iv{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 12'%3E%3Cpath d='M1.5 4.5 4.5 1.5l3 3M1.5 7.5l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center;background-size:9px 12px;padding-right:16px}
+.stepper button{border:0;background:var(--fill);height:26px;width:30px;font-size:15px}
+.stepper button:first-child{border-radius:999px 0 0 999px}
+.stepper button:last-child{border-radius:0 999px 999px 0}
+.stepper input{height:26px;min-height:26px;border-radius:0;box-shadow:none;background:var(--fill);width:46px}
+.money-in input{box-shadow:none;background:none;font-size:15px}
+.ftotal b,.sumPrice{font-family:var(--disp);font-weight:700;font-size:24px}
+.sumBox{border:0;background:var(--ok-bg)}
+.picked{border:0;background:var(--ok-bg)}
+.sugg{border:0;border-radius:12px;box-shadow:var(--sheet-shadow)}
+.sugg button:hover{background:var(--lime);color:var(--on-lime)}
+.sugg button:hover span{color:inherit;opacity:.8}
+
+/* ── сводки и карточки цифр ────────────────────────────────────────── */
+.stat,.card{border:0;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);padding:11px 14px}
+.stat b,.card b{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span,.card span{font-size:11.5px;color:var(--dim)}
+.stat.warn,.card.warn{background:var(--warn-bg);box-shadow:inset 0 0 0 .5px var(--warn-line)}
+.stat.bad{background:var(--bad-bg);box-shadow:inset 0 0 0 .5px var(--bad-line)}
+.stats{background:var(--ink)}
+
+/* ── таблицы: как списки Finder ────────────────────────────────────── */
+.hist{font-size:13px}
+.hist th{font-size:11.5px;font-weight:600;color:var(--dim);border-bottom:.5px solid var(--line);background:var(--ink);padding:7px 10px}
+.hist td{padding:7px 10px;border-bottom:0}
+.hist tbody tr:nth-child(even) td{background:var(--line-soft)}
+.hist tbody tr:hover td{background:var(--sel)}
+.filters{gap:8px}
+.list .it,.trow,.rrow,.srow{border:0;border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+
+/* ── сетка дня ─────────────────────────────────────────────────────── */
+#board th.lane{border-radius:10px 10px 0 0;font-size:12px;font-weight:600}
+.hcell{font-family:var(--mono);font-size:11px}
+.bk{border-radius:8px}
+.bk .n{font-size:12.5px;font-weight:600}
+.bk .st{font-size:10.5px;font-weight:600;letter-spacing:0;opacity:1}
+.slot{border-radius:8px}
+.day-cur{font-family:var(--disp);font-size:17px;font-weight:700}
+.day-nav button{border:0;border-radius:999px;background:var(--fill);width:30px;height:28px}
+.day-nav button:hover{background:var(--fill-2)}
+.views{display:none}
+
+/* ── карточка брони: как инспектор macOS ───────────────────────────── */
+.sheet.bki{max-width:560px;padding:0;overflow:hidden;display:flex;flex-direction:column}
+.bki-head{padding:20px 22px 14px;display:flex;gap:14px;align-items:flex-start}
+.bki-head .av{width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--fill-2);font-size:16px;font-weight:600}
+.bki-head .t{flex:1;min-width:0}
+.bki-head h3{margin:0;font-size:19px}
+.bki-head .when{font-size:13px;color:var(--dim);margin-top:2px}
+.bki-head .meta{font-size:11.5px;color:var(--dim-2);margin-top:3px}
+.pill{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:999px;
+  background:var(--fill);color:var(--dim)}
+.pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-bg);color:var(--lime)} .pill.warn{background:var(--warn-bg);color:var(--amber)}
+.pill.bad{background:var(--bad-bg);color:var(--red)} .pill.info{background:var(--info-bg);color:var(--info)}
+.bki-body{padding:0 22px 16px;overflow:auto;max-height:calc(86vh - 150px)}
+.bki-money{border-radius:12px;background:var(--surface-2);padding:12px 14px}
+:root[data-theme="dark"] .bki-money,:root[data-theme="dark"] .bki-group{background:rgba(255,255,255,.05)}
+.bki-money .top3{display:flex;gap:10px}
+.bki-money .top3 div{flex:1}
+.bki-money .top3 span{display:block;font-size:11.5px;color:var(--dim)}
+.bki-money .top3 b{display:block;font-family:var(--disp);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bki-bar{height:5px;border-radius:999px;background:var(--fill-2);margin:10px 0 2px;overflow:hidden}
+.bki-bar i{display:block;height:100%;background:var(--lime);border-radius:999px}
+.bki-money .note{font-size:12px;color:var(--dim);margin-top:6px}
+.bki-money .note.warn{color:var(--amber)} .bki-money .note.bad{color:var(--red)} .bki-money .note.ok{color:var(--lime)}
+.bki-lines{margin-top:8px;border-top:.5px solid var(--line);padding-top:6px}
+.bki-line{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px}
+.bki-line span{flex:1;color:var(--dim)}
+.bki-line b{font-weight:500;font-variant-numeric:tabular-nums}
+.bki-line .x{border:0;background:none;color:var(--dim-2);padding:0 2px;font-size:13px}
+.bki-line .x:hover{color:var(--red)}
+.bki-group{margin-top:12px;border-radius:12px;background:var(--surface-2);overflow:hidden}
+.bki-row{display:flex;align-items:center;gap:10px;min-height:38px;padding:5px 14px;font-size:13px}
+.bki-row + .bki-row{border-top:.5px solid var(--line)}
+.bki-row > span:first-child{color:var(--dim);flex:0 0 112px}
+.bki-row .v{flex:1;min-width:0;text-align:right;display:flex;justify-content:flex-end;align-items:center;gap:6px;flex-wrap:wrap}
+.bki-row a{color:var(--lime);text-decoration:none;font-weight:500}
+.bki-row a:hover{text-decoration:underline}
+.bki-more{margin-top:10px}
+.bki-more summary{cursor:pointer;font-size:12.5px;color:var(--dim);padding:6px 2px;list-style:none;user-select:none}
+.bki-more summary::-webkit-details-marker{display:none}
+.bki-more summary::before{content:'›';display:inline-block;margin-right:6px;transition:transform .15s}
+.bki-more[open] summary::before{transform:rotate(90deg)}
+.bki-foot{display:flex;align-items:center;gap:8px;padding:12px 22px 16px;border-top:.5px solid var(--line);flex-wrap:wrap}
+.bki-foot .spacer{flex:1}
+.bki-foot .err{flex-basis:100%;margin:0 0 6px}
+
+/* выбор: отменить — кто и что с деньгами */
+.choice{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.choice button{display:flex;align-items:flex-start;gap:10px;text-align:left;padding:10px 12px;border:0;border-radius:10px;
+  background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 .5px var(--line)}
+:root[data-theme="dark"] .choice button{background:rgba(255,255,255,.05)}
+.choice button::before{content:'';width:16px;height:16px;border-radius:50%;flex:none;margin-top:1px;box-shadow:inset 0 0 0 1.5px var(--line-strong)}
+.choice button.on{box-shadow:inset 0 0 0 1.5px var(--lime);background:var(--ok-bg)}
+.choice button.on::before{box-shadow:inset 0 0 0 5px var(--lime)}
+.choice b{display:block;font-weight:600}
+.choice span{display:block;font-size:12px;color:var(--dim);margin-top:1px}
+.qlabel{font-size:12px;font-weight:600;color:var(--dim);margin:16px 0 0}
+
+/* ── продажа: выбор брони списком ─────────────────────────────────── */
+.bpick{max-height:230px;overflow:auto;border-radius:10px;background:var(--surface-2);margin-top:8px}
+:root[data-theme="dark"] .bpick{background:rgba(255,255,255,.05)}
+.bpick button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:0;background:none;color:var(--text);text-align:left}
+.bpick button + button{border-top:.5px solid var(--line)}
+.bpick button:hover{background:var(--sel)}
+.bpick button .cdot{width:9px;height:9px;border-radius:3px;background:var(--cc,var(--dim-2));flex:none}
+.bpick button div{flex:1;min-width:0}
+.bpick button b{display:block;font-weight:600}
+.bpick button span{display:block;font-size:11.5px;color:var(--dim)}
+.bpick button .ck{width:18px;color:var(--lime);font-weight:700;visibility:hidden}
+.bpick button.on{background:var(--ok-bg)}
+.bpick button.on .ck{visibility:visible}
+.bpick .none{padding:14px 12px;color:var(--dim);font-size:12.5px}
+.bchosen{display:flex;align-items:center;gap:12px;margin-top:6px;padding:10px 12px;border-radius:10px;background:var(--ok-bg)}
+.bchosen div{flex:1;min-width:0}
+.bchosen b{display:block;font-weight:600}
+.bchosen span{display:block;font-size:12px;color:var(--dim)}
+
+/* ── страница клиента ──────────────────────────────────────────────── */
+.cp-back{margin:-4px 0 10px -6px}
+.cp-head{display:flex;align-items:center;gap:18px;padding:6px 0 18px}
+.cp-head .av{width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#A1A1A6,#7C7C80);color:#fff;font-size:24px;font-weight:600}
+.cp-head h2{font-family:var(--disp);font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0}
+.cp-head .sub2{color:var(--dim);font-size:13px;margin-top:3px}
+.cp-head .acts{margin:0 0 0 auto}
+.cp-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.cp-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media(max-width:1180px){.cp-grid{grid-template-columns:1fr}}
+.cp-box{border-radius:12px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden}
+.cp-box h4{font-size:13px;font-weight:600;margin:0;padding:12px 14px 8px;display:flex;align-items:center;gap:8px}
+.cp-box h4 span{margin-left:auto;font-size:12px;font-weight:500;color:var(--dim)}
+.cp-row{display:flex;align-items:center;gap:12px;min-height:40px;padding:6px 14px;border-top:.5px solid var(--line-soft);font-size:13px}
+.cp-row.click{cursor:pointer}
+.cp-row.click:hover{background:var(--sel)}
+.cp-row .d{flex:0 0 196px;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cp-row .c{flex:1;min-width:0;color:var(--dim)}
+.cp-row .m{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cp-row .m small{display:block;font-size:11px;color:var(--dim-2)}
+.cp-month{font-size:11.5px;font-weight:600;color:var(--dim);padding:10px 14px 4px;background:var(--surface-2);border-top:.5px solid var(--line-soft)}
+:root[data-theme="dark"] .cp-month{background:rgba(255,255,255,.04)}
+.cp-kv{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;border-top:.5px solid var(--line-soft);font-size:13px}
+.cp-kv span{color:var(--dim)}
+.cp-empty{padding:16px 14px;color:var(--dim);font-size:12.5px;border-top:.5px solid var(--line-soft)}
+
+/* ── турнир: вкладки и обложка ─────────────────────────────────────── */
+.sheet.tn{max-width:640px;padding:0;display:flex;flex-direction:column;max-height:88vh}
+.tn-head{padding:20px 24px 0}
+.tn-head .seg{margin:14px 0 0}
+.tn-body{padding:6px 24px 16px;overflow:auto;flex:1}
+.tn-pane{display:none}.tn-pane.on{display:block}
+.tn-foot{display:flex;align-items:center;gap:8px;padding:12px 24px 16px;border-top:.5px solid var(--line)}
+.tn-foot .spacer{flex:1}
+.tn-foot .err{margin:0;flex:1}
+.covers{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:10px}
+.cover{position:relative;border:0;padding:0;border-radius:12px;overflow:hidden;background:var(--surface-3);aspect-ratio:16/10;
+  box-shadow:inset 0 0 0 .5px var(--line)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover.on{box-shadow:0 0 0 3px var(--lime)}
+.cover.on::after{content:'✓';position:absolute;right:6px;top:6px;width:20px;height:20px;border-radius:50%;
+  background:var(--lime);color:var(--on-lime);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.cover.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--lime);font-size:12.5px;font-weight:500;cursor:pointer;background:var(--fill)}
+.cover.add svg{width:22px;height:22px}
+.cover .busy{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);color:#fff;font-size:12px}
+
+/* Поля внутри карточек «Управления» — без рамки, как строки настроек macOS;
+   рамка-подсветка появляется только при вводе */
+.ccard .crow2 input,.ccard .crow2 select,.ccard .ch input.c-name,.money-in input,.stepper input{box-shadow:none}
+.ccard .crow2 input:focus,.ccard .crow2 select:focus,.ccard .ch input.c-name:focus{box-shadow:0 0 0 3px var(--ring);border-radius:6px}
+.ccard .crow2 select{background-color:transparent}
+.hist.heat tbody tr td:first-child,.heat tbody tr:nth-child(even) td:first-child{background:none}
+@media(max-width:1100px){:root{--side-w:196px}.gsearch{width:220px}}
+@media(max-width:860px){body:not(.showside){--side-w:0px}body:not(.showside) .side{display:none}}
 </style>
 
-<div class="top">
-  <img class="logo" src="/favicon.png" alt="">
-  <div class="brand">Magas <b>Padel</b></div>
-  <div class="views">
-    <button class="vw on" data-view="day">День</button>
-    <button class="vw" data-view="history">История</button>
-    <button class="vw" data-view="stats">Аналитика</button>
-    <button class="vw" data-view="sales">Продажи</button>
-    <button class="vw" data-view="tourn">Турниры</button>
-    <button class="vw" data-view="clients">Клиенты</button>
+<!-- Окно как у приложений macOS: боковая панель на всю высоту, справа —
+     панель инструментов и содержимое раздела -->
+<aside class="side" aria-label="Разделы">
+  <div class="sbrand"><img class="logo" src="/favicon.png" alt="">
+    <div><b>Magas Padel</b><span id="whoAmI"></span></div></div>
+  <nav class="snavm">
+    <div class="sgroup">Клуб</div>
+    <button class="vw on" data-view="day"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="3"/><path d="M3 8h14M7 2.5v3M13 2.5v3"/></svg>День</button>
+    <button class="vw" data-view="clients"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="7" r="3"/><path d="M2.5 16.5c.6-2.8 2.9-4.5 5.5-4.5s4.9 1.7 5.5 4.5M13.5 4.2a3 3 0 0 1 0 5.6M15.5 12.4c1 .7 1.7 2 2 3.6"/></svg>Клиенты</button>
+    <button class="vw" data-view="history"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg>История</button>
+    <div class="sgroup">Деньги и события</div>
+    <button class="vw" data-view="sales"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h12l-1 10H5L4 7z"/><path d="M7.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>Продажи</button>
+    <button class="vw" data-view="tourn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8v5a4 4 0 0 1-8 0V3z"/><path d="M6 5H3.5v1a3 3 0 0 0 3 3M14 5h2.5v1a3 3 0 0 1-3 3M10 12v3M7 17h6"/></svg>Турниры</button>
+    <button class="vw" data-view="stats"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16V9M8 16V5M12 16v-6M16 16V7"/></svg>Аналитика</button>
+  </nav>
+  <div class="sfoot">
+    <button class="sitem" id="setupBtn" title="Цены, площадки, часы, сотрудники"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>Управление</button>
+    <button class="sitem" id="themeBtn" type="button" aria-label="Переключить тему"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5z"/></svg><span id="themeLbl">Тёмная тема</span></button>
+    <button class="sitem" id="logout" title="Выйти"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 5 16h3M12 6.5 15.5 10 12 13.5M15.5 10H8"/></svg>Выйти</button>
   </div>
-  <input id="search" class="search" type="search" autocomplete="off"
-         placeholder="Имя, телефон или ID" aria-label="Поиск клиента по имени, телефону или ID">
+</aside>
+
+<main class="main">
+<div class="top">
+  <button class="tbtn" id="sideBtn" type="button" title="Показать или скрыть боковую панель" aria-label="Боковая панель"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M8 4v12"/></svg></button>
+  <h1 id="viewTitle">День</h1>
   <div class="spacer"></div>
   <!-- Новые заявки раздельно: брони кортов и заявки на турниры -->
   <button class="btn pend" id="pendBtn" hidden title="Новые брони кортов, ждут подтверждения">Брони: <b id="pendN">0</b></button>
   <button class="btn pend" id="pendTnBtn" hidden title="Новые заявки на турниры, ждут подтверждения">Турниры: <b id="pendTnN">0</b></button>
-  <span class="who" id="whoAmI"></span>
-  <button class="btn" id="setupBtn" title="Цены, площадки, часы, турниры">Управление</button>
-  <button class="btn theme" id="themeBtn" type="button" title="Тёмная тема" aria-label="Переключить тему">☾</button>
-  <button class="btn" id="logout" title="Выйти">Выйти</button>
+  <div class="gsearch" id="gsBox"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="m12.5 12.5 4 4"/></svg>
+    <input id="search" type="search" autocomplete="off" spellcheck="false"
+         placeholder="Клиент: имя, телефон или ID" aria-label="Поиск клиента по имени, телефону или ID">
+    <div class="gs-pop" id="gsPop" hidden></div>
+  </div>
 </div>
 
 <div class="wrap">
@@ -673,6 +1016,13 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <div id="crmRows"><div class="center">Загружаю…</div></div>
   </div>
 
+  <!-- Карточка клиента — отдельная страница, а не всплывающее окно:
+       история бывает длинной, её нужно листать (как «Контакты» в macOS) -->
+  <div id="viewClient" hidden>
+    <button class="btn plain cp-back" id="cpBack">‹ Клиенты</button>
+    <div id="cpOut"><div class="center">Загружаю…</div></div>
+  </div>
+
   <!-- Продажи: прокат ракеток, мячи, бар — отдельно от аренды кортов -->
   <div id="viewSales" hidden>
     <div class="seg" style="max-width:360px;margin:0 0 14px" id="slSeg">
@@ -730,6 +1080,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <div id="sOut"><div class="center">Загружаю…</div></div>
   </div>
 </div>
+</main>
 
 <!-- сообщение клиентам со страницы «Клиенты» -->
 <div class="modal" id="crmMsgModal">
@@ -747,19 +1098,6 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <button class="btn" data-close>Отмена</button>
       <button class="btn acc" id="crmMsgSend">Отправить</button>
     </div>
-  </div>
-</div>
-
-<!-- карточка клиента -->
-<div class="modal" id="crmCardModal">
-  <div class="sheet">
-    <h3 id="crmCardName">Клиент</h3>
-    <p class="sub" id="crmCardSub"></p>
-    <div id="crmCardRows"></div>
-    <div class="hist" id="crmCardHist"></div>
-    <div class="err" id="crmCardErr"></div>
-    <div class="acts" id="crmCardActs"></div>
-    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
   </div>
 </div>
 
@@ -818,15 +1156,53 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   </div>
 </div>
 
-<!-- карточка брони -->
+<!-- карточка брони: как инспектор macOS — главное сверху, подробности свёрнуты -->
 <div class="modal" id="bkModal">
-  <div class="sheet">
-    <h3 id="bkTitle">Запись</h3>
-    <p class="sub" id="bkSub"></p>
-    <div id="bkRows"></div>
-    <div class="hist" id="bkHist"></div>
-    <div class="err" id="bkErr"></div>
-    <div class="acts" id="bkActs"></div>
+  <div class="sheet bki">
+    <div class="bki-head" id="bkHead"></div>
+    <div class="bki-body" id="bkBody"></div>
+    <div class="bki-foot" id="bkFoot"></div>
+  </div>
+</div>
+
+<!-- отмена брони или неявка: кто отменяет и что с внесёнными деньгами -->
+<div class="modal" id="endModal">
+  <div class="sheet" style="max-width:480px">
+    <h3 id="endTitle">Отменить бронь?</h3>
+    <p class="sub" id="endSub"></p>
+    <div id="endWhoBox">
+      <div class="qlabel">Кто отменяет</div>
+      <div class="choice" id="endWho">
+        <button type="button" data-v="client"><div><b>По просьбе клиента</b>
+          <span>Засчитывается ему как отмена — видно в его карточке</span></div></button>
+        <button type="button" data-v="club"><div><b>Клуб отменяет</b>
+          <span>Ремонт, турнир, ошибка записи — клиенту не засчитывается</span></div></button>
+      </div>
+    </div>
+    <div id="endMoneyBox">
+      <div class="qlabel" id="endMoneyQ">Что с внесёнными деньгами</div>
+      <div class="choice" id="endMoney">
+        <button type="button" data-v="keep"><div><b>Оставить клубу</b>
+          <span>Предоплата не возвращается и идёт в выручку</span></div></button>
+        <button type="button" data-v="refund"><div><b id="endRefundT">Вернуть клиенту</b>
+          <span id="endRefundS">Возврат запишется в платежи брони</span></div></button>
+      </div>
+      <div id="endMethodBox" hidden>
+        <div class="qlabel">Как вернули</div>
+        <div class="seg small" id="endMethod" style="display:inline-flex;margin-top:6px">
+          <button type="button" data-m="cash" class="on">Наличными</button>
+          <button type="button" data-m="card">На карту</button>
+          <button type="button" data-m="sbp">По СБП</button>
+          <button type="button" data-m="transfer">Переводом</button>
+        </div>
+      </div>
+      <p class="hint" id="endRule"></p>
+    </div>
+    <div class="err" id="endErr"></div>
+    <div class="acts">
+      <button class="btn" data-close id="endNo">Не отменять</button>
+      <button class="btn acc" id="endOk" style="background:var(--red);color:#fff">Отменить бронь</button>
+    </div>
   </div>
 </div>
 
@@ -834,7 +1210,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 <div class="modal" id="addModal">
   <div class="sheet mid">
     <h3>Записать клиента</h3>
-    <p class="sub">Для тех, кто позвонил или пришёл без приложения.</p>
+    <p class="sub">На аккаунт приложения — клиент увидит запись у себя. Или гостем без приложения.</p>
 
     <div class="fgroup">
       <div class="fh">Когда и где</div>
@@ -902,48 +1278,26 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
   </div>
 </div>
 
-<!-- результаты поиска -->
-<div class="modal" id="findModal">
-  <div class="sheet wide">
-    <h3 id="findTitle">Найдено</h3>
-    <p class="sub">Записи по всем датам, свежие сверху.</p>
-    <div class="list" id="findList"></div>
-    <div class="acts"><button class="btn" data-close>Закрыть</button></div>
-  </div>
-</div>
-
 <!-- прочая продажа -->
 <div class="modal" id="saleModal">
   <div class="sheet mid form">
     <div class="fhead">
       <h3>Продажа</h3>
-      <p class="sub">Прокат, мячи, вода, тренировка — всё, кроме аренды корта.</p>
+      <p class="sub">Ракетки, мячи, вода — строкой в счёт брони. Оплачивается вместе с кортом.</p>
     </div>
 
-    <!-- Кому: к брони (в её счёт), клиенту (в его карточку) или просто продажа -->
-    <div class="seg" id="saleTo">
-      <button type="button" data-to="booking" class="on">К брони</button>
-      <button type="button" data-to="client">Клиенту</button>
-      <button type="button" data-to="none">Просто продажа</button>
+    <!-- Продажа всегда к брони (заказчик, 19.09.2026): у брони есть клиент,
+         покупка попадает в её счёт и в карточку этого клиента -->
+    <div class="fsec" style="margin-top:12px">К какой брони</div>
+    <div id="saleBkPick">
+      <div class="ilist" style="margin-top:0">
+        <div class="irow"><span class="ik">День игры</span><input id="saleBkDate" type="date" class="iv"></div>
+      </div>
+      <div class="bpick" id="saleBkList"></div>
     </div>
-    <div class="fnote" id="saleToNote"></div>
-
-    <div class="ilist" id="saleBookingBox">
-      <div class="irow">
-        <span class="ik">Бронь</span>
-        <select id="saleBooking" class="iv"></select>
-      </div>
-    </div>
-    <div class="ilist rel" id="saleClientBox" hidden>
-      <div class="irow">
-        <span class="ik">Клиент</span>
-        <input id="saleClientQ" class="iv" inputmode="tel" autocomplete="off" placeholder="телефон или имя">
-        <div class="sugg" id="saleSugg" hidden></div>
-      </div>
-      <div class="irow" id="saleClientPick" hidden>
-        <span class="ik">Выбран</span><b class="iv" id="saleClientName"></b>
-        <button type="button" class="copy" id="saleClientClear">сменить</button>
-      </div>
+    <div class="bchosen" id="saleBkChosen" hidden>
+      <div><b id="saleBkName"></b><span id="saleBkSub"></span></div>
+      <button type="button" class="copy" id="saleBkChange">сменить</button>
     </div>
 
     <div class="fsec">Что продаём</div>
@@ -965,18 +1319,6 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
       <div class="irow">
         <span class="ik">Сумма</span>
         <div class="iv money-in"><input id="saleAmount" type="number" min="1" step="50" placeholder="0"><span>₽</span></div>
-      </div>
-      <div class="irow" id="saleMethodRow">
-        <span class="ik">Оплата</span>
-        <div class="seg small iv" id="saleMethod">
-          <button type="button" data-m="cash" class="on">Наличными</button>
-          <button type="button" data-m="card">Картой</button>
-          <button type="button" data-m="sbp">СБП</button>
-        </div>
-      </div>
-      <div class="irow" id="saleDayRow">
-        <span class="ik">День</span>
-        <input id="saleDay" type="date" class="iv">
       </div>
       <div class="irow">
         <span class="ik">Заметка</span>
@@ -1003,7 +1345,7 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 <!-- приём оплаты -->
 <div class="modal" id="payModal">
   <div class="sheet">
-    <h3>Принять оплату</h3>
+    <h3 id="payTitle">Принять оплату</h3>
     <p class="sub" id="paySub"></p>
     <label>Чем платят</label>
     <div class="days" id="payMethod">
@@ -1017,7 +1359,6 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
     <div class="days" id="payKind">
       <button type="button" data-k="payment" class="on">Оплата</button>
       <button type="button" data-k="refund">Возврат</button>
-      <button type="button" data-k="penalty">Удержание за неявку</button>
     </div>
     <label for="payAmount">Сумма, ₽</label>
     <input id="payAmount" type="number" min="0" step="50">
@@ -1314,53 +1655,75 @@ textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--li
 
 <!-- карточка турнира -->
 <div class="modal" id="tnModal">
-  <div class="sheet">
-    <h3 id="tnTitle">Турнир</h3>
-    <label for="tnName">Название</label><input id="tnName" placeholder="Осенний кубок Магаса">
-    <label for="tnStart">Начало</label><input id="tnStart" type="datetime-local">
-    <label for="tnFormat">Формат</label><input id="tnFormat" placeholder="Americano">
-    <div class="grid2">
-      <div><label for="tnFee">Взнос, ₽</label><input id="tnFee" type="number" min="0"></div>
-      <div><label for="tnSeats">Мест</label><input id="tnSeats" type="number" min="2" max="200"></div>
+  <!-- Раньше всё было одной длинной простынёй. Теперь — вкладки, как в окнах
+       настроек macOS: сам турнир, обложка, участники, итоги. -->
+  <div class="sheet tn">
+    <div class="tn-head">
+      <h3 id="tnTitle">Турнир</h3>
+      <div class="seg" id="tnTabs">
+        <button type="button" data-t="main" class="on">Турнир</button>
+        <button type="button" data-t="cover">Обложка</button>
+        <button type="button" data-t="entries">Участники</button>
+        <button type="button" data-t="results">Итоги</button>
+      </div>
     </div>
-    <label for="tnHours">Сколько часов идёт</label>
-    <input id="tnHours" type="number" min="1" max="15">
-    <label>Какие площадки занимает</label>
-    <div class="days" id="tnCourts"></div>
-    <p class="sub" style="margin:4px 0 0">Эти площадки станут занятыми в расписании
-      на время турнира. Ничего не выбрано — турнир кортов не занимает.</p>
-    <label for="tnState">Состояние</label>
-    <select id="tnState">
-      <option value="soon">Скоро откроем запись</option>
-      <option value="open">Запись открыта</option>
-      <option value="closed">Запись закрыта</option>
-      <option value="done">Завершён</option>
-      <option value="cancelled">Отменён — заявки снимутся, участники получат уведомление</option>
-    </select>
-    <label for="tnCover">Обложка</label>
-    <select id="tnCover">
-      <option value="t1">Картинка 1</option><option value="t2">Картинка 2</option>
-      <option value="t3">Картинка 3</option><option value="t4">Картинка 4</option>
-    </select>
-    <div class="res">
-      <div class="res-h">Итоги турнира</div>
-      <p class="sub" style="margin:0 0 8px">Места, фото и баннер на главной приложения.
-        Заполняют после турнира.</p>
-      <label>Призовые места</label>
-      <div id="tnPlaces"></div>
-      <button type="button" class="btn small" id="tnAddPlace">Добавить место</button>
-      <label for="tnResult">Пара слов об итогах</label>
-      <textarea id="tnResult" rows="2" maxlength="2000" placeholder="Финал решился на тай-брейке. Спасибо всем, кто пришёл!"></textarea>
-      <label>Фото с турнира</label>
-      <div class="c-photos" id="tnPhotos"></div>
-      <label class="chk" style="margin-top:14px"><input type="checkbox" id="tnBanner">
-        Показывать баннер с итогами на главной приложения</label>
-      <p class="sub" style="margin:2px 0 0">Баннер один: включите его здесь — у другого турнира он
-        выключится сам. Выключите, когда итоги станут неактуальны.</p>
+    <div class="tn-body">
+      <div class="tn-pane on" data-p="main">
+        <div class="ilist">
+          <div class="irow"><span class="ik">Название</span><input id="tnName" class="iv" maxlength="120" placeholder="Осенний кубок Магаса"></div>
+          <div class="irow"><span class="ik">Начало</span><input id="tnStart" class="iv" type="datetime-local"></div>
+          <div class="irow"><span class="ik">Идёт часов</span><input id="tnHours" class="iv" type="number" min="1" max="15"></div>
+          <div class="irow"><span class="ik">Формат</span><input id="tnFormat" class="iv" maxlength="80" placeholder="Americano"></div>
+        </div>
+        <div class="ilist">
+          <div class="irow"><span class="ik">Взнос</span><div class="iv money-in"><input id="tnFee" type="number" min="0" step="100"><span>₽</span></div></div>
+          <div class="irow"><span class="ik">Мест</span><input id="tnSeats" class="iv" type="number" min="2" max="200"></div>
+          <div class="irow"><span class="ik">Состояние</span>
+            <select id="tnState" class="iv">
+              <option value="soon">Скоро откроем запись</option>
+              <option value="open">Запись открыта</option>
+              <option value="closed">Запись закрыта</option>
+              <option value="done">Завершён</option>
+              <option value="cancelled">Отменён — заявки снимутся, участники получат уведомление</option>
+            </select></div>
+        </div>
+        <div class="fsec">Какие площадки занимает</div>
+        <div class="days" id="tnCourts"></div>
+        <p class="fnote">Эти площадки станут занятыми в расписании на время турнира. Ничего не выбрано — турнир кортов не занимает.</p>
+      </div>
+
+      <div class="tn-pane" data-p="cover">
+        <p class="fnote" style="margin-top:12px">Обложка — на карточке турнира в приложении и на главной.
+          Выберите готовую картинку или загрузите своё фото: оно сожмётся до 2000 px, лишние данные из файла уберутся.</p>
+        <input type="hidden" id="tnCover">
+        <div class="covers" id="tnCovers"></div>
+        <input type="file" id="tnCoverIn" accept="image/jpeg,image/png,image/webp,image/heic" hidden>
+      </div>
+
+      <div class="tn-pane" data-p="entries">
+        <div id="tnEntries"></div>
+      </div>
+
+      <div class="tn-pane" data-p="results">
+        <p class="fnote" style="margin-top:12px">Места, фото и баннер на главной приложения. Заполняют после турнира.</p>
+        <div class="fsec">Призовые места</div>
+        <div id="tnPlaces"></div>
+        <button type="button" class="btn small" id="tnAddPlace">Добавить место</button>
+        <div class="fsec">Пара слов об итогах</div>
+        <textarea id="tnResult" rows="3" maxlength="2000" placeholder="Финал решился на тай-брейке. Спасибо всем, кто пришёл!"></textarea>
+        <div class="fsec">Фото с турнира</div>
+        <div class="c-photos" id="tnPhotos"></div>
+        <div class="ilist">
+          <div class="irow"><span class="ik" style="flex:1">Баннер с итогами на главной приложения</span>
+            <label class="chk" style="margin:0"><input type="checkbox" id="tnBanner"></label></div>
+        </div>
+        <p class="fnote">Баннер один: включите его здесь — у другого турнира он выключится сам.
+          Выключите, когда итоги станут неактуальны.</p>
+      </div>
     </div>
-    <div id="tnEntries"></div>
-    <div class="err" id="tnErr"></div>
-    <div class="acts">
+    <div class="tn-foot">
+      <div class="err" id="tnErr"></div>
+      <div class="spacer"></div>
       <button class="btn" data-close>Отмена</button>
       <button class="btn acc" id="tnSave">Сохранить</button>
     </div>
@@ -1496,9 +1859,11 @@ function bkState(b){
   const due = dueOf(b), paid = b.paid || 0;
   const { ended } = timing(b);
   const left = holdLeft(b);
-  if (b.status === 'cancelled') return { cls:'cancelled', tone:'dim', label:'Отменена' };
-  if (b.status === 'expired')   return { cls:'cancelled', tone:'dim', label:'Не подтвердили вовремя' };
-  if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', label: paid > 0 ? `Не пришёл · внесено ${rub(paid)}` : 'Не пришёл' };
+  // Несостоявшаяся бронь: главное — что с внесёнными деньгами
+  const money = paid <= 0 ? '' : b.keptPrepay ? ` · ${rub(paid)} у клуба` : ` · вернуть ${rub(paid)}`;
+  if (b.status === 'cancelled') return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim', label:'Отменена' + money };
+  if (b.status === 'expired')   return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim', label:'Не подтвердили вовремя' + money };
+  if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', label:'Не пришёл' + money };
   if (b.status === 'pending')   return { cls:'pending', tone:'warn',
     label: left !== null ? `⏳ ${holdText(left)}` : 'Ждёт подтверждения' };
   const fullyPaid = paid >= due;
@@ -1532,24 +1897,6 @@ function priceFor(courtId, hour, hours){
   return sum;
 }
 /** Спросить перед необратимым действием. */
-/** Отмена: по просьбе клиента или по инициативе клуба. Возвращает 'client' | 'club' | null. */
-function askWho(title, text){
-  return new Promise(res => {
-    $('#askTitle').textContent = title;
-    $('#askText').textContent = text;
-    const acts = $('#askModal').querySelector('.acts');
-    const saved = acts.innerHTML;
-    acts.innerHTML = `<button class="btn" data-close>Не отменять</button>
-      <button class="btn" id="askClient">По просьбе клиента</button>
-      <button class="btn dg" id="askClub">Клуб отменяет</button>`;
-    const done = v => { $('#askModal').classList.remove('on'); acts.innerHTML = saved;
-      $('#askModal').querySelectorAll('[data-close]').forEach(b => b.onclick = null); res(v) };
-    $('#askClient').onclick = () => done('client');
-    $('#askClub').onclick = () => done('club');
-    $('#askModal').querySelectorAll('[data-close]').forEach(b => b.onclick = () => done(null));
-    $('#askModal').classList.add('on');
-  });
-}
 function ask(title, text){
   return new Promise(res => {
     $('#askTitle').textContent = title;
@@ -1566,9 +1913,16 @@ const $ = s => document.querySelector(s);
 const THEME_STORE = 'magas.admin.theme';
 function applyTheme(t){
   document.documentElement.dataset.theme = t;
-  $('#themeBtn').textContent = t === 'dark' ? '☀' : '☾';
-  $('#themeBtn').title = t === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+  $('#themeLbl').textContent = t === 'dark' ? 'Светлая тема' : 'Тёмная тема';
 }
+/* Боковую панель можно спрятать — как в Finder и Почте; выбор запоминается */
+const SIDE_STORE = 'magas.admin.side';
+if (localStorage.getItem(SIDE_STORE) === 'off') document.body.classList.add('noside');
+$('#sideBtn').onclick = () => {
+  if (window.innerWidth <= 860) { document.body.classList.toggle('showside'); return }
+  const off = document.body.classList.toggle('noside');
+  localStorage.setItem(SIDE_STORE, off ? 'off' : 'on');
+};
 applyTheme(localStorage.getItem(THEME_STORE) === 'dark' ? 'dark' : 'light');
 $('#themeBtn').onclick = () => {
   const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -1724,6 +2078,9 @@ function render(){
     return n+k;
   }, 0);
   const cancelled = day.bookings.filter(b => b.status==='cancelled').length;
+  // Отменённые брони с деньгами, которые клуб решил вернуть, — на сетке их нет,
+  // поэтому напоминаем отдельной плашкой
+  const toReturn = day.bookings.filter(b => CLOSED.includes(b.status) && (b.paid||0) > 0 && !b.keptPrepay);
 
   $('#stats').innerHTML = `
     <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения${pendingSum ? ' · ' + rub(pendingSum) : ''}</span></div>
@@ -1731,10 +2088,13 @@ function render(){
     <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
     <div class="stat"><b>${cancelled}</b><span>${plural(cancelled,'отмена','отмены','отмен')} за день</span></div>
     ${burnt.length ? `<button type="button" class="stat bad" id="burntBtn" title="Показать сгоревшие заявки"><b>${burnt.length}</b><span>сгорело без ответа</span></button>` : ''}
+    ${toReturn.length ? `<button type="button" class="stat bad" id="returnBtn" title="Кому вернуть деньги"><b>${rub(toReturn.reduce((n,b)=>n+b.paid,0))}</b><span>вернуть клиентам</span></button>` : ''}
     <div class="stat"><b>${rub(got)}</b><span>получено</span></div>
     <div class="stat${money-got>0?' warn':''}"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
   const burntBtn = $('#burntBtn');
   if (burntBtn) burntBtn.onclick = () => openBurnt(burnt);
+  const returnBtn = $('#returnBtn');
+  if (returnBtn) returnBtn.onclick = () => openBurnt(toReturn, 'return');
 
   const courts = day.courts;
   // Цвет дорожки корта: цвет покрытия из настроек, у поля без цвета — нейтральный.
@@ -1804,133 +2164,140 @@ function render(){
 }
 
 /* ── карточка записи ──────────────────────────────────── */
+/* Как инспектор в приложениях macOS: кто и когда — в шапке, деньги —
+   одним блоком с полосой оплаты, контакты — короткой группой, всё
+   остальное (откуда, кто менял, платежи) свёрнуто в «Подробнее».
+   История других записей клиента — в его карточке, сюда не тянем. */
+const fmtAt = t => new Date(t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
+const CLOSED = ['cancelled','no_show','expired'];
+
 async function openBooking(id){
   const b = day.bookings.find(x => x.id===id);
   if(!b) return;
   const court = day.courts.find(c => c.id===b.courtId);
-  $('#bkTitle').textContent = who(b);
-  // Номер заявки и номер аккаунта — те же, что приходят в сообщении WhatsApp:
-  // по ним менеджер сверяет, чья это бронь
-  $('#bkSub').textContent = court.name+' · '+pretty(date)+' · заявка №'+b.id
-    + (b.client ? ' · ID '+b.client.id : '');
-  $('#bkRows').innerHTML = `
-    <div class="row"><span>Время</span><b>${hh(b.hour)} – ${hh(b.hour+b.hours)}</b></div>
-    <div class="row"><span>К оплате</span><b>${rub(dueOf(b))}${
-      (b.discount || extrasOf(b)) ? ` <span style="color:var(--dim-2);font-weight:400">корт ${rub(courtDue(b))}${
-        b.discount ? ` (было ${rub(b.price)})` : ''}${extrasOf(b) ? ` + доп. ${rub(extrasOf(b))}` : ''}</span>` : ''}</b></div>
-    <div class="row"><span>Состояние</span><b class="stt-${bkState(b).tone}">${esc(bkState(b).label)}${
-      b.statusAt && b.status !== 'pending' ? ` <small style="color:var(--dim-2);font-weight:400">· ${new Date(b.statusAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}${b.statusBy ? ', ' + esc(b.statusBy) : ''}</small>` : ''
-    }</b></div>
-    ${b.discount ? `<div class="row"><span>Скидка</span><b style="color:var(--amber)">−${rub(b.discount)}${b.discountReason?' · '+esc(b.discountReason):''}</b></div>` : ''}
-    ${b.players ? `<div class="row"><span>Играет</span><b>${b.players} чел.</b></div>` : ''}
-    <div class="row"><span>Телефон</span><b>${b.client
-      ? `${phoneNice(b.client.phone)}<button class="copy" id="bkCopy">копировать</button>`
-      + `<a class="copy" href="https://wa.me/${(b.client.whatsapp||b.client.phone).replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>`
-      + (b.client.whatsapp && b.client.whatsapp!==b.client.phone
-          ? `<small style="color:var(--dim)">WhatsApp: ${phoneNice(b.client.whatsapp)}</small>` : '')
-      : '—'}</b></div>
-    <div class="row"><span>Оплата</span><b>${b.paid > 0
-      ? (b.paid >= dueOf(b)
-          ? `<span style="color:var(--lime)">оплачено ${rub(b.paid)}</span>`
-          : `<span style="color:var(--amber)">внесено ${rub(b.paid)} из ${rub(dueOf(b))}</span>`)
-      : `<span style="color:${timing(b).ended && ['confirmed','done'].includes(b.status) ? 'var(--red)' : 'var(--amber)'}">не оплачено</span>`}</b></div>
-    <div class="row"><span>Откуда</span><b>${b.source==='app'?'из приложения':'занято вручную'}</b></div>
-    ${b.comment?`<div class="row"><span>Заметка</span><b>${esc(b.comment)}</b></div>`:''}
-    <div class="extras">
-      <div class="exh"><span>К брони</span>${['pending','confirmed','done'].includes(b.status)
-        ? `<button type="button" class="copy" id="bkAddExtra">+ Добавить</button>` : ''}</div>
-      ${(b.extras?.items ?? []).length ? b.extras.items.map(x => `<div class="exrow" data-x="${x.id}">
-          <span>${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}</span>
-          <b>${rub(x.amount)}</b>
-          ${['pending','confirmed','done'].includes(b.status) ? `<button type="button" class="copy" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}
-        </div>`).join('')
-        : `<div class="exempty">Ракетки, мячи, вода — добавьте, и они попадут в счёт этой брони.</div>`}
-    </div>`;
-  // Строки счёта: добавить или убрать
-  const addX = $('#bkAddExtra');
-  if (addX) addX.onclick = () => { $('#bkModal').classList.remove('on'); openSale({ bookingId: b.id }) };
-  $('#bkRows').querySelectorAll('[data-xdel]').forEach(el => el.onclick = async () => {
-    try {
-      await call(`/admin/sales/${el.dataset.xdel}/delete`, { method:'POST', body:'{}' });
-      await load(); openBooking(id);
-    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
-  });
-
-  $('#bkHist').innerHTML = '';
-  if(b.client){
-    const bad = [];
-    if(b.client.cancels>0) bad.push(`<span class="tag warn">отмен: ${b.client.cancels}</span>`);
-    if(b.client.noShows>0) bad.push(`<span class="tag bad">не пришёл: ${b.client.noShows}</span>`);
-    if(bad.length) $('#bkHist').innerHTML = bad.join(' ');
-    try {
-      const c = await call('/admin/clients/'+encodeURIComponent(b.client.phone));
-      // Время нужно не меньше даты: звонящий спрашивает именно «во сколько».
-      const rows = c.history.filter(h => Number(h.id) !== id).slice(0,6).map(h => {
-        const t = new Date(h.startsAt);
-        const when = t.toLocaleDateString('ru-RU') + ', '
-          + t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
-        const money = h.due != null ? `${rub(h.due)}${h.paid >= h.due ? ' ✓' : h.paid > 0 ? ` (внесено ${rub(h.paid)})` : ['confirmed','done'].includes(h.status) ? ' · не оплачено' : ''}` : rub(h.price);
-        return `<div><span>${when} · ${esc(h.courtName)}</span>
-         <span>${STATUS[h.status]||esc(h.status)} · ${money}</span></div>`;
-      }).join('') || '<div><span style="color:var(--dim-2)">других записей нет</span></div>';
-      $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Последние записи</div>${rows}`;
-    } catch {}
-  }
-
-  // Что можно сделать с бронью, зависит от её состояния и от того, прошло ли
-  // время игры. Раньше сгоревшую заявку прошлой недели можно было «подтвердить»
-  // или «перенести» — сервер тоже это не пропустит, но кнопок быть не должно.
+  const st = bkState(b);
+  const due = dueOf(b), paid = b.paid || 0;
+  const closed = CLOSED.includes(b.status);
   const { begun, ended } = timing(b);
   const live = b.status === 'pending' || b.status === 'confirmed';
-  const acts = [];
-  const owes = b.paid < dueOf(b);
+  const editable = ['pending','confirmed','done'].includes(b.status);
+  const wd = new Date(date + 'T00:00:00Z').toLocaleDateString('ru-RU',{weekday:'short',timeZone:'UTC'});
+
+  // ── шапка
+  $('#bkHead').innerHTML = `
+    <span class="av">${esc(initials(who(b)))}</span>
+    <div class="t">
+      <h3>${esc(who(b))}${b.client && (b.client.noShows>0 || b.client.cancels>1) ? ' <span title="Бывали отмены или неявки" style="color:var(--amber)">⚠</span>' : ''}</h3>
+      <div class="when">${esc(court.name)} · ${wd}, ${pretty(date)} · ${hh(b.hour)}–${hh(b.hour+b.hours)}</div>
+      <div class="meta">Заявка №${b.id}${b.client ? ' · ID ' + b.client.id : ''} · ${b.source==='app' ? 'из приложения' : 'записал менеджер'}</div>
+    </div>
+    <span class="pill ${st.tone === 'dim' ? '' : st.tone}">${esc(st.label)}</span>`;
+
+  // ── деньги
+  const left = Math.max(0, due - paid);
+  let note = '', noteCls = '';
+  if (b.tournamentId) { note = 'Корт занят под турнир — деньги принимаются в турнире.' }
+  else if (closed) {
+    if (paid > 0 && b.keptPrepay) { note = `Предоплата ${rub(paid)} осталась клубу.`; noteCls = 'ok' }
+    else if (paid > 0) { note = `Нужно вернуть клиенту ${rub(paid)}.`; noteCls = 'warn' }
+    else note = 'Денег по этой брони не вносили.';
+  } else if (paid >= due && due > 0) { note = 'Оплачено полностью.'; noteCls = 'ok' }
+  else if (ended && ['confirmed','done'].includes(b.status)) { note = `Игра прошла, долг ${rub(left)}.`; noteCls = 'bad' }
+  const lines = [
+    `<div class="bki-line"><span>Корт, ${b.hours} ${plural(b.hours,'час','часа','часов')}</span><b>${rub(b.price)}</b></div>`,
+    b.discount ? `<div class="bki-line"><span>Скидка${b.discountReason ? ' · ' + esc(b.discountReason) : ''}</span><b style="color:var(--amber)">−${rub(b.discount)}</b></div>` : '',
+    ...(b.extras?.items ?? []).map(x => `<div class="bki-line"><span>${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}</span><b>${rub(x.amount)}</b>${
+      editable ? `<button type="button" class="x" data-xdel="${x.id}" title="Убрать из счёта">✕</button>` : ''}</div>`),
+  ].join('');
+  const moneyHtml = b.tournamentId ? `<div class="bki-money"><div class="note">${note}</div></div>` : `
+    <div class="bki-money">
+      <div class="top3">
+        <div><span>${closed ? 'Было к оплате' : 'К оплате'}</span><b${closed ? ' style="color:var(--dim-2);text-decoration:line-through"' : ''}>${rub(due)}</b></div>
+        <div><span>Внесено</span><b>${rub(paid)}</b></div>
+        ${closed ? '' : `<div><span>Осталось</span><b style="color:${left ? (ended ? 'var(--red)' : 'var(--amber)') : 'var(--lime)'}">${rub(left)}</b></div>`}
+      </div>
+      ${closed ? '' : `<div class="bki-bar"><i style="width:${due ? Math.min(100, Math.round(paid / due * 100)) : 0}%"></i></div>`}
+      ${note ? `<div class="note ${noteCls}">${note}</div>` : ''}
+      <div class="bki-lines">${lines}
+        ${editable ? `<button type="button" class="btn plain small" id="bkAddExtra" style="margin-top:4px">+ Добавить к брони: ракетки, мячи, вода</button>` : ''}
+      </div>
+    </div>`;
+
+  // ── клиент и контакты
+  const c = b.client;
+  const contact = c ? `
+    <div class="bki-group">
+      <div class="bki-row"><span>Клиент</span><div class="v"><a href="#" id="bkClient">${esc(c.name || 'Без имени')} — карточка ›</a></div></div>
+      <div class="bki-row"><span>Телефон</span><div class="v">${phoneNice(c.phone)}
+        <button class="copy" id="bkCopy">копировать</button>
+        <a class="copy" href="https://wa.me/${(c.whatsapp||c.phone).replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a></div></div>
+      ${c.cancels || c.noShows ? `<div class="bki-row"><span>Раньше</span><div class="v">
+        ${c.cancels ? `<span class="tag warn">отмен: ${c.cancels}</span>` : ''}${c.noShows ? `<span class="tag bad">неявок: ${c.noShows}</span>` : ''}</div></div>` : ''}
+      ${c.note ? `<div class="bki-row"><span>О клиенте</span><div class="v">${esc(c.note)}</div></div>` : ''}
+    </div>` : `
+    <div class="bki-group"><div class="bki-row"><span>Клиент</span><div class="v">${esc(b.guestName || 'Без имени')} · без приложения</div></div></div>`;
+
+  // ── подробности
+  const more = `
+    <details class="bki-more" id="bkMore">
+      <summary>Подробнее: откуда, кто менял, платежи</summary>
+      <div class="bki-group" style="margin-top:4px">
+        <div class="bki-row"><span>Создана</span><div class="v">${fmtAt(b.createdAt)}${b.createdBy ? ' · ' + esc(b.createdBy) : b.source === 'app' ? ' · в приложении' : ''}</div></div>
+        ${b.statusAt && b.status !== 'pending' ? `<div class="bki-row"><span>${STATUS[b.status] || 'Изменена'}</span><div class="v">${fmtAt(b.statusAt)}${b.statusBy ? ' · ' + esc(b.statusBy) : ''}</div></div>` : ''}
+        ${b.players ? `<div class="bki-row"><span>Играет</span><div class="v">${b.players} чел.</div></div>` : ''}
+        ${b.comment ? `<div class="bki-row"><span>Заметка</span><div class="v">${esc(b.comment)}</div></div>` : ''}
+        <div id="bkPays"></div>
+      </div>
+    </details>`;
+  $('#bkBody').innerHTML = moneyHtml + contact + more;
+
+  // ── действия: слева опасные, справа основные
+  const L = [], R = [];
+  const owes = paid < due;
   if (b.tournamentId) {
-    // Корт под турниром: время, цена и отмена — только в самом турнире
-    acts.push(`<button class="btn acc" data-tourn="${b.tournamentId}">Открыть турнир</button>`);
-    $('#bkActs').innerHTML = acts.join('');
-    $('#bkActs').querySelector('[data-tourn]').onclick = async () => {
-      $('#bkModal').classList.remove('on');
-      const ts = await call('/admin/tournaments');
-      const t = ts.find(x => x.id === b.tournamentId); if (t) openTournament(t);
-    };
-    $('#bkErr').classList.remove('on'); $('#bkModal').classList.add('on');
-    return;
+    R.push(`<button class="btn acc" data-tourn>Открыть турнир</button>`);
+  } else {
+    if (live && !ended && can('cancel')) L.push(`<button class="btn dg" data-end="cancelled">Отменить бронь…</button>`);
+    if (b.status === 'confirmed' && begun && can('cancel')) L.push(`<button class="btn dg" data-end="no_show">Не пришёл…</button>`);
+    if (b.status === 'no_show') L.push(`<button class="btn" data-s="done">Всё же пришёл</button>`);
+    if (can('prices') && editable) R.push(`<button class="btn" data-disc>Скидка</button>`);
+    if (live && !ended) R.push(`<button class="btn" data-move>Перенести</button>`);
+    if (b.status === 'expired' && !ended) R.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
+    // Деньги по несостоявшейся брони: вернуть или оставить клубу
+    if (closed && paid > 0) {
+      if (!b.keptPrepay && can('cancel')) R.push(`<button class="btn" data-keep>Оставить клубу</button>`);
+      if (can('refunds')) R.push(`<button class="btn ${b.keptPrepay ? '' : 'acc'}" data-refund>Вернуть ${rub(paid)}</button>`);
+    }
+    if (b.status === 'confirmed' && begun) R.push(`<button class="btn" data-s="done">Отыграна</button>`);
+    if (live || b.status === 'done') {
+      if (b.status === 'pending' && !ended) {
+        R.push(`<button class="btn" data-pay>Принять оплату</button>`);
+        R.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
+      } else R.push(owes ? `<button class="btn acc" data-pay>Принять оплату</button>` : `<button class="btn" data-pay>Ещё платёж</button>`);
+    }
   }
-  if (live || b.status === 'done' || b.status === 'no_show') {
-    acts.push(owes ? `<button class="btn acc" data-pay>Принять оплату</button>`
-                   : `<button class="btn" data-pay>Ещё платёж</button>`);
-  }
-  // По отменённой брони с внесёнными деньгами — вернуть
-  if ((b.status === 'cancelled' || b.status === 'expired') && b.paid > 0 && can('refunds')) {
-    acts.push(`<button class="btn acc" data-refund>Вернуть ${rub(b.paid)}</button>`);
-  }
-  if (b.status === 'pending' && !ended) acts.push(`<button class="btn acc" data-s="confirmed">Подтвердить</button>`);
-  if (b.status === 'expired' && !ended) acts.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
-  if (live && !ended) acts.push(`<button class="btn" data-move>Перенести</button>`);
-  if (can('prices') && b.status !== 'cancelled' && b.status !== 'expired') acts.push(`<button class="btn" data-disc>Скидка</button>`);
-  if (b.status === 'confirmed' && begun) {
-    acts.push(`<button class="btn" data-s="done">Отыграна</button>`);
-    acts.push(`<button class="btn" data-s="no_show">Не пришёл</button>`);
-  }
-  if (b.status === 'no_show') acts.push(`<button class="btn" data-s="done">Всё же пришёл</button>`);
-  if (live && !ended) acts.push(`<button class="btn dg" data-s="cancelled">Отменить бронь</button>`);
-  if (!acts.length) acts.push(`<span class="hint" style="margin:0">${ended
-    ? 'Игра прошла, эту запись уже не меняют.' : 'Действий нет.'}</span>`);
-  $('#bkActs').innerHTML = acts.join('');
-  $('#bkErr').classList.remove('on');
+  if (!L.length && !R.length) R.push(`<span class="hint" style="margin:0">${ended ? 'Игра прошла, эту запись уже не меняют.' : 'Действий нет.'}</span>`);
+  $('#bkFoot').innerHTML = `<div class="err" id="bkErr"></div>${L.join('')}<div class="spacer"></div>${R.join('')}`;
   $('#bkModal').classList.add('on');
 
-  const copy = $('#bkCopy');
-  if(copy) copy.onclick = () => {
-    navigator.clipboard?.writeText(phoneNice(b.client.phone));
-    copy.textContent = 'скопировано';
-  };
-
-  const mv = $('#bkActs').querySelector('[data-move]');
-  if(mv) mv.onclick = () => { $('#bkModal').classList.remove('on'); openMove(b) };
-
-  const disc = $('#bkActs').querySelector('[data-disc]');
-  if(disc) disc.onclick = async () => {
+  const err = e => { $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') };
+  const on = (sel, fn) => { const el = $('#bkModal').querySelector(sel); if (el) el.onclick = fn };
+  on('[data-tourn]', async () => {
+    $('#bkModal').classList.remove('on');
+    const ts = await call('/admin/tournaments');
+    const t = ts.find(x => x.id === b.tournamentId); if (t) openTournament(t);
+  });
+  on('#bkClient', e => { e.preventDefault(); $('#bkModal').classList.remove('on'); openClient(c) });
+  on('#bkCopy', () => { navigator.clipboard?.writeText(phoneNice(c.phone)); $('#bkCopy').textContent = 'скопировано' });
+  on('#bkAddExtra', () => { $('#bkModal').classList.remove('on'); openSale({ bookingId: b.id }) });
+  on('[data-move]', () => { $('#bkModal').classList.remove('on'); openMove(b) });
+  on('[data-pay]', () => { $('#bkModal').classList.remove('on'); openPay(b) });
+  on('[data-refund]', () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') });
+  on('[data-keep]', async () => {
+    try { await call(`/admin/bookings/${id}/keep`, { method:'POST', body: JSON.stringify({ keep: true }) });
+          await load(); openBooking(id) } catch(e){ err(e) }
+  });
+  on('[data-disc]', async () => {
     const cur = (b.discount||0)/100;
     const v = prompt(`Скидка в рублях (цена ${rub(b.price)}). 0 — убрать скидку.`, String(cur));
     if(v === null) return;
@@ -1939,63 +2306,116 @@ async function openBooking(id){
     const reason = amount > 0 ? prompt('Причина скидки', b.discountReason || 'постоянный клиент') : '';
     if(amount > 0 && !reason) return;
     try {
-      await call(`/admin/bookings/${id}/discount`, { method:'POST',
-        body: JSON.stringify({ amount, reason }) });
-      $('#bkModal').classList.remove('on'); load();
-    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
-  };
+      await call(`/admin/bookings/${id}/discount`, { method:'POST', body: JSON.stringify({ amount, reason }) });
+      await load(); openBooking(id);
+    } catch(e){ err(e) }
+  });
+  $('#bkBody').querySelectorAll('[data-xdel]').forEach(el => el.onclick = async () => {
+    try { await call(`/admin/sales/${el.dataset.xdel}/delete`, { method:'POST', body:'{}' }); await load(); openBooking(id) }
+    catch(e){ err(e) }
+  });
+  $('#bkFoot').querySelectorAll('[data-end]').forEach(el => el.onclick = () => {
+    $('#bkModal').classList.remove('on'); openEnd(b, el.dataset.end);
+  });
+  $('#bkFoot').querySelectorAll('[data-s]').forEach(el => el.onclick = async () => {
+    try {
+      await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: el.dataset.s }) });
+      $('#bkModal').classList.remove('on'); await load();
+    } catch(e){ err(e) }
+  });
 
-  const payBtn = $('#bkActs').querySelector('[data-pay]');
-  if(payBtn) payBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b) };
-  const refBtn = $('#bkActs').querySelector('[data-refund]');
-  if(refBtn) refBtn.onclick = () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') };
-
-  // Список платежей: по нему видно, кто и когда принял деньги
-  if(b.paid !== 0){
+  // Платежи — в «Подробнее»: кто и когда принял деньги
+  if (paid !== 0 || closed) {
     try {
       const ps = await call(`/admin/bookings/${id}/payments`);
-      $('#bkHist').innerHTML += `<div style="margin-top:10px;color:var(--dim-2);font-size:12px">Платежи</div>` +
-        ps.map(x => `<div class="logRow">
-          <div>${x.amount<0?'возврат ':''}${rub(Math.abs(x.amount))} ${METHOD[x.method]||esc(x.method)} · ${esc(x.by)}
-            ${can('cancel') ? `<button class="copy" data-pay-del="${x.id}">убрать</button>` : ''}</div>
-          <span>${new Date(x.at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})}</span>
-        </div>`).join('');
-      $('#bkHist').querySelectorAll('[data-pay-del]').forEach(el => el.onclick = async () => {
-        if(!await ask('Убрать платёж?', 'Это исправление ошибки. Запись останется в журнале.')) return;
-        try { await call(`/admin/payments/${el.dataset.payDel}/delete`, { method:'POST', body:'{}' });
-              $('#bkModal').classList.remove('on'); load(); } catch(e){ alert(e.message) }
-      });
+      if (ps.length) {
+        $('#bkPays').innerHTML = ps.map(x => `<div class="bki-row"><span>${x.amount < 0 ? 'Возврат' : 'Оплата'}</span><div class="v">
+          ${rub(Math.abs(x.amount))} · ${METHOD[x.method] || esc(x.method)} · ${esc(x.by)} · ${fmtAt(x.at)}
+          ${can('cancel') ? `<button class="copy" data-pay-del="${x.id}" title="Убрать ошибочный платёж">убрать</button>` : ''}</div></div>`).join('');
+        $('#bkPays').querySelectorAll('[data-pay-del]').forEach(el => el.onclick = async () => {
+          if(!await ask('Убрать платёж?', 'Это исправление ошибки. Запись останется в журнале.')) return;
+          try { await call(`/admin/payments/${el.dataset.payDel}/delete`, { method:'POST', body:'{}' }); await load(); openBooking(id) }
+          catch(e){ alert(e.message) }
+        });
+      }
     } catch {}
   }
-
-  $('#bkActs').querySelectorAll('[data-s]').forEach(el => el.onclick = async () => {
-    const st = el.dataset.s;
-    // Отмена и неявка необратимы одним кликом — раньше это делалось без вопроса
-    let by = null;
-    if(st==='cancelled'){
-      const lateMin = (setup?.settings?.cancelHours ?? 2) * 60;
-      const startMs = new Date(`${date}T${String(b.hour).padStart(2,'0')}:00:00+03:00`).getTime();
-      const late = startMs - Date.now() < lateMin * 60e3;
-      by = await askWho('Отменить бронь?',
-        `${who(b)}, ${court.name}, ${hh(b.hour)}–${hh(b.hour+b.hours)}. Время станет свободным.`
-        + (b.paid > 0 ? ` Внесено ${rub(b.paid)}${late ? ' — отмена поздняя, по правилам предоплата не возвращается' : ' — после отмены предложу вернуть'}.` : ''));
-      if(!by) return;
-    }
-    if(st==='no_show' && !await ask('Отметить неявку?',
-        `${who(b)} получит отметку «не пришёл». Это видно в его карточке.`)) return;
-    try {
-      const r = await call(`/admin/bookings/${id}/status`, { method:'POST', body: JSON.stringify({ status: st, by: by ?? undefined }) });
-      $('#bkModal').classList.remove('on');
-      await load();
-      // Отменили бронь с деньгами: сразу предлагаем возврат (если не поздняя отмена клиента)
-      if (st === 'cancelled' && r.paid > 0 && can('refunds') && !(by === 'client' && r.late)) {
-        if (await ask('Вернуть деньги?', `По этой брони внесено ${rub(r.paid)}. Оформить возврат сейчас?`)) {
-          const fresh = day.bookings.find(x => x.id === id) ?? b; openPay(fresh, 'refund');
-        }
-      }
-    } catch(e){ $('#bkErr').textContent = e.message; $('#bkErr').classList.add('on') }
-  });
 }
+
+/* ── отмена брони и неявка ────────────────────────────── */
+/* Одно окно решает всё сразу: кто отменяет и что с внесёнными деньгами.
+   По правилам клуба (D13, D27) предоплата остаётся клубу при неявке и при
+   поздней отмене клиентом; при отмене клубом или вовремя — возвращается.
+   Менеджер может решить иначе: вернуть неявившемуся или оставить клубу. */
+let ending = null, endWho = null, endMoney = null, endMoneyTouched = false;
+function openEnd(b, kind){
+  const court = day.courts.find(c => c.id === b.courtId);
+  const paid = b.paid || 0;
+  const lateMin = (setup?.settings?.cancelHours ?? 2) * 60;
+  const startMs = new Date(`${date}T${String(b.hour).padStart(2,'0')}:00:00+03:00`).getTime();
+  const late = startMs - Date.now() < lateMin * 60e3;
+  ending = { b, kind, paid, late };
+  endWho = kind === 'cancelled' ? null : 'client';
+  endMoneyTouched = false;
+  const noShow = kind === 'no_show';
+  $('#endTitle').textContent = noShow ? 'Отметить неявку?' : 'Отменить бронь?';
+  $('#endSub').textContent = `${who(b)} · ${court.name}, ${pretty(date)}, ${hh(b.hour)}–${hh(b.hour+b.hours)}.`
+    + (noShow ? ' В карточке клиента появится отметка «не пришёл».' : ' Время станет свободным.');
+  $('#endWhoBox').hidden = noShow;
+  $('#endMoneyBox').hidden = paid <= 0;
+  $('#endMoneyQ').textContent = `Внесено ${rub(paid)} — что с деньгами`;
+  const canRefund = can('refunds');
+  $('#endRefundT').textContent = canRefund ? `Вернуть клиенту ${rub(paid)}` : 'Вернуть позже';
+  $('#endRefundS').textContent = canRefund ? 'Возврат запишется в платежи брони' : 'Оформит тот, у кого есть право на возвраты';
+  $('#endOk').textContent = noShow ? 'Не пришёл' : 'Отменить бронь';
+  $('#endNo').textContent = noShow ? 'Отмена' : 'Не отменять';
+  $('#endErr').classList.remove('on');
+  endSetMoney(noShow ? 'keep' : null);
+  endSetWho(endWho);
+  $('#endModal').classList.add('on');
+}
+function endRuleMoney(){
+  const { kind, late } = ending;
+  if (kind === 'no_show') return 'keep';
+  if (!endWho) return null;
+  return endWho === 'client' && late ? 'keep' : 'refund';
+}
+function endSetWho(w){
+  endWho = w;
+  $('#endWho').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === w));
+  if (!endMoneyTouched) endSetMoney(endRuleMoney());
+  const cancelH = setup?.settings?.cancelHours ?? 2;
+  $('#endRule').textContent = ending.kind === 'no_show'
+    ? 'По правилам клуба при неявке предоплата не возвращается.'
+    : endWho === 'client'
+      ? (ending.late ? `Отмена позже чем за ${cancelH} ч — по правилам предоплата не возвращается.`
+                     : `Отмена раньше чем за ${cancelH} ч — по правилам деньги возвращаются.`)
+      : endWho === 'club' ? 'Отменяет клуб — по правилам деньги возвращаются.' : '';
+}
+function endSetMoney(m){
+  endMoney = m;
+  $('#endMoney').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
+  $('#endMethodBox').hidden = !(m === 'refund' && can('refunds'));
+}
+$('#endWho').querySelectorAll('button').forEach(b => b.onclick = () => endSetWho(b.dataset.v));
+$('#endMoney').querySelectorAll('button').forEach(b => b.onclick = () => { endMoneyTouched = true; endSetMoney(b.dataset.v) });
+$('#endMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('#endMethod').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#endOk').onclick = async () => {
+  const { b, kind, paid } = ending;
+  if (kind === 'cancelled' && !endWho) { fail('#endErr', new Error('Выберите, кто отменяет')); return }
+  if (paid > 0 && !endMoney) { fail('#endErr', new Error('Выберите, что делать с деньгами')); return }
+  const money = paid <= 0 ? undefined : endMoney === 'keep' ? 'keep' : can('refunds') ? 'refund' : 'later';
+  try {
+    await call(`/admin/bookings/${b.id}/status`, { method:'POST', body: JSON.stringify({
+      status: kind, by: kind === 'cancelled' ? endWho : undefined, money,
+      refundMethod: money === 'refund' ? ($('#endMethod').querySelector('button.on')?.dataset.m ?? 'cash') : undefined,
+    }) });
+    $('#endModal').classList.remove('on');
+    await load();
+  } catch(e){ fail('#endErr', e) }
+};
 
 /* ── приём оплаты ─────────────────────────────────────── */
 let paying = null;
@@ -2014,13 +2434,20 @@ function openPay(b, kind = 'payment'){
   $('#payReceipt').value = '';
   $('#payMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
   $('#payKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === kind));
-  if (kind === 'refund') $('#payLeft').textContent = `Бронь отменена, внесено ${rub(b.paid)} — вернуть клиенту.`;
+  if (kind === 'refund') $('#payLeft').textContent = `Внесено ${rub(b.paid)}. Сколько вернули клиенту — можно и часть.`;
+  payKindUi(kind);
   $('#payErr').classList.remove('on');
   $('#payModal').classList.add('on');
 }
+/** Оплата или возврат: заголовок и кнопка говорят, что именно произойдёт. */
+function payKindUi(k){
+  $('#payTitle').textContent = k === 'refund' ? 'Вернуть деньги' : 'Принять оплату';
+  $('#payOk').textContent = k === 'refund' ? 'Вернули' : 'Оплачено';
+}
 $('#payKind').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#payKind').querySelectorAll('button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
+  b.classList.add('on'); payKindUi(b.dataset.k);
+  if (b.dataset.k === 'refund' && paying) $('#payAmount').value = Math.max(0, paying.paid) / 100;
 });
 $('#payMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#payMethod').querySelectorAll('button').forEach(x => x.classList.remove('on'));
@@ -2159,7 +2586,7 @@ function addTotal(){
     : '—';
 }
 
-function openAdd(courtId, hour){
+function openAdd(courtId, hour, preset){
   $('#addDate').value = date;
   addCourtId = courtId ?? null;
   addHoursN = 1;
@@ -2170,9 +2597,12 @@ function openAdd(courtId, hour){
   $('#addErr').classList.remove('on');
   $('#addSugg').hidden = true;
   addClient = null; $('#addPicked').hidden = true; $('#addFind').value = '';
-  addSetWho(can('clients') ? 'app' : 'none');
+  // Основной путь — аккаунт приложения. Поиск клиента доступен всем на
+  // стойке (/admin/find), отдельное право не нужно.
+  addSetWho('app');
+  if (preset?.client) addPick(preset.client);
   $('#addModal').classList.add('on');
-  (addWho === 'app' ? $('#addFind') : $('#addName')).focus();
+  if (!addClient) (addWho === 'app' ? $('#addFind') : $('#addName')).focus();
 }
 
 $('#addHour').onchange = () => { renderAddHours(); addTotal() };
@@ -2191,30 +2621,41 @@ function addSetWho(w){
     : 'Гость без приложения: номер нужен, чтобы клиент нашёлся в поиске; можно и без него.';
 }
 $('#addWhoSeg').querySelectorAll('button').forEach(b => b.onclick = () => addSetWho(b.dataset.w));
+/** Выбрать аккаунт для записи. */
+function addPick(c){
+  addClient = { id: c.id, name: c.name || 'Без имени', phone: c.phone, app: !!c.hasPassword };
+  $('#addPickedName').textContent = addClient.name;
+  $('#addPickedSub').textContent = `${phoneNice(addClient.phone)} · ID ${addClient.id} · ${addClient.app ? 'аккаунт в приложении' : 'без пароля в приложении'}`;
+  $('#addPicked').hidden = false; $('#addSugg').hidden = true; $('#addFind').value = '';
+}
+/** Поиск клиента: имя, фамилия, «ID 12» или любые цифры номера — с дефисами,
+ *  пробелами, скобками или без них. «2999972», «299-99-72» и «72» находят
+ *  +7 928 299-99-72. Сервер сравнивает только цифры. */
 $('#addFind').oninput = () => {
   clearTimeout(addSuggTimer);
   const q = $('#addFind').value.trim();
-  if (q.length < 2) { $('#addSugg').hidden = true; return }
+  if (!q || (q.replace(/\D/g,'').length < 2 && q.replace(/[\d\s()+\-]/g,'').length < 2)) { $('#addSugg').hidden = true; return }
   addSuggTimer = setTimeout(async () => {
     try {
-      const rows = (await call('/admin/clients?q=' + encodeURIComponent(q))).slice(0, 6);
+      const rows = (await call('/admin/find?q=' + encodeURIComponent(q))).clients.slice(0, 8);
       if (!rows.length) {
-        $('#addSugg').innerHTML = '<button type="button" disabled>Не нашёлся — запишите как «без приложения»</button>';
-        $('#addSugg').hidden = false; return;
+        $('#addSugg').innerHTML = '<button type="button" data-none>Не нашёлся — записать как «без приложения»</button>';
+        $('#addSugg').hidden = false;
+        $('#addSugg').querySelector('[data-none]').onclick = () => {
+          const d = q.replace(/\D/g,'');
+          addSetWho('none');
+          if (d.length >= 10) $('#addPhone').value = d; else if (/\D/.test(q)) $('#addName').value = q;
+          $('#addName').focus();
+        };
+        return;
       }
-      $('#addSugg').innerHTML = rows.map(c => `<button type="button" data-id="${c.id}" data-p="${esc(c.phone)}"
-        data-n="${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}" data-app="${c.hasPassword ? 1 : 0}">
-        ${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}
-        <span>${phoneNice(c.phone)} · ID ${c.id} · ${c.hasPassword ? 'есть приложение' : 'без приложения'} · игр: ${c.bookings}${c.noShows ? ' · неявок: ' + c.noShows : ''}</span></button>`).join('');
+      $('#addSugg').innerHTML = rows.map((c, i) => `<button type="button" data-i="${i}">
+        ${esc(c.name || 'Без имени')}
+        <span>${phoneNice(c.phone)} · ID ${c.id} · ${c.hasPassword ? 'есть приложение' : 'без пароля'} · игр: ${c.games}</span></button>`).join('');
       $('#addSugg').hidden = false;
-      $('#addSugg').querySelectorAll('button[data-id]').forEach(b => b.onclick = () => {
-        addClient = { id: +b.dataset.id, name: b.dataset.n, phone: b.dataset.p, app: b.dataset.app === '1' };
-        $('#addPickedName').textContent = addClient.name;
-        $('#addPickedSub').textContent = `${phoneNice(addClient.phone)} · ID ${addClient.id} · ${addClient.app ? 'аккаунт в приложении' : 'без приложения'}`;
-        $('#addPicked').hidden = false; $('#addSugg').hidden = true; $('#addFind').value = '';
-      });
+      $('#addSugg').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => addPick(rows[+b.dataset.i]));
     } catch { $('#addSugg').hidden = true }
-  }, 300);
+  }, 250);
 };
 $('#addFind').onblur = () => setTimeout(() => { $('#addSugg').hidden = true }, 200);
 $('#addPickedClear').onclick = () => { addClient = null; $('#addPicked').hidden = true; $('#addFind').focus() };
@@ -2253,39 +2694,80 @@ $('#addOk').onclick = async () => {
   } catch(e){ $('#addErr').textContent = e.message; $('#addErr').classList.add('on') }
 };
 
-/* ── поиск по всем датам ──────────────────────────────── */
-let findTimer = null;
+/* ── поиск клиента в панели инструментов ──────────────── */
+/* В первую очередь — клиенты: найти человека, открыть его карточку с
+   историей или сразу записать. Номер заявки из WhatsApp («96», «№96») —
+   тоже здесь, отдельной строкой. Стрелки и Enter — как в Spotlight. */
+let findTimer = null, gsRows = [], gsSel = 0;
+const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+function gsClose(){ $('#gsPop').hidden = true; gsRows = [] }
+function gsRender(res, q){
+  gsRows = [
+    ...res.clients.map(c => ({ kind: 'client', c })),
+    ...res.bookings.map(b => ({ kind: 'booking', b })),
+  ];
+  gsSel = 0;
+  if (!gsRows.length) {
+    $('#gsPop').innerHTML = `<div class="gs-empty">Никого не нашлось по «${esc(q)}». Попробуйте часть имени или последние цифры номера.</div>`;
+    $('#gsPop').hidden = false; return;
+  }
+  let html = '';
+  if (res.clients.length) html += '<div class="gs-h">Клиенты</div>' + res.clients.map((c, i) => `
+    <button type="button" class="gs-it" data-k="${i}">
+      <span class="av">${esc(initials(c.name))}</span>
+      <div><b>${esc(c.name || 'Без имени')}</b><span>${phoneNice(c.phone)} · ID ${c.id} · ${c.games} ${plural(c.games,'игра','игры','игр')}${c.lastAt ? ' · была ' + new Date(c.lastAt).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'Europe/Moscow'}) : ''}</span></div>
+      <span class="go" data-add="${i}">Записать</span>
+    </button>`).join('');
+  if (res.bookings.length) html += '<div class="gs-h">Заявка по номеру</div>' + res.bookings.map((b, j) => `
+    <button type="button" class="gs-it" data-k="${res.clients.length + j}">
+      <span class="av">№</span>
+      <div><b>№${b.id} · ${esc(b.name)}</b><span>${esc(b.courtName)} · ${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)} · ${STATUS[b.status] || b.status}</span></div>
+    </button>`).join('');
+  $('#gsPop').innerHTML = html;
+  $('#gsPop').hidden = false;
+  gsMark();
+  $('#gsPop').querySelectorAll('.gs-it').forEach(el => el.onmousedown = e => {
+    e.preventDefault();
+    const add = e.target.closest('[data-add]');
+    gsOpen(+el.dataset.k, !!add);
+  });
+}
+function gsMark(){ $('#gsPop').querySelectorAll('.gs-it').forEach(el => el.classList.toggle('on', +el.dataset.k === gsSel)) }
+async function gsOpen(k, add){
+  const r = gsRows[k]; if (!r) return;
+  gsClose(); $('#search').value = ''; $('#search').blur();
+  if (r.kind === 'client') {
+    if (add) { switchView('day'); openAdd(null, undefined, { client: r.c }); }
+    else openClient(r.c);
+  } else {
+    switchView('day');
+    date = r.b.date; await load(); openBooking(r.b.id);
+  }
+}
+async function runSearch(q){
+  if (!q) { gsClose(); return }
+  try { gsRender(await call('/admin/find?q=' + encodeURIComponent(q)), q) }
+  catch(e){ $('#gsPop').innerHTML = `<div class="gs-empty">${esc(e.message)}</div>`; $('#gsPop').hidden = false }
+}
 $('#search').oninput = () => {
   clearTimeout(findTimer);
   const q = $('#search').value.trim();
-  if(q.length < 2) return;
-  findTimer = setTimeout(() => runSearch(q), 350);
+  if (!q) { gsClose(); return }
+  findTimer = setTimeout(() => runSearch(q), 220);
 };
-$('#search').onkeydown = e => { if(e.key==='Enter'){ clearTimeout(findTimer); runSearch($('#search').value.trim()) } };
-
-async function runSearch(q){
-  if(q.length < 2) return;
-  try {
-    const rows = await call('/admin/search?q='+encodeURIComponent(q));
-    $('#findTitle').textContent = `Найдено: ${rows.length}`;
-    $('#findList').innerHTML = rows.length ? rows.map(r => `
-      <button class="it" data-date="${r.date}" data-id="${r.id}">
-        <div class="who"><b>${esc(r.name)}</b><span>${phoneNice(r.phone)} · ${esc(r.courtName)} · ${STATUS[r.status]||r.status}</span></div>
-        <div class="when">${pretty(r.date)}<br>${hh(r.hour)}–${hh(r.hour+r.hours)}</div>
-      </button>`).join('') : '<div class="empty">Ничего не нашлось. Попробуйте часть имени или четыре цифры номера.</div>';
-    $('#findList').querySelectorAll('.it').forEach(el => el.onclick = async () => {
-      $('#findModal').classList.remove('on');
-      date = el.dataset.date;
-      await load();
-      openBooking(+el.dataset.id);
-    });
-    $('#findModal').classList.add('on');
-  } catch(e){
-    $('#findTitle').textContent = 'Поиск не получился';
-    $('#findList').innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-    $('#findModal').classList.add('on');
-  }
-}
+$('#search').onkeydown = e => {
+  if (e.key === 'Escape') { $('#search').value = ''; gsClose(); $('#search').blur(); return }
+  if ($('#gsPop').hidden || !gsRows.length) { if (e.key === 'Enter') { clearTimeout(findTimer); runSearch($('#search').value.trim()) } return }
+  if (e.key === 'ArrowDown') { e.preventDefault(); gsSel = Math.min(gsRows.length - 1, gsSel + 1); gsMark() }
+  if (e.key === 'ArrowUp') { e.preventDefault(); gsSel = Math.max(0, gsSel - 1); gsMark() }
+  if (e.key === 'Enter') { e.preventDefault(); gsOpen(gsSel, e.metaKey || e.ctrlKey) }
+};
+$('#search').onfocus = () => { if ($('#search').value.trim() && gsRows.length) $('#gsPop').hidden = false };
+$('#search').onblur = () => setTimeout(gsClose, 150);
+// ⌘K / Ctrl+K — сразу в поиск, как в приложениях Apple
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#search').focus(); $('#search').select() }
+});
 
 /* ── новые заявки со всех дат ─────────────────────────── */
 // Брони кортов и заявки на турниры — раздельно: у каждых своя кнопка
@@ -2375,14 +2857,16 @@ function toast(text, kind){
   el._t = setTimeout(() => el.classList.remove('on'), 12000);
 }
 /** Сгоревшие за день заявки: открыть карточку, чтобы подтвердить заново или позвонить. */
-function openBurnt(list){
-  $('#pendTitle').textContent = 'Сгорели без ответа';
-  $('#pendSub').textContent = 'Заявки этого дня, которые не подтвердили вовремя. Пока время не прошло, их можно подтвердить заново.';
+function openBurnt(list, kind){
+  const ret = kind === 'return';
+  $('#pendTitle').textContent = ret ? 'Вернуть деньги' : 'Сгорели без ответа';
+  $('#pendSub').textContent = ret ? 'Отменённые брони этого дня, по которым внесённое решили вернуть. Откройте бронь и оформите возврат.'
+    : 'Заявки этого дня, которые не подтвердили вовремя. Пока время не прошло, их можно подтвердить заново.';
   $('#pendList').innerHTML = list.map(b => {
     const c = day.courts.find(x => x.id === b.courtId);
     return `<button class="it" data-id="${b.id}">
       <div class="who"><b>${esc(who(b))}</b><span>${b.client ? phoneNice(b.client.phone) + ' · ' : ''}${esc(c?.name ?? '')} · ${rub(dueOf(b))}</span></div>
-      <div class="when">${hh(b.hour)}–${hh(b.hour+b.hours)}<br>${timing(b).ended ? 'время прошло' : 'ещё можно вернуть'}</div>
+      <div class="when">${hh(b.hour)}–${hh(b.hour+b.hours)}<br>${ret ? 'вернуть ' + rub(b.paid) : timing(b).ended ? 'время прошло' : 'ещё можно вернуть'}</div>
     </button>`}).join('');
   $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = () => {
     $('#pendModal').classList.remove('on'); openBooking(+el.dataset.id);
@@ -2881,7 +3365,7 @@ function renderCrm(){
   });
   $('#crmRows').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = e => {
     if (e.target.closest('.ck')) return;
-    openClientCard(crmAll.find(c => c.id === +tr.dataset.id));
+    openClient(crmAll.find(c => c.id === +tr.dataset.id));
   });
 }
 
@@ -2928,58 +3412,165 @@ $('#crmMsgSend').onclick = async () => {
   finally { btn.disabled = false }
 };
 
-async function openClientCard(c){
+/* ── карточка клиента: отдельная страница ─────────────── */
+/* Раньше — всплывающее окно с последними десятью записями. Историю длиннее
+   было не посмотреть. Теперь это страница раздела «Клиенты», как карточка
+   в «Контактах» macOS: шапка с действиями, цифры, вся история по месяцам,
+   справа — контакты, турниры и покупки. */
+let cpFrom = 'clients', cpData = null, cpFilter = 'all';
+const mskDate = iso => new Date(+new Date(iso) + 3*3600e3).toISOString().slice(0, 10);
+const MONTH_NOM = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+async function openClient(c){
   if (!c) return;
-  $('#crmCardName').textContent = crmName(c);
-  $('#crmCardSub').textContent = `ID ${c.id} · с нами с ${crmDate(c.since)}`;
-  const wa = (c.whatsapp || c.phone || '').replace(/\D/g, '');
-  $('#crmCardRows').innerHTML = `
-    <div class="row"><span>Телефон</span><b>${phoneNice(c.phone)}</b></div>
-    ${c.whatsapp && c.whatsapp !== c.phone ? `<div class="row"><span>WhatsApp</span><b>${phoneNice(c.whatsapp)}</b></div>` : ''}
-    <div class="row"><span>Игр</span><b>${c.bookings}</b></div>
-    <div class="row"><span>Потратил на корты</span><b>${c.spent ? rub(c.spent) : '—'}</b></div>
-    <div class="row"><span>Последняя игра</span><b>${crmDate(c.lastAt)}</b></div>
-    <div class="row"><span>Турниров</span><b>${c.tournaments}</b></div>
-    <div class="row"><span>Отмен / неявок</span><b>${c.cancels} / ${c.noShows}</b></div>
-    <div class="row"><span>Пароль в приложении</span><b>${c.hasPassword ? 'есть' : 'нет'}</b></div>`;
-  $('#crmCardHist').innerHTML = '';
-  $('#crmCardErr').classList.remove('on');
-  const acts = [
-    `<a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">WhatsApp</a>`,
-    `<a class="btn" href="tel:+${esc((c.phone||'').replace(/\D/g,''))}">Позвонить</a>`,
-    `<button class="btn acc" data-msg>Написать в приложение</button>`,
-  ];
-  if (c.hasPassword) acts.push(`<button class="btn" data-reset>Сбросить пароль</button>`);
-  $('#crmCardActs').innerHTML = acts.join('');
-  $('#crmCardActs').querySelector('[data-msg]').onclick = () => {
-    $('#crmCardModal').classList.remove('on');
-    openCrmMsg([c.id], `Получатель: ${crmName(c)}, ${phoneNice(c.phone)}`);
-  };
-  const rs = $('#crmCardActs').querySelector('[data-reset]');
+  if (view !== 'client') cpFrom = view;
+  switchView('client');
+  $('#cpBack').textContent = '‹ ' + (VIEW_TITLE[cpFrom] ?? 'Назад');
+  $('#cpOut').innerHTML = '<div class="center">Загружаю…</div>';
+  try { cpData = await call('/admin/clients/' + encodeURIComponent(c.phone)) }
+  catch(e){ $('#cpOut').innerHTML = `<div class="center">${esc(e.message)}</div>`; return }
+  cpFilter = 'all';
+  renderClient();
+}
+$('#cpBack').onclick = () => switchView(cpFrom);
+
+/** Состояние записи в истории клиента — словом и цветом. */
+function histState(h){
+  const past = new Date(h.startsAt).getTime() + h.hours * 3600e3 <= Date.now();
+  if (h.status === 'cancelled') return { t:'Отменена', c:'' };
+  if (h.status === 'expired') return { t:'Не подтвердили', c:'' };
+  if (h.status === 'no_show') return { t:'Не пришёл', c:'bad' };
+  if (h.status === 'pending') return { t:'Ждёт подтверждения', c:'warn' };
+  if (h.status === 'done' || past) return h.paid >= h.due ? { t:'Сыграно', c:'ok' } : { t:'Сыграно · долг', c:'bad' };
+  return { t:'Подтверждена', c:'info' };
+}
+/** Деньги по записи одной строкой. */
+function histMoney(h){
+  const closed = ['cancelled','no_show','expired'].includes(h.status);
+  if (closed) {
+    if (h.paid > 0 && h.keptPrepay) return `<b>${rub(h.paid)}</b><small>предоплата осталась клубу</small>`;
+    if (h.paid > 0) return `<b>${rub(h.paid)}</b><small style="color:var(--amber)">нужно вернуть</small>`;
+    return `<b style="color:var(--dim-2);font-weight:400">${rub(h.due)}</b>`;
+  }
+  const note = h.paid >= h.due ? 'оплачено' : h.paid > 0 ? `внесено ${rub(h.paid)}` : 'не оплачено';
+  return `<b>${rub(h.due)}</b><small>${note}</small>`;
+}
+
+function renderClient(){
+  const d = cpData;
+  const now = Date.now();
+  const hist = d.history.filter(h => !h.tournamentId);
+  const ends = h => new Date(h.startsAt).getTime() + h.hours * 3600e3;
+  const played = hist.filter(h => h.status === 'done' || (h.status === 'confirmed' && ends(h) <= now));
+  const future = hist.filter(h => ['pending','confirmed'].includes(h.status) && ends(h) > now)
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const kept = hist.filter(h => ['cancelled','no_show','expired'].includes(h.status) && h.keptPrepay && h.paid > 0)
+    .reduce((n, h) => n + h.paid, 0);
+  const spent = played.reduce((n, h) => n + h.due, 0) + kept;
+  const debt = played.reduce((n, h) => n + Math.max(0, h.due - h.paid), 0);
+  const buys = d.purchases ?? [];
+  const tourns = d.tournaments ?? [];
+  const next = future[0];
+  const wa = (d.whatsapp || d.phone || '').replace(/\D/g, '');
+
+  const list = hist.filter(h =>
+    cpFilter === 'future' ? future.includes(h)
+    : cpFilter === 'past' ? played.includes(h) || h.status === 'no_show'
+    : cpFilter === 'cancelled' ? ['cancelled','expired'].includes(h.status)
+    : true);
+  let rows = '', month = '';
+  for (const h of list) {
+    const dt = new Date(h.startsAt);
+    const ds = mskDate(h.startsAt);
+    const m = MONTH_NOM[+ds.slice(5, 7) - 1] + ' ' + ds.slice(0, 4);
+    if (m !== month) { rows += `<div class="cp-month">${m}</div>`; month = m }
+    const st = histState(h);
+    const hr = +dt.toLocaleTimeString('ru-RU', { hour:'2-digit', hour12:false, timeZone:'Europe/Moscow' });
+    rows += `<div class="cp-row click" data-h="${h.id}" data-d="${ds}">
+      <span class="d">${new Date(ds + 'T00:00:00Z').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'})}, ${hh(hr)}–${hh(hr + h.hours)}</span>
+      <span class="c">${esc(h.courtName)}</span>
+      <span class="pill ${st.c}">${st.t}</span>
+      <span class="m">${histMoney(h)}</span>
+    </div>`;
+  }
+
+  $('#cpOut').innerHTML = `
+    <div class="cp-head">
+      <span class="av">${esc(initials(d.name))}</span>
+      <div>
+        <h2>${esc(d.name || 'Без имени')}</h2>
+        <div class="sub2">${phoneNice(d.phone)} · ID ${d.id} · с нами с ${crmDate(d.since)}</div>
+      </div>
+      <div class="acts">
+        <a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn" href="tel:+${esc((d.phone||'').replace(/\D/g,''))}">Позвонить</a>
+        ${can('clients') ? '<button class="btn" id="cpMsg">Написать в приложение</button>' : ''}
+        <button class="btn acc" id="cpAdd">Записать</button>
+      </div>
+    </div>
+    <div class="cp-tiles">
+      <div class="card"><b>${played.length}</b><span>${plural(played.length,'игра','игры','игр')} сыграно</span></div>
+      <div class="card"><b>${rub(spent)}</b><span>принёс клубу${kept ? ` · из них удержано ${rub(kept)}` : ''}</span></div>
+      ${debt ? `<div class="card warn"><b>${rub(debt)}</b><span>долг за сыгранное</span></div>` : ''}
+      <div class="card"><b>${next ? pretty(mskDate(next.startsAt)) : '—'}</b><span>${next ? `ближайшая запись · ${esc(next.courtName)}` : 'будущих записей нет'}</span></div>
+      <div class="card${d.noShows ? ' warn' : ''}"><b>${d.cancels} / ${d.noShows}</b><span>отмен / неявок</span></div>
+      <div class="card"><b>${tourns.filter(t => t.status === 'confirmed').length}</b><span>турниров</span></div>
+    </div>
+    <div class="cp-grid">
+      <div class="cp-box">
+        <h4>Записи <span>${hist.length} ${plural(hist.length,'запись','записи','записей')}</span></h4>
+        <div style="padding:0 14px 10px"><div class="seg small" id="cpSeg" style="display:inline-flex;margin:0">
+          <button type="button" data-f="all">Все</button>
+          <button type="button" data-f="future">Будущие · ${future.length}</button>
+          <button type="button" data-f="past">Прошедшие</button>
+          <button type="button" data-f="cancelled">Отменённые</button>
+        </div></div>
+        ${rows || '<div class="cp-empty">Здесь пока пусто.</div>'}
+      </div>
+      <div>
+        <div class="cp-box">
+          <h4>Контакты</h4>
+          <div class="cp-kv"><span>Телефон</span><b>${phoneNice(d.phone)} <button class="copy" id="cpCopy">копировать</button></b></div>
+          ${d.whatsapp && d.whatsapp !== d.phone ? `<div class="cp-kv"><span>WhatsApp</span><b>${phoneNice(d.whatsapp)}</b></div>` : ''}
+          <div class="cp-kv"><span>Приложение</span><b>${d.hasPassword ? 'есть пароль' : 'без пароля'}</b></div>
+          ${d.note ? `<div class="cp-kv"><span>Заметка</span><b>${esc(d.note)}</b></div>` : ''}
+          ${d.hasPassword && can('clients') ? '<div class="cp-kv"><span></span><button class="btn small" id="cpReset">Сбросить пароль</button></div>' : ''}
+        </div>
+        <div class="cp-box" style="margin-top:14px">
+          <h4>Турниры <span>${tourns.length || ''}</span></h4>
+          ${tourns.length ? tourns.map(t => `<div class="cp-kv"><span>${esc(t.name)} · ${pretty(mskDate(t.startsAt))}</span><b>${ENTRY_STATE[t.status] || t.status}</b></div>`).join('')
+            : '<div class="cp-empty">Не участвовал.</div>'}
+        </div>
+        <div class="cp-box" style="margin-top:14px">
+          <h4>Покупки <span>${buys.length ? rub(buys.reduce((n, x) => n + x.amount, 0)) : ''}</span></h4>
+          ${buys.length ? buys.map(x => `<div class="cp-kv"><span>${pretty(x.day)} · ${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}${x.bookingId ? ` · к брони №${x.bookingId}` : ''}</span><b>${rub(x.amount)}</b></div>`).join('')
+            : '<div class="cp-empty">Ничего не покупал.</div>'}
+        </div>
+      </div>
+    </div>
+    <div class="err" id="cpErr"></div>`;
+
+  $('#cpSeg').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('on', b.dataset.f === cpFilter);
+    b.onclick = () => { cpFilter = b.dataset.f; renderClient() };
+  });
+  $('#cpOut').querySelectorAll('[data-h]').forEach(r => r.onclick = async () => {
+    switchView('day'); date = r.dataset.d; await load(); openBooking(+r.dataset.h);
+  });
+  $('#cpAdd').onclick = () => { switchView('day');
+    openAdd(null, undefined, { client: { id: d.id, name: d.name, phone: d.phone, hasPassword: d.hasPassword } }) };
+  $('#cpCopy').onclick = () => { navigator.clipboard?.writeText(phoneNice(d.phone)); $('#cpCopy').textContent = 'скопировано' };
+  const msg = $('#cpMsg');
+  if (msg) msg.onclick = () => openCrmMsg([d.id], `Получатель: ${d.name}, ${phoneNice(d.phone)}`);
+  const rs = $('#cpReset');
   if (rs) rs.onclick = async () => {
     if (!await ask('Сбросить пароль?',
-      `${crmName(c)} забыл пароль от приложения? После сброса он войдёт по номеру телефона и задаст новый пароль сам. Все его прежние входы закроются.`)) return;
+      `${d.name} забыл пароль от приложения? После сброса он войдёт по номеру телефона и задаст новый пароль сам. Все его прежние входы закроются.`)) return;
     try {
-      await call('/admin/clients/' + encodeURIComponent(c.phone) + '/reset-password', { method:'POST' });
-      rs.textContent = 'Пароль сброшен'; rs.disabled = true; c.hasPassword = false; renderCrm();
-    } catch(e){ fail('#crmCardErr', e) }
+      await call('/admin/clients/' + encodeURIComponent(d.phone) + '/reset-password', { method:'POST' });
+      d.hasPassword = false; renderClient(); if (crmLoaded) loadCrm();
+    } catch(e){ fail('#cpErr', e) }
   };
-  $('#crmCardModal').classList.add('on');
-  try {
-    const d = await call('/admin/clients/' + encodeURIComponent(c.phone));
-    $('#crmCardHist').innerHTML = '<div style="color:var(--dim-2);font-size:12px">Последние записи</div>' +
-      (d.history.slice(0, 10).map(h => {
-        const t = new Date(h.startsAt);
-        const money = h.due != null ? `${rub(h.due)}${h.paid >= h.due ? ' ✓' : h.paid > 0 ? ` (внесено ${rub(h.paid)})` : ['confirmed','done'].includes(h.status) ? ' · не оплачено' : ''}` : rub(h.price);
-        return `<div><span>${t.toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}, ${t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'})} · ${esc(h.courtName)}</span>
-          <span>${STATUS[h.status]||esc(h.status)} · ${money}</span></div>`;
-      }).join('') || '<div><span>записей нет</span></div>');
-    if (d.purchases?.length) {
-      const sum = d.purchases.reduce((n, x) => n + x.amount, 0);
-      $('#crmCardHist').innerHTML += `<div style="margin-top:12px;color:var(--dim-2);font-size:12px">Покупки · ${rub(sum)}</div>` +
-        d.purchases.slice(0, 10).map(x => `<div><span>${pretty(x.day)} · ${esc(x.item)}${x.qty > 1 ? ` × ${x.qty}` : ''}${x.bookingId ? ` · к брони №${x.bookingId}` : ''}</span><span>${rub(x.amount)}</span></div>`).join('');
-    }
-  } catch {}
 }
 
 /* ── уведомления ──────────────────────────────────────── */
@@ -3222,6 +3813,7 @@ async function openTournament(t){
   $('#tnSeats').value = t?.seats ?? 16;
   $('#tnState').value = t?.state ?? 'soon';
   $('#tnCover').value = t?.coverUrl ?? 't1';
+  renderCovers();
   $('#tnHours').value = t?.hours ?? 3;
   const busyIds = new Set(t?.courtIds ?? []);
   $('#tnCourts').innerHTML = (setup?.courts ?? [])
@@ -3233,10 +3825,49 @@ async function openTournament(t){
   renderTnPhotos(t);
   $('#tnEntries').innerHTML = '';
   $('#tnErr').classList.remove('on');
+  // Участники и итоги есть только у сохранённого турнира. Завершённый
+  // открываем сразу на итогах — ради них его обычно и открывают.
+  $('#tnTabs').querySelector('[data-t="entries"]').hidden = !t;
+  $('#tnTabs').querySelector('[data-t="results"]').hidden = !t;
+  tnTab(t && (t.state === 'done' || new Date(t.startsAt) < new Date()) ? 'results' : 'main');
   $('#tnModal').classList.add('on');
 
   if(t) await loadEntries(t);
 }
+
+function tnTab(k){
+  $('#tnTabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === k));
+  $('#tnModal').querySelectorAll('.tn-pane').forEach(p => p.classList.toggle('on', p.dataset.p === k));
+}
+$('#tnTabs').querySelectorAll('button').forEach(b => b.onclick = () => tnTab(b.dataset.t));
+
+/** Обложка: четыре готовые картинки (те же, что в приложении) или своё фото. */
+const COVERS = ['t1','t2','t3','t4'];
+function renderCovers(busy){
+  const cur = $('#tnCover').value || 't1';
+  const own = cur.startsWith('/uploads/') ? cur : null;
+  $('#tnCovers').innerHTML =
+    COVERS.map(k => `<button type="button" class="cover${cur === k ? ' on' : ''}" data-v="${k}" title="Готовая картинка">
+      <img src="/img/cover-${k}.webp" alt=""></button>`).join('')
+    + (own ? `<button type="button" class="cover on" data-v="${esc(own)}" title="Своё фото"><img src="${esc(own)}" alt=""></button>` : '')
+    + `<label class="cover add">${busy ? '<span class="busy">Загружаю…</span>' : ''}
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="14" height="12" rx="2.5"/><path d="M10 7.5v5M7.5 10h5"/></svg>
+        ${own ? 'Заменить фото' : 'Загрузить своё'}</label>`;
+  $('#tnCovers').querySelectorAll('.cover[data-v]').forEach(b => b.onclick = () => { $('#tnCover').value = b.dataset.v; renderCovers() });
+  $('#tnCovers').querySelector('.cover.add').onclick = () => $('#tnCoverIn').click();
+}
+$('#tnCoverIn').onchange = async () => {
+  const f = $('#tnCoverIn').files[0]; $('#tnCoverIn').value = '';
+  if (!f) return;
+  renderCovers(true);
+  try {
+    const data = await shrink(f);
+    const r = await call('/admin/tournaments/cover', { method:'POST', body: JSON.stringify({ data }) });
+    $('#tnCover').value = r.url;
+    $('#tnErr').classList.remove('on');
+  } catch(e){ fail('#tnErr', e) }
+  renderCovers();
+};
 
 /** Призовые места: номер ставится по порядку строк, пустые строки не сохраняются. */
 const MEDAL = ['🥇','🥈','🥉'];
@@ -3381,9 +4012,16 @@ $('#tnSave').onclick = async () => {
 let view = 'day';
 document.querySelectorAll('.vw').forEach(b => b.onclick = () => switchView(b.dataset.view));
 
+const VIEW_TITLE = { day:'День', history:'История', stats:'Аналитика', sales:'Продажи',
+  tourn:'Турниры', clients:'Клиенты', client:'Клиент' };
 function switchView(v){
   view = v;
-  document.querySelectorAll('.vw').forEach(b => b.classList.toggle('on', b.dataset.view===v));
+  // Карточка клиента — часть раздела «Клиенты»: в боковой панели выделен он
+  document.querySelectorAll('.vw').forEach(b => b.classList.toggle('on', b.dataset.view === (v === 'client' ? 'clients' : v)));
+  $('#viewTitle').textContent = VIEW_TITLE[v] ?? '';
+  document.body.classList.remove('showside');
+  window.scrollTo(0, 0);
+  $('#viewClient').hidden = v!=='client';
   $('#viewDay').hidden = v!=='day';
   $('#viewHistory').hidden = v!=='history';
   $('#viewStats').hidden = v!=='stats';
@@ -3437,7 +4075,7 @@ async function loadHistory(){
       <th>Когда</th><th>Площадка</th><th>Клиент</th><th>Телефон</th>
       <th>Состояние</th><th>Откуда</th><th class="money">Цена</th><th class="money">Оплата</th>
     </tr></thead><tbody>` +
-    r.rows.map(b => `<tr class="${b.status}">
+    r.rows.map(b => `<tr class="${b.status}" data-id="${b.id}" data-d="${b.date}" style="cursor:pointer" title="Открыть бронь">
       <td>${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour+b.hours)}</td>
       <td>${esc(b.courtName)}</td>
       <td>${esc(b.name)}</td>
@@ -3445,7 +4083,8 @@ async function loadHistory(){
       <td>${STATUS[b.status]||b.status}</td>
       <td>${b.source==='app'?'приложение':'менеджер'}</td>
       <td class="money">${b.discount ? `<s style="color:var(--dim-2)">${rub(b.price)}</s> ` : ''}${rub(dueOf(b))}</td>
-      <td class="money ${b.paid>=dueOf(b)?'ok':b.paid>0?'':'no'}">${b.paid ? rub(b.paid) : '—'}</td>
+      <td class="money ${CLOSED.includes(b.status) ? '' : b.paid>=dueOf(b)?'ok':b.paid>0?'':'no'}">${b.paid ? rub(b.paid) : '—'}${
+        CLOSED.includes(b.status) && b.paid > 0 ? `<br><small style="color:${b.keptPrepay ? 'var(--dim-2)' : 'var(--amber)'}">${b.keptPrepay ? 'осталось клубу' : 'нужно вернуть'}</small>` : ''}</td>
     </tr>`).join('') +
     `</tbody></table>` +
     (r.total > r.rows.length
@@ -3453,6 +4092,12 @@ async function loadHistory(){
       : '');
 }
 
+// Строка истории открывает саму бронь — так до отменённой брони можно
+// добраться, чтобы вернуть деньги или оставить их клубу
+$('#hRows').onclick = async e => {
+  const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+  switchView('day'); date = tr.dataset.d; await load(); openBooking(+tr.dataset.id);
+};
 $('#hGo').onclick = loadHistory;
 ['#hStatus','#hPaid','#hCourt','#hSource'].forEach(id => $(id).onchange = loadHistory);
 $('#hSearch').addEventListener('keydown', e => { if(e.key==='Enter') loadHistory() });
@@ -3560,37 +4205,44 @@ function priceItems(text){
   }
   return out;
 }
-let saleUnit = null, saleTo = 'booking', saleClient = null;
+let saleUnit = null, saleBk = null, saleBkRows = [];
 
-/** Брони дня, к которым можно добавить строку счёта. */
-function saleBookingOptions(selectedId){
-  const live = (day?.bookings ?? []).filter(b => ['pending','confirmed','done'].includes(b.status));
-  return live.map(b => {
-    const c = day.courts.find(x => x.id === b.courtId);
-    return `<option value="${b.id}"${b.id===selectedId?' selected':''}>${esc(who(b))} · ${esc(c?.name ?? '')} ${hh(b.hour)}–${hh(b.hour+b.hours)}</option>`;
-  }).join('');
+/** Брони выбранного дня, к которым можно добавить строку счёта. */
+async function saleLoadDay(d){
+  $('#saleBkList').innerHTML = '<div class="none">Загружаю…</div>';
+  try {
+    const src = d === date && day ? day : await call('/admin/day?date=' + d);
+    saleBkRows = src.bookings
+      .filter(b => ['pending','confirmed','done'].includes(b.status) && !b.tournamentId)
+      .sort((a, b) => a.hour - b.hour)
+      .map(b => ({ ...b, date: d, court: src.courts.find(c => c.id === b.courtId) }));
+  } catch(e){ $('#saleBkList').innerHTML = `<div class="none">${esc(e.message)}</div>`; return }
+  $('#saleBkList').innerHTML = saleBkRows.length ? saleBkRows.map((b, i) => {
+    const cc = /^#[0-9a-f]{6}$/i.test(b.court?.color?.hex || '') ? b.court.color.hex : '#8A968C';
+    return `<button type="button" data-i="${i}" style="--cc:${cc}"><span class="cdot"></span>
+      <div><b>${esc(who(b))}</b><span>${esc(b.court?.name ?? '')} · ${hh(b.hour)}–${hh(b.hour + b.hours)} · ${esc(bkState(b).label)}</span></div>
+      <span class="ck">✓</span></button>`;
+  }).join('') : '<div class="none">В этот день броней нет. Выберите другой день.</div>';
+  $('#saleBkList').querySelectorAll('button[data-i]').forEach(el => el.onclick = () => saleChoose(saleBkRows[+el.dataset.i]));
 }
-
-function saleSetTo(to){
-  saleTo = to;
-  $('#saleTo').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.to === to));
-  $('#saleBookingBox').hidden = to !== 'booking';
-  $('#saleClientBox').hidden = to !== 'client';
-  // Строка счёта брони оплачивается вместе с кортом — способ оплаты не нужен,
-  // день — день игры
-  $('#saleMethodRow').hidden = to === 'booking';
-  $('#saleDayRow').hidden = to === 'booking';
-  $('#saleToNote').textContent = to === 'booking'
-    ? 'Попадёт в счёт брони и оплатится вместе с кортом.'
-    : to === 'client' ? 'Запишется в карточку клиента: видно, что он покупал.'
-    : 'Без привязки: вода, случайный гость.';
-  saleTotal();
+function saleChoose(b){
+  saleBk = b;
+  $('#saleBkPick').hidden = !!b;
+  $('#saleBkChosen').hidden = !b;
+  if (b) {
+    $('#saleBkName').textContent = who(b) + (b.client ? '' : ' · без приложения');
+    $('#saleBkSub').textContent = `${b.court?.name ?? ''} · ${pretty(b.date)}, ${hh(b.hour)}–${hh(b.hour + b.hours)} · заявка №${b.id}`
+      + (b.client ? ` · покупка попадёт в карточку клиента` : '');
+  }
+  $('#saleErr').classList.remove('on');
 }
+$('#saleBkDate').onchange = () => { if ($('#saleBkDate').value) saleLoadDay($('#saleBkDate').value) };
+$('#saleBkChange').onclick = () => { saleChoose(null); saleLoadDay($('#saleBkDate').value || date) };
 
 function saleTotal(){
   const sum = +$('#saleAmount').value || 0;
   $('#saleTotal').textContent = rub(sum * 100);
-  $('#saleTotalL').textContent = saleTo === 'booking' ? 'В счёт брони' : 'Итого';
+  $('#saleTotalL').textContent = 'В счёт брони';
 }
 
 let saleProduct = null;
@@ -3626,21 +4278,21 @@ async function openSale(preset){
     $('#saleAmount').value = saleUnit * Math.max(1, +$('#saleQty').value || 1);
     saleTotal();
   });
-  saleUnit = null; saleClient = null; saleProduct = null;
-  $('#saleDay').value = date;
+  saleUnit = null; saleProduct = null;
   $('#saleItem').value = ''; $('#saleCat').value = 'rental';
   $('#saleAmount').value = ''; $('#saleQty').value = 1; $('#saleNote').value = '';
-  $('#saleClientQ').value = ''; $('#saleClientPick').hidden = true; $('#saleSugg').hidden = true;
-  $('#saleMethod').querySelectorAll('button').forEach((x,i) => x.classList.toggle('on', i===0));
   $('#saleErr').classList.remove('on');
-  // Из карточки брони приходим с готовой бронью; иначе — к брони, если сегодня они есть
+  saleTotal();
+  // Из карточки брони приходим с готовой бронью; иначе выбираем бронь дня
   const bid = preset?.bookingId ?? null;
-  $('#saleBooking').innerHTML = saleBookingOptions(bid);
-  saleSetTo(bid || $('#saleBooking').options.length ? 'booking' : 'none');
+  const d = view === 'day' || bid ? date : todayStr();
+  $('#saleBkDate').value = d;
+  saleChoose(null);
+  await saleLoadDay(d);
+  if (bid) saleChoose(saleBkRows.find(b => b.id === bid) ?? null);
   $('#saleModal').classList.add('on');
 }
 $('#saleBtn').onclick = () => openSale();
-$('#saleTo').querySelectorAll('button').forEach(b => b.onclick = () => saleSetTo(b.dataset.to));
 // Количество меняет сумму, пока выбрана позиция из прайса
 const saleQtyChanged = () => {
   const q = Math.max(1, +$('#saleQty').value || 1); $('#saleQty').value = q;
@@ -3652,56 +4304,23 @@ $('#saleMinus').onclick = () => { $('#saleQty').value = Math.max(1, (+$('#saleQt
 $('#salePlus').onclick = () => { $('#saleQty').value = (+$('#saleQty').value || 1) + 1; saleQtyChanged() };
 $('#saleAmount').oninput = () => { saleUnit = null; saleTotal() };
 $('#saleItem').oninput = () => { $('#saleQuick').querySelectorAll('button').forEach(x => x.classList.remove('on')); saleUnit = null; saleProduct = null };
-$('#saleMethod').querySelectorAll('button').forEach(b => b.onclick = () => {
-  $('#saleMethod').querySelectorAll('button').forEach(x => x.classList.remove('on'));
-  b.classList.add('on');
-});
-// Клиент: подсказка по номеру или имени
-let saleSuggTimer = null;
-$('#saleClientQ').oninput = () => {
-  clearTimeout(saleSuggTimer);
-  const q = $('#saleClientQ').value.trim();
-  if (q.length < 2) { $('#saleSugg').hidden = true; return }
-  saleSuggTimer = setTimeout(async () => {
-    try {
-      const rows = (await call('/admin/clients?q=' + encodeURIComponent(q))).slice(0, 6);
-      if (!rows.length) { $('#saleSugg').hidden = true; return }
-      $('#saleSugg').innerHTML = rows.map(c => `<button type="button" data-id="${c.id}"
-        data-n="${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}">
-        ${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')}<span>${phoneNice(c.phone)} · ID ${c.id}</span></button>`).join('');
-      $('#saleSugg').hidden = false;
-      $('#saleSugg').querySelectorAll('button').forEach(b => b.onclick = () => {
-        saleClient = { id: +b.dataset.id, name: b.dataset.n };
-        $('#saleClientName').textContent = saleClient.name;
-        $('#saleClientPick').hidden = false; $('#saleSugg').hidden = true;
-        $('#saleClientQ').value = '';
-      });
-    } catch { $('#saleSugg').hidden = true }
-  }, 300);
-};
-$('#saleClientClear').onclick = () => { saleClient = null; $('#saleClientPick').hidden = true; $('#saleClientQ').focus() };
 $('#saleOk').onclick = async () => {
-  if (saleTo === 'booking' && !$('#saleBooking').value) {
-    $('#saleErr').textContent = 'Сегодня нет броней — выберите «Клиенту» или «Просто продажа»';
-    $('#saleErr').classList.add('on'); return;
-  }
-  if (saleTo === 'client' && !saleClient) {
-    $('#saleErr').textContent = 'Найдите клиента по телефону или имени'; $('#saleErr').classList.add('on'); return;
-  }
+  if (!saleBk) { fail('#saleErr', new Error('Выберите бронь — продажа записывается в её счёт')); return }
   try {
     await call('/admin/sales', { method:'POST', body: JSON.stringify({
-      day: $('#saleDay').value, category: $('#saleCat').value,
+      category: $('#saleCat').value,
       amount: +$('#saleAmount').value, qty: +$('#saleQty').value,
-      method: $('#saleMethod').querySelector('button.on')?.dataset.m ?? 'cash',
       note: $('#saleNote').value.trim() || undefined,
       item: $('#saleItem').value.trim() || undefined,
-      bookingId: saleTo === 'booking' ? +$('#saleBooking').value : undefined,
-      clientId: saleTo === 'client' ? saleClient.id : undefined,
+      bookingId: saleBk.id,
       productId: saleProduct?.id,
     })});
     $('#saleModal').classList.remove('on');
     if (view === 'sales') loadSales();
-    if (saleTo === 'booking') load();
+    const back = saleBk; saleBk = null;
+    await load();
+    // Добавляли из карточки брони — возвращаемся в неё
+    if (back.date === date && day.bookings.some(x => x.id === back.id)) openBooking(back.id);
   } catch(e){ $('#saleErr').textContent = e.message; $('#saleErr').classList.add('on') }
 };
 
@@ -3917,7 +4536,7 @@ async function loadStats(){
     <div class="cards">
       <div class="card"><b>${rub(d.now.received)}</b><span>получено денег</span>
         ${delta(d.now.received, d.prev.received)}</div>
-      <div class="card"><b>${rub(d.now.charged)}</b><span>начислено по прайсу</span>
+      <div class="card"><b>${rub(d.now.charged)}</b><span>заработано на кортах${d.kept ? ` · из них удержано ${rub(d.kept)}` : ''}</span>
         ${delta(d.now.charged, d.prev.charged)}</div>
       <div class="card${d.unpaid>0?' warn':''}"><b>${rub(Math.max(0,d.unpaid))}</b><span>не оплачено</span>
         <div class="delta flat">долги за период</div></div>
@@ -3927,6 +4546,8 @@ async function loadStats(){
       <div class="card"><b>${rub(d.revPerCourtHour)}</b><span>выручка на корт-час</span>
         <div class="delta flat">включая пустые часы</div></div>
       <div class="card"><b>${rub(d.averageCheck)}</b><span>средний чек</span></div>
+      ${d.kept ? `<div class="card"><b>${rub(d.kept)}</b><span>предоплаты остались клубу</span>
+        <div class="delta flat">неявки и поздние отмены</div></div>` : ''}
       <div class="card"><b>${rub(d.lost)}</b><span>упущено на отменах и неявках</span>
         <div class="delta flat">${d.now.cancels} отмен, из них ${d.lateCancels} поздних · ${d.now.noShows} неявок</div></div>
       ${d.discounts ? `<div class="card"><b>${rub(d.discounts)}</b><span>роздано скидками</span></div>` : ''}
