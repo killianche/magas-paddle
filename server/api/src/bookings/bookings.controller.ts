@@ -6,7 +6,7 @@ import { ipOf, limitRate } from '../ratelimit';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto';
 import { ClubService, hoursOn } from '../club';
-import { normalizePhone } from '../phone';
+import { normalizePhone, bigId } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
 
@@ -15,7 +15,9 @@ import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '
  *  с одного адреса. */
 export const MAX_PENDING_PER_PHONE = 3;
 export const DAYS_AHEAD = 30;
-export const REQUESTS_PER_HOUR = 10;
+/** С одного адреса в час. Мобильные операторы дают общий адрес на много людей,
+ *  поэтому считаем только принятые заявки, а не каждую попытку. */
+export const REQUESTS_PER_HOUR = 30;
 
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
 const EXCLUSION_VIOLATION = '23P01';
@@ -105,8 +107,6 @@ export class BookingsController {
     if (dto.date > shiftDate(clubToday(), DAYS_AHEAD)) {
       throw new BadRequestException(`Записаться можно не дальше чем на ${DAYS_AHEAD} дней вперёд`);
     }
-    limitRate(`req:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
-      'Слишком много заявок подряд. Попробуйте через час или позвоните в клуб');
     await this.club.releaseExpired();
     const pricing = await this.club.pricing();
     const set = pricing.settings;
@@ -130,6 +130,9 @@ export class BookingsController {
     const startsAt = clubHour(dto.date, dto.hour);
     const endsAt = clubHour(dto.date, dto.hour + dto.hours);
     if (startsAt < new Date()) throw new BadRequestException('Это время уже прошло');
+    // Лимит — после всех проверок: отклонённые попытки не в счёт
+    limitRate(`book:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
+      'Слишком много заявок подряд. Попробуйте через час или позвоните в клуб');
 
     // Цена складывается по часам: часы могут попадать под разные тарифы
     const price = pricing.span(court, weekdayOf(dto.date), dto.hour, dto.hours);
@@ -196,7 +199,7 @@ export class BookingsController {
   async cancel(@Param('id') id: string, @Query('phone') phone?: string,
                @Headers('authorization') header?: string) {
     const client = await this.whose(header, phone);
-    const booking = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const booking = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!booking || !client || booking.client_id !== client.id) {
       throw new NotFoundException('Запись не найдена');
     }

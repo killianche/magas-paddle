@@ -10,10 +10,10 @@ export class CreateBookingDto {
 
   // Настоящие границы — часы работы клуба — проверяет контроллер:
   // они лежат в базе и меняются менеджером из админки.
-  @IsInt() @Min(0) @Max(23)
+  @IsInt({ message: 'Час — целое число' }) @Min(0, { message: 'Час от 0 до 23' }) @Max(23, { message: 'Час от 0 до 23' })
   hour: number;
 
-  @IsInt() @Min(1) @Max(12)
+  @IsInt({ message: 'Часы — целое число' }) @Min(1, { message: 'Минимум 1 час' }) @Max(12, { message: 'Не больше 12 часов' })
   hours: number;
 
   @IsString() @MaxLength(80)

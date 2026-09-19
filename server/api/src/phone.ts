@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 // Один вид номера для всей системы.
 //
 // Менеджер набирает «928 000 11 22», приложение шлёт «+79280001122» —
@@ -38,4 +39,11 @@ export function prettyPhone(normalized: string): string {
 export function accountIdOf(raw: string | null | undefined): bigint | null {
   const m = String(raw ?? '').trim().match(/^id\s*[:№#]?\s*(\d{1,12})$/i);
   return m ? BigInt(m[1]) : null;
+}
+
+/** ID из адреса запроса. Раньше «abc» падало в BigInt и отдавало 500. */
+export function bigId(v: unknown): bigint {
+  const str = String(v ?? '');
+  if (!/^\d{1,15}$/.test(str)) throw new BadRequestException('Неверный номер записи');
+  return BigInt(str);
 }

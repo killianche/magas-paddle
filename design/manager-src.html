@@ -282,6 +282,7 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 @media(max-width:900px){.search{width:150px}}
 @media(max-width:1600px){.who{display:none}}
 @media(max-width:1500px){.search{width:190px}}
+@media(max-width:1340px){.brand{display:none}.search{width:150px}.vw{padding:7px 10px}}
 /* Полоса дня над сеткой: листалка, дата, «Продажа», «Записать клиента».
    Раньше всё это стояло в шапке, и на ноутбуке страница ехала вбок. */
 .dayBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -1726,9 +1727,9 @@ function render(){
 
   $('#stats').innerHTML = `
     <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения${pendingSum ? ' · ' + rub(pendingSum) : ''}</span></div>
-    <div class="stat"><b>${alive.length}</b><span>записей на день</span></div>
+    <div class="stat"><b>${alive.length}</b><span>${plural(alive.length,'запись','записи','записей')} на день</span></div>
     <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
-    <div class="stat"><b>${cancelled}</b><span>отмен за день</span></div>
+    <div class="stat"><b>${cancelled}</b><span>${plural(cancelled,'отмена','отмены','отмен')} за день</span></div>
     ${burnt.length ? `<button type="button" class="stat bad" id="burntBtn" title="Показать сгоревшие заявки"><b>${burnt.length}</b><span>сгорело без ответа</span></button>` : ''}
     <div class="stat"><b>${rub(got)}</b><span>получено</span></div>
     <div class="stat${money-got>0?' warn':''}"><b>${rub(Math.max(0, money-got))}</b><span>ещё не оплачено</span></div>`;
@@ -3824,7 +3825,7 @@ async function loadSales(){
     $('#slOut').innerHTML = `
       <div class="stats">
         <div class="stat"><b>${rub(total)}</b><span>продано за период</span></div>
-        <div class="stat"><b>${rows.length}</b><span>продаж</span></div>
+        <div class="stat"><b>${rows.length}</b><span>${plural(rows.length,'продажа','продажи','продаж')}</span></div>
         <div class="stat"><b>${rub(byCat.rental ?? 0)}</b><span>прокат</span></div>
         <div class="stat"><b>${rub((byCat.shop ?? 0) + (byCat.bar ?? 0))}</b><span>товары и бар</span></div>
         ${st.settings.salesInStats ? '' : '<div class="stat warn"><b>выкл.</b><span>в аналитике не учитываются</span></div>'}
@@ -3930,7 +3931,7 @@ async function loadStats(){
         <div class="delta flat">${d.now.cancels} отмен, из них ${d.lateCancels} поздних · ${d.now.noShows} неявок</div></div>
       ${d.discounts ? `<div class="card"><b>${rub(d.discounts)}</b><span>роздано скидками</span></div>` : ''}
       ${d.guests ? `<div class="card"><b>${rub(d.revPerGuest)}</b><span>на одного игрока</span>
-        <div class="delta flat">${d.guests} человек за ${d.guestsKnown} игр</div></div>` : ''}
+        <div class="delta flat">${d.guests} ${plural(d.guests,'человек','человека','человек')} за ${d.guestsKnown} ${plural(d.guestsKnown,'игру','игры','игр')}</div></div>` : ''}
     </div>
 
     <div class="sect">Сходится ли клуб</div>

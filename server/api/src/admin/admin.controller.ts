@@ -8,7 +8,7 @@ import { AdminGuard, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
-import { accountIdOf, normalizePhone, searchDigits } from '../phone';
+import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { randomBytes } from 'crypto';
@@ -198,7 +198,7 @@ export class AdminController {
   @Post('staff/:id/delete')
   @Needs('staff')
   async deleteStaff(@Req() req: any, @Param('id') id: string) {
-    const row = await this.db.admins.findUnique({ where: { id: BigInt(id) } });
+    const row = await this.db.admins.findUnique({ where: { id: bigId(id) } });
     if (!row) throw new NotFoundException('Сотрудник не найден');
     if (row.role === 'owner') throw new BadRequestException('Владельца удалить нельзя');
     await this.db.admins.delete({ where: { id: row.id } });
@@ -319,7 +319,7 @@ export class AdminController {
   /** Подтвердить, отменить или отметить, что не пришёл. */
   @Post('bookings/:id/status')
   async setStatus(@Req() req: any, @Param('id') id: string, @Body() dto: StatusDto) {
-    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     // Два менеджера нажали одно и то же — второй раз ничего не делаем
     if (b.status === dto.status) return { id: Number(b.id), status: dto.status };
@@ -437,9 +437,11 @@ export class AdminController {
   async discount(@Req() req: any, @Param('id') id: string, @Body() body: {
     amount?: number; reason?: string;
   }) {
-    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     if (b.tournament_id) throw new ConflictException('Это корт под турниром');
+    if (!['pending', 'confirmed', 'done'].includes(b.status)) throw new ConflictException('Бронь отменена — скидка не нужна');
+    if (Number(body.amount ?? 0) < 0) throw new BadRequestException('Скидка не бывает отрицательной');
     const amount = rubToKop(Math.max(0, Number(body.amount ?? 0)));
     if (amount > b.price) throw new BadRequestException('Скидка больше цены');
     const paidSoFar = await this.paidOf(b.id);
@@ -468,7 +470,7 @@ export class AdminController {
    *  без этого нет ни трафика, ни выручки на человека. */
   @Post('bookings/:id/players')
   async setPlayers(@Req() req: any, @Param('id') id: string, @Body() body: { players?: number }) {
-    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     const n = body.players == null ? null : int(body.players, 0, 1, 30) || null;
     await this.db.bookings.update({ where: { id: b.id }, data: { players: n } });
@@ -480,7 +482,7 @@ export class AdminController {
   @Get('bookings/:id/payments')
   async payments(@Param('id') id: string) {
     const rows = await this.db.payments.findMany({
-      where: { booking_id: BigInt(id) }, orderBy: { created_at: 'asc' },
+      where: { booking_id: bigId(id) }, orderBy: { created_at: 'asc' },
     });
     return rows.map(r => ({
       id: Number(r.id), amount: r.amount, method: r.method, kind: r.kind,
@@ -494,7 +496,7 @@ export class AdminController {
   async pay(@Req() req: any, @Param('id') id: string, @Body() body: {
     amount?: number; method?: string; kind?: string; receipt?: string; note?: string;
   }) {
-    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     if (b.tournament_id) throw new ConflictException('Это корт под турниром — деньги за него не принимают');
 
@@ -562,7 +564,7 @@ export class AdminController {
   @Post('payments/:id/delete')
   @Needs('cancel')
   async deletePayment(@Req() req: any, @Param('id') id: string) {
-    const row = await this.db.payments.findUnique({ where: { id: BigInt(id) } });
+    const row = await this.db.payments.findUnique({ where: { id: bigId(id) } });
     if (!row) throw new NotFoundException('Платёж не найден');
     await this.db.payments.delete({ where: { id: row.id } });
     await this.auth.log(req.admin, 'удалил платёж',
@@ -688,7 +690,7 @@ export class AdminController {
   async move(@Req() req: any, @Param('id') id: string, @Body() body: {
     courtId: string; date: string; hour: number; hours?: number;
   }) {
-    const b = await this.db.bookings.findUnique({ where: { id: BigInt(id) } });
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
     if (!b) throw new NotFoundException('Запись не найдена');
     if (b.tournament_id) throw new ConflictException('Это корт под турниром — время меняют в самом турнире');
     if (!isValidDate(body.date)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
@@ -1205,7 +1207,7 @@ export class AdminController {
   @Post('expenses/:id/delete')
   @Needs('prices')
   async deleteExpense(@Req() req: any, @Param('id') id: string) {
-    await this.db.expenses.delete({ where: { id: BigInt(id) } });
+    await this.db.expenses.delete({ where: { id: bigId(id) } });
     await this.auth.log(req.admin, 'удалил расход', `№${id}`);
     return { ok: true };
   }
@@ -1367,7 +1369,7 @@ export class AdminController {
   @Post('products/:id/stock')
   @Needs('prices')
   async productStock(@Req() req: any, @Param('id') id: string, @Body() body: { delta?: number; set?: number }) {
-    const p = await this.db.products.findUnique({ where: { id: BigInt(id) } });
+    const p = await this.db.products.findUnique({ where: { id: bigId(id) } });
     if (!p) throw new NotFoundException('Товар не найден');
     const next = body.set != null ? int(body.set, 0, 0, 100000)
       : Math.max(0, (p.stock ?? 0) + Math.trunc(Number(body.delta ?? 0)));
@@ -1379,7 +1381,7 @@ export class AdminController {
   @Post('products/:id/photo')
   @Needs('prices')
   async productPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
-    const p = await this.db.products.findUnique({ where: { id: BigInt(id) } });
+    const p = await this.db.products.findUnique({ where: { id: bigId(id) } });
     if (!p) throw new NotFoundException('Товар не найден');
     const { buf, ext } = imageFrom(body.data);
     const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`;
@@ -1396,7 +1398,7 @@ export class AdminController {
   @Post('products/:id/delete')
   @Needs('prices')
   async deleteProduct(@Req() req: any, @Param('id') id: string) {
-    const p = await this.db.products.findUnique({ where: { id: BigInt(id) } });
+    const p = await this.db.products.findUnique({ where: { id: bigId(id) } });
     if (!p) throw new NotFoundException('Товар не найден');
     const used = await this.db.sales.count({ where: { product_id: p.id } });
     if (used) {
@@ -1429,7 +1431,7 @@ export class AdminController {
 
   @Post('sales/:id/delete')
   async deleteSale(@Req() req: any, @Param('id') id: string) {
-    const row = await this.db.sales.findUnique({ where: { id: BigInt(id) } });
+    const row = await this.db.sales.findUnique({ where: { id: bigId(id) } });
     if (!row) throw new NotFoundException('Продажа не найдена');
     // Оплаченную продажу убирает только тот, кто может отменять; строку
     // неоплаченного счёта брони — любой на стойке
@@ -1456,13 +1458,13 @@ export class AdminController {
     amount?: number; method?: string;
   }) {
     const e = await this.db.tournament_entries.findUnique({
-      where: { id: BigInt(id) }, include: { tournaments: true, clients: true },
+      where: { id: bigId(id) }, include: { tournaments: true, clients: true },
     });
     if (!e) throw new NotFoundException('Запись на турнир не найдена');
     if (!['pending', 'confirmed'].includes(e.status)) throw new ConflictException('Заявка отменена — взнос не принимают');
     const method = String(body.method ?? 'cash');
     if (!PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
-    const amount = body.amount == null ? e.tournaments.fee : rubToKop(body.amount);
+    const amount = body.amount == null ? e.tournaments.fee : rubToKop(Math.max(0, Number(body.amount)));
 
     await this.db.tournament_entries.update({ where: { id: e.id }, data: {
       paid_amount: amount, paid_method: method, paid_at: amount > 0 ? new Date() : null,
@@ -1605,7 +1607,7 @@ export class AdminController {
   @Post('photos/:id/delete')
   @Needs('club')
   async deletePhoto(@Req() req: any, @Param('id') id: string) {
-    const ph = await this.db.court_photos.findUnique({ where: { id: BigInt(id) } });
+    const ph = await this.db.court_photos.findUnique({ where: { id: bigId(id) } });
     if (!ph) throw new NotFoundException('Фото не найдено');
     await this.db.court_photos.delete({ where: { id: ph.id } });
     // Файл убираем с диска; если его уже нет — не беда, запись всё равно удалена
@@ -1619,7 +1621,7 @@ export class AdminController {
   @Post('photos/:id/main')
   @Needs('club')
   async mainPhoto(@Param('id') id: string) {
-    const ph = await this.db.court_photos.findUnique({ where: { id: BigInt(id) } });
+    const ph = await this.db.court_photos.findUnique({ where: { id: bigId(id) } });
     if (!ph) throw new NotFoundException('Фото не найдено');
     const first = await this.db.court_photos.findFirst({
       where: { court_id: ph.court_id }, orderBy: { sort: 'asc' } });
@@ -1764,7 +1766,7 @@ export class AdminController {
   @Post('price-rules/:id/delete')
   @Needs('prices')
   async deletePriceRule(@Param('id') id: string) {
-    await this.db.price_rules.delete({ where: { id: BigInt(id) } });
+    await this.db.price_rules.delete({ where: { id: bigId(id) } });
     this.club.forget();
     return { ok: true };
   }
@@ -1793,7 +1795,7 @@ export class AdminController {
   @Post('tournaments/:id/photos')
   @Needs('tournaments')
   async addTournamentPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { data?: string }) {
-    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     if (t.result_photos.length >= 12) throw new BadRequestException('Не больше 12 фото — удалите лишние');
     const { buf, ext } = imageFrom(body.data);
@@ -1811,7 +1813,7 @@ export class AdminController {
   @Post('tournaments/:id/photos/delete')
   @Needs('tournaments')
   async deleteTournamentPhoto(@Req() req: any, @Param('id') id: string, @Body() body: { url?: string }) {
-    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     const url = String(body.url ?? '');
     if (!t.result_photos.includes(url)) throw new NotFoundException('Фото не найдено');
@@ -1826,7 +1828,7 @@ export class AdminController {
   @Post('tournaments/:id/photos/main')
   @Needs('tournaments')
   async mainTournamentPhoto(@Param('id') id: string, @Body() body: { url?: string }) {
-    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     const url = String(body.url ?? '');
     if (!t.result_photos.includes(url)) throw new NotFoundException('Фото не найдено');
@@ -1840,7 +1842,7 @@ export class AdminController {
   async entries(@Param('id') id: string) {
     await this.club.releaseExpired();
     const rows = await this.db.tournament_entries.findMany({
-      where: { tournament_id: BigInt(id) },
+      where: { tournament_id: bigId(id) },
       orderBy: { created_at: 'asc' },
       include: { clients: true },
     });
@@ -1864,7 +1866,7 @@ export class AdminController {
       throw new ForbiddenException('Нет доступа: отменять записи');
     }
     const e = await this.db.tournament_entries.findUnique({
-      where: { id: BigInt(id) }, include: { tournaments: true, clients: true } });
+      where: { id: bigId(id) }, include: { tournaments: true, clients: true } });
     if (!e) throw new NotFoundException('Заявка на турнир не найдена');
     if (status === 'confirmed' && (['done', 'cancelled'].includes(e.tournaments.state) || e.tournaments.starts_at <= new Date())) {
       throw new ConflictException('Турнир уже прошёл или отменён — подтверждать нечего');

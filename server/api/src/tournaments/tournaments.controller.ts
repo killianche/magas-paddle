@@ -6,7 +6,7 @@ import { ipOf, limitRate } from '../ratelimit';
 import { MAX_PENDING_PER_PHONE, REQUESTS_PER_HOUR } from '../bookings/bookings.controller';
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { normalizePhone } from '../phone';
+import { normalizePhone, bigId } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { ClubService } from '../club';
 
@@ -91,11 +91,8 @@ export class TournamentsController {
     // номер записать нельзя
     const me = await this.auth.whoIs(this.auth.tokenOf(header));
     if (!me) throw new UnauthorizedException('Войдите в аккаунт, чтобы записаться');
-    limitRate(`req:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
-      'Слишком много заявок подряд. Попробуйте через час или напишите в клуб');
-
     await this.club.releaseExpired();
-    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     if (t.state !== 'open') throw new ConflictException('Запись на этот турнир закрыта');
     if (t.starts_at < new Date()) throw new ConflictException('Турнир уже начался');
@@ -114,6 +111,9 @@ export class TournamentsController {
       ? await this.db.clients.update({ where: { id: me.id }, data: { name, surname } })
       : me;
 
+    // Лимит — после проверок, отдельно от броней кортов
+    limitRate(`tourn:${ipOf(req)}`, REQUESTS_PER_HOUR, 3600_000,
+      'Слишком много заявок подряд. Попробуйте через час или напишите в клуб');
     const holdUntil = new Date(Math.min(Date.now() + 24 * 3600_000, +t.starts_at));
     const data = { status: 'pending', hold_until: holdUntil, status_at: new Date(), status_by: 'приложение' };
 
@@ -154,7 +154,7 @@ export class TournamentsController {
               @Headers('authorization') header?: string) {
     const client = await this.whose(header, phone);
     if (!client) throw new NotFoundException('Запись не найдена');
-    const t = await this.db.tournaments.findUnique({ where: { id: BigInt(id) } });
+    const t = await this.db.tournaments.findUnique({ where: { id: bigId(id) } });
     if (!t) throw new NotFoundException('Турнир не найден');
     if (t.starts_at <= new Date() || ['done', 'cancelled'].includes(t.state)) {
       throw new ConflictException('Турнир уже начался — отменить запись можно только через менеджера');
@@ -162,7 +162,7 @@ export class TournamentsController {
     // Строку не удаляем, а отмечаем отменённой: заявку можно подать снова,
     // а у менеджера остаётся след, кто передумал
     const res = await this.db.tournament_entries.updateMany({
-      where: { tournament_id: BigInt(id), client_id: client.id, ...ACTIVE_ENTRY },
+      where: { tournament_id: bigId(id), client_id: client.id, ...ACTIVE_ENTRY },
       data: { status: 'cancelled', hold_until: null, status_at: new Date(), status_by: 'сам в приложении' },
     });
     if (res.count === 0) throw new NotFoundException('Запись не найдена');

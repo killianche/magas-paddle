@@ -14,7 +14,7 @@
 // провайдер рассылки и решение клуба (вопрос Q57).
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Headers,
-  HttpException, Post, Query, Req, UnauthorizedException,
+  ForbiddenException, HttpException, Post, Query, Req, UnauthorizedException,
 } from '@nestjs/common';
 import { ipOf, limitRate } from '../ratelimit';
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
@@ -108,7 +108,7 @@ export class ClientsController {
   /** Завести аккаунт или задать пароль номеру, который клуб уже знает. */
   @Post('register')
   async register(@Req() req: any, @Body() dto: RegisterDto) {
-    limitRate(`register:${ipOf(req)}`, 5, 3600_000, 'Слишком много регистраций подряд. Попробуйте через час');
+    limitRate(`register:${ipOf(req)}`, 15, 3600_000, 'Слишком много регистраций подряд. Попробуйте через час');
     const key = normalizePhone(dto.phone);
     if (!key) throw new BadRequestException('Не разобрал номер телефона');
     const name = dto.name.trim();
@@ -181,7 +181,9 @@ export class ClientsController {
     const c = await this.auth.whoIs(this.auth.tokenOf(header));
     if (!c) throw new UnauthorizedException('Нужно войти');
     if (c.pass_hash && !(await this.auth.verify(String(body?.password ?? ''), c.pass_hash))) {
-      throw new UnauthorizedException('Неверный пароль');
+      // 403, а не 401: вход действует, просто пароль не тот — приложение не должно
+      // от этого выкидывать из аккаунта
+      throw new ForbiddenException('Неверный пароль');
     }
     const now = new Date();
     await this.db.$transaction([
@@ -243,7 +245,7 @@ export class ClientsController {
       catch (e) { throw new BadRequestException((e as Error).message) }
       // Старый пароль обязателен, если он был: телефон могли оставить на столе
       if (c.pass_hash && !(await this.auth.verify(dto.oldPassword ?? '', c.pass_hash))) {
-        throw new UnauthorizedException('Неверный текущий пароль');
+        throw new ForbiddenException('Неверный текущий пароль');
       }
       data.pass_hash = await this.auth.hash(password);
       data.pass_at = new Date();

@@ -366,7 +366,7 @@ export default function Home() {
               <Text style={st.tournN}>{tourn.name}</Text>
               <Text style={st.tournS}>
                 {dayMonth(dateOfIso(tourn.startsAt))}, {hh(hourOfIso(tourn.startsAt))} ·
-                {' '}осталось {Math.max(0, tourn.seats - tourn.taken)} мест
+                {' '}осталось {Math.max(0, tourn.seats - tourn.taken)} {plural(Math.max(0, tourn.seats - tourn.taken), 'место', 'места', 'мест')}
               </Text>
             </View>
           </Pressable>

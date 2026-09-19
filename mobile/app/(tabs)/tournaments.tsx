@@ -13,7 +13,7 @@ import { Loading, Failed } from '../../src/components/status';
 import { Pill, SectionTitle } from '../../src/components/ui';
 import { TOURN_IMG } from '../../src/images';
 import { IconCheck } from '../../src/components/icons';
-import { hh, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
+import { hh, dayMonth, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
 export default function Tournaments() {
   useTheme();
@@ -62,7 +62,7 @@ export default function Tournaments() {
             <Text style={s.heroName}>{hero.name}</Text>
             <Text style={s.heroMeta}>
               {dayMonth(dateOfIso(hero.startsAt))}, {hh(hourOfIso(hero.startsAt))} · {hero.format} ·{' '}
-              <Text style={{ color: C.lime }}>осталось {Math.max(0, hero.seats - hero.taken)} мест</Text>
+              <Text style={{ color: C.lime }}>осталось {Math.max(0, hero.seats - hero.taken)} {plural(Math.max(0, hero.seats - hero.taken), 'место', 'места', 'мест')}</Text>
             </Text>
           </View>
         </Pressable>

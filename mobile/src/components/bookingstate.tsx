@@ -55,7 +55,7 @@ export function bookingState(b: ApiBooking): BookingState {
     note: 'Клуб отметил, что вы не пришли.',
     bg: C.dangerSoft, fg: C.dangerText, dim: true, warn: false, canCancel: false,
   };
-  if (past) return {
+  if (past || b.status === 'done') return {
     key: 'played', label: 'СЫГРАНО', short: 'сыграно',
     note: 'Спасибо за игру. Ждём снова.',
     bg: C.surface2, fg: C.dim, dim: true, warn: false, canCancel: false,
