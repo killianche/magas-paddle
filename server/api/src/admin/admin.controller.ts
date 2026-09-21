@@ -12,7 +12,7 @@ import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { coachHours, courtPart, coachPart, lessonPay, classPay, coachBusyByClass } from '../coaches/coach.util';
-import { TelegramService, TG_KINDS, tgMsg, phoneLink, whenLine } from '../telegram/telegram.service';
+import { TelegramService, TG_KINDS, tgMsg, phoneLink, whenLine, esc } from '../telegram/telegram.service';
 import { whenRu } from '../bookings/bookings.controller';
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
@@ -606,9 +606,9 @@ export class AdminController {
         const [icon, title] = icons[dto.status];
         this.tg.notify(dto.status === 'confirmed' ? 'booking' : 'cancel', tgMsg({
           icon, title,
-          head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+          head: [`${esc(whoName)}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
           rows: [
-            `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+            `🎾 ${esc(court?.name ?? b.court_id)} · ${whenLine(b.starts_at, b.ends_at)}`,
             money && `💰 ${money}`,
           ],
           foot: req.admin.name,
@@ -622,9 +622,9 @@ export class AdminController {
           admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
         this.tg.notify('refund', tgMsg({
           icon: '↩️', title: 'Возврат по броне', amount: paidBefore,
-          head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+          head: [`${esc(whoName)}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
           rows: [
-            `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+            `🎾 ${esc(court?.name ?? b.court_id)} · ${whenLine(b.starts_at, b.ends_at)}`,
             `💳 ${PAY_WORD[refundMethod] ?? refundMethod}`,
             dto.status === 'cancelled' ? '🚫 Бронь отменена' : '⚠️ Клиент не пришёл',
           ],
@@ -767,9 +767,9 @@ export class AdminController {
         icon: kind === 'refund' ? '↩️' : '💵',
         title: kind === 'refund' ? 'Возврат по броне' : 'Оплата',
         amount: Math.abs(amount),
-        head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+        head: [`${esc(whoName)}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
         rows: [
-          `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+          `🎾 ${esc(court?.name ?? b.court_id)} · ${whenLine(b.starts_at, b.ends_at)}`,
           `💳 ${PAY_WORD[method]}`,
           kind !== 'refund' && (left > 0
             ? `⏳ Осталось: ${(left / 100).toLocaleString('ru-RU')} ₽`
@@ -1877,9 +1877,9 @@ export class AdminController {
       const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || 'клиенту';
       this.tg.notify('sale', tgMsg({
         icon: '🛒', title: 'Продажа', amount: total,
-        head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+        head: [`${esc(whoName)}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
         rows: [
-          `📦 ${what}`,
+          `📦 ${esc(what)}`,
           booking ? '🧾 В счёт брони — оплатит вместе с кортом' : `💳 ${PAY_WORD[method] ?? method}`,
         ],
         foot: req.admin.name,
@@ -2297,8 +2297,8 @@ export class AdminController {
       const c = row.client_id ? await this.db.clients.findUnique({ where: { id: row.client_id } }) : null;
       this.tg.notify('refund', tgMsg({
         icon: '↩️', title: 'Возврат за покупку', amount: row.amount,
-        head: [c ? `${[c.name, c.surname].filter(Boolean).join(' ')} · ${phoneLink(c.phone)}` : 'без клиента'],
-        rows: [`📦 ${what}`, '📥 Товар вернулся на склад'],
+        head: [c ? `${esc([c.name, c.surname].filter(Boolean).join(' '))} · ${phoneLink(c.phone)}` : 'без клиента'],
+        rows: [`📦 ${esc(what)}`, '📥 Товар вернулся на склад'],
         foot: req.admin.name,
       }));
     }
@@ -3063,10 +3063,10 @@ export class AdminController {
         icon: coach ? '🎾' : '📝',
         title: coach ? 'Запись на тренировку' : 'Менеджер записал клиента',
         amount: price + coachPrice,
-        head: [`${accountName ?? name ?? 'Без имени'}${phone ? ` · ${phoneLink(phone)}` : ''}`],
+        head: [`${esc(accountName ?? name ?? 'Без имени')}${phone ? ` · ${phoneLink(phone)}` : ''}`],
         rows: [
-          `🎾 ${court.name} · ${whenLine(b.starts_at, b.ends_at)}`,
-          coach && `👤 Тренер: ${coach.name}`,
+          `🎾 ${esc(court.name)} · ${whenLine(b.starts_at, b.ends_at)}`,
+          coach && `👤 Тренер: ${esc(coach.name)}`,
         ],
         foot: req.admin.name,
       }));

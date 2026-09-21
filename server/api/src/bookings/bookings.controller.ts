@@ -10,7 +10,7 @@ import { normalizePhone, bigId } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
 import { coachHours, coachBusyByClass } from '../coaches/coach.util';
-import { TelegramService, tgMsg, phoneLink, whenLine } from '../telegram/telegram.service';
+import { TelegramService, tgMsg, phoneLink, whenLine, esc } from '../telegram/telegram.service';
 
 /** Защита от ботов (решение заказчика 17.09.2026): не больше 3 неподтверждённых
  *  заявок на номер, запись не дальше 30 дней вперёд, не больше 10 заявок в час
@@ -219,10 +219,10 @@ export class BookingsController {
       // Руководителю в Telegram: заявка пришла прямо сейчас, её ждут
       this.tg.notify('booking', tgMsg({
         icon: '🆕', title: 'Новая заявка', amount: price + coachPrice,
-        head: [`${[client.name, client.surname].filter(Boolean).join(' ') || 'Без имени'} · ${phoneLink(client.phone)}`],
+        head: [`${esc([client.name, client.surname].filter(Boolean).join(' ') || 'Без имени')} · ${phoneLink(client.phone)}`],
         rows: [
-          `🎾 ${court.name} · ${whenLine(startsAt, endsAt)}`,
-          coach && `👤 Тренер: ${coach.name}`,
+          `🎾 ${esc(court.name)} · ${whenLine(startsAt, endsAt)}`,
+          coach && `👤 Тренер: ${esc(coach.name)}`,
           '⏳ Ждёт подтверждения',
         ],
         foot: 'из приложения',
@@ -310,9 +310,9 @@ export class BookingsController {
     const court = await this.db.courts.findUnique({ where: { id: booking.court_id } });
     this.tg.notify('cancel', tgMsg({
       icon: '🚫', title: 'Клиент отменил бронь',
-      head: [`${[client.name, client.surname].filter(Boolean).join(' ') || 'Без имени'} · ${phoneLink(client.phone)}`],
+      head: [`${esc([client.name, client.surname].filter(Boolean).join(' ') || 'Без имени')} · ${phoneLink(client.phone)}`],
       rows: [
-        `🎾 ${court?.name ?? booking.court_id} · ${whenLine(booking.starts_at, booking.ends_at)}`,
+        `🎾 ${esc(court?.name ?? booking.court_id)} · ${whenLine(booking.starts_at, booking.ends_at)}`,
         late && paid > 0
           ? `💰 Предоплата ${(paid / 100).toLocaleString('ru-RU')} ₽ остаётся клубу — поздняя отмена`
           : paid > 0 ? `↩️ Внесено ${(paid / 100).toLocaleString('ru-RU')} ₽ — нужно вернуть`

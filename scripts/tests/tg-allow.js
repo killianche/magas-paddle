@@ -23,6 +23,14 @@ const got = async (re, ms = 4000) => {
 };
 
 (async () => {
+  // Чистая база на каждый прогон: иначе второй запуск подряд упирается
+  // в брони и подписки от первого и даёт ложные «не прошло»
+  try {
+    require('child_process').execSync('docker exec -i magas-test-db psql -U magas -d magas -q -c ' +
+      '"truncate bookings, payments, sales, refunds, stock_moves, products, clients, admin_log, tg_subs ' +
+      'restart identity cascade"', { stdio: 'ignore' });
+  } catch { console.error('  (не смог очистить базу стенда — данные прошлого прогона останутся)') }
+
   const adm = (await call('/admin/login', { method: 'POST',
     body: { login: 'vladelec', password: process.env.STAND_PASS } })).data.token;
 

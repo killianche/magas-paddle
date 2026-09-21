@@ -33,6 +33,15 @@ export type TgKind = keyof typeof TG_KINDS;
    в строку, и в конце — кто это сделал. Читается за секунду с экрана
    блокировки, без лишних слов и рамок. */
 
+/** Экранирование по Bot API: символы `<`, `>` и `&`, которые не часть тега,
+ *  Telegram не принимает — сообщение с именем вроде «Иса <Малыш> & Co»
+ *  отклоняется с 400 и до руководителя не доходит вовсе.
+ *  (Bot API, раздел HTML style; проверено 22.09.2026.)
+ *  Через esc() проходит всё, что пришло от человека: имена, названия
+ *  кортов и товаров, примечания, имя менеджера. */
+export const esc = (v: unknown) => String(v ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const money = (k: number) => (k / 100).toLocaleString('ru-RU') + ' ₽';
 
 /** Телефон в читаемом виде и сразу кликабельный. */
@@ -76,7 +85,7 @@ export function tgMsg(p: {
   const title = p.amount != null
     ? `${p.icon} <b>${p.title}</b> · <b>${money(p.amount)}</b>`
     : `${p.icon} <b>${p.title}</b>`;
-  return tgBlocks([[title, ...(p.head ?? [])], p.rows ?? [], [p.foot && `<i>${p.foot}</i>`]]);
+  return tgBlocks([[title, ...(p.head ?? [])], p.rows ?? [], [p.foot && `<i>${esc(p.foot)}</i>`]]);
 }
 
 /** Вёрстка итога дня. Чистая: на вход — уже посчитанные числа,
@@ -286,7 +295,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         return;
       }
       await this.send(chat,
-        `<b>Magas Padel</b>\nУведомления включены${adminName ? ` для ${adminName}` : ''}.\n\n`
+        `<b>Magas Padel</b>\nУведомления включены${adminName ? ` для ${esc(adminName)}` : ''}.\n\n`
         + 'Буду присылать новые брони, оплаты, продажи, возвраты, отмены и итог за день. '
         + 'Ниже можно выключить всё лишнее — например оставить только итог за день.',
         this.keyboard(s));
