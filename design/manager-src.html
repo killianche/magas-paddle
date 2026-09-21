@@ -100,13 +100,13 @@ input,select{font-family:inherit;font-size:inherit}
 #board tbody tr{height:52px}
 .hcell{font-family:var(--mono);font-size:11.5px;color:var(--dim-2);padding-top:6px;text-align:right;padding-right:6px}
 .slot{height:100%;min-height:46px;border-radius:10px;border:1px solid transparent;
-  background:transparent;width:100%;color:var(--dim-2);font-size:11.5px;
+  background:transparent;width:100%;color:var(--dim-2);font-size:11.5px;position:relative;
   display:flex;align-items:center;justify-content:center;transition:background .12s}
 /* В пустой ячейке плюс, под курсором — её время: менеджер попадает
    в нужный час, не сверяясь глазами с левым столбцом */
 .slot b{display:none;font-family:var(--mono);font-size:12px;color:var(--text)}
 .slot:hover{border-color:var(--line);background:var(--surface-2)}
-.slot:hover span{display:none}
+.slot:hover .plus{display:none}
 .slot:hover b{display:block}
 .slot.closed{height:100%;min-height:46px;border-style:solid;border-color:var(--line);
   background:repeating-linear-gradient(45deg,transparent,transparent 6px,
@@ -200,7 +200,17 @@ tr.now td{border-top:2px solid var(--lime)}
 tr.now td.hcell{color:var(--lime);font-weight:700}
 
 /* Состояние записи словами, а не только цветом */
-.bk .st{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;opacity:.85;margin-top:2px}
+.bk .st{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.bk .st .hold{font-size:10.5px;color:var(--amber);font-variant-numeric:tabular-nums}
+.pill.sm{font-size:10.5px;padding:2px 8px;gap:4px}
+.pill.sm::before{width:6px;height:6px}
+.bk.expired{opacity:.55;border-color:var(--bad-line);border-style:dashed}
+/* След несостоявшейся брони на свободном слоте: заметно, но не мешает записать */
+.slot .ghost{position:absolute;left:6px;bottom:5px;font-size:10px;letter-spacing:.02em;
+  padding:1px 7px;border-radius:999px;background:var(--fill);color:var(--dim-2);opacity:.85}
+.slot .ghost.expired{color:var(--red);background:var(--bad-bg)}
+.slot .ghost:hover{opacity:1;color:var(--text)}
+.slot .ghost{cursor:pointer}
 
 .sheet.wide{max-width:880px}
 .sheet.mid{max-width:620px}
@@ -750,7 +760,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .hcell{font-family:var(--mono);font-size:11px}
 .bk{border-radius:8px}
 .bk .n{font-size:12.5px;font-weight:600}
-.bk .st{font-size:10.5px;font-weight:600;letter-spacing:0;opacity:1}
+.bk .st .pill{font-weight:600}
 .slot{border-radius:8px}
 .day-cur{font-family:var(--disp);font-size:17px;font-weight:700}
 .day-nav button{border:0;border-radius:999px;background:var(--fill);width:30px;height:28px}
@@ -2026,24 +2036,27 @@ function bkState(b){
   const { ended } = timing(b);
   const left = holdLeft(b);
   // Корт под турниром или тренировкой: это не продажа, а занятое время
-  if (b.tournamentId) return { cls:'done', tone:'dim',
-    label: /^Тренировка/.test(b.guestName || '') ? 'Тренировка клуба' : 'Турнир клуба' };
+  if (b.tournamentId) { const cls = /^Тренировка/.test(b.guestName || '');
+    return { cls:'done', tone:'dim', short: cls ? 'Тренировка' : 'Турнир',
+      label: cls ? 'Тренировка клуба' : 'Турнир клуба' }; }
   // Несостоявшаяся бронь: главное — что с внесёнными деньгами
   const money = paid <= 0 ? '' : b.keptPrepay ? ` · ${rub(paid)} у клуба` : ` · вернуть ${rub(paid)}`;
-  if (b.status === 'cancelled') return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim', label:'Отменена' + money };
-  if (b.status === 'expired')   return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim', label:'Не подтвердили вовремя' + money };
-  if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', label:'Не пришёл' + money };
-  if (b.status === 'pending')   return { cls:'pending', tone:'warn',
+  if (b.status === 'cancelled') return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim',
+    short:'Отменена', label:'Отменена' + money };
+  if (b.status === 'expired')   return { cls:'expired', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim',
+    short:'Сгорела', label:'Не подтвердили вовремя' + money };
+  if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', short:'Не пришёл', label:'Не пришёл' + money };
+  if (b.status === 'pending')   return { cls:'pending', tone:'warn', short:'Ждёт подтверждения',
     label: left !== null ? `⏳ ${holdText(left)}` : 'Ждёт подтверждения' };
   const fullyPaid = paid >= due;
   if (b.status === 'done') return fullyPaid
-    ? { cls:'done', tone:'dim', label:'Отыграна · оплачено' }
-    : { cls:'debt', tone:'bad', label:`Отыграна · долг ${rub(due - paid)}` };
+    ? { cls:'done', tone:'dim', short:'Отыграна', label:'Отыграна · оплачено' }
+    : { cls:'debt', tone:'bad', short:'Долг', label:`Отыграна · долг ${rub(due - paid)}` };
   // confirmed
-  if (fullyPaid) return { cls:'paid', tone:'ok', label:'✓ Оплачено' };
-  if (paid > 0)  return { cls:'part', tone:'warn', label:`Внесено ${rub(paid)} из ${rub(due)}` };
-  if (ended)     return { cls:'debt', tone:'bad', label:`Сыграно · долг ${rub(due)}` };
-  return { cls:'unpaid', tone:'info', label:'Подтверждена · не оплачено' };
+  if (fullyPaid) return { cls:'paid', tone:'ok', short:'Оплачена', label:'✓ Оплачено' };
+  if (paid > 0)  return { cls:'part', tone:'warn', short:'Частично', label:`Внесено ${rub(paid)} из ${rub(due)}` };
+  if (ended)     return { cls:'debt', tone:'bad', short:'Долг', label:`Сыграно · долг ${rub(due)}` };
+  return { cls:'unpaid', tone:'info', short:'Не оплачена', label:'Подтверждена · не оплачено' };
 }
 
 /** Имя на записи: клиент, гость без телефона или прочерк. */
@@ -2268,7 +2281,8 @@ function render(){
     <div class="stat${pending.length?' warn':''}"><b>${pending.length}</b><span>ждут подтверждения${pendingSum ? ' · ' + rub(pendingSum) : ''}</span></div>
     <div class="stat"><b>${alive.length}</b><span>${plural(alive.length,'запись','записи','записей')} на день</span></div>
     <div class="stat"><b>${Math.round(evBusy/evSlots*100)}%</b><span>занятость вечера, с ${EVENING}:00</span></div>
-    <div class="stat"><b>${cancelled}</b><span>${plural(cancelled,'отмена','отмены','отмен')} за день</span></div>
+    ${cancelled ? `<button type="button" class="stat" id="cancBtn" title="Показать отменённые"><b>${cancelled}</b><span>${plural(cancelled,'отмена','отмены','отмен')} за день</span></button>`
+      : `<div class="stat"><b>0</b><span>отмен за день</span></div>`}
     ${burnt.length ? `<button type="button" class="stat bad" id="burntBtn" title="Показать сгоревшие заявки"><b>${burnt.length}</b><span>сгорело без ответа</span></button>` : ''}
     ${toReturn.length ? `<button type="button" class="stat bad" id="returnBtn" title="Кому вернуть деньги"><b>${rub(toReturn.reduce((n,b)=>n+b.paid,0))}</b><span>вернуть клиентам</span></button>` : ''}
     <div class="stat"><b>${rub(got + (day.directSales?.sum || 0))}</b><span>получено${day.directSales?.sum ? ` · из них продажи ${rub(day.directSales.sum)}` : ''}</span></div>
@@ -2277,6 +2291,8 @@ function render(){
   if (burntBtn) burntBtn.onclick = () => openBurnt(burnt);
   const returnBtn = $('#returnBtn');
   if (returnBtn) returnBtn.onclick = () => openBurnt(toReturn, 'return');
+  const cancBtn = $('#cancBtn');
+  if (cancBtn) cancBtn.onclick = () => openBurnt(day.bookings.filter(b => b.status === 'cancelled'), 'cancelled');
 
   const courts = day.courts;
   // Цвет дорожки корта: цвет покрытия из настроек, у поля без цвета — нейтральный.
@@ -2323,7 +2339,8 @@ function render(){
             <div class="n">${nm}${flags}</div>
             ${b.coach ? `<div class="m co-line" style="--cc:${b.coach.color || 'var(--dim-2)'}"><span class="cdot"></span>тренер ${esc(b.coach.name)}</div>` : ''}
             <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price + (b.coachPrice || 0))}</s>` : ''}${rub(dueOf(b))}${extrasOf(b) ? ' <small title="с доп. позициями">+доп.</small>' : ''}</div>
-            <div class="st ${stt.tone}">${esc(stt.label)}</div>
+            <div class="st"><span class="pill sm ${stt.tone === 'dim' ? '' : stt.tone}">${esc(stt.short || stt.label)}</span>${
+              stt.tone === 'warn' && /^⏳/.test(stt.label) ? `<span class="hold">${esc(stt.label.replace('⏳ ', ''))}</span>` : ''}</div>
             ${b.hours>1?`<div class="m" style="margin-top:auto">${b.hours} ${plural(b.hours,'час','часа','часов')} подряд</div>`:''}
             </button></td>`;
         }
@@ -2332,7 +2349,13 @@ function render(){
       } else if(day.dayOff || h < wOpen() || h >= wClose()){
         html += `<td class="lane" style="${laneOf(c)}"><div class="slot closed" title="Клуб в это время не работает"></div></td>`;
       } else {
-        html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}"><span>+</span><b>${hh(h)}</b></button></td>`;
+        // Здесь бронь была, но сгорела или её отменили: время свободно,
+        // и всё же менеджеру важно видеть, что тут что-то случилось
+        const dead = day.bookings.find(x => x.courtId === c.id && x.hour === h
+          && (x.status === 'cancelled' || x.status === 'expired'));
+        html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}"><span class="plus">+</span><b>${hh(h)}</b>${
+          dead ? `<span class="ghost ${dead.status}" data-dead="${dead.id}" title="${esc(who(dead))} · нажмите, чтобы открыть">${
+            dead.status === 'expired' ? 'сгорела' : 'отменена'}</span>` : ''}</button></td>`;
       }
     }
     html += '</tr>';
@@ -2341,7 +2364,9 @@ function render(){
   $('#board').innerHTML = html;
 
   document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBooking(+el.dataset.id));
-  document.querySelectorAll('.slot:not(.closed)').forEach(el => el.onclick = () => {
+  document.querySelectorAll('.slot:not(.closed)').forEach(el => el.onclick = e => {
+    const dead = e.target.closest('[data-dead]');
+    if (dead) { e.stopPropagation(); openBooking(+dead.dataset.dead); return }
     openAdd(el.dataset.court, +el.dataset.hour);
   });
 }
@@ -3114,11 +3139,14 @@ function toast(text, kind){
 /** Сгоревшие за день заявки: открыть карточку, чтобы подтвердить заново или позвонить. */
 function openBurnt(list, kind){
   const ret = kind === 'return';
-  $('#pendTitle').textContent = ret ? 'Вернуть деньги' : 'Сгорели без ответа';
+  $('#pendTitle').textContent = ret ? 'Вернуть деньги'
+    : kind === 'cancelled' ? 'Отменённые за день' : 'Сгорели без ответа';
   $('#pendList').innerHTML = list.map(b => {
     const c = day.courts.find(x => x.id === b.courtId);
+    const st = bkState(b);
     return `<button class="it" data-id="${b.id}">
       <div class="who"><b>${esc(who(b))}</b><span>${b.client ? phoneNice(b.client.phone) + ' · ' : ''}${esc(c?.name ?? '')} · ${rub(dueOf(b))}</span></div>
+      <span class="pill sm ${st.tone === 'dim' ? '' : st.tone}">${esc(st.short || st.label)}</span>
       <div class="when">${hh(b.hour)}–${hh(b.hour+b.hours)}<br>${ret ? 'вернуть ' + rub(b.paid) : timing(b).ended ? 'время прошло' : 'ещё можно вернуть'}</div>
     </button>`}).join('');
   $('#pendList').querySelectorAll('.it').forEach(el => el.onclick = () => {
