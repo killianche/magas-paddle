@@ -1357,6 +1357,8 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div class="picks" id="cbPick"></div>
     <div class="err" id="cbErr"></div>
     <div class="acts">
+      <button class="btn" id="cbNone" hidden>Убрать тренера</button>
+      <div class="spacer"></div>
       <button class="btn" data-close>Отмена</button>
       <button class="btn acc" id="cbOk">Сохранить</button>
     </div>
@@ -2445,7 +2447,10 @@ async function openBooking(id){
     if (live && !ended && can('cancel')) L.push(`<button class="btn dg" data-end="cancelled">Отменить бронь…</button>`);
     if (b.status === 'confirmed' && begun && can('cancel')) L.push(`<button class="btn dg" data-end="no_show">Не пришёл…</button>`);
     if (b.status === 'no_show') L.push(`<button class="btn" data-s="done">Всё же пришёл</button>`);
-    if (can('coaches') && live) R.push(`<button class="btn" data-coach>${b.coach ? 'Сменить тренера' : 'Тренер'}</button>`);
+    if (can('coaches') && live) {
+      R.push(`<button class="btn" data-coach>${b.coach ? 'Сменить тренера' : 'Добавить тренера'}</button>`);
+      if (b.coach) L.push(`<button class="btn" data-uncoach>Убрать тренера</button>`);
+    }
     if (can('prices') && editable) R.push(`<button class="btn" data-disc>Скидка</button>`);
     if (live && !ended) R.push(`<button class="btn" data-move>Перенести</button>`);
     if (b.status === 'expired' && !ended) R.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
@@ -2479,6 +2484,12 @@ async function openBooking(id){
   on('#bkAddExtra', () => { $('#bkModal').classList.remove('on'); openPos({ bookingId: b.id }) });
   on('[data-move]', () => { $('#bkModal').classList.remove('on'); openMove(b) });
   on('[data-coach]', () => { $('#bkModal').classList.remove('on'); openBookingCoach(b) });
+  on('[data-uncoach]', async () => {
+    if (!await ask('Убрать тренера с брони?',
+      `Останется только корт. ${b.client ? 'Клиенту уйдёт уведомление, что играет без тренера.' : ''}`)) return;
+    try { await call(`/admin/bookings/${id}/coach`, { method:'POST', body: JSON.stringify({ coachId: null }) });
+          await load(); openBooking(id) } catch(e){ err(e) }
+  });
   on('[data-pay]', () => { $('#bkModal').classList.remove('on'); openPay(b) });
   on('[data-refund]', () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') });
   on('[data-keep]', async () => {
@@ -2670,6 +2681,8 @@ async function openBookingCoach(b){
     $('#cbPick').querySelectorAll('button').forEach(el => el.onclick = () => { pick = el.dataset.c ? +el.dataset.c : null; draw() });
   };
   draw();
+  $('#cbNone').hidden = !b.coach;
+  $('#cbNone').onclick = () => { pick = null; draw(); $('#cbOk').click() };
   $('#cbErr').classList.remove('on');
   $('#cbModal').classList.add('on');
   $('#cbOk').onclick = async () => {
