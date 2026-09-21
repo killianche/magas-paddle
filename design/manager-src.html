@@ -142,6 +142,8 @@ input,select{font-family:inherit;font-size:inherit}
   padding:7px 14px;border-radius:999px;background:var(--fill);color:var(--dim)}
 .tg-state.on{background:var(--ok-bg);color:var(--lime)}
 .tg-state.off{background:var(--bad-bg);color:var(--red)}
+.tg-idin{height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);padding:0 12px;font-size:13.5px;min-width:230px}
 .tg-link{margin-top:12px;padding:14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
 .tg-link-in{display:flex;flex-direction:column;gap:6px}
 .tg-link-in a{font-size:15px;font-weight:600;color:var(--lime);word-break:break-all}
@@ -1844,9 +1846,11 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         <div class="tg-state" id="tgState">Проверяю…</div>
         <p class="sub" id="tgHint"></p>
       </div>
-      <div class="acts" style="justify-content:flex-start">
-        <button class="btn acc" id="tgInvite">Подключить получателя</button>
-        <button class="btn" id="tgTest">Отправить пробный итог</button>
+      <div class="acts" style="justify-content:flex-start;flex-wrap:wrap">
+        <input id="tgId" class="tg-idin" inputmode="numeric" placeholder="ID получателя в Telegram">
+        <button class="btn acc" id="tgAdd">Разрешить по ID</button>
+        <button class="btn" id="tgInvite">Ссылка-приглашение</button>
+        <button class="btn" id="tgTest">Пробный итог</button>
       </div>
       <div id="tgLink" hidden class="tg-link">
         <div class="tg-link-in">
@@ -5444,28 +5448,54 @@ async function loadTg(){
   st.className = 'tg-state ' + (tgInfo.on ? 'on' : 'off');
   st.textContent = tgInfo.on ? 'Бот подключён' : 'Бот не подключён';
   $('#tgHint').textContent = tgInfo.on
-    ? 'Каждая бронь, оплата, продажа, возврат и отмена приходят в Telegram, плюс итог за день. Что именно получать, человек выбирает кнопками в самом боте.'
+    ? 'Отчёты приходят только тем, кого вы разрешили. Человек пишет боту «Старт», бот показывает ему его ID — впишите этот ID здесь или нажмите «Разрешить» в списке ниже.'
     : 'Чтобы включить, в настройках сервера нужно указать токен бота из @BotFather.';
   $('#tgInvite').disabled = !tgInfo.on;
   $('#tgTest').disabled = !tgInfo.on;
 
   const K = tgInfo.kinds || [];
-  $('#tgRows').innerHTML = tgInfo.subs.length ? tgInfo.subs.map(x => `
+  const row = x => `
     <div class="tg-sub">
       <div class="who">
         <b>${esc(x.name || 'Без имени')}</b>
-        <span>с ${fmtAt(x.since)}${x.isActive ? '' : ' · выключен'}</span>
-        <div class="tg-kinds">${K.map(k => `<i class="${x.kinds[k.key] ? 'on' : ''}">${esc(k.title)}</i>`).join('')}</div>
+        <span>ID ${esc(x.chatId)} · с ${fmtAt(x.since)}${x.isActive ? '' : ' · выключен'}</span>
+        ${x.approved ? `<div class="tg-kinds">${K.map(k => `<i class="${x.kinds[k.key] ? 'on' : ''}">${esc(k.title)}</i>`).join('')}</div>` : ''}
       </div>
-      <button class="btn small" data-tg="${x.id}" data-on="${x.isActive ? '0' : '1'}">${x.isActive ? 'Выключить' : 'Включить'}</button>
-    </div>`).join('')
-    : '<div class="center" style="padding:14px">Пока никто не подключён. Нажмите «Подключить получателя» и откройте ссылку в Telegram.</div>';
+      ${x.approved
+        ? `<button class="btn small" data-tg="${x.id}" data-on="${x.isActive ? '0' : '1'}">${x.isActive ? 'Выключить' : 'Включить'}</button>
+           <button class="btn small" data-deny="${x.chatId}">Запретить</button>`
+        : `<button class="btn acc small" data-allow="${x.chatId}">Разрешить</button>`}
+    </div>`;
+  const yes = tgInfo.subs.filter(x => x.approved), wait = tgInfo.subs.filter(x => !x.approved);
+  $('#tgRows').innerHTML =
+    (yes.length ? yes.map(row).join('')
+      : '<div class="center" style="padding:14px">Пока никому не разрешено. Впишите ID получателя — или дайте ссылку, она разрешает сразу.</div>')
+    + (wait.length ? `<div class="h" style="margin-top:14px">Написали боту и ждут разрешения</div>` + wait.map(row).join('') : '');
+
   $('#tgRows').querySelectorAll('[data-tg]').forEach(b => b.onclick = async () => {
     try { await call(`/admin/telegram/${b.dataset.tg}/active`, { method:'POST',
       body: JSON.stringify({ active: b.dataset.on === '1' }) }); loadTg() }
     catch(e){ fail('#tgErr', e) }
   });
+  const setAllowed = async (chatId, approved) => {
+    try { await call('/admin/telegram/allow', { method:'POST',
+      body: JSON.stringify({ chatId, approved }) }); loadTg() }
+    catch(e){ fail('#tgErr', e) }
+  };
+  $('#tgRows').querySelectorAll('[data-allow]').forEach(b => b.onclick = () => setAllowed(b.dataset.allow, true));
+  $('#tgRows').querySelectorAll('[data-deny]').forEach(b => b.onclick = async () => {
+    if (!await ask('Запретить отчёты этому получателю?', 'Он перестанет получать уведомления клуба.')) return;
+    setAllowed(b.dataset.deny, false);
+  });
 }
+$('#tgAdd').onclick = async () => {
+  const id = $('#tgId').value.trim();
+  if (!id) { fail('#tgErr', new Error('Впишите ID получателя — его показывает сам бот по команде /start')); return }
+  try {
+    await call('/admin/telegram/allow', { method:'POST', body: JSON.stringify({ chatId: id }) });
+    $('#tgId').value = ''; $('#tgErr').classList.remove('on'); posDone('Получатель разрешён'); loadTg();
+  } catch(e){ fail('#tgErr', e) }
+};
 $('#tgInvite').onclick = async () => {
   try {
     const r = await call('/admin/telegram/link', { method:'POST', body:'{}' });

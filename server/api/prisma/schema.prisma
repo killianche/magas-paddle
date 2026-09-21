@@ -452,6 +452,7 @@ model tg_subs {
   on_sale    Boolean  @default(true)
   on_daily   Boolean  @default(true)
   is_active  Boolean  @default(true)
+  approved   Boolean  @default(false)
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
   admins admins? @relation(fields: [admin_id], references: [id])

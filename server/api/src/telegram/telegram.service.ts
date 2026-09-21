@@ -82,7 +82,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (!this.on) return;
     const col = TG_KINDS[kind].col;
     try {
-      const subs = await this.db.tg_subs.findMany({ where: { is_active: true, [col]: true } as any });
+      const subs = await this.db.tg_subs.findMany({
+        where: { is_active: true, approved: true, [col]: true } as any });
       for (const s of subs) await this.send(s.chat_id, text);
     } catch (e: any) { this.log.warn('рассылка не прошла: ' + e?.message) }
   }
@@ -118,6 +119,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       if (data === 'today') {
         await this.api('answerCallbackQuery', { callback_query_id: q.id });
         await this.send(chat, await this.dayReport(clubToday()));
+        return;
+      }
+      const okSub = await this.db.tg_subs.findUnique({ where: { chat_id: chat } });
+      if (!okSub?.approved) {
+        await this.api('answerCallbackQuery', { callback_query_id: q.id,
+          text: 'Отчёты включает руководитель клуба', show_alert: true });
         return;
       }
       if (data.startsWith('t:')) {
@@ -166,16 +173,33 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           await this.db.tg_codes.delete({ where: { code } }).catch(() => {});
         }
       }
+      const was = await this.db.tg_subs.findUnique({ where: { chat_id: chat } });
+      // Разрешение даёт клуб: либо ссылкой-приглашением из админки,
+      // либо кнопкой «Разрешить» рядом с этим ID
+      const approved = !!adminId || !!was?.approved;
       const s = await this.db.tg_subs.upsert({
         where: { chat_id: chat },
-        update: { is_active: true, name, ...(adminId ? { admin_id: adminId } : {}) },
-        create: { chat_id: chat, name, admin_id: adminId },
+        update: { is_active: true, name, approved, ...(adminId ? { admin_id: adminId } : {}) },
+        create: { chat_id: chat, name, admin_id: adminId, approved },
       });
+      if (!approved) {
+        await this.send(chat,
+          `<b>Magas Padel</b>\n\nВаш ID: <code>${chat}</code>\n\n`
+          + 'Отчёты клуба приходят только тем, кого добавил руководитель. '
+          + 'Передайте ему этот ID — и уведомления включатся.');
+        return;
+      }
       await this.send(chat,
         `<b>Magas Padel</b>\nУведомления включены${adminName ? ` для ${adminName}` : ''}.\n\n`
         + 'Буду присылать новые брони, оплаты, продажи, возвраты, отмены и итог за день. '
         + 'Ниже можно выключить всё лишнее — например оставить только итог за день.',
         this.keyboard(s));
+      return;
+    }
+
+    const sub = await this.db.tg_subs.findUnique({ where: { chat_id: chat } });
+    if (!sub?.approved) {
+      await this.send(chat, `Ваш ID: <code>${chat}</code>\nПередайте его руководителю клуба — он включит отчёты.`);
       return;
     }
 

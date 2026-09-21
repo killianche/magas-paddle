@@ -3180,7 +3180,7 @@ export class AdminController {
       kinds: Object.entries(TG_KINDS).map(([key, v]) => ({ key, title: v.title })),
       subs: subs.map(x => ({
         id: Number(x.id), chatId: String(x.chat_id), name: x.name, isActive: x.is_active,
-        since: x.created_at,
+        approved: x.approved, since: x.created_at,
         kinds: Object.fromEntries(Object.entries(TG_KINDS).map(([k, v]) => [k, (x as any)[v.col]])),
       })),
     };
@@ -3197,6 +3197,34 @@ export class AdminController {
       expires_at: new Date(Date.now() + 30 * 60_000) } });
     const bot = process.env.TELEGRAM_BOT_NAME ?? '';
     return { code, url: bot ? `https://t.me/${bot}?start=${code}` : null, minutes: 30 };
+  }
+
+  /** Разрешить или запретить получателя по его ID из Telegram.
+   *
+   *  Отчёты клуба видит не любой, кто нашёл бота: человек нажимает «Старт»,
+   *  бот показывает ему его ID и молчит, пока руководитель не разрешит
+   *  этот ID здесь. ID можно и вписать заранее — тогда уведомления
+   *  включатся сразу, как человек напишет боту. */
+  @Post('telegram/allow')
+  @Needs('club')
+  async telegramAllow(@Req() req: any, @Body() body: { chatId?: string | number; approved?: boolean; name?: string }) {
+    const raw = String(body.chatId ?? '').trim();
+    if (!/^-?\d{5,20}$/.test(raw)) throw new BadRequestException('ID в Telegram — это число, например 123456789');
+    const chatId = BigInt(raw);
+    const approved = body.approved !== false;
+    const name = body.name ? String(body.name).trim().slice(0, 80) : null;
+    const row = await this.db.tg_subs.upsert({
+      where: { chat_id: chatId },
+      update: { approved, ...(name ? { name } : {}) },
+      create: { chat_id: chatId, name, approved },
+    });
+    await this.auth.log(req.admin, approved ? 'разрешил отчёты в Telegram' : 'запретил отчёты в Telegram',
+      row.name ? `${row.name} (${raw})` : raw);
+    if (approved) {
+      await this.tg.send(chatId, '<b>Magas Padel</b>\nРуководитель включил вам отчёты клуба. '
+        + 'Наберите /settings, чтобы выбрать, что присылать.');
+    }
+    return { ok: true, id: Number(row.id), approved };
   }
 
   /** Выключить или снова включить получателя. */
@@ -3217,8 +3245,8 @@ export class AdminController {
   @Needs('club')
   async telegramTest(@Req() req: any) {
     if (!this.tg.on) throw new ConflictException('Бот не подключён');
-    const subs = await this.db.tg_subs.count({ where: { is_active: true } });
-    if (!subs) throw new ConflictException('Никто ещё не подписан: откройте бота и нажмите «Старт»');
+    const subs = await this.db.tg_subs.count({ where: { is_active: true, approved: true } });
+    if (!subs) throw new ConflictException('Отчёты пока никому не разрешены: добавьте ID получателя');
     await this.tg.notify('daily', await this.tg.dayReport(clubToday()));
     return { ok: true, sent: subs };
   }
