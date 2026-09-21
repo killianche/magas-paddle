@@ -10,6 +10,15 @@ import { AuthService, PERMS, type Perm } from './auth.service';
 export const NEEDS = 'needs_perm';
 export const Needs = (perm: Perm) => SetMetadata(NEEDS, perm);
 
+/** Метод, открытый входу тренера.
+ *
+ *  У тренера отдельный вход и отдельный кабинет: свой график записей,
+ *  своя история тренировок и свой заработок. Всё остальное в админке —
+ *  сетка клуба, клиенты, касса, деньги — ему не показывается и не отдаётся
+ *  сервером, даже если запрос отправить напрямую. */
+export const COACH_OK = 'coach_ok';
+export const CoachOk = () => SetMetadata(COACH_OK, true);
+
 /**
  * Вход в админку по личной учётной записи.
  *
@@ -34,6 +43,12 @@ export class AdminGuard implements CanActivate {
     const admin = await this.auth.whoIs(token);
     if (!admin) throw new UnauthorizedException('Нужно войти заново');
     req.admin = admin;
+
+    if (admin.role === 'coach') {
+      const allowed = this.reflector.getAllAndOverride<boolean | undefined>(
+        COACH_OK, [ctx.getHandler(), ctx.getClass()]);
+      if (!allowed) throw new ForbiddenException('Этот раздел тренеру не открыт');
+    }
 
     const perm = this.reflector.getAllAndOverride<Perm | undefined>(
       NEEDS, [ctx.getHandler(), ctx.getClass()]);

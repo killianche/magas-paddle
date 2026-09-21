@@ -4,12 +4,12 @@ import {
   NotFoundException, Param, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AdminGuard, Needs } from '../admin/admin.guard';
-import { AuthService, type Admin } from '../admin/auth.service';
+import { AdminGuard, CoachOk, Needs } from '../admin/admin.guard';
+import { AuthService, makePassword, sealPassword, type Admin } from '../admin/auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate } from '../time';
 import { bigId, normalizePhone } from '../phone';
 import { cleanWeek, coachPart, lessonPay, classPay } from './coach.util';
-import { saveImage, dropUpload, PAY_METHODS } from '../admin/admin.controller';
+import { saveImage, dropUpload, PAY_METHODS, checkPassword } from '../admin/admin.controller';
 
 const PLAYED = ['confirmed', 'done'];
 const COLOR = /^#[0-9a-f]{6}$/i;
@@ -107,6 +107,7 @@ export class AdminCoachesController {
 
   /** Отчёт по одному тренеру. Сам тренер (вход, привязанный к нему) видит свой. */
   @Get('coaches/:id/report')
+  @CoachOk()
   async coachReport(@Req() req: any, @Param('id') id: string, @Query('from') fromQ?: string, @Query('to') toQ?: string) {
     const c = await this.db.coaches.findUnique({ where: { id: bigId(id) } });
     if (!c) throw new NotFoundException('Тренер не найден');
@@ -122,6 +123,7 @@ export class AdminCoachesController {
 
   /** Тренер, к которому привязан этот вход, — для раздела «Мои тренировки». */
   @Get('me/coach')
+  @CoachOk()
   async myCoach(@Req() req: any) {
     const c = await this.db.coaches.findFirst({ where: { admin_id: BigInt(req.admin.id) } });
     return c ? { id: Number(c.id), name: c.name } : null;
@@ -176,6 +178,49 @@ export class AdminCoachesController {
     const c = await this.db.coaches.create({ data: { ...data, sort_order: (last?.sort_order ?? 0) + 1 } });
     await this.auth.log(req.admin, 'завёл тренера', c.name);
     return { id: Number(c.id) };
+  }
+
+  /** Отдельный вход для тренера.
+   *
+   *  Тренеру нужен свой логин, но не нужна вся админка: он видит только
+   *  свой кабинет — записи к нему, историю тренировок и свой заработок.
+   *  Поэтому заводим учётную запись с ролью «тренер»: прав по клубу у неё
+   *  нет совсем, а сервер не отдаёт ей ничего, кроме её же отчёта. */
+  @Post('coaches/:id/login')
+  @Needs('coaches')
+  async coachLogin(@Req() req: any, @Param('id') id: string, @Body() body: { login?: string; password?: string }) {
+    const c = await this.db.coaches.findUnique({ where: { id: bigId(id) } });
+    if (!c) throw new NotFoundException('Тренер не найден');
+
+    // Уже есть вход — просто меняем пароль
+    if (c.admin_id) {
+      const row = await this.db.admins.findUnique({ where: { id: c.admin_id } });
+      if (row && row.role === 'coach') {
+        const password = checkPassword(body.password ? String(body.password) : makePassword());
+        await this.db.admins.update({ where: { id: row.id }, data: {
+          password_hash: await this.auth.hash(password), password_enc: sealPassword(password), is_active: true } });
+        await this.auth.dropSessions(Number(row.id));
+        await this.auth.log(req.admin, 'сменил пароль тренеру', `${c.name} (${row.login})`);
+        return { login: row.login, password, existed: true };
+      }
+    }
+
+    const login = String(body.login ?? '').trim().toLowerCase()
+      || 'coach' + String(Number(c.id)).padStart(2, '0');
+    if (!/^[a-z0-9._-]{3,32}$/.test(login)) {
+      throw new BadRequestException('Логин: 3–32 знака, латиница, цифры, точка, дефис');
+    }
+    if (await this.db.admins.findUnique({ where: { login } })) {
+      throw new BadRequestException('Такой логин уже занят');
+    }
+    const password = checkPassword(body.password ? String(body.password) : makePassword());
+    const created = await this.db.admins.create({ data: {
+      login, name: [c.name, c.surname].filter(Boolean).join(' '), role: 'coach', perms: [],
+      password_hash: await this.auth.hash(password), password_enc: sealPassword(password),
+    }});
+    await this.db.coaches.update({ where: { id: c.id }, data: { admin_id: created.id } });
+    await this.auth.log(req.admin, 'завёл вход тренеру', `${c.name} (${login})`);
+    return { login, password, existed: false };
   }
 
   @Post('coaches/:id/photo')

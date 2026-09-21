@@ -83,7 +83,7 @@ export type Admin = {
   id: number;
   login: string;
   name: string;
-  role: 'owner' | 'staff';
+  role: 'owner' | 'staff' | 'coach';
   perms: Perm[];
   isActive: boolean;
 };
@@ -208,6 +208,8 @@ export class AuthService {
 
   /** Есть ли право. У владельца есть всё. */
   can(admin: Admin, perm: Perm): boolean {
+    // У тренера прав по клубу нет вовсе: его кабинет — только его тренировки
+    if (admin.role === 'coach') return false;
     return admin.role === 'owner' || admin.perms.includes(perm);
   }
 
@@ -231,7 +233,7 @@ function toAdmin(row: {
     id: Number(row.id),
     login: row.login,
     name: row.name,
-    role: row.role === 'owner' ? 'owner' : 'staff',
+    role: row.role === 'owner' ? 'owner' : row.role === 'coach' ? 'coach' : 'staff',
     perms: row.perms.filter((p): p is Perm => p in PERMS),
     isActive: row.is_active,
   };

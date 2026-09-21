@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
-import { AdminGuard, Needs } from './admin.guard';
+import { AdminGuard, CoachOk, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm, sealPassword, openPassword, makePassword } from './auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, weekdayOf, shiftDate } from '../time';
 import { ClubService, WEEKDAYS, hoursOn, parseWeek } from '../club';
@@ -155,6 +155,7 @@ export class AdminController {
 
   /** Кто я и что мне можно — панель по этому прячет недоступное. */
   @Get('me')
+  @CoachOk()
   me(@Req() req: any) {
     const admin: Admin = req.admin;
     return { admin, perms: PERMS, can: Object.keys(PERMS).filter(
@@ -3446,7 +3447,7 @@ const STATUS_WORD: Record<string, string> = {
 
 /** Требования к паролю. Слабый пароль у человека, который может отменить
  *  любую бронь, — это дыра, а не удобство. */
-function checkPassword(pw: string): string {
+export function checkPassword(pw: string): string {
   const p = String(pw);
   if (p.length < 8) throw new BadRequestException('Пароль не короче 8 знаков');
   if (p.length > 200) throw new BadRequestException('Пароль слишком длинный');

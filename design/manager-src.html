@@ -154,6 +154,11 @@ input,select{font-family:inherit;font-size:inherit}
 .tg-kinds{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
 .tg-kinds i{font-style:normal;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--dim)}
 .tg-kinds i.on{background:var(--ok-bg);color:var(--lime)}
+/* Кабинет тренера: в панели остаётся только его раздел */
+body.coach-only .side .sgroup:not(:first-child),
+body.coach-only #setupBtn,
+body.coach-only .dayBar,
+body.coach-only #stats{display:none}
 /* Состояние брони одним цветом: ждёт — янтарный, подтверждена без оплаты —
    синий контур, оплачена — зелёная, долг после игры — красная, отыграна —
    серая, неявка — красная с чертой. Считает bkState(), тот же расчёт и в карточке. */
@@ -1420,7 +1425,12 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div class="ilist">
       <div class="irow"><span class="ik" style="flex:1">Показывать в приложении и принимать запись</span><label class="chk" style="margin:0"><input type="checkbox" id="coInApp" checked></label></div>
       <div class="irow"><span class="ik" style="flex:1">Работает в клубе</span><label class="chk" style="margin:0"><input type="checkbox" id="coActive" checked></label></div>
-      <div class="irow"><span class="ik">Вход в админку</span><select id="coAdmin" class="iv"></select></div>
+      <div class="irow"><span class="ik">Свой вход тренера</span>
+        <div class="iv" style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+          <span id="coLoginInfo" style="color:var(--dim);font-size:12.5px"></span>
+          <button type="button" class="btn small" id="coMakeLogin">Создать вход</button>
+        </div></div>
+      <div class="irow"><span class="ik">Привязать к сотруднику</span><select id="coAdmin" class="iv"></select></div>
       <div class="irow"><span class="ik">Цвет</span><div class="iv" id="coColors" style="display:flex;gap:6px;justify-content:flex-end"></div></div>
     </div>
     <div class="err" id="coErr"></div>
@@ -1812,7 +1822,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         <div id="rentEd" class="rent-ed"></div>
         <textarea id="setRentals" hidden></textarea>
         <small style="display:block;color:var(--dim-2);font-size:11.5px;margin-top:6px">
-          Цену пишите так, как её увидит клиент: «100 ₽ за игру». Строка без цены — пометка,
+          Цену пишите так, как её увидит клиент: «100 ₽ за час». Строка без цены — пометка,
           например «Можно свои». Изменения попадут в приложение после «Сохранить» внизу.</small></div>
       <div><label for="setBookNote">Что входит в бронь — строка на панели брони корта</label>
         <input type="text" id="setBookNote" maxlength="200"
@@ -2297,7 +2307,11 @@ async function start(){
     $('#authModal').classList.add('on');
     return;
   }
-  $('#whoAmI').textContent = me.name + (me.role==='owner' ? ' · владелец' : '');
+  $('#whoAmI').textContent = me.name + (me.role === 'owner' ? ' · владелец' : me.role === 'coach' ? ' · тренер' : '');
+
+  // Кабинет тренера: у него свой вход и только свои тренировки.
+  // Ни сетки клуба, ни клиентов, ни денег клуба он не видит.
+  if (me.role === 'coach') { await startCoachCabinet(); return }
   $('#tabStaff').hidden = !can('staff');
   // Разделы без права не показываем: сотрудник на стойке видит день и запись
   document.querySelector('.vw[data-view="history"]').hidden = !can('analytics');
@@ -2325,6 +2339,26 @@ async function start(){
   document.querySelector('#payKind [data-k="refund"]')?.toggleAttribute('hidden', !can('refunds'));
   document.querySelector('.tab[data-tab="money"]').hidden = !can('prices');
   load();
+}
+
+/** Кабинет тренера: график записей к нему, история и заработок.
+ *  Всё остальное в панели спрятано, а сервер такому входу ничего
+ *  другого и не отдаёт. */
+async function startCoachCabinet(){
+  document.body.classList.add('coach-only');
+  document.querySelectorAll('.vw').forEach(b => b.hidden = b.dataset.view !== 'mycoach');
+  const my = document.querySelector('.vw[data-view="mycoach"]');
+  if (my) { my.hidden = false; my.lastChild.textContent = 'Мои тренировки' }
+  $('#setupBtn').hidden = true;
+  const top = $('#gsBox'); if (top) top.hidden = true;
+  ['#saleBtn', '#addBtn', '#pendBtn', '#pendTnBtn'].forEach(id => { const el = $(id); if (el) el.hidden = true });
+  try { myCoach = await call('/admin/me/coach') } catch { myCoach = null }
+  if (!myCoach) {
+    $('#board').innerHTML = '<div class="center" style="padding:30px">Этот вход ещё не привязан к тренеру. Скажите администратору клуба.</div>';
+    switchView('day');
+    return;
+  }
+  switchView('mycoach');
 }
 
 /* ── день ─────────────────────────────────────────────── */
@@ -3397,7 +3431,7 @@ function rentRender(){
       </div>
       ${g.items.map((it, ii) => `<div class="ri" data-i="${ii}">
         <input type="text" class="ri-name" placeholder="Что: «Для начинающих» или пометка «Можно свои»" value="${esc(it.name)}">
-        <input type="text" class="ri-price" placeholder="Цена: «100 ₽ за игру»" value="${esc(it.price)}">
+        <input type="text" class="ri-price" placeholder="Цена: «100 ₽ за час»" value="${esc(it.price)}">
         <button type="button" class="copy" data-deli title="Убрать строку">✕</button>
       </div>`).join('')}
       <button type="button" class="btn small" data-addi>+ строка</button>
@@ -4725,7 +4759,7 @@ $('#expDel').onclick = async () => {
 };
 
 /* ── прочие продажи ───────────────────────────────────── */
-/** Прайс проката из настроек клуба: «Группа:» и строки «Позиция — 100 ₽ за игру».
+/** Прайс проката из настроек клуба: «Группа:» и строки «Позиция — 100 ₽ за час».
  *  Строки без цены («Можно свои») — не товар, их пропускаем. */
 function priceItems(text){
   const out = []; let group = '';
@@ -4922,6 +4956,22 @@ async function openCoach(c){
   const col = c?.color ?? COACH_COLORS[(coachList.length) % COACH_COLORS.length];
   $('#coColors').innerHTML = COACH_COLORS.map(x => `<button type="button" class="co-col${x === col ? ' on' : ''}" data-c="${x}" style="--cc:${x}"></button>`).join('');
   $('#coColors').querySelectorAll('button').forEach(b => b.onclick = () => $('#coColors').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
+  // Свой вход тренера: он видит только свои тренировки и заработок
+  $('#coLoginInfo').textContent = c?.adminId ? 'вход есть' : 'входа нет';
+  $('#coMakeLogin').textContent = c?.adminId ? 'Новый пароль' : 'Создать вход';
+  $('#coMakeLogin').hidden = !c || !can('coaches');
+  $('#coMakeLogin').onclick = async () => {
+    if (!c) return;
+    if (c.adminId && !await ask('Сменить пароль тренеру?', 'Прежний перестанет работать, тренер выйдет из панели.')) return;
+    try {
+      const r = await call(`/admin/coaches/${c.id}/login`, { method:'POST', body:'{}' });
+      $('#coLoginInfo').textContent = 'вход есть';
+      $('#coMakeLogin').textContent = 'Новый пароль';
+      await ask(r.existed ? 'Новый пароль тренера' : 'Вход для тренера готов',
+        `Логин: ${r.login}\nПароль: ${r.password}\n\nОн видит только свои тренировки и свой заработок. Пароль показан один раз — запишите и передайте тренеру.`);
+      loadCoaches();
+    } catch(e){ fail('#coErr', e) }
+  };
   $('#coErr').classList.remove('on');
   $('#coModal').classList.add('on');
 }
@@ -5049,7 +5099,14 @@ function posRenderShop(){
       <span class="pr">${rub(p.price)}${out ? '<small class="out">нет</small>' : low ? `<small class="low">осталось ${p.stock}</small>` : ''}</span>
     </button>`;
   }).join('') : '<div class="pos-empty"><span>Ничего не нашлось</span></div>';
-  $('#posGrid').querySelectorAll('.pt').forEach(el => el.onclick = () => posAdd(+el.dataset.p, 1));
+  // Прокат берут на всю игру: к броне на два часа ракетка добавляется
+  // сразу за два часа. Менеджер может поправить стрелками.
+  $('#posGrid').querySelectorAll('.pt').forEach(el => el.onclick = () => {
+    const p = products.find(x => x.id === +el.dataset.p);
+    const hours = pos.to === 'booking' && pos.bk ? pos.bk.hours : 1;
+    const step = p && p.category === 'rental' && !pos.cart.get(p.id) ? Math.max(1, hours) : 1;
+    posAdd(+el.dataset.p, step);
+  });
 }
 function posAdd(id, d){
   const p = products.find(x => x.id === id); if (!p) return;
@@ -5091,7 +5148,8 @@ function posRenderCart(){
   const total = lines.reduce((s, x) => s + x.p.price * x.n, 0);
   $('#posLines').innerHTML = lines.length ? lines.map(({ p, n }) => `<div class="pl2">
       <span class="th">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="">` : ''}</span>
-      <div class="nm"><b>${esc(p.name)}</b><span>${rub(p.price)}${p.category === 'rental' ? ' · прокат' : ''}</span></div>
+      <div class="nm"><b>${esc(p.name)}</b><span>${rub(p.price)}${
+        p.category === 'rental' ? ` за час${n > 1 ? ` · ${n} ${plural(n, 'час', 'часа', 'часов')}` : ''}` : ''}</span></div>
       <div class="stepper"><button type="button" data-d="-1" data-id="${p.id}">−</button><input value="${n}" readonly><button type="button" data-d="1" data-id="${p.id}">+</button></div>
       <b class="sm">${rub(p.price * n)}</b></div>`).join('')
     : '<div class="pos-none">Нажмите на товар слева</div>';
