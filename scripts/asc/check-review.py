@@ -31,8 +31,13 @@ STATES = {
 print('TestFlight, проверка сборок:')
 for num, bid in BUILDS:
     st, out = asc.call('GET', f'/v1/builds/{bid}/betaAppReviewSubmission')
-    state = (out.get('data') or {}).get('attributes', {}).get('betaReviewState', '—')
-    print(f'  сборка {num}: {state} — {STATES.get(state, "")}')
+    state = (out.get('data') or {}).get('attributes', {}).get('betaReviewState')
+    if not state:
+        # Внешней заявки нет: внутренним тестировщикам сборка видна сразу,
+        # по публичной ссылке — только после отдельной отправки
+        print(f'  сборка {num}: на внешнюю проверку не отправлялась')
+    else:
+        print(f'  сборка {num}: {state} — {STATES.get(state, "")}')
 print()
 
 try:
