@@ -11,3 +11,6 @@ secrets/*.env
 server/api/.env
 server/api/node_modules/
 server/api/dist/
+
+# Стенд для проверок: пиды и логи локального API
+.stand/
