@@ -14,6 +14,7 @@ import { AdminController, AdminAuthController } from './admin/admin.controller';
 import { AuthService } from './admin/auth.service';
 import { CoachesController } from './coaches/coaches.controller';
 import { AdminCoachesController } from './coaches/coaches.admin.controller';
+import { TelegramService } from './telegram/telegram.service';
 
 @Module({
   controllers: [
@@ -23,6 +24,6 @@ import { AdminCoachesController } from './coaches/coaches.admin.controller';
     AdminController, AdminAuthController, CoachesController, AdminCoachesController,
   ],
   providers: [PrismaService, ClubService, AuthService, ClientAuthService,
-    NotificationsService],
+    NotificationsService, TelegramService],
 })
 export class AppModule {}

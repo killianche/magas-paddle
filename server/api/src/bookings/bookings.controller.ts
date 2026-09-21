@@ -10,6 +10,7 @@ import { normalizePhone, bigId } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
 import { coachHours, coachBusyByClass } from '../coaches/coach.util';
+import { TelegramService } from '../telegram/telegram.service';
 
 /** Защита от ботов (решение заказчика 17.09.2026): не больше 3 неподтверждённых
  *  заявок на номер, запись не дальше 30 дней вперёд, не больше 10 заявок в час
@@ -20,6 +21,12 @@ export const DAYS_AHEAD = 30;
  *  поэтому считаем только принятые заявки, а не каждую попытку. */
 export const REQUESTS_PER_HOUR = 30;
 
+/** Когда игра — человеческим языком, для сообщений в Telegram. */
+export const whenRu = (a: Date, b: Date) =>
+  a.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' })
+  + ', ' + a.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
+  + '–' + b.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
 const EXCLUSION_VIOLATION = '23P01';
 
@@ -29,6 +36,7 @@ export class BookingsController {
     private readonly db: PrismaService,
     private readonly club: ClubService,
     private readonly auth: ClientAuthService,
+    private readonly tg: TelegramService,
   ) {}
 
   /** Кто спрашивает.
@@ -208,6 +216,14 @@ export class BookingsController {
           hold_until: holdUntil,
         },
       });
+      // Руководителю в Telegram: заявка пришла прямо сейчас, её ждут
+      this.tg.notify('booking', [
+        '🆕 <b>Новая заявка из приложения</b>',
+        `${[client.name, client.surname].filter(Boolean).join(' ') || 'Без имени'} · ${client.phone}`,
+        `${court.name}${coach ? ` · тренер ${coach.name}` : ''}`,
+        `${whenRu(startsAt, endsAt)} · ${((price + coachPrice) / 100).toLocaleString('ru-RU')} ₽`,
+        'Ждёт подтверждения.',
+      ].join('\n'));
       return {
         id: Number(b.id), courtId: court.id, courtName: court.name,
         startsAt: b.starts_at, endsAt: b.ends_at, price: price + coachPrice, status: b.status,
@@ -288,6 +304,15 @@ export class BookingsController {
     }
     ops.push(this.db.sales.deleteMany({ where: { booking_id: booking.id, method: 'bill' } }));
     await this.db.$transaction(ops);
+    const court = await this.db.courts.findUnique({ where: { id: booking.court_id } });
+    this.tg.notify('cancel', [
+      '🚫 <b>Клиент отменил бронь</b>',
+      `${[client.name, client.surname].filter(Boolean).join(' ') || 'Без имени'} · ${client.phone}`,
+      `${court?.name ?? booking.court_id} · ${whenRu(booking.starts_at, booking.ends_at)}`,
+      late && paid > 0
+        ? `Поздняя отмена, предоплата ${(paid / 100).toLocaleString('ru-RU')} ₽ остаётся клубу.`
+        : paid > 0 ? `Внесено ${(paid / 100).toLocaleString('ru-RU')} ₽ — нужно вернуть.` : 'Денег по брони не было.',
+    ].join('\n'));
     return { id: Number(booking.id), status: 'cancelled', late, kept: late && paid > 0, cancelHours: set.cancelHours };
   }
 

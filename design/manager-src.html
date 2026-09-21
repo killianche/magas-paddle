@@ -136,6 +136,24 @@ input,select{font-family:inherit;font-size:inherit}
 .hrow2 select,.hrow2 input{height:34px;border-radius:10px;border:1px solid var(--line);
   background:var(--surface);color:var(--text);padding:0 10px;font-size:13px}
 .hrow2 input{min-width:240px}
+/* Telegram: состояние связи и список получателей */
+.tg-head{margin-bottom:12px}
+.tg-state{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;
+  padding:7px 14px;border-radius:999px;background:var(--fill);color:var(--dim)}
+.tg-state.on{background:var(--ok-bg);color:var(--lime)}
+.tg-state.off{background:var(--bad-bg);color:var(--red)}
+.tg-link{margin-top:12px;padding:14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.tg-link-in{display:flex;flex-direction:column;gap:6px}
+.tg-link-in a{font-size:15px;font-weight:600;color:var(--lime);word-break:break-all}
+.tg-link-in span{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.tg-sub{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line-soft)}
+.tg-sub:last-child{border-bottom:0}
+.tg-sub .who{flex:1;min-width:0}
+.tg-sub .who b{display:block;font-size:14px}
+.tg-sub .who span{font-size:12px;color:var(--dim)}
+.tg-kinds{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.tg-kinds i{font-style:normal;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--dim)}
+.tg-kinds i.on{background:var(--ok-bg);color:var(--lime)}
 /* Состояние брони одним цветом: ждёт — янтарный, подтверждена без оплаты —
    синий контур, оплачена — зелёная, долг после игры — красная, отыграна —
    серая, неявка — красная с чертой. Считает bkState(), тот же расчёт и в карточке. */
@@ -1226,6 +1244,13 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
     <div class="seg" style="max-width:360px;margin:0 0 14px" id="slSeg">
       <button type="button" data-v="sales" class="on">Продажи</button>
       <button type="button" data-v="goods">Товары и остатки</button>
+      <button type="button" data-v="refunds">Возвраты</button>
+    </div>
+    <div id="slRefunds" hidden>
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat"><b id="rfSum">0 ₽</b><span>возвращено · <span id="rfPeriod"></span></span></div>
+      </div>
+      <div id="rfRows"><div class="center">Считаю…</div></div>
     </div>
     <div id="slSales">
     <div class="filters">
@@ -1685,6 +1710,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <button class="tab" data-tab="contacts">Контакты</button>
       <button class="tab" data-tab="app">Приложение</button>
       <button class="tab" data-tab="notify">Уведомления</button>
+      <button class="tab" data-tab="tg" id="tabTg">Telegram</button>
       <button class="tab" data-tab="tourn">Турниры</button>
       <button class="tab" data-tab="staff" id="tabStaff" hidden>Сотрудники</button>
       </div>
@@ -1801,6 +1827,29 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <label class="chk"><input type="checkbox" id="setCoach"> Тренеры в приложении: галочка «играть с тренером» и групповые тренировки</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
+    </div>
+
+    <div class="pane" id="paneTg" data-title="Telegram">
+      <div class="tg-head">
+        <div class="tg-state" id="tgState">Проверяю…</div>
+        <p class="sub" id="tgHint"></p>
+      </div>
+      <div class="acts" style="justify-content:flex-start">
+        <button class="btn acc" id="tgInvite">Подключить получателя</button>
+        <button class="btn" id="tgTest">Отправить пробный итог</button>
+      </div>
+      <div id="tgLink" hidden class="tg-link">
+        <div class="tg-link-in">
+          <b>Откройте бота и нажмите «Старт»</b>
+          <a id="tgLinkA" href="#" target="_blank" rel="noopener"></a>
+          <span id="tgCode"></span>
+        </div>
+      </div>
+      <div class="check" style="margin-top:16px">
+        <div class="h">Кто получает уведомления</div>
+        <div id="tgRows"><div class="center">—</div></div>
+      </div>
+      <div class="err" id="tgErr"></div>
     </div>
 
     <div class="pane" id="paneNotify" data-title="Уведомления">
@@ -2036,6 +2085,7 @@ let day = null;
 
 const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WEEK = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+const PAY_WORDS = { cash:'наличными', card:'картой', transfer:'переводом', bill:'в счёт брони' };
 const STATUS = { pending:'Ждёт подтверждения', confirmed:'Подтверждена', cancelled:'Отменена', no_show:'Не пришёл', done:'Отыграна',
   expired:'Не подтвердили вовремя' };
 
@@ -3381,11 +3431,12 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   if(t.dataset.tab==='staff'){ loadStaff(); loadLog() }
   if(t.dataset.tab==='money') loadExpenses();
   if(t.dataset.tab==='notify') loadNotifications();
+  if(t.dataset.tab==='tg') loadTg();
 });
 
 /** Какое право нужно для вкладки «Управления». */
 const TAB_PERM = { courts:'club', rules:'prices', money:'prices', club:'club', contacts:'club', app:'club',
-  notify:'clients', tourn:'tournaments', staff:'staff' };
+  notify:'clients', tg:'club', tourn:'tournaments', staff:'staff' };
 async function openSetup(){
   // Вкладки без права не показываем — раньше менеджер видел цены и настройки,
   // которые всё равно не мог сохранить
@@ -5322,8 +5373,85 @@ $('#slSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#slSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   $('#slSales').hidden = b.dataset.v !== 'sales';
   $('#slGoods').hidden = b.dataset.v !== 'goods';
+  $('#slRefunds').hidden = b.dataset.v !== 'refunds';
   if (b.dataset.v === 'goods') loadProducts();
+  if (b.dataset.v === 'refunds') loadRefunds();
 });
+
+/* ── Telegram: кто получает уведомления ───────────────── */
+let tgInfo = null;
+async function loadTg(){
+  try { tgInfo = await call('/admin/telegram') } catch(e){ fail('#tgErr', e); return }
+  const st = $('#tgState');
+  st.className = 'tg-state ' + (tgInfo.on ? 'on' : 'off');
+  st.textContent = tgInfo.on ? 'Бот подключён' : 'Бот не подключён';
+  $('#tgHint').textContent = tgInfo.on
+    ? 'Каждая бронь, оплата, продажа, возврат и отмена приходят в Telegram, плюс итог за день. Что именно получать, человек выбирает кнопками в самом боте.'
+    : 'Чтобы включить, в настройках сервера нужно указать токен бота из @BotFather.';
+  $('#tgInvite').disabled = !tgInfo.on;
+  $('#tgTest').disabled = !tgInfo.on;
+
+  const K = tgInfo.kinds || [];
+  $('#tgRows').innerHTML = tgInfo.subs.length ? tgInfo.subs.map(x => `
+    <div class="tg-sub">
+      <div class="who">
+        <b>${esc(x.name || 'Без имени')}</b>
+        <span>с ${fmtAt(x.since)}${x.isActive ? '' : ' · выключен'}</span>
+        <div class="tg-kinds">${K.map(k => `<i class="${x.kinds[k.key] ? 'on' : ''}">${esc(k.title)}</i>`).join('')}</div>
+      </div>
+      <button class="btn small" data-tg="${x.id}" data-on="${x.isActive ? '0' : '1'}">${x.isActive ? 'Выключить' : 'Включить'}</button>
+    </div>`).join('')
+    : '<div class="center" style="padding:14px">Пока никто не подключён. Нажмите «Подключить получателя» и откройте ссылку в Telegram.</div>';
+  $('#tgRows').querySelectorAll('[data-tg]').forEach(b => b.onclick = async () => {
+    try { await call(`/admin/telegram/${b.dataset.tg}/active`, { method:'POST',
+      body: JSON.stringify({ active: b.dataset.on === '1' }) }); loadTg() }
+    catch(e){ fail('#tgErr', e) }
+  });
+}
+$('#tgInvite').onclick = async () => {
+  try {
+    const r = await call('/admin/telegram/link', { method:'POST', body:'{}' });
+    $('#tgLink').hidden = false;
+    const a = $('#tgLinkA');
+    if (r.url) { a.href = r.url; a.textContent = r.url; a.hidden = false } else { a.hidden = true }
+    $('#tgCode').textContent = r.url
+      ? `Ссылка живёт ${r.minutes} минут.`
+      : `Отправьте боту команду: /start ${r.code} (код живёт ${r.minutes} минут)`;
+    $('#tgErr').classList.remove('on');
+  } catch(e){ fail('#tgErr', e) }
+};
+$('#tgTest').onclick = async () => {
+  try { const r = await call('/admin/telegram/test', { method:'POST', body:'{}' });
+        posDone(`Отправлено: получателей ${r.sent}`); $('#tgErr').classList.remove('on') }
+  catch(e){ fail('#tgErr', e) }
+};
+
+/* ── возвраты: деньги, ушедшие из кассы обратно клиенту ── */
+async function loadRefunds(){
+  const to = $('#slTo').value || todayStr(), from = $('#slFrom').value || shift(to, -29);
+  $('#rfRows').innerHTML = '<div class="center">Считаю…</div>';
+  let r;
+  try { r = await call(`/admin/refunds?from=${from}&to=${to}`) }
+  catch(e){ $('#rfRows').innerHTML = `<div class="center">${esc(e.message)}</div>`; return }
+  $('#rfSum').textContent = rub(r.total);
+  $('#rfPeriod').textContent = `${pretty(r.from)} — ${pretty(r.to)}`;
+  $('#rfRows').innerHTML = r.rows.length ? `<table class="hist"><thead><tr>
+      <th>Когда</th><th>Что вернули</th><th>Кому</th><th>Как</th><th>Кто вернул</th><th class="money">Сумма</th>
+    </tr></thead><tbody>` + r.rows.map(x => `<tr${x.bookingId ? ` data-b="${x.bookingId}" style="cursor:pointer" title="Открыть бронь"` : ''}>
+      <td>${fmtAt(x.at)}</td>
+      <td>${x.kind === 'booking' ? 'Бронь' : esc(x.item || 'покупка')}${x.note ? ` <small style="color:var(--dim)">${esc(x.note)}</small>` : ''}</td>
+      <td>${x.client ? esc(x.client.name || 'Без имени') + '<br><small style="color:var(--dim)">' + phoneNice(x.client.phone) + '</small>' : '—'}</td>
+      <td>${PAY_WORDS[x.method] ?? esc(x.method)}</td>
+      <td>${esc(x.by || '')}</td>
+      <td class="money">−${rub(x.amount)}</td>
+    </tr>`).join('') + '</tbody></table>'
+    : '<div class="center">За этот период возвратов не было</div>';
+  $('#rfRows').querySelectorAll('tr[data-b]').forEach(tr => tr.onclick = async () => {
+    const id = +tr.dataset.b;
+    const r2 = await call('/admin/history?from=2000-01-01&to=2100-01-01&search=' + id).catch(() => null);
+    switchView('day'); openBooking(id);
+  });
+}
 
 /* ── продажи ──────────────────────────────────────────── */
 let salesRows = [];
@@ -5374,10 +5502,17 @@ async function loadSales(){
             : r.client ? `<br><span style="color:var(--dim-2);font-size:12px">клиент: ${esc(r.client.name)} · ID ${r.client.id}</span>` : ''}</td>
           <td>${SALE[r.category] || esc(r.category)}</td><td class="money">${r.qty}</td>
           <td class="money">${rub(r.amount)}</td><td>${METHOD[r.method] || esc(r.method)}</td><td>${esc(r.by)}</td>
-          <td>${can('cancel') ? `<button class="copy" data-del="${r.id}">удалить</button>` : ''}</td></tr>`).join('')}
+          <td>${r.method === 'bill'
+            ? (can('cancel') ? `<button class="copy" data-del="${r.id}">убрать</button>` : '')
+            : (can('refunds') ? `<button class="copy" data-del="${r.id}" data-ref="1">вернуть</button>` : '')}</td></tr>`).join('')}
         </tbody></table>` : '<div class="center">За этот период продаж нет</div>'}`;
     $('#slOut').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-      if (!await ask('Удалить продажу?', 'Сумма пропадёт из итогов и аналитики. В журнале останется запись.')) return;
+      const refund = b.dataset.ref === '1';
+      const ok = refund
+        ? await ask('Вернуть деньги за покупку?',
+            'Товар вернётся на склад, сумма уйдёт из выручки, а сам возврат попадёт в раздел «Возвраты» и в Telegram.')
+        : await ask('Убрать строку из счёта?', 'Позиция пропадёт из счёта брони. В журнале останется запись.');
+      if (!ok) return;
       try { await call(`/admin/sales/${b.dataset.del}/delete`, { method:'POST', body:'{}' }); loadSales() }
       catch(e){ alert(e.message) }
     });

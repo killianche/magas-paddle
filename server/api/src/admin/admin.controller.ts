@@ -12,6 +12,8 @@ import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { coachHours, courtPart, coachPart, lessonPay, classPay, coachBusyByClass } from '../coaches/coach.util';
+import { TelegramService, TG_KINDS } from '../telegram/telegram.service';
+import { whenRu } from '../bookings/bookings.controller';
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
 import { mkdir, unlink, writeFile } from 'fs/promises';
@@ -148,6 +150,7 @@ export class AdminController {
     private readonly club: ClubService,
     private readonly auth: AuthService,
     private readonly notes: NotificationsService,
+    private readonly tg: TelegramService,
   ) {}
 
   /** Кто я и что мне можно — панель по этому прячет недоступное. */
@@ -579,6 +582,45 @@ export class AdminController {
       }
     }
 
+    // Руководителю в Telegram: отмена, неявка, подтверждение
+    {
+      const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
+      const c = b.client_id ? await this.db.clients.findUnique({ where: { id: b.client_id } }) : null;
+      const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени';
+      const head: Record<string, string> = {
+        cancelled: byClient ? '🚫 <b>Отмена по просьбе клиента</b>' : '🚫 <b>Клуб отменил бронь</b>',
+        no_show: '⚠️ <b>Клиент не пришёл</b>',
+        confirmed: '✅ <b>Бронь подтверждена</b>',
+      };
+      const money = !closing || paidBefore <= 0 ? ''
+        : refundNow ? `Возвращено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽.`
+        : kept ? `Предоплата ${(paidBefore / 100).toLocaleString('ru-RU')} ₽ осталась клубу.`
+        : `Внесено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽ — нужно вернуть.`;
+      if (head[dto.status]) {
+        this.tg.notify(dto.status === 'confirmed' ? 'booking' : 'cancel', [
+          head[dto.status],
+          `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
+          `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
+          ...(money ? [money] : []),
+          req.admin.name,
+        ].join('\n'));
+      }
+      if (refundNow && paidBefore > 0) {
+        await this.db.refunds.create({ data: {
+          kind: 'booking', booking_id: b.id, client_id: b.client_id,
+          amount: paidBefore, method: refundMethod, item: 'бронь',
+          note: dto.status === 'cancelled' ? 'отмена' : 'неявка',
+          admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
+        this.tg.notify('refund', [
+          '↩️ <b>Возврат по броне</b>',
+          `<b>${(paidBefore / 100).toLocaleString('ru-RU')} ₽</b> ${PAY_WORD[refundMethod] ?? ''}`,
+          `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
+          `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
+          req.admin.name,
+        ].join('\n'));
+      }
+    }
+
     await this.auth.log(req.admin, STATUS_WORD[dto.status] ?? dto.status,
       `бронь №${Number(b.id)}${byClient ? ', по просьбе клиента' : ''}${late ? ', поздняя отмена' : ''}`
       + (refundNow ? `, возвращено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽`
@@ -701,6 +743,30 @@ export class AdminController {
     ]);
     await this.auth.log(req.admin, KIND_WORD[kind],
       `бронь №${Number(b.id)}, ${(Math.abs(amount) / 100).toLocaleString('ru-RU')} ₽, ${PAY_WORD[method]}${confirmNow ? ', бронь подтверждена' : ''}`);
+
+    // Руководителю в Telegram: деньги пришли или ушли
+    {
+      const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
+      const c = b.client_id ? await this.db.clients.findUnique({ where: { id: b.client_id } }) : null;
+      const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени';
+      const sum = (Math.abs(amount) / 100).toLocaleString('ru-RU');
+      const line = [
+        kind === 'refund' ? '↩️ <b>Возврат по броне</b>' : '💵 <b>Оплата</b>',
+        `<b>${sum} ₽</b> ${PAY_WORD[method]}`,
+        `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
+        `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
+        `${req.admin.name}${confirmNow ? ' · бронь подтверждена' : ''}`,
+      ].join('\n');
+      if (kind === 'refund') {
+        await this.db.refunds.create({ data: {
+          kind: 'booking', booking_id: b.id, client_id: b.client_id,
+          amount: Math.abs(amount), method, item: 'бронь',
+          admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
+        this.tg.notify('refund', line);
+      } else {
+        this.tg.notify('payment', line);
+      }
+    }
     if (b.client_id) {
       const when = whenText(b.starts_at, b.ends_at);
       const sum = (Math.abs(amount) / 100).toLocaleString('ru-RU');
@@ -1779,9 +1845,22 @@ export class AdminController {
       return out;
     });
     const total = done.reduce((n, x) => n + x.amount, 0);
+    const what = done.map(x => `${x.name}${x.qty > 1 ? ` × ${x.qty}` : ''}`).join(', ');
     await this.auth.log(req.admin, booking ? 'добавил к брони' : 'продал клиенту',
-      done.map(x => `${x.name}${x.qty > 1 ? ` × ${x.qty}` : ''}`).join(', ')
-      + `, ${(total / 100).toLocaleString('ru-RU')} ₽` + (booking ? `, бронь №${Number(booking.id)}` : `, клиент ID ${Number(clientId)}`));
+      what + `, ${(total / 100).toLocaleString('ru-RU')} ₽`
+      + (booking ? `, бронь №${Number(booking.id)}` : `, клиент ID ${Number(clientId)}`));
+
+    // Руководителю в Telegram: что продали и кому
+    {
+      const c = clientId ? await this.db.clients.findUnique({ where: { id: clientId } }) : null;
+      const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || 'клиенту';
+      this.tg.notify('sale', [
+        '🛒 <b>Продажа</b>',
+        `<b>${(total / 100).toLocaleString('ru-RU')} ₽</b> · ${what}`,
+        booking ? `В счёт брони: ${whoName}` : `${whoName}${c?.phone ? ` · ${c.phone}` : ''} · ${PAY_WORD[method] ?? method}`,
+        req.admin.name,
+      ].join('\n'));
+    }
     return { total, lines: done.length };
   }
 
@@ -2149,13 +2228,14 @@ export class AdminController {
   }
 
   @Post('sales/:id/delete')
-  async deleteSale(@Req() req: any, @Param('id') id: string) {
+  async deleteSale(@Req() req: any, @Param('id') id: string, @Body() body: { method?: string } = {}) {
     const row = await this.db.sales.findUnique({ where: { id: bigId(id) } });
     if (!row) throw new NotFoundException('Продажа не найдена');
-    // Оплаченную продажу убирает только тот, кто может отменять; строку
-    // неоплаченного счёта брони — любой на стойке
-    if (row.method !== 'bill' && !this.auth.can(req.admin, 'cancel')) {
-      throw new ForbiddenException('Нет доступа: удалять продажи');
+    // Оплаченная продажа — это возврат денег из кассы, а не правка списка:
+    // его делает только тот, кому доверены возвраты (решение заказчика 21.09.2026).
+    // Строку неоплаченного счёта брони по-прежнему убирает любой на стойке.
+    if (row.method !== 'bill' && !this.auth.can(req.admin, 'refunds')) {
+      throw new ForbiddenException('Нет доступа: возвращать деньги за покупку');
     }
     // Строку счёта брони после окна продаж убрать может только тот, кто
     // может отменять: задним числом счёт не правят
@@ -2177,9 +2257,28 @@ export class AdminController {
         }
       }
       await tx.sales.delete({ where: { id: row.id } });
+      // Деньги вернули из кассы — это событие, а не исчезновение строки
+      if (row.method !== 'bill') {
+        await tx.refunds.create({ data: {
+          kind: 'sale', sale_id: row.id, booking_id: row.booking_id, client_id: row.client_id,
+          amount: row.amount, method: String(body.method ?? row.method ?? 'cash'),
+          item: `${row.item ?? 'покупка'}${row.qty > 1 ? ` × ${row.qty}` : ''}`,
+          admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
+      }
     });
-    await this.auth.log(req.admin, 'удалил продажу', `№${id}`);
-    return { ok: true };
+    const what = `${row.item ?? 'покупка'}${row.qty > 1 ? ` × ${row.qty}` : ''}`;
+    await this.auth.log(req.admin, row.method === 'bill' ? 'убрал строку счёта' : 'вернул деньги за покупку',
+      `${what}, ${(row.amount / 100).toLocaleString('ru-RU')} ₽`);
+    if (row.method !== 'bill') {
+      const c = row.client_id ? await this.db.clients.findUnique({ where: { id: row.client_id } }) : null;
+      this.tg.notify('refund', [
+        '↩️ <b>Возврат за покупку</b>',
+        `<b>${(row.amount / 100).toLocaleString('ru-RU')} ₽</b> · ${what}`,
+        c ? `${[c.name, c.surname].filter(Boolean).join(' ')} · ${c.phone}` : 'без клиента',
+        req.admin.name,
+      ].join('\n'));
+    }
+    return { ok: true, refunded: row.method !== 'bill', amount: row.amount };
   }
 
   /** Взнос за турнир. Раньше взнос был записан на турнире,
@@ -2936,6 +3035,12 @@ export class AdminController {
       }});
       await this.auth.log(req.admin, coach ? 'записал на тренировку' : 'записал клиента',
         `№${Number(b.id)}: ${accountName ?? name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}${coach ? `, тренер ${coach.name}` : ''}`);
+      this.tg.notify('booking', [
+        coach ? '🎾 <b>Запись на тренировку</b>' : '📝 <b>Менеджер записал клиента</b>',
+        `${accountName ?? name ?? 'Без имени'}${phone ? ` · ${phone}` : ''}`,
+        `${court.name}${coach ? ` · тренер ${coach.name}` : ''} · ${whenRu(b.starts_at, b.ends_at)}`,
+        `${((price + coachPrice) / 100).toLocaleString('ru-RU')} ₽ · ${req.admin.name}`,
+      ].join('\n'));
       // Человеку с приложением бронь придёт уведомлением, а не «появится сама»
       if (clientId) {
         const c = await this.db.clients.findUnique({ where: { id: clientId } });
@@ -3057,6 +3162,83 @@ export class AdminController {
     const c = await this.db.clients.create({ data: { phone: key, name, whatsapp: wa } });
     await this.auth.log(req.admin, 'завёл клиента', `${name}, ${key}`);
     return { id: Number(c.id), name: c.name, phone: c.phone, hasPassword: false, existed: false };
+  }
+
+  /* ── Telegram ─────────────────────────────────────────────────────────
+     Уведомления руководителю: каждая бронь, оплата, продажа, возврат,
+     отмена и итог за день. Кто получает — видно здесь, выключить любого
+     тоже можно здесь; что именно присылать, человек выбирает в самом боте. */
+
+  @Get('telegram')
+  @Needs('club')
+  async telegramInfo(@Req() req: any) {
+    const subs = await this.db.tg_subs.findMany({ orderBy: { id: 'asc' } });
+    return {
+      on: this.tg.on,
+      botName: process.env.TELEGRAM_BOT_NAME ?? null,
+      kinds: Object.entries(TG_KINDS).map(([key, v]) => ({ key, title: v.title })),
+      subs: subs.map(x => ({
+        id: Number(x.id), chatId: String(x.chat_id), name: x.name, isActive: x.is_active,
+        since: x.created_at,
+        kinds: Object.fromEntries(Object.entries(TG_KINDS).map(([k, v]) => [k, (x as any)[v.col]])),
+      })),
+    };
+  }
+
+  /** Ссылка-приглашение: открыл — нажал «Старт» — получает уведомления. */
+  @Post('telegram/link')
+  @Needs('club')
+  async telegramLink(@Req() req: any) {
+    if (!this.tg.on) throw new ConflictException('Бот не подключён: в настройках сервера нет токена');
+    const code = randomBytes(6).toString('hex');
+    await this.db.tg_codes.create({ data: {
+      code, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
+      expires_at: new Date(Date.now() + 30 * 60_000) } });
+    const bot = process.env.TELEGRAM_BOT_NAME ?? '';
+    return { code, url: bot ? `https://t.me/${bot}?start=${code}` : null, minutes: 30 };
+  }
+
+  /** Выключить или снова включить получателя. */
+  @Post('telegram/:id/active')
+  @Needs('club')
+  async telegramActive(@Req() req: any, @Param('id') id: string, @Body() body: { active?: boolean }) {
+    const row = await this.db.tg_subs.findUnique({ where: { id: bigId(id) } });
+    if (!row) throw new NotFoundException('Получатель не найден');
+    const active = body.active !== false;
+    await this.db.tg_subs.update({ where: { id: row.id }, data: { is_active: active } });
+    await this.auth.log(req.admin, active ? 'включил уведомления в Telegram' : 'выключил уведомления в Telegram',
+      row.name ?? String(row.chat_id));
+    return { ok: true, isActive: active };
+  }
+
+  /** Проверка связи: отправить себе пробное сообщение. */
+  @Post('telegram/test')
+  @Needs('club')
+  async telegramTest(@Req() req: any) {
+    if (!this.tg.on) throw new ConflictException('Бот не подключён');
+    const subs = await this.db.tg_subs.count({ where: { is_active: true } });
+    if (!subs) throw new ConflictException('Никто ещё не подписан: откройте бота и нажмите «Старт»');
+    await this.tg.notify('daily', await this.tg.dayReport(clubToday()));
+    return { ok: true, sent: subs };
+  }
+
+  /** Возвраты за период: и деньги по броням, и покупки. */
+  @Get('refunds')
+  @Needs('analytics')
+  async refundsList(@Query('from') fromQ?: string, @Query('to') toQ?: string) {
+    const to = toQ && isValidDate(toQ) ? toQ : clubToday();
+    const from = fromQ && isValidDate(fromQ) ? fromQ : shiftDate(to, -29);
+    const rows = await this.db.refunds.findMany({
+      where: { created_at: { gte: clubHour(from, 0), lt: clubHour(shiftDate(to, 1), 0) } },
+      orderBy: { id: 'desc' }, take: 300, include: { clients: true } });
+    return { from, to,
+      total: rows.reduce((n, r) => n + r.amount, 0),
+      rows: rows.map(r => ({
+        id: Number(r.id), kind: r.kind, amount: r.amount, method: r.method, item: r.item,
+        at: r.created_at, by: r.admin_name, note: r.note,
+        bookingId: r.booking_id ? Number(r.booking_id) : null,
+        client: r.clients ? { id: Number(r.clients.id), name: r.clients.name, phone: r.clients.phone } : null,
+      })) };
   }
 
   /** Что уже отправляли. */

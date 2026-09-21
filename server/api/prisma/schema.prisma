@@ -22,6 +22,7 @@ model admins {
   last_login_at DateTime?        @db.Timestamptz(6)
   sessions      admin_sessions[]
   log           admin_log[]
+  tg_subs        tg_subs[]
 }
 
 model admin_sessions {
@@ -106,6 +107,8 @@ model settings {
   sales_on         Boolean  @default(true)
   sales_in_stats   Boolean  @default(true)
   coaches_on       Boolean  @default(true)
+  tg_offset        BigInt?
+  tg_daily_at      String?
   updated_at       DateTime @default(now()) @db.Timestamptz(6)
 }
 
@@ -172,6 +175,7 @@ model bookings {
   @@index([starts_at], map: "bookings_starts")
   @@index([tournament_id], map: "bookings_tournament")
   sales         sales[]
+  refunds        refunds[]
 }
 
 model clients {
@@ -192,6 +196,7 @@ model clients {
   notifications      notifications[]
   notification_reads notification_reads[]
   sales              sales[]
+  refunds        refunds[]
 }
 
 model client_sessions {
@@ -413,4 +418,48 @@ model coach_payouts {
   coaches     coaches   @relation(fields: [coach_id], references: [id], onDelete: Cascade)
 
   @@index([coach_id, created_at(sort: Desc)], map: "coach_payouts_coach")
+}
+
+model refunds {
+  id         BigInt   @id @default(autoincrement())
+  kind       String
+  sale_id    BigInt?
+  booking_id BigInt?
+  client_id  BigInt?
+  amount     Int
+  method     String   @default("cash")
+  item       String?
+  note       String?
+  admin_id   BigInt?
+  admin_name String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  bookings bookings? @relation(fields: [booking_id], references: [id])
+  clients  clients?  @relation(fields: [client_id], references: [id])
+
+  @@index([created_at(sort: Desc)])
+}
+
+model tg_subs {
+  id         BigInt   @id @default(autoincrement())
+  chat_id    BigInt   @unique
+  name       String?
+  admin_id   BigInt?
+  on_booking Boolean  @default(true)
+  on_payment Boolean  @default(true)
+  on_refund  Boolean  @default(true)
+  on_cancel  Boolean  @default(true)
+  on_sale    Boolean  @default(true)
+  on_daily   Boolean  @default(true)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  admins admins? @relation(fields: [admin_id], references: [id])
+}
+
+model tg_codes {
+  code       String   @id
+  admin_id   BigInt?
+  admin_name String?
+  expires_at DateTime @db.Timestamptz(6)
 }
