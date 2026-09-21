@@ -1080,11 +1080,16 @@ export class AdminController {
      Раньше прошлое было доступно только перелистыванием дней по одному.
      Здесь любой период, фильтры и итоги — это и есть «что было». */
 
+  /** С какого часа считаем вечер — и в истории, и в сводке дня. */
+  private readonly EVENING_FROM = 18;
+
   @Get('history')
   @Needs('analytics')
   async history(@Query() q: {
     from?: string; to?: string; status?: string; courtId?: string;
     paid?: string; source?: string; search?: string; limit?: string; offset?: string;
+    /** Время дня: morning — до границы утреннего тарифа, day — до 18:00, evening — после. */
+    part?: string;
   }) {
     const from = q.from && isValidDate(q.from) ? q.from : shiftDate(clubToday(), -30);
     const to   = q.to   && isValidDate(q.to)   ? q.to   : clubToday();
@@ -1098,6 +1103,20 @@ export class AdminController {
     if (q.paid === 'yes') where.payments = { some: { kind: 'payment' } };
     if (q.paid === 'no') where.payments = { none: { kind: 'payment' } };
     if (q.source === 'app' || q.source === 'admin') where.source = q.source;
+
+    // Время дня. Час начала лежит внутри timestamp, поэтому собираем условие
+    // по дням периода: для каждого дня свой промежуток часов клуба.
+    if (q.part === 'morning' || q.part === 'day' || q.part === 'evening') {
+      const set = await this.club.get();
+      const noon = Math.min(Math.max(set.morningUntil, 1), 23);
+      const range = q.part === 'morning' ? [0, noon]
+        : q.part === 'day' ? [noon, this.EVENING_FROM] : [this.EVENING_FROM, 24];
+      const days: any[] = [];
+      for (let d = from; d <= to && days.length < 400; d = shiftDate(d, 1)) {
+        days.push({ starts_at: { gte: clubHour(d, range[0]), lt: clubHour(d, range[1]) } });
+      }
+      where.AND = [...(where.AND ?? []), { OR: days }];
+    }
 
     const text = (q.search ?? '').trim();
     if (text.length >= 2) {

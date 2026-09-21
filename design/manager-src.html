@@ -118,6 +118,24 @@ input,select{font-family:inherit;font-size:inherit}
 .bk:hover{border-color:var(--line-strong)}
 .bk .n{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bk .m{font-size:11px;color:var(--dim-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* История: крупный отбор в одно нажатие */
+.hfil{display:flex;flex-direction:column;gap:10px;margin:2px 0 14px}
+.hrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hrow .hk{width:62px;flex:0 0 auto;font-size:12px;color:var(--dim);letter-spacing:.02em}
+.chip{height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-size:13.5px;font-weight:500;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;transition:background .12s,border-color .12s}
+.chip:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.chip.on{background:var(--lime);border-color:var(--lime);color:var(--on-lime);font-weight:600}
+.chip .cdot{width:8px;height:8px;border-radius:50%;background:var(--cc,var(--dim-2))}
+.chip.on .cdot{box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.hdates{display:inline-flex;align-items:center;gap:8px;color:var(--dim)}
+.hdates input{height:38px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);padding:0 10px;font-size:13.5px}
+.hrow2{gap:8px;padding-top:2px}
+.hrow2 select,.hrow2 input{height:34px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);padding:0 10px;font-size:13px}
+.hrow2 input{min-width:240px}
 /* Состояние брони одним цветом: ждёт — янтарный, подтверждена без оплаты —
    синий контур, оплачена — зелёная, долг после игры — красная, отыграна —
    серая, неявка — красная с чертой. Считает bkState(), тот же расчёт и в карточке. */
@@ -1045,32 +1063,57 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
   </div>
 
   <div id="viewHistory" hidden>
-    <div class="filters">
-      <label>С <input type="date" id="hFrom"></label>
-      <label>по <input type="date" id="hTo"></label>
-      <select id="hStatus">
-        <option value="all">Все состояния</option>
-        <option value="confirmed">Подтверждённые</option>
-        <option value="pending">Ждут подтверждения</option>
-        <option value="cancelled">Отменённые</option>
-        <option value="no_show">Неявки</option>
-        <option value="expired">Не подтвердили вовремя</option>
-        <option value="done">Отыгранные</option>
-      </select>
-      <select id="hPaid">
-        <option value="">Оплата: любая</option>
-        <option value="yes">Оплаченные</option>
-        <option value="no">Неоплаченные</option>
-      </select>
-      <select id="hCourt"><option value="">Все площадки</option></select>
-      <select id="hSource">
-        <option value="">Откуда: любые</option>
-        <option value="app">Из приложения</option>
-        <option value="admin">Записал менеджер</option>
-      </select>
-      <input id="hSearch" placeholder="Имя, телефон, № заявки или ID">
-      <button class="btn acc small" id="hGo">Показать</button>
-      <button class="btn small" id="hCsv">Выгрузить</button>
+    <!-- Главное в истории — быстро выбрать период, площадку и время дня.
+         Поэтому это крупные кнопки в одно нажатие, а не выпадающие списки. -->
+    <div class="hfil">
+      <div class="hrow" id="hPeriod">
+        <span class="hk">Когда</span>
+        <button class="chip" data-p="today">Сегодня</button>
+        <button class="chip" data-p="yesterday">Вчера</button>
+        <button class="chip on" data-p="7">7 дней</button>
+        <button class="chip" data-p="30">30 дней</button>
+        <button class="chip" data-p="month">Этот месяц</button>
+        <button class="chip" data-p="prev">Прошлый месяц</button>
+        <button class="chip" data-p="custom">Свои даты</button>
+        <span class="hdates" id="hDates" hidden>
+          <input type="date" id="hFrom" aria-label="С какой даты">
+          <span>—</span>
+          <input type="date" id="hTo" aria-label="По какую дату">
+        </span>
+      </div>
+      <div class="hrow" id="hCourts"><span class="hk">Где</span></div>
+      <div class="hrow" id="hPart">
+        <span class="hk">Время</span>
+        <button class="chip on" data-t="">Весь день</button>
+        <button class="chip" data-t="morning">Утро</button>
+        <button class="chip" data-t="day">День</button>
+        <button class="chip" data-t="evening">Вечер, с 18:00</button>
+      </div>
+      <div class="hrow hrow2">
+        <select id="hStatus">
+          <option value="all">Все состояния</option>
+          <option value="confirmed">Подтверждённые</option>
+          <option value="pending">Ждут подтверждения</option>
+          <option value="cancelled">Отменённые</option>
+          <option value="no_show">Неявки</option>
+          <option value="expired">Не подтвердили вовремя</option>
+          <option value="done">Отыгранные</option>
+        </select>
+        <select id="hPaid">
+          <option value="">Оплата: любая</option>
+          <option value="yes">Оплаченные</option>
+          <option value="no">Неоплаченные</option>
+        </select>
+        <select id="hSource">
+          <option value="">Откуда: любые</option>
+          <option value="app">Из приложения</option>
+          <option value="admin">Записал менеджер</option>
+        </select>
+        <input id="hSearch" type="search" placeholder="Имя, телефон, № заявки или ID">
+        <div class="spacer"></div>
+        <button class="btn small" id="hReset">Сбросить</button>
+        <button class="btn small" id="hCsv">Выгрузить</button>
+      </div>
     </div>
     <div class="stats" id="hStats"></div>
     <div id="hRows"><div class="center">Выберите период</div></div>
@@ -4383,12 +4426,7 @@ function switchView(v){
   if(v==='pos' && !pos.busy){ pos.busy = true; openPos().finally(() => { pos.busy = false }) }
   if(v==='tourn') loadTourView();
   if(v==='clients' && !crmLoaded) loadCrm();
-  if(v==='history' && !$('#hFrom').value){
-    $('#hTo').value = todayStr(); $('#hFrom').value = shift(todayStr(), -30);
-    $('#hCourt').innerHTML = '<option value="">Все площадки</option>' +
-      (day?.courts ?? []).map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-    loadHistory();
-  }
+  if(v==='history' && !histReady){ histReady = true; initHistoryFilters(); loadHistory() }
   if(v==='stats' && !$('#sFrom').value){
     $('#sTo').value = todayStr(); $('#sFrom').value = shift(todayStr(), -29);
     loadStats();
@@ -4398,17 +4436,66 @@ function switchView(v){
 /* ── история записей ──────────────────────────────────── */
 let histRows = [];
 
+/** Отбор в истории: период, площадка и время дня — крупными кнопками. */
+let histReady = false, histPeriod = '7', histCourt = '', histPart = '';
+
+/** Даты выбранного периода. Свои даты берём из полей. */
+function histDates(){
+  const t = todayStr();
+  if (histPeriod === 'custom') return { from: $('#hFrom').value || shift(t, -7), to: $('#hTo').value || t };
+  if (histPeriod === 'today') return { from: t, to: t };
+  if (histPeriod === 'yesterday') { const y = shift(t, -1); return { from: y, to: y } }
+  if (histPeriod === 'month') return { from: t.slice(0, 8) + '01', to: t };
+  if (histPeriod === 'prev') {
+    const d = new Date(t + 'T00:00:00Z');
+    const first = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 0));
+    return { from: first.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) };
+  }
+  return { from: shift(t, -(+histPeriod - 1)), to: t };   // 7 или 30 дней, сегодня включительно
+}
+
+function initHistoryFilters(){
+  const courts = (day?.courts ?? setup?.courts ?? []);
+  $('#hCourts').innerHTML = '<span class="hk">Где</span>'
+    + `<button class="chip on" data-c="">Все площадки</button>`
+    + courts.map(c => `<button class="chip" data-c="${c.id}" style="--cc:${
+        /^#[0-9a-f]{6}$/i.test(c.color?.hex || c.color || '') ? (c.color.hex || c.color) : 'var(--dim-2)'}">
+        <span class="cdot"></span>${esc(c.name)}</button>`).join('');
+  bindChips('#hCourts', 'c', v => { histCourt = v; loadHistory() });
+  const d = histDates(); $('#hFrom').value = d.from; $('#hTo').value = d.to;
+}
+
+/** Ряд капсул: нажатая подсвечивается, остальные гаснут. */
+function bindChips(sel, attr, onPick){
+  $(sel).querySelectorAll('.chip').forEach(b => b.onclick = () => {
+    $(sel).querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+    onPick(b.dataset[attr]);
+  });
+}
+bindChips('#hPeriod', 'p', v => {
+  histPeriod = v;
+  $('#hDates').hidden = v !== 'custom';
+  const d = histDates(); $('#hFrom').value = d.from; $('#hTo').value = d.to;
+  if (v !== 'custom') loadHistory();
+});
+bindChips('#hPart', 't', v => { histPart = v; loadHistory() });
+
 function histQuery(){
-  const p = new URLSearchParams({ from: $('#hFrom').value, to: $('#hTo').value, limit: '300' });
+  const d = histDates();
+  const p = new URLSearchParams({ from: d.from, to: d.to, limit: '300' });
   if($('#hStatus').value !== 'all') p.set('status', $('#hStatus').value);
   if($('#hPaid').value) p.set('paid', $('#hPaid').value);
-  if($('#hCourt').value) p.set('courtId', $('#hCourt').value);
+  if(histCourt) p.set('courtId', histCourt);
+  if(histPart) p.set('part', histPart);
   if($('#hSource').value) p.set('source', $('#hSource').value);
   if($('#hSearch').value.trim().length >= 2) p.set('search', $('#hSearch').value.trim());
   return p.toString();
 }
 
 async function loadHistory(){
+  // Площадки могли ещё не приехать, когда историю открыли первой
+  if ($('#hCourts').querySelectorAll('.chip').length <= 1 && (day?.courts ?? []).length) initHistoryFilters();
   $('#hRows').innerHTML = '<div class="center">Считаю…</div>';
   let r;
   try { r = await call('/admin/history?' + histQuery()) }
@@ -4450,9 +4537,17 @@ $('#hRows').onclick = async e => {
   const tr = e.target.closest('tr[data-id]'); if (!tr) return;
   switchView('day'); date = tr.dataset.d; await load(); openBooking(+tr.dataset.id);
 };
-$('#hGo').onclick = loadHistory;
-['#hStatus','#hPaid','#hCourt','#hSource'].forEach(id => $(id).onchange = loadHistory);
+['#hStatus','#hPaid','#hSource','#hFrom','#hTo'].forEach(id => $(id).onchange = loadHistory);
 $('#hSearch').addEventListener('keydown', e => { if(e.key==='Enter') loadHistory() });
+$('#hReset').onclick = () => {
+  histPeriod = '7'; histCourt = ''; histPart = '';
+  ['#hPeriod','#hCourts','#hPart'].forEach(sel => $(sel).querySelectorAll('.chip')
+    .forEach((b, i) => b.classList.toggle('on', sel === '#hPeriod' ? b.dataset.p === '7' : i === 0)));
+  $('#hDates').hidden = true;
+  $('#hStatus').value = 'all'; $('#hPaid').value = ''; $('#hSource').value = ''; $('#hSearch').value = '';
+  const d = histDates(); $('#hFrom').value = d.from; $('#hTo').value = d.to;
+  loadHistory();
+};
 
 /* Выгрузка для бухгалтерии. Точка с запятой и BOM — иначе Excel
    на русской раскладке кладёт всю строку в одну ячейку. */
@@ -4469,7 +4564,7 @@ $('#hCsv').onclick = () => {
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `magas-padel-${$('#hFrom').value}_${$('#hTo').value}.csv`;
+  a.download = `magas-padel-${histDates().from}_${histDates().to}.csv`;
   a.click(); URL.revokeObjectURL(a.href);
 };
 
