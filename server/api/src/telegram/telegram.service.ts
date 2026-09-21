@@ -15,16 +15,42 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ClubService, hoursOn } from '../club';
 import { clubToday, clubHour, shiftDate } from '../time';
 
-/** Виды уведомлений: колонка в tg_subs и подпись для кнопки. */
+/** Виды уведомлений.
+ *
+ *  `title` — полное название, его же видит владелец в админке.
+ *  `short` — подпись на кнопке: кнопок шесть, в два столбца, поэтому одно слово.
+ *  `about` — чем этот вид отличается от соседнего. Из одних названий разницу
+ *  между «Оплатами» и «Продажами» не угадать, поэтому объяснение стоит
+ *  в самом сообщении рядом со списком, а не прячется в справке. */
 export const TG_KINDS = {
-  booking: { col: 'on_booking', title: 'Новые брони' },
-  payment: { col: 'on_payment', title: 'Оплаты' },
-  sale:    { col: 'on_sale',    title: 'Продажи' },
-  refund:  { col: 'on_refund',  title: 'Возвраты' },
-  cancel:  { col: 'on_cancel',  title: 'Отмены и неявки' },
-  daily:   { col: 'on_daily',   title: 'Итог за день' },
+  booking: { col: 'on_booking', title: 'Новые брони',     short: 'Брони',
+             about: 'заявка из приложения и запись со стойки' },
+  cancel:  { col: 'on_cancel',  title: 'Отмены и неявки', short: 'Отмены',
+             about: 'бронь отменили или гость не пришёл' },
+  payment: { col: 'on_payment', title: 'Оплата броней',   short: 'Оплаты',
+             about: 'деньги за корт и тренировку' },
+  sale:    { col: 'on_sale',    title: 'Продажи в клубе', short: 'Продажи',
+             about: 'мячи, вода, прокат — всё с кассы клуба' },
+  refund:  { col: 'on_refund',  title: 'Возвраты денег',  short: 'Возвраты',
+             about: 'деньги вернули клиенту' },
+  daily:   { col: 'on_daily',   title: 'Итог за день',    short: 'Итог дня',
+             about: 'одно сообщение после закрытия клуба' },
 } as const;
 export type TgKind = keyof typeof TG_KINDS;
+
+/** Порядок в меню: сначала что происходит на кортах, потом деньги, потом отчёт.
+ *  Внутри пары читается слева направо, как обычный список. */
+export const TG_GROUPS: { title: string; kinds: TgKind[] }[] = [
+  { title: 'На кортах', kinds: ['booking', 'cancel'] },
+  { title: 'Деньги',    kinds: ['payment', 'sale', 'refund'] },
+  { title: 'Отчёт',     kinds: ['daily'] },
+];
+
+/** Список видов с пояснениями — то, что человек читает перед кнопками. */
+export function kindsLegend(): string {
+  return TG_GROUPS.map(g => [`<b>${g.title}</b>`,
+    ...g.kinds.map(k => `${TG_KINDS[k].short} — ${TG_KINDS[k].about}`)].join('\n')).join('\n\n');
+}
 
 
 /* ── как выглядят сообщения ──────────────────────────────────────────────
@@ -106,29 +132,34 @@ export function dayReportText(p: {
 
   const MW: Record<string, string> = { cash: 'наличными', card: 'картой', transfer: 'переводом' };
   const left = Math.max(0, p.charged - p.got);
+  const money_moved = p.charged > 0 || p.shop > 0 || p.got > 0 || p.refunded > 0;
 
   // Одна мысль в строку, со своим значком; блоки читаются сверху вниз:
-  // сколько сыграли → сколько начислили → сколько взяли и чем → что за клиентами
+  // сколько сыграли → сколько начислили → сколько взяли и чем → что за клиентами.
+  // Блок с нулями не печатаем: строка «Получено: 0 ₽» ничего не сообщает,
+  // а день из одних отмен выглядел отчётом об успешном закрытии расчётов.
   return tgBlocks([
     head,
     [
-      `🎾 Игры: <b>${p.games}</b>`,
+      p.games > 0 ? `🎾 Игры: <b>${p.games}</b>` : '🎾 Игр не было',
       p.cancelled > 0 && `🚫 Отмены: ${p.cancelled}`,
       p.noShow > 0 && `⚠️ Неявки: ${p.noShow}`,
     ],
     [
-      `📈 Начислено: <b>${money(p.charged)}</b>`,
+      p.charged > 0 && `📈 Начислено: <b>${money(p.charged)}</b>`,
       p.shop > 0 && `🛒 Продажи: <b>${money(p.shop)}</b>`,
     ],
     [
-      `💵 Получено: <b>${money(p.got)}</b>`,
-      ...p.byMethod.map(([m, sum]) => `— ${MW[m]} ${money(sum)}`),
+      p.got > 0 && `💵 Получено: <b>${money(p.got)}</b>`,
+      ...(p.got > 0 ? p.byMethod.map(([m, sum]) => `— ${MW[m]} ${money(sum)}`) : []),
       p.refunded > 0 && `↩️ Возвраты: −${money(p.refunded)}`,
-      p.refunded > 0 && `🧾 Чистыми: <b>${money(p.got - p.refunded)}</b>`,
+      p.refunded > 0 && p.got > 0 && `🧾 Чистыми: <b>${money(p.got - p.refunded)}</b>`,
     ],
-    [left
-      ? `⏳ Не оплачено: <b>${money(left)}</b>`
-      : '✅ По играм расчёт закрыт'],
+    [!money_moved
+      ? '💰 Денег за день не было'
+      : left > 0
+        ? `⏳ Не оплачено: <b>${money(left)}</b>`
+        : '✅ По играм расчёт закрыт'],
   ]);
 }
 
@@ -294,10 +325,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           + 'Передайте ему этот ID — и уведомления включатся.');
         return;
       }
-      await this.send(chat,
-        `<b>Magas Padel</b>\nУведомления включены${adminName ? ` для ${esc(adminName)}` : ''}.\n\n`
-        + 'Буду присылать новые брони, оплаты, продажи, возвраты, отмены и итог за день. '
-        + 'Ниже можно выключить всё лишнее — например оставить только итог за день.',
+      await this.send(chat, this.menuText(
+        `<b>Magas Padel</b>\nУведомления включены${adminName ? ` для ${esc(adminName)}` : ''}.`),
         this.keyboard(s));
       return;
     }
@@ -314,23 +343,39 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (/^\/(settings|help|menu)\b/.test(text)) {
       const s = await this.db.tg_subs.findUnique({ where: { chat_id: chat } });
       if (!s) { await this.send(chat, 'Нажмите /start, чтобы получать уведомления.'); return }
-      await this.send(chat, 'Что присылать:', this.keyboard(s));
+      await this.send(chat, this.menuText('<b>Что присылать в этот чат</b>'), this.keyboard(s));
       return;
     }
 
-    await this.send(chat, 'Команды: /start — включить, /stop — выключить, /settings — что присылать, '
-      + '/today — итог за сегодня, /yesterday — за вчера.');
+    await this.send(chat, [
+      '<b>Команды</b>',
+      '/settings — что присылать',
+      '/today — итог за сегодня',
+      '/yesterday — итог за вчера',
+      '/stop — выключить уведомления',
+    ].join('\n'));
   }
 
-  /** Кнопки-переключатели: видно, что включено, одно нажатие — меняет. */
+  /** Текст над кнопками: сначала зачем это сообщение, потом список видов
+   *  с пояснениями, в конце — что делать. Пояснения нужны затем, что
+   *  «Оплаты» и «Продажи» или «Возвраты» и «Отмены» по названию неразличимы. */
+  private menuText(head: string) {
+    return [head, kindsLegend(), '<i>Галочка — присылаю. Нажмите, чтобы включить или выключить.</i>'].join('\n\n');
+  }
+
+  /** Кнопки-переключатели: галочка показывает, что включено, нажатие меняет.
+   *  По две в ряд — шесть кнопок в столбик занимали пол-экрана и читались
+   *  как длинный непонятный список. Подписи короткие, потому что смысл
+   *  каждой уже объяснён в тексте над кнопками. */
   private keyboard(s: any) {
-    const row = (k: TgKind) => ([{
-      text: `${(s as any)[TG_KINDS[k].col] ? '✅' : '⬜️'} ${TG_KINDS[k].title}`,
+    const btn = (k: TgKind) => ({
+      text: `${(s as any)[TG_KINDS[k].col] ? '✅' : '○'} ${TG_KINDS[k].short}`,
       callback_data: `t:${k}`,
-    }]);
+    });
+    const pairs: TgKind[][] = [['booking', 'cancel'], ['payment', 'sale'], ['refund', 'daily']];
     return { inline_keyboard: [
-      row('booking'), row('payment'), row('sale'), row('refund'), row('cancel'), row('daily'),
-      [{ text: '📊 Итог за сегодня', callback_data: 'today' }],
+      ...pairs.map(p => p.map(btn)),
+      [{ text: '📊 Показать итог за сегодня', callback_data: 'today' }],
     ]};
   }
 
