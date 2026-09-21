@@ -12,7 +12,7 @@ import { accountIdOf, normalizePhone, searchDigits, bigId } from '../phone';
 import { ipOf } from '../ratelimit';
 import { cleanTags, colorList, colorOf } from '../courts/look';
 import { coachHours, courtPart, coachPart, lessonPay, classPay, coachBusyByClass } from '../coaches/coach.util';
-import { TelegramService, TG_KINDS } from '../telegram/telegram.service';
+import { TelegramService, TG_KINDS, tgMsg, phoneLink, whenLine } from '../telegram/telegram.service';
 import { whenRu } from '../bookings/bookings.controller';
 import { randomBytes } from 'crypto';
 import sharp from 'sharp';
@@ -597,14 +597,22 @@ export class AdminController {
         : refundNow ? `Возвращено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽.`
         : kept ? `Предоплата ${(paidBefore / 100).toLocaleString('ru-RU')} ₽ осталась клубу.`
         : `Внесено ${(paidBefore / 100).toLocaleString('ru-RU')} ₽ — нужно вернуть.`;
-      if (head[dto.status]) {
-        this.tg.notify(dto.status === 'confirmed' ? 'booking' : 'cancel', [
-          head[dto.status],
-          `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
-          `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
-          ...(money ? [money] : []),
-          req.admin.name,
-        ].join('\n'));
+      const icons: Record<string, [string, string]> = {
+        cancelled: ['🚫', byClient ? 'Отмена по просьбе клиента' : 'Клуб отменил бронь'],
+        no_show: ['⚠️', 'Клиент не пришёл'],
+        confirmed: ['✅', 'Бронь подтверждена'],
+      };
+      if (icons[dto.status]) {
+        const [icon, title] = icons[dto.status];
+        this.tg.notify(dto.status === 'confirmed' ? 'booking' : 'cancel', tgMsg({
+          icon, title,
+          head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+          rows: [
+            `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+            money && `💰 ${money}`,
+          ],
+          foot: req.admin.name,
+        }));
       }
       if (refundNow && paidBefore > 0) {
         await this.db.refunds.create({ data: {
@@ -612,13 +620,16 @@ export class AdminController {
           amount: paidBefore, method: refundMethod, item: 'бронь',
           note: dto.status === 'cancelled' ? 'отмена' : 'неявка',
           admin_id: BigInt(req.admin.id), admin_name: req.admin.name } });
-        this.tg.notify('refund', [
-          '↩️ <b>Возврат по броне</b>',
-          `<b>${(paidBefore / 100).toLocaleString('ru-RU')} ₽</b> ${PAY_WORD[refundMethod] ?? ''}`,
-          `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
-          `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
-          req.admin.name,
-        ].join('\n'));
+        this.tg.notify('refund', tgMsg({
+          icon: '↩️', title: 'Возврат по броне', amount: paidBefore,
+          head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+          rows: [
+            `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+            `💳 ${PAY_WORD[refundMethod] ?? refundMethod}`,
+            dto.status === 'cancelled' ? '🚫 Бронь отменена' : '⚠️ Клиент не пришёл',
+          ],
+          foot: req.admin.name,
+        }));
       }
     }
 
@@ -751,13 +762,22 @@ export class AdminController {
       const c = b.client_id ? await this.db.clients.findUnique({ where: { id: b.client_id } }) : null;
       const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени';
       const sum = (Math.abs(amount) / 100).toLocaleString('ru-RU');
-      const line = [
-        kind === 'refund' ? '↩️ <b>Возврат по броне</b>' : '💵 <b>Оплата</b>',
-        `<b>${sum} ₽</b> ${PAY_WORD[method]}`,
-        `${whoName}${c?.phone ? ` · ${c.phone}` : ''}`,
-        `${court?.name ?? b.court_id} · ${whenRu(b.starts_at, b.ends_at)}`,
-        `${req.admin.name}${confirmNow ? ' · бронь подтверждена' : ''}`,
-      ].join('\n');
+      const left = Math.max(0, b.price + b.coach_price - b.discount - (paid + amount));
+      const line = tgMsg({
+        icon: kind === 'refund' ? '↩️' : '💵',
+        title: kind === 'refund' ? 'Возврат по броне' : 'Оплата',
+        amount: Math.abs(amount),
+        head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+        rows: [
+          `🎾 ${court?.name ?? b.court_id} · ${whenLine(b.starts_at, b.ends_at)}`,
+          `💳 ${PAY_WORD[method]}`,
+          kind !== 'refund' && (left > 0
+            ? `⏳ Осталось: ${(left / 100).toLocaleString('ru-RU')} ₽`
+            : '✅ Оплачено полностью'),
+          confirmNow && '✅ Бронь подтверждена',
+        ],
+        foot: req.admin.name,
+      });
       if (kind === 'refund') {
         await this.db.refunds.create({ data: {
           kind: 'booking', booking_id: b.id, client_id: b.client_id,
@@ -1855,12 +1875,15 @@ export class AdminController {
     {
       const c = clientId ? await this.db.clients.findUnique({ where: { id: clientId } }) : null;
       const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || 'клиенту';
-      this.tg.notify('sale', [
-        '🛒 <b>Продажа</b>',
-        `<b>${(total / 100).toLocaleString('ru-RU')} ₽</b> · ${what}`,
-        booking ? `В счёт брони: ${whoName}` : `${whoName}${c?.phone ? ` · ${c.phone}` : ''} · ${PAY_WORD[method] ?? method}`,
-        req.admin.name,
-      ].join('\n'));
+      this.tg.notify('sale', tgMsg({
+        icon: '🛒', title: 'Продажа', amount: total,
+        head: [`${whoName}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
+        rows: [
+          `📦 ${what}`,
+          booking ? '🧾 В счёт брони — оплатит вместе с кортом' : `💳 ${PAY_WORD[method] ?? method}`,
+        ],
+        foot: req.admin.name,
+      }));
     }
     return { total, lines: done.length };
   }
@@ -2272,12 +2295,12 @@ export class AdminController {
       `${what}, ${(row.amount / 100).toLocaleString('ru-RU')} ₽`);
     if (row.method !== 'bill') {
       const c = row.client_id ? await this.db.clients.findUnique({ where: { id: row.client_id } }) : null;
-      this.tg.notify('refund', [
-        '↩️ <b>Возврат за покупку</b>',
-        `<b>${(row.amount / 100).toLocaleString('ru-RU')} ₽</b> · ${what}`,
-        c ? `${[c.name, c.surname].filter(Boolean).join(' ')} · ${c.phone}` : 'без клиента',
-        req.admin.name,
-      ].join('\n'));
+      this.tg.notify('refund', tgMsg({
+        icon: '↩️', title: 'Возврат за покупку', amount: row.amount,
+        head: [c ? `${[c.name, c.surname].filter(Boolean).join(' ')} · ${phoneLink(c.phone)}` : 'без клиента'],
+        rows: [`📦 ${what}`, '📥 Товар вернулся на склад'],
+        foot: req.admin.name,
+      }));
     }
     return { ok: true, refunded: row.method !== 'bill', amount: row.amount };
   }
@@ -3036,12 +3059,17 @@ export class AdminController {
       }});
       await this.auth.log(req.admin, coach ? 'записал на тренировку' : 'записал клиента',
         `№${Number(b.id)}: ${accountName ?? name ?? 'без имени'}, ${court.name}, ${whenText(b.starts_at, b.ends_at)}${coach ? `, тренер ${coach.name}` : ''}`);
-      this.tg.notify('booking', [
-        coach ? '🎾 <b>Запись на тренировку</b>' : '📝 <b>Менеджер записал клиента</b>',
-        `${accountName ?? name ?? 'Без имени'}${phone ? ` · ${phone}` : ''}`,
-        `${court.name}${coach ? ` · тренер ${coach.name}` : ''} · ${whenRu(b.starts_at, b.ends_at)}`,
-        `${((price + coachPrice) / 100).toLocaleString('ru-RU')} ₽ · ${req.admin.name}`,
-      ].join('\n'));
+      this.tg.notify('booking', tgMsg({
+        icon: coach ? '🎾' : '📝',
+        title: coach ? 'Запись на тренировку' : 'Менеджер записал клиента',
+        amount: price + coachPrice,
+        head: [`${accountName ?? name ?? 'Без имени'}${phone ? ` · ${phoneLink(phone)}` : ''}`],
+        rows: [
+          `🎾 ${court.name} · ${whenLine(b.starts_at, b.ends_at)}`,
+          coach && `👤 Тренер: ${coach.name}`,
+        ],
+        foot: req.admin.name,
+      }));
       // Человеку с приложением бронь придёт уведомлением, а не «появится сама»
       if (clientId) {
         const c = await this.db.clients.findUnique({ where: { id: clientId } });

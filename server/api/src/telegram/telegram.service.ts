@@ -26,8 +26,104 @@ export const TG_KINDS = {
 } as const;
 export type TgKind = keyof typeof TG_KINDS;
 
+
+/* ── как выглядят сообщения ──────────────────────────────────────────────
+   Одно правило на все уведомления: строка-заголовок со значком и сутью,
+   под ней главное (кто и на сколько), затем подробности по одной мысли
+   в строку, и в конце — кто это сделал. Читается за секунду с экрана
+   блокировки, без лишних слов и рамок. */
+
+const money = (k: number) => (k / 100).toLocaleString('ru-RU') + ' ₽';
+
+/** Телефон в читаемом виде и сразу кликабельный. */
+export function phoneLink(phone?: string | null): string {
+  if (!phone) return '';
+  const d = String(phone).replace(/\D/g, '');
+  const nice = d.length === 11
+    ? `+${d[0]} ${d.slice(1, 4)} ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9)}`
+    : '+' + d;
+  return `<a href="tel:+${d}">${nice}</a>`;
+}
+
+/** Когда игра: «ср, 23 сент · 19:00–21:00». Год не пишем — он и так этот. */
+export function whenLine(a: Date, b: Date): string {
+  const day = a.toLocaleDateString('ru-RU',
+    { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Moscow' });
+  const t = (d: Date) => d.toLocaleTimeString('ru-RU',
+    { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
+  return `${day} · ${t(a)}–${t(b)}`;
+}
+
+type Line = string | false | null | undefined;
+
+/** Сообщение из смысловых блоков: внутри блока строки идут подряд,
+ *  между блоками — пустая строка. Пустые строки и целиком пустые блоки
+ *  выбрасываются, чтобы от необязательных полей не оставалось дыр. */
+export function tgBlocks(blocks: Line[][]): string {
+  return blocks
+    .map(b => (b.filter(Boolean) as string[]).join('\n'))
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** Собрать уведомление о событии по общему образцу. */
+export function tgMsg(p: {
+  icon: string; title: string; amount?: number | null;
+  head?: Line[];
+  rows?: Line[];
+  foot?: string | null;
+}): string {
+  const title = p.amount != null
+    ? `${p.icon} <b>${p.title}</b> · <b>${money(p.amount)}</b>`
+    : `${p.icon} <b>${p.title}</b>`;
+  return tgBlocks([[title, ...(p.head ?? [])], p.rows ?? [], [p.foot && `<i>${p.foot}</i>`]]);
+}
+
+/** Вёрстка итога дня. Чистая: на вход — уже посчитанные числа,
+ *  на выход — готовое сообщение. Так её видно в тестах и превью. */
+export function dayReportText(p: {
+  date: string; games: number; cancelled: number; noShow: number;
+  charged: number; shop: number; got: number;
+  byMethod: readonly (readonly [string, number])[]; refunded: number;
+}): string {
+  const d = new Date(p.date + 'T00:00:00Z').toLocaleDateString('ru-RU',
+    { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const head = ['📊 <b>Итог дня</b>', `📅 ${d}`];
+
+  // Тихий день не разворачиваем в столбик нулей
+  if (!p.games && !p.cancelled && !p.noShow && !p.got && !p.shop && !p.refunded) {
+    return tgBlocks([head, ['За день ничего не было: ни игр, ни продаж.']]);
+  }
+
+  const MW: Record<string, string> = { cash: 'наличными', card: 'картой', transfer: 'переводом' };
+  const left = Math.max(0, p.charged - p.got);
+
+  // Одна мысль в строку, со своим значком; блоки читаются сверху вниз:
+  // сколько сыграли → сколько начислили → сколько взяли и чем → что за клиентами
+  return tgBlocks([
+    head,
+    [
+      `🎾 Игры: <b>${p.games}</b>`,
+      p.cancelled > 0 && `🚫 Отмены: ${p.cancelled}`,
+      p.noShow > 0 && `⚠️ Неявки: ${p.noShow}`,
+    ],
+    [
+      `📈 Начислено: <b>${money(p.charged)}</b>`,
+      p.shop > 0 && `🛒 Продажи: <b>${money(p.shop)}</b>`,
+    ],
+    [
+      `💵 Получено: <b>${money(p.got)}</b>`,
+      ...p.byMethod.map(([m, sum]) => `— ${MW[m]} ${money(sum)}`),
+      p.refunded > 0 && `↩️ Возвраты: −${money(p.refunded)}`,
+      p.refunded > 0 && `🧾 Чистыми: <b>${money(p.got - p.refunded)}</b>`,
+    ],
+    [left
+      ? `⏳ Не оплачено: <b>${money(left)}</b>`
+      : '✅ По играм расчёт закрыт'],
+  ]);
+}
+
 const API = (process.env.TELEGRAM_API_BASE ?? 'https://api.telegram.org/bot').replace(/\/$/, '');
-const rub = (k: number) => (k / 100).toLocaleString('ru-RU') + ' ₽';
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -271,24 +367,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     const byMethod = ['cash', 'card', 'transfer'].map(m => [m,
       pays.filter(p => p.method === m && p.amount > 0).reduce((n, p) => n + p.amount, 0)] as const)
       .filter(([, sum]) => sum !== 0);
-    const MW: Record<string, string> = { cash: 'наличными', card: 'картой', transfer: 'переводом' };
     const shop = sales.reduce((n, x) => n + x.amount, 0);
     const refunded = refunds.reduce((n, x) => n + x.amount, 0);
 
-    const d = new Date(date + 'T00:00:00Z').toLocaleDateString('ru-RU',
-      { day: 'numeric', month: 'long', weekday: 'short', timeZone: 'UTC' });
-
-    return [
-      `<b>Итог за ${d}</b>`,
-      '',
-      `Игр: <b>${live.length}</b>${cancelled ? `, отмен: ${cancelled}` : ''}${noShow ? `, неявок: ${noShow}` : ''}`,
-      `Начислено за корты и тренировки: <b>${rub(charged)}</b>`,
-      `Продажи в кассе: <b>${rub(shop)}</b>`,
-      '',
-      `Получено: <b>${rub(got)}</b>`,
-      ...byMethod.map(([m, sum]) => `   ${MW[m]}: ${rub(sum)}`),
-      ...(refunded ? [`Возвращено: <b>${rub(refunded)}</b>`] : []),
-      `Не оплачено по состоявшимся: <b>${rub(Math.max(0, charged - got))}</b>`,
-    ].join('\n');
+    return dayReportText({
+      date, games: live.length, cancelled, noShow, charged, shop, got, byMethod, refunded,
+    });
   }
 }
