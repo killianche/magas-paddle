@@ -12,10 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet, R } from '../theme';
-import { api, rub, mediaUrl, getToken, ApiError, type ApiCourt, type ApiGrid, type ApiHour } from '../api';
+import { api, rub, mediaUrl, getToken, ApiError, type ApiCourt, type ApiFreeCoach, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp } from './icons';
+import { CoachPick } from './coach';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { BOOKING_NOTE, useClub } from '../club';
@@ -202,11 +203,13 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   const { profile, save } = useProfile();
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
+  const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
 
   // Цена складывается по часам: утро и вечер стоят по-разному
-  const total = useMemo(() => {
+  const courtPrice = useMemo(() => {
     if (!court || !sel) return 0;
     let sum = 0;
     for (let h = sel.hour; h < sel.hour + hours; h++) {
@@ -214,6 +217,10 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     }
     return sum;
   }, [court, sel, hours]);
+  // С тренером, у которого корт входит в цену, за корт отдельно не берут —
+  // так же это считает сервер
+  const courtDue = coach && !coach.courtExtra ? 0 : courtPrice;
+  const total = courtDue + (coach?.total ?? 0);
   // Округляем до рубля вверх — так менеджеру называть сумму проще
   const prepay = Math.ceil(total * club.prepayPercent / 100 / 100) * 100;
 
@@ -230,6 +237,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       .replace(/\{время\}/g, `${hh(sel.hour)} → ${hh(sel.hour + hours)}`)
       .replace(/\{часы\}/g, `${hours} ${plural(hours, 'час', 'часа', 'часов')}`)
       .replace(/\{цена\}/g, rub(total))];
+    if (coach) lines.push(`Хочу играть с тренером: ${[coach.name, coach.surname].filter(Boolean).join(' ')}.`);
     // Кто: имя и ID аккаунта, без телефона — заказчик попросил. Номер
     // менеджер и так видит в WhatsApp, а по ID находит человека в админке.
     if (who) {
@@ -255,7 +263,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/book', params: {
       courtId: sel.courtId, name: court.name, date,
-      hour: String(sel.hour), hours: String(hours), price: String(total) } });
+      hour: String(sel.hour), hours: String(hours), price: String(courtPrice) } });
   };
 
   // На случай, если номер WhatsApp в админке сотрут: кнопка не мёртвая, а
@@ -286,6 +294,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       const res = await api.book({
         courtId: sel.courtId, date, hour: sel.hour, hours,
         name: who.name, surname: who.surname, phone: who.phone, whatsapp: who.whatsapp,
+        coachId: coach?.id,
       });
       // ID аккаунта становится известен с первой заявкой — запоминаем
       if (res.clientId && who.id !== res.clientId) await save({ ...who, id: res.clientId });
@@ -296,7 +305,10 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
         hour: String(sel.hour), hours: String(hours), price: String(res.price),
         holdUntil: res.holdUntil ?? '' } });
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'slot_taken') {
+      if (e instanceof ApiError && e.code === 'coach_busy') {
+        setCoach(null);
+        setProblem(`${e.message}. Выберите другого тренера или запишитесь без него.`);
+      } else if (e instanceof ApiError && e.code === 'slot_taken') {
         setProblem('Это время только что заняли. Выберите другое.');
         onTaken();
       } else {
@@ -308,7 +320,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   };
 
   return {
-    total, prepay, sending, problem, setProblem,
+    total, courtDue, courtPrice, coach, setCoach, sending, prepay, problem, setProblem,
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,
   };
@@ -329,6 +341,14 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
           {hh(sel.hour)} → {hh(sel.hour + hours)} · <Text style={{ color: C.accent }}>{rub(booking.total)}</Text>
         </Text>
       </View>
+      {!!booking.coach && (
+        <View style={[b.sumRow, b.sumRow2]}>
+          <Text style={b.prepayL}>
+            {booking.courtDue ? `Корт ${rub(booking.courtDue)} + тренер` : 'Корт входит в тренировку ·'}
+          </Text>
+          <Text style={b.prepayR}>{rub(booking.coach.total)}</Text>
+        </View>
+      )}
       <View style={[b.sumRow, b.sumRow2]}>
         <Text style={b.prepayL}>Предоплата {booking.prepayPercent} %</Text>
         <Text style={b.prepayR}>{rub(booking.prepay)}</Text>
@@ -342,6 +362,11 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
           <PadelMark />
           <Text style={[b.inclT, { flex: 1 }]}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
         </View>
+      )}
+
+      {club.coachesOn && !court.isFootball && (
+        <CoachPick date={date} hour={sel.hour} hours={hours} courtId={sel.courtId}
+          coach={booking.coach} onPick={booking.setCoach} compact />
       )}
 
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}

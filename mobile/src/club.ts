@@ -99,7 +99,7 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, coachesOn: false, waTemplate: null,
+  showTournaments: true, showFootball: true, coachesOn: true, waTemplate: null,
   bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
 
@@ -134,7 +134,7 @@ export const CLUB = {
   get rentalsText() { return cache.rentalsText },
   get showTournaments() { return cache.showTournaments },
   get showFootball() { return cache.showFootball },
-  get coachesOn() { return cache.coachesOn },
+  get coachesOn() { return cache.coachesOn !== false },
   get waTemplate() { return cache.waTemplate },
 };
 

@@ -1,7 +1,7 @@
 // Общее для тренировок: лицо тренера, строка групповой тренировки
 // и выбор тренера при записи на корт.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet } from '../theme';
@@ -60,19 +60,25 @@ const s = sheet(() => ({
  *  Человек уже выбрал корт, день и время — показываем только тех, кто в эти
  *  часы работает и свободен. Выбранный тренер идёт в заявку; окончательно
  *  подтверждает менеджер и, если тренер не сможет, предложит другого. */
-export function CoachPick({ date, hour, hours, courtId, coach, onPick }: {
+export function CoachPick({ date, hour, hours, courtId, coach, onPick, compact }: {
   date: string; hour: number; hours: number; courtId: string;
   coach: ApiFreeCoach | null;
   onPick: (c: ApiFreeCoach | null) => void;
+  /** В панели выбранного времени места мало: список прокручивается. */
+  compact?: boolean;
 }) {
   const [on, setOn] = useState(false);
   const [list, setList] = useState<ApiFreeCoach[] | null>(null);
   const [failed, setFailed] = useState(false);
 
+  // Сменили время, длительность или корт — прежний выбор мог стать занятым,
+  // поэтому спрашиваем сервер заново, а выбранного тренера снимаем
   useEffect(() => {
     if (!on) return;
     let alive = true;
     setFailed(false);
+    setList(null);
+    onPick(null);
     api.freeCoaches(date, hour, hours, courtId)
       .then(r => { if (alive) setList(r.coaches) })
       .catch(() => { if (alive) { setList([]); setFailed(true) } });
@@ -98,7 +104,8 @@ export function CoachPick({ date, hour, hours, courtId, coach, onPick }: {
       </Pressable>
 
       {on && (
-        <View style={p.body}>
+        <ScrollView style={compact ? { maxHeight: 240 } : undefined}
+          contentContainerStyle={p.body} nestedScrollEnabled>
           {list == null && <ActivityIndicator color={C.dim} style={{ marginVertical: 14 }} />}
 
           {!!list && list.length === 0 && (
@@ -134,7 +141,7 @@ export function CoachPick({ date, hour, hours, courtId, coach, onPick }: {
               Менеджер подтвердит тренера. Если {coach.name} не сможет — предложит другого.
             </Text>
           )}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
