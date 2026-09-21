@@ -6,13 +6,15 @@ import importlib.util, pathlib, urllib.request
 
 # Сборки TestFlight: свежая сверху. Добавляя новую, дописывайте строку сюда.
 BUILDS = [
+    ('62', 'f19b4e4d-c653-4a9c-972c-fe218f2815f9'),
     ('5', '54d2badb-9c41-415e-b849-01684ff6ef23'),
     ('4', 'ce655eb2-2646-4c2a-9b9a-6f941aed71e9'),
     ('3', '517e057a-1cc3-400b-a858-b2cc258651cb'),
     ('2', '3528cbc0-74d0-47cc-af8e-80ae160e3865'),
     ('1', '58f1dd55-f041-4f3a-873e-ec8b0b43b153'),
 ]
-VID   = 'd98f5a08-4d50-4543-b6f7-087427d3b640'
+VID   = '78967d3c-f94a-40b0-b99f-3836c01f05f0'   # 1.0.1, на проверке
+VID_10 = 'd98f5a08-4d50-4543-b6f7-087427d3b640'  # 1.0, уже в магазине
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'
 
 here = pathlib.Path(__file__).parent
