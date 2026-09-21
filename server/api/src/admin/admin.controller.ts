@@ -3028,6 +3028,37 @@ export class AdminController {
     return { ok: true, to: 'всем' };
   }
 
+  /** Завести клиента у стойки: имя и телефон, без приложения.
+   *
+   *  Так работают клубные системы: карточка человека одна, а ключ к ней —
+   *  номер телефона. Менеджер заводит её за десять секунд, чтобы записать
+   *  продажу или бронь на живого человека, а не «на никого». Когда этот
+   *  человек потом поставит приложение и зарегистрируется на тот же номер,
+   *  он получит эту же карточку со всей историей — регистрация не создаёт
+   *  вторую, а дописывает пароль в существующую.
+   *
+   *  Номер уже знаком — карточку не задваиваем и ничего не перетираем:
+   *  возвращаем ту, что есть. Имя известного клиента меняется только в его
+   *  карточке, руками, чтобы опечатка у кассы не переименовала человека. */
+  @Post('clients')
+  @Needs('clients')
+  async createClient(@Req() req: any, @Body() body: { name?: string; phone?: string; whatsapp?: string }) {
+    const key = normalizePhone(String(body.phone ?? ''));
+    if (!key) throw new BadRequestException('Не разобрал номер телефона');
+    const name = String(body.name ?? '').trim().slice(0, 80);
+    if (name.length < 2) throw new BadRequestException('Впишите имя, хотя бы два знака');
+    const wa = body.whatsapp ? normalizePhone(String(body.whatsapp)) : null;
+
+    const known = await this.db.clients.findUnique({ where: { phone: key } });
+    if (known) {
+      return { id: Number(known.id), name: known.name, phone: known.phone,
+        hasPassword: !!known.pass_hash, existed: true };
+    }
+    const c = await this.db.clients.create({ data: { phone: key, name, whatsapp: wa } });
+    await this.auth.log(req.admin, 'завёл клиента', `${name}, ${key}`);
+    return { id: Number(c.id), name: c.name, phone: c.phone, hasPassword: false, existed: false };
+  }
+
   /** Что уже отправляли. */
   @Get('notifications')
   @Needs('clients')

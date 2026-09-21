@@ -1410,6 +1410,22 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 </div>
 
 <!-- выплата тренеру -->
+<div class="modal" id="ncModal">
+  <div class="sheet form" style="max-width:420px">
+    <div class="fhead"><h3>Новый клиент</h3>
+      <p class="sub">Имя и телефон. Когда человек поставит приложение и заведёт аккаунт на этот же номер, карточка и вся история станут его — второй не появится.</p></div>
+    <div class="ilist">
+      <div class="irow"><span class="ik">Имя</span><input id="ncName" class="iv" maxlength="80" placeholder="как зовут"></div>
+      <div class="irow"><span class="ik">Телефон</span><input id="ncPhone" class="iv" inputmode="tel" placeholder="89280000000"></div>
+    </div>
+    <div class="err" id="ncErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="ncOk">Завести и выбрать</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="cbModal">
   <div class="sheet form" style="max-width:460px">
     <div class="fhead"><h3>Тренер на бронь</h3><p class="sub" id="cbSub"></p></div>
@@ -2754,6 +2770,29 @@ $('#payOk').onclick = async () => {
 let moving = null;
 /** Кто поедет на эту тренировку. Из приложения тренера выбирает человек,
  *  но подтверждает клуб: менеджер созванивается и ставит того, кто сможет. */
+/** Завести клиента прямо у кассы: имя и телефон.
+ *  Карточка одна на номер — когда человек зарегистрируется в приложении
+ *  на тот же номер, он получит её вместе со всей историей покупок и игр. */
+function openNewClient(prefill){
+  const digits = String(prefill ?? '').replace(/\D/g, '');
+  $('#ncName').value = digits ? '' : String(prefill ?? '').trim();
+  $('#ncPhone').value = digits.length >= 6 ? String(prefill ?? '').trim() : '';
+  $('#ncErr').classList.remove('on');
+  $('#ncModal').classList.add('on');
+  setTimeout(() => ($('#ncName').value ? $('#ncPhone') : $('#ncName')).focus(), 60);
+  $('#ncOk').onclick = async () => {
+    try {
+      const c = await call('/admin/clients', { method:'POST',
+        body: JSON.stringify({ name: $('#ncName').value, phone: $('#ncPhone').value }) });
+      $('#ncModal').classList.remove('on');
+      pos.cl = { id: c.id, name: c.name, phone: c.phone };
+      pos.to = 'client';
+      posRenderCart();
+      posDone(c.existed ? `Этот номер уже знаком: ${c.name}` : `Клиент заведён: ${c.name}`);
+    } catch(e){ fail('#ncErr', e) }
+  };
+}
+
 async function openBookingCoach(b){
   await loadCoachBrief();
   let pick = b.coach?.id ?? null;
@@ -4992,7 +5031,8 @@ function posRenderCart(){
     who = pos.cl
       ? `<div class="bchosen"><div><b>${esc(pos.cl.name || 'Без имени')}</b><span>${phoneNice(pos.cl.phone)} · ID ${pos.cl.id}</span></div>
           <button type="button" class="copy" id="posClX">сменить</button></div>`
-      : `<div class="rel"><input id="posClQ" autocomplete="off" placeholder="Имя или телефон клиента"><div class="sugg" id="posClSugg" hidden></div></div>`;
+      : `<div class="rel"><input id="posClQ" autocomplete="off" placeholder="Имя или телефон клиента"><div class="sugg" id="posClSugg" hidden></div></div>
+         <button type="button" class="btn small" id="posClNew" style="margin-top:8px">+ Новый клиент</button>`;
   }
   $('#posWho').innerHTML = who;
   // Корзина
@@ -5015,6 +5055,7 @@ function posRenderCart(){
   $('#posLines').querySelectorAll('[data-d]').forEach(b => b.onclick = () => posAdd(+b.dataset.id, +b.dataset.d));
   const bx = $('#posBkX'); if (bx) bx.onclick = () => { pos.bk = null; posRenderCart() };
   const cx = $('#posClX'); if (cx) cx.onclick = () => { pos.cl = null; posRenderCart(); $('#posClQ').focus() };
+  const nc = $('#posClNew'); if (nc) nc.onclick = () => openNewClient($('#posClQ')?.value ?? '');
   $('#posWho').querySelectorAll('.bpick button[data-i]').forEach(el => el.onclick = () => { pos.bk = pos.bks[+el.dataset.i]; posRenderCart() });
   const q = $('#posClQ');
   if (q) {
@@ -5026,9 +5067,11 @@ function posRenderCart(){
         try {
           const rows = (await call('/admin/find?q=' + encodeURIComponent(v))).clients.slice(0, 8);
           $('#posClSugg').innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}">${esc(c.name || 'Без имени')}<span>${phoneNice(c.phone)} · ID ${c.id}</span></button>`).join('')
-            : '<button type="button" disabled>Не нашёлся</button>';
+            : `<button type="button" data-new="1">Завести клиента <span>такого ещё нет — имя и телефон</span></button>`;
           $('#posClSugg').hidden = false;
           $('#posClSugg').querySelectorAll('button[data-i]').forEach(b => b.onmousedown = e => { e.preventDefault(); pos.cl = rows[+b.dataset.i]; posRenderCart() });
+          const nb = $('#posClSugg').querySelector('button[data-new]');
+          if (nb) nb.onmousedown = e => { e.preventDefault(); openNewClient(v) };
         } catch { $('#posClSugg').hidden = true }
       }, 220);
     };
