@@ -3474,12 +3474,16 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 
 /** Какое право нужно для вкладки «Управления». */
 const TAB_PERM = { courts:'club', rules:'prices', money:'prices', club:'club', contacts:'club', app:'club',
-  notify:'clients', tg:'club', tourn:'tournaments', staff:'staff' };
+  notify:'clients', tourn:'tournaments', staff:'staff' };
+/** Telegram — только владелец: это его отчёты по деньгам клуба. */
+const TAB_OWNER = new Set(['tg']);
 async function openSetup(){
   // Вкладки без права не показываем — раньше менеджер видел цены и настройки,
   // которые всё равно не мог сохранить
   const tabs = [...document.querySelectorAll('.snav .tab')];
-  tabs.forEach(t => t.hidden = !can(TAB_PERM[t.dataset.tab]));
+  tabs.forEach(t => t.hidden = TAB_OWNER.has(t.dataset.tab)
+    ? me.role !== 'owner'
+    : !can(TAB_PERM[t.dataset.tab]));
   const first = tabs.find(t => !t.hidden);
   if (first && (!document.querySelector('.snav .tab.on') || document.querySelector('.snav .tab.on').hidden)) first.click();
   $('#setupModal').classList.add('on');

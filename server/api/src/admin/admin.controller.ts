@@ -3173,6 +3173,9 @@ export class AdminController {
   @Get('telegram')
   @Needs('club')
   async telegramInfo(@Req() req: any) {
+    if (req.admin.role !== 'owner') {
+      throw new ForbiddenException('Отчётами в Telegram распоряжается только владелец клуба');
+    }
     const subs = await this.db.tg_subs.findMany({ orderBy: { id: 'asc' } });
     return {
       on: this.tg.on,
@@ -3190,6 +3193,9 @@ export class AdminController {
   @Post('telegram/link')
   @Needs('club')
   async telegramLink(@Req() req: any) {
+    if (req.admin.role !== 'owner') {
+      throw new ForbiddenException('Отчётами в Telegram распоряжается только владелец клуба');
+    }
     if (!this.tg.on) throw new ConflictException('Бот не подключён: в настройках сервера нет токена');
     const code = randomBytes(6).toString('hex');
     await this.db.tg_codes.create({ data: {
@@ -3208,6 +3214,9 @@ export class AdminController {
   @Post('telegram/allow')
   @Needs('club')
   async telegramAllow(@Req() req: any, @Body() body: { chatId?: string | number; approved?: boolean; name?: string }) {
+    if (req.admin.role !== 'owner') {
+      throw new ForbiddenException('Отчётами в Telegram распоряжается только владелец клуба');
+    }
     const raw = String(body.chatId ?? '').trim();
     if (!/^-?\d{5,20}$/.test(raw)) throw new BadRequestException('ID в Telegram — это число, например 123456789');
     const chatId = BigInt(raw);
@@ -3231,6 +3240,9 @@ export class AdminController {
   @Post('telegram/:id/active')
   @Needs('club')
   async telegramActive(@Req() req: any, @Param('id') id: string, @Body() body: { active?: boolean }) {
+    if (req.admin.role !== 'owner') {
+      throw new ForbiddenException('Отчётами в Telegram распоряжается только владелец клуба');
+    }
     const row = await this.db.tg_subs.findUnique({ where: { id: bigId(id) } });
     if (!row) throw new NotFoundException('Получатель не найден');
     const active = body.active !== false;
@@ -3244,6 +3256,9 @@ export class AdminController {
   @Post('telegram/test')
   @Needs('club')
   async telegramTest(@Req() req: any) {
+    if (req.admin.role !== 'owner') {
+      throw new ForbiddenException('Отчётами в Telegram распоряжается только владелец клуба');
+    }
     if (!this.tg.on) throw new ConflictException('Бот не подключён');
     const subs = await this.db.tg_subs.count({ where: { is_active: true, approved: true } });
     if (!subs) throw new ConflictException('Отчёты пока никому не разрешены: добавьте ID получателя');

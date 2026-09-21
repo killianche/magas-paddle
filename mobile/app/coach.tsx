@@ -6,6 +6,7 @@ import {
   ScrollView, Text, View, Pressable, Image, ActivityIndicator, RefreshControl, Platform, Alert,
 } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, mediaUrl, getToken, ApiError, type ApiCoach, type ApiSlot } from '../src/api';
@@ -80,14 +81,31 @@ export default function Coach() {
         contentContainerStyle={{ paddingBottom: pick ? 150 : 40, paddingTop: 10 }}
         refreshControl={<RefreshControl refreshing={slots.pulling} onRefresh={slots.pull} tintColor={C.dim} />}>
 
-        <View style={s.head}>
+        {/* Снимок во всю ширину с затемнением снизу: имя и опыт читаются
+            поверх фото, как на обложке турнира */}
+        <View style={s.cover}>
           {c.photoUrl
-            ? <Image source={{ uri: mediaUrl(c.photoUrl) }} style={s.photo} resizeMode="cover" />
-            : <View style={[s.photo, s.photoNo]}><CoachFace c={c} size={92} /></View>}
-          <View style={{ flex: 1, gap: 4 }}>
+            ? <Image source={{ uri: mediaUrl(c.photoUrl) }} style={s.coverImg} resizeMode="cover" />
+            : <View style={[s.coverImg, s.coverNo]}><CoachFace c={c} size={120} /></View>}
+          <LinearGradient colors={['rgba(9,13,10,0)', 'rgba(9,13,10,.55)', 'rgba(9,13,10,.94)']}
+            locations={[0, 0.55, 1]} style={s.coverFade} />
+          <View style={s.coverText}>
             <Text style={s.name}>{[c.name, c.surname].filter(Boolean).join(' ')}</Text>
-            {!!c.experience && <Text style={s.exp}>{c.experience}</Text>}
-            <Text style={s.price}>{rub(c.price)} за час{c.courtExtra ? ' + корт' : ' · корт включён'}</Text>
+            {!!c.experience && <Text style={s.exp} numberOfLines={2}>{c.experience}</Text>}
+          </View>
+        </View>
+
+        <View style={s.facts}>
+          <View style={s.fact}>
+            <Text style={s.factK}>Тренировка</Text>
+            <Text style={s.factV}>{rub(c.price)}</Text>
+            <Text style={s.factS}>за час</Text>
+          </View>
+          <View style={s.factLine} />
+          <View style={s.fact}>
+            <Text style={s.factK}>Корт</Text>
+            <Text style={s.factV}>{c.courtExtra ? 'отдельно' : 'включён'}</Text>
+            <Text style={s.factS}>{c.courtExtra ? 'по тарифу клуба' : 'в цене тренировки'}</Text>
           </View>
         </View>
 
@@ -176,12 +194,22 @@ export default function Coach() {
 }
 
 const s = sheet(() => ({
-  head: { flexDirection: 'row', gap: 14, alignItems: 'center', marginHorizontal: S.xl },
-  photo: { width: 92, height: 92, borderRadius: R.xl },
-  photoNo: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface2 },
-  name: { fontFamily: DISP, color: C.text, fontSize: 22, letterSpacing: -0.6 },
-  exp: { fontFamily: BODY, color: C.dim, fontSize: 13.5, lineHeight: 19 },
-  price: { fontFamily: DISP_MED, color: C.accent, fontSize: 14 },
+  cover: { marginHorizontal: S.xl, height: 300, borderRadius: R.xl, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, justifyContent: 'flex-end' },
+  coverImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  coverNo: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface2 },
+  coverFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '70%' },
+  coverText: { padding: 16, gap: 4 },
+  name: { fontFamily: DISP, color: '#FFFFFF', fontSize: 26, letterSpacing: -0.8 },
+  exp: { fontFamily: BODY, color: 'rgba(255,255,255,.82)', fontSize: 13.5, lineHeight: 19 },
+
+  facts: { flexDirection: 'row', alignItems: 'stretch', marginHorizontal: S.xl, marginTop: 12,
+    borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  fact: { flex: 1, padding: 14, gap: 2 },
+  factLine: { width: 1, backgroundColor: C.line },
+  factK: { ...EYEBROW, color: C.dim2 },
+  factV: { fontFamily: DISP, color: C.accent, fontSize: 20, letterSpacing: -0.5 },
+  factS: { fontFamily: BODY, color: C.dim2, fontSize: 11.5 },
 
   bio: { fontFamily: BODY, color: C.dim, fontSize: 13.5, lineHeight: 20,
     marginHorizontal: S.xl, marginTop: 14 },
