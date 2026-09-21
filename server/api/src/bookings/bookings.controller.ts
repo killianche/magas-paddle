@@ -9,6 +9,7 @@ import { ClubService, hoursOn } from '../club';
 import { normalizePhone, bigId } from '../phone';
 import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
+import { coachHours, coachBusyByClass } from '../coaches/coach.util';
 
 /** Защита от ботов (решение заказчика 17.09.2026): не больше 3 неподтверждённых
  *  заявок на номер, запись не дальше 30 дней вперёд, не больше 10 заявок в час
@@ -143,7 +144,33 @@ export class BookingsController {
       'Слишком много заявок подряд. Попробуйте через час или позвоните в клуб');
 
     // Цена складывается по часам: часы могут попадать под разные тарифы
-    const price = pricing.span(court, weekdayOf(dto.date), dto.hour, dto.hours);
+    let price = pricing.span(court, weekdayOf(dto.date), dto.hour, dto.hours);
+
+    // Галочка «играть с тренером»: тренер должен работать в эти часы и быть
+    // свободен. Занятость проверяем и по броням, и по группам — группа держит
+    // корт отдельной бронью, без тренера. Окончательно тренера подтверждает
+    // менеджер: если не сможет, предложит другого.
+    let coach: { id: bigint; name: string; price: number; court_extra: boolean } | null = null;
+    let coachPrice = 0;
+    if (dto.coachId) {
+      if (!set.coachesOn) throw new BadRequestException('Запись к тренеру сейчас недоступна');
+      const c = await this.db.coaches.findUnique({ where: { id: BigInt(dto.coachId) } });
+      if (!c || !c.is_active || !c.in_app) throw new NotFoundException('Тренер не найден');
+      const wh = coachHours(c, set, dto.date);
+      if (!wh || dto.hour < wh.open || dto.hour + dto.hours > wh.close) {
+        throw new ConflictException({ code: 'coach_busy', message: `${c.name} в это время не работает` });
+      }
+      const taken = await this.db.bookings.count({ where: { coach_id: c.id,
+        status: { notIn: ['cancelled', 'expired'] }, starts_at: { lt: endsAt }, ends_at: { gt: startsAt } } });
+      const inClass = await coachBusyByClass(this.db, c.id, startsAt, endsAt);
+      if (taken || inClass) {
+        throw new ConflictException({ code: 'coach_busy', message: `${c.name} в это время занят — выберите другого тренера` });
+      }
+      coach = c;
+      coachPrice = c.price * dto.hours;
+      // У кого корт входит в цену тренировки — за корт отдельно не берём
+      if (!c.court_extra) price = 0;
+    }
 
     // Срок удержания считаем от «сейчас», но не дальше начала самой игры:
     // держать место после того, как игра началась, бессмысленно.
@@ -175,6 +202,7 @@ export class BookingsController {
           court_id: court.id, client_id: client.id,
           starts_at: startsAt, ends_at: endsAt,
           price, comment: dto.comment, source: 'app',
+          coach_id: coach?.id ?? null, coach_price: coachPrice,
           // Держим время ограниченный срок: оплата идёт через менеджера,
           // и до подтверждения место не должно висеть занятым бесконечно.
           hold_until: holdUntil,
@@ -182,13 +210,19 @@ export class BookingsController {
       });
       return {
         id: Number(b.id), courtId: court.id, courtName: court.name,
-        startsAt: b.starts_at, endsAt: b.ends_at, price, status: b.status,
+        startsAt: b.starts_at, endsAt: b.ends_at, price: price + coachPrice, status: b.status,
+        coachName: coach ? coach.name : null, coachPrice,
         holdUntil: b.hold_until, holdMinutes: set.holdMinutes,
         // Номер аккаунта: приложение пишет его в сообщение WhatsApp, чтобы
         // менеджер отличал заявки разных людей, пришедшие одновременно
         clientId: Number(client.id),
       };
     } catch (e: any) {
+      // Тренера заняли в эти же секунды: корт свободен, менять надо тренера
+      if (String(e?.message).includes('no_double_coach')) {
+        throw new ConflictException({ code: 'coach_busy',
+          message: `${coach?.name ?? 'Тренер'} в это время только что занят` });
+      }
       // База не дала создать пересекающуюся бронь — значит время увели,
       // пока человек заполнял заявку. Отвечаем честно и с заменой.
       if (e?.meta?.code === EXCLUSION_VIOLATION || String(e?.message).includes(EXCLUSION_VIOLATION)) {

@@ -9,12 +9,13 @@ import {
 import { Redirect, router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
-import { api, getToken, rub, ApiError, type Alternatives } from '../src/api';
+import { api, getToken, rub, ApiError, type Alternatives, type ApiFreeCoach } from '../src/api';
 import { useProfile, normalizePhone, plainPhone } from '../src/profile';
 import { useClub } from '../src/club';
 import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
+import { CoachPick } from '../src/components/coach';
 import { useHydrated } from '../src/hydrated';
 import { hh, longDate, plural } from '../src/dates';
 
@@ -33,6 +34,8 @@ export default function Book() {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [taken, setTaken] = useState<Alternatives | null>(null);
+  // Тренер, выбранный галочкой «играть с тренером»
+  const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -61,6 +64,11 @@ export default function Book() {
       note="Похоже, вы открыли ссылку напрямую. Выберите время и площадку на главной." />
   );
 
+  // С тренером, у которого корт входит в цену, за корт отдельно не берут —
+  // так же это считает и сервер
+  const courtDue = coach && !coach.courtExtra ? 0 : price;
+  const total = courtDue + (coach ? coach.total : 0);
+
   const cleanPhone = normalizePhone(phone);
   const canSend = name.trim().length >= 2 && cleanPhone != null && !sending;
 
@@ -73,6 +81,7 @@ export default function Book() {
         courtId, date, hour, hours,
         name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
+        coachId: coach?.id,
       });
       await save({ ...profile, name: name.trim(),
         surname: surname.trim() || undefined, phone: cleanPhone });
@@ -82,7 +91,11 @@ export default function Book() {
         hour: String(hour), hours: String(hours), price: String(booking.price),
         holdUntil: booking.holdUntil ?? '' } });
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'slot_taken') {
+      if (e instanceof ApiError && e.code === 'coach_busy') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setCoach(null);
+        setProblem(`${e.message}. Выберите другого тренера или отправьте заявку без него.`);
+      } else if (e instanceof ApiError && e.code === 'slot_taken') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setTaken(e.payload?.alternatives ?? { sameTime: [], later: null });
       } else {
@@ -103,6 +116,8 @@ export default function Book() {
         courtId: altCourtId, date, hour: altHour, hours,
         name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
+        // На другое время тренер может быть занят — замену берём без него,
+        // менеджер предложит тренера сам
       });
       await save({ ...profile, name: name.trim(),
         surname: surname.trim() || undefined, phone: cleanPhone });
@@ -128,8 +143,16 @@ export default function Book() {
           <Row k="Дата" v={longDate(date)} />
           <Row k="Время" v={`${hh(hour)} – ${hh(hour + hours)}`} mono />
           <Row k="Длительность" v={`${hours} ${plural(hours, 'час', 'часа', 'часов')}`} />
-          <Row k="Стоимость" v={rub(price)} total />
+          {!!coach && <Row k="Тренер" v={[coach.name, coach.surname].filter(Boolean).join(' ')} />}
+          {!!coach && <Row k="Корт" v={courtDue ? rub(courtDue) : 'входит в тренировку'} />}
+          {!!coach && <Row k="Тренировка" v={rub(coach.total)} />}
+          <Row k="Стоимость" v={rub(total)} total />
         </View>
+
+        {club.coachesOn && (
+          <CoachPick date={date} hour={hour} hours={hours} courtId={courtId}
+            coach={coach} onPick={setCoach} />
+        )}
 
         <Text style={s.label}>Ваше имя</Text>
         <TextInput style={s.input} value={name} onChangeText={setName}

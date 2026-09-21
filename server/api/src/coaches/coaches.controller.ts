@@ -31,6 +31,7 @@ export class CoachesController {
   /** Тренеры для приложения: без схемы оплаты и служебных полей. */
   @Get()
   async list() {
+    if (!(await this.club.get()).coachesOn) return [];
     const rows = await this.db.coaches.findMany({
       where: { is_active: true, in_app: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] });
     const now = new Date();
@@ -44,12 +45,62 @@ export class CoachesController {
     }));
   }
 
+  /** Тренеры, свободные в выбранное время.
+   *
+   *  Человек сначала выбирает корт и время, потом ставит галочку «играть
+   *  с тренером» — и видит только тех, кто в этот день работает и в эти часы
+   *  не занят ни своей тренировкой, ни группой. Если у тренера корт входит
+   *  в цену, корт в счёт не идёт: иначе клуб взял бы за него дважды. */
+  @Get('free')
+  async free(@Query('date') date?: string, @Query('hour') hourQ?: string,
+             @Query('hours') hoursQ?: string, @Query('courtId') courtId?: string) {
+    const set = await this.club.get();
+    if (!set.coachesOn) return { coaches: [] };
+    if (!date || !isValidDate(date)) throw new BadRequestException('Неверная дата');
+    const hour = Math.trunc(Number(hourQ));
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) throw new BadRequestException('Неверное время');
+    const hours = Math.min(12, Math.max(1, Math.trunc(Number(hoursQ ?? 1)) || 1));
+
+    // На мини-футбольном поле падел-тренировок не бывает
+    if (courtId) {
+      const court = await this.db.courts.findUnique({ where: { id: String(courtId) } });
+      if (court?.is_football) return { coaches: [] };
+    }
+
+    const from = clubHour(date, hour), to = clubHour(date, hour + hours);
+    const rows = await this.db.coaches.findMany({
+      where: { is_active: true, in_app: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] });
+    if (!rows.length) return { coaches: [] };
+
+    await this.club.releaseExpired();
+    const busy = await this.db.bookings.findMany({
+      where: { status: LIVE, coach_id: { not: null }, starts_at: { lt: to }, ends_at: { gt: from } },
+      select: { coach_id: true } });
+    const taken = new Set(busy.map(b => String(b.coach_id)));
+
+    const out: any[] = [];
+    for (const c of rows) {
+      if (taken.has(String(c.id))) continue;
+      const wh = coachHours(c, set, date);
+      if (!wh || hour < wh.open || hour + hours > wh.close) continue;
+      if (await coachBusyByClass(this.db, c.id, from, to)) continue;
+      out.push({
+        id: Number(c.id),
+        name: c.name, surname: c.surname, experience: c.experience,
+        photoUrl: c.photo_url, bio: c.bio, color: c.color,
+        price: c.price, courtExtra: c.court_extra, total: c.price * hours,
+      });
+    }
+    return { coaches: out };
+  }
+
   /** Свободные часы тренера в день: тренер работает и свободен, и есть
    *  свободный падел-корт на всё время тренировки. */
   @Get(':id/slots')
   async slots(@Param('id') id: string, @Query('date') date?: string, @Query('hours') hoursQ?: string) {
     if (!date || !isValidDate(date)) throw new BadRequestException('Неверная дата');
     const hours = Math.min(3, Math.max(1, Math.trunc(Number(hoursQ ?? 1)) || 1));
+    if (!(await this.club.get()).coachesOn) throw new NotFoundException('Тренер не найден');
     const coach = await this.db.coaches.findUnique({ where: { id: bigId(id) } });
     if (!coach || !coach.is_active || !coach.in_app) throw new NotFoundException('Тренер не найден');
     return { date, hours, slots: await this.freeSlots(coach, date, hours) };
@@ -102,6 +153,7 @@ export class CoachesController {
     }
     const hours = Math.min(3, Math.max(1, Math.trunc(Number(body.hours ?? 1)) || 1));
     const hour = Math.trunc(Number(body.hour));
+    if (!(await this.club.get()).coachesOn) throw new NotFoundException('Тренер не найден');
     const coach = await this.db.coaches.findUnique({ where: { id: bigId(id) } });
     if (!coach || !coach.is_active || !coach.in_app) throw new NotFoundException('Тренер не найден');
 

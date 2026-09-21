@@ -733,6 +733,77 @@ export class AdminController {
     return { ok: true, keptPrepay: keep, paid };
   }
 
+  /** Тренер у брони: назначить, заменить или убрать.
+   *
+   *  Из приложения человек выбирает тренера сам, но окончательно решает клуб:
+   *  тренер мог договориться о другом, заболеть или просто не подойти
+   *  новичку. Менеджер уточняет и ставит того, кто поедет.
+   *  Цена считается по правилам тренера: корт входит в тренировку или
+   *  оплачивается отдельно по тарифу. */
+  @Post('bookings/:id/coach')
+  async setCoach(@Req() req: any, @Param('id') id: string, @Body() body: { coachId?: number | null }) {
+    const b = await this.db.bookings.findUnique({ where: { id: bigId(id) } });
+    if (!b) throw new NotFoundException('Запись не найдена');
+    if (!['pending', 'confirmed'].includes(b.status)) {
+      throw new ConflictException('Тренера меняют у действующей брони');
+    }
+    if (b.tournament_id) throw new ConflictException('Это корт под турнир или групповую тренировку');
+    const pricing = await this.club.pricing();
+    const court = await this.db.courts.findUnique({ where: { id: b.court_id } });
+    if (!court) throw new NotFoundException('Площадка не найдена');
+    const date = this.dateOf(b.starts_at), hour = hourOf(b.starts_at);
+    const hours = Math.round((+b.ends_at - +b.starts_at) / 3600_000);
+
+    let coach: any = null;
+    if (body.coachId) {
+      coach = await this.db.coaches.findUnique({ where: { id: bigId(String(body.coachId)) } });
+      if (!coach || !coach.is_active) throw new NotFoundException('Тренер не найден');
+      if (coach.id !== b.coach_id) {
+        const wh = coachHours(coach, pricing.settings, date);
+        if (!wh || hour < wh.open || hour + hours > wh.close) {
+          throw new BadRequestException(wh ? `${coach.name} работает в этот день с ${wh.open}:00 до ${wh.close}:00`
+            : `${coach.name} в этот день не работает`);
+        }
+        const busy = await this.db.bookings.findFirst({ where: { coach_id: coach.id, id: { not: b.id },
+          status: { notIn: ['cancelled', 'expired'] }, starts_at: { lt: b.ends_at }, ends_at: { gt: b.starts_at } } });
+        if (busy) throw new BadRequestException(`${coach.name} в это время уже ведёт тренировку`);
+        const busyClass = await coachBusyByClass(this.db, coach.id, b.starts_at, b.ends_at);
+        if (busyClass) throw new BadRequestException(`${coach.name} в это время ведёт группу «${busyClass}»`);
+      }
+    }
+    const coachPrice = coach ? coach.price * hours : 0;
+    const price = coach && !coach.court_extra ? 0 : pricing.span(court, weekdayOf(date), hour, hours);
+    // Скидка не должна пережить цену, с которой её дали
+    const discount = Math.min(b.discount, price + coachPrice);
+    const paid = await this.paidOf(b.id);
+    if (price + coachPrice - discount < paid) {
+      throw new ConflictException('С этим тренером бронь дешевле уже внесённых денег — сначала верните разницу');
+    }
+    try {
+      await this.db.bookings.update({ where: { id: b.id },
+        data: { coach_id: coach?.id ?? null, coach_price: coachPrice, price, discount } });
+    } catch (e: any) {
+      if (String(e?.message).includes('no_double_coach')) {
+        throw new BadRequestException(`${coach?.name ?? 'Тренер'} в это время уже занят`);
+      }
+      throw e;
+    }
+    await this.auth.log(req.admin, coach ? 'поставил тренера на бронь' : 'убрал тренера с брони',
+      `№${Number(b.id)}${coach ? `, ${coach.name}` : ''}`);
+    // Человеку с приложением говорим, кто его ждёт: он выбирал другого
+    if (b.client_id) {
+      const c = await this.db.clients.findUnique({ where: { id: b.client_id } });
+      if (c?.pass_hash) {
+        await this.notes.toClient(b.client_id, 'booking',
+          coach ? 'Тренер на вашу игру' : 'Игра без тренера',
+          coach ? `${court.name}, ${whenText(b.starts_at, b.ends_at)}. С вами будет ${coach.name}. К оплате ${((price + coachPrice - discount) / 100).toLocaleString('ru-RU')} ₽.`
+                : `${court.name}, ${whenText(b.starts_at, b.ends_at)}. Тренера на это время нет, играете сами. К оплате ${((price - discount) / 100).toLocaleString('ru-RU')} ₽.`,
+          { bookingId: b.id, by: req.admin.name });
+      }
+    }
+    return { ok: true, coachId: coach ? Number(coach.id) : null, price, coachPrice };
+  }
+
   /** Убрать ошибочный платёж. Это исправление, а не рядовое действие. */
   @Post('payments/:id/delete')
   @Needs('cancel')
@@ -2153,7 +2224,7 @@ export class AdminController {
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string; telegram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
-    showTournaments: boolean; showFootball: boolean; waTemplate: string;
+    showTournaments: boolean; showFootball: boolean; coachesOn: boolean; waTemplate: string;
     bookingNote: string;
   }>) {
     const cur = await this.club.get();
@@ -2198,6 +2269,7 @@ export class AdminController {
       show_tournaments: body.showTournaments === undefined
         ? cur.showTournaments : !!body.showTournaments,
       show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
+      coaches_on: body.coachesOn === undefined ? cur.coachesOn : !!body.coachesOn,
       wa_template: body.waTemplate === undefined
         ? cur.waTemplate : (String(body.waTemplate).trim().slice(0, 500) || null),
       booking_note: body.bookingNote === undefined

@@ -105,6 +105,7 @@ model settings {
   telegram         String?
   sales_on         Boolean  @default(true)
   sales_in_stats   Boolean  @default(true)
+  coaches_on       Boolean  @default(true)
   updated_at       DateTime @default(now()) @db.Timestamptz(6)
 }
 
@@ -375,6 +376,8 @@ model stock_moves {
 model coaches {
   id          BigInt   @id @default(autoincrement())
   name        String
+  surname     String?
+  experience  String?
   phone       String?
   photo_url   String?
   bio         String?

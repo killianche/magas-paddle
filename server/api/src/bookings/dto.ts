@@ -32,4 +32,9 @@ export class CreateBookingDto {
 
   @IsOptional() @IsString() @MaxLength(300)
   comment?: string;
+
+  /** Тренер, выбранный галочкой «играть с тренером».
+   *  Клуб потом подтверждает: если тренер не сможет, менеджер предложит другого. */
+  @IsOptional() @IsInt() @Min(1)
+  coachId?: number;
 }

@@ -192,6 +192,16 @@ export type ApiCoach = {
   /** Сколько у тренера открытых групповых тренировок. */
   classes: number;
 };
+/** Тренер, свободный в выбранное время: показываем при записи на корт. */
+export type ApiFreeCoach = {
+  id: number; name: string; surname: string | null; experience: string | null;
+  photoUrl: string | null; bio: string | null; color: string | null;
+  /** Цена тренера за час и за всю бронь, в копейках. */
+  price: number; total: number;
+  /** false — корт входит в цену тренировки, отдельно за него не берут. */
+  courtExtra: boolean;
+};
+
 /** Свободный час у тренера: есть корт, тренер свободен. */
 export type ApiSlot = { hour: number; courtId: string; price: number; coachPrice: number; courtPrice: number };
 
@@ -232,7 +242,7 @@ export const api = {
     phone: string | null; whatsapp: string | null; address: string | null;
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
-    showTournaments: boolean; showFootball: boolean; waTemplate: string | null;
+    showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; waTemplate: string | null;
     bookingNote?: string | null; heroUrl?: string | null; heroLightUrl?: string | null;
   }>('/club'),
 
@@ -268,7 +278,7 @@ export const api = {
 
   book: (b: { courtId: string; date: string; hour: number; hours: number;
               name: string; surname?: string; phone: string; whatsapp?: string;
-              comment?: string }) =>
+              comment?: string; coachId?: number }) =>
     call<ApiBooking>('/bookings', { method: 'POST', body: JSON.stringify(b) }),
 
   cancel: (id: number, phone: string) =>
@@ -280,14 +290,10 @@ export const api = {
     return call<ApiTournament[]>(`/tournaments${q ? '?' + q : ''}`);
   },
 
-  coaches: () => call<ApiCoach[]>('/coaches'),
-  coachSlots: (id: number, date: string, hours = 1) =>
-    call<{ date: string; hours: number; slots: ApiSlot[] }>(`/coaches/${id}/slots?date=${date}&hours=${hours}`),
-  bookCoach: (id: number, b: { date: string; hour: number; hours: number; comment?: string }) =>
-    call<{ id: number; courtName: string; coachName: string; startsAt: string; endsAt: string;
-      price: number; status: string; holdMinutes: number; clientId: number }>(`/coaches/${id}/book`,
-      { method: 'POST', body: JSON.stringify(b) }),
-
+  /** Кто из тренеров свободен в выбранные день и часы. */
+  freeCoaches: (date: string, hour: number, hours: number, courtId: string) =>
+    call<{ coaches: ApiFreeCoach[] }>(
+      `/coaches/free?date=${date}&hour=${hour}&hours=${hours}&courtId=${encodeURIComponent(courtId)}`),
   enterTournament: (id: number, who: { name: string; surname?: string; phone: string }) =>
     call<ApiEntry>(`/tournaments/${id}/entries`,
       { method: 'POST', body: JSON.stringify(who) }),

@@ -965,7 +965,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 .co-col.on{box-shadow:0 0 0 2px var(--ink-2),0 0 0 4px var(--cc)}
 .bk .co-line{display:flex;align-items:center;gap:5px;color:var(--text);font-weight:500}
 .bk .co-line .cdot{width:7px;height:7px;border-radius:50%;background:var(--cc)}
-#addCoachPick .cdot{border-radius:50%}
+#addCoachPick .cdot,#cbPick .cdot{border-radius:50%}
 @media(max-width:1100px){:root{--side-w:196px}.gsearch{width:220px}}
 @media(max-width:860px){body:not(.showside){--side-w:0px}body:not(.showside) .side{display:none}}
 </style>
@@ -1305,9 +1305,11 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       </div>
     </div>
     <div class="ilist">
-      <div class="irow"><span class="ik">Имя</span><input id="coName" class="iv" maxlength="80" placeholder="Имя и фамилия"></div>
+      <div class="irow"><span class="ik">Имя</span><input id="coName" class="iv" maxlength="80" placeholder="имя"></div>
+      <div class="irow"><span class="ik">Фамилия</span><input id="coSurname" class="iv" maxlength="80" placeholder="необязательно"></div>
+      <div class="irow"><span class="ik">Опыт</span><input id="coExp" class="iv" maxlength="120" placeholder="например: в падел 6 лет"></div>
       <div class="irow"><span class="ik">Телефон</span><input id="coPhone" class="iv" inputmode="tel" placeholder="необязательно"></div>
-      <div class="irow"><span class="ik">О себе</span><input id="coBio" class="iv" maxlength="1000" placeholder="опыт, для кого тренировки — видно в приложении"></div>
+      <div class="irow"><span class="ik">О себе</span><input id="coBio" class="iv" maxlength="1000" placeholder="для кого тренировки — видно в приложении"></div>
     </div>
     <div class="fsec">Цена для клиента</div>
     <div class="ilist">
@@ -1349,6 +1351,18 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 </div>
 
 <!-- выплата тренеру -->
+<div class="modal" id="cbModal">
+  <div class="sheet form" style="max-width:460px">
+    <div class="fhead"><h3>Тренер на бронь</h3><p class="sub" id="cbSub"></p></div>
+    <div class="picks" id="cbPick"></div>
+    <div class="err" id="cbErr"></div>
+    <div class="acts">
+      <button class="btn" data-close>Отмена</button>
+      <button class="btn acc" id="cbOk">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="poModal">
   <div class="sheet form" style="max-width:440px">
     <div class="fhead"><h3 id="poTitle">Выплата</h3><p class="sub" id="poSub"></p></div>
@@ -1707,6 +1721,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         Пусто — текст по умолчанию. Имя клиента и номер заявки приложение добавит само.</p>
       <label class="chk"><input type="checkbox" id="setTourn"> Показывать турниры</label>
       <label class="chk"><input type="checkbox" id="setFoot"> Показывать мини-футбольное поле</label>
+      <label class="chk"><input type="checkbox" id="setCoach"> Тренеры в приложении: галочка «играть с тренером» и групповые тренировки</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
     </div>
@@ -2430,6 +2445,7 @@ async function openBooking(id){
     if (live && !ended && can('cancel')) L.push(`<button class="btn dg" data-end="cancelled">Отменить бронь…</button>`);
     if (b.status === 'confirmed' && begun && can('cancel')) L.push(`<button class="btn dg" data-end="no_show">Не пришёл…</button>`);
     if (b.status === 'no_show') L.push(`<button class="btn" data-s="done">Всё же пришёл</button>`);
+    if (can('coaches') && live) R.push(`<button class="btn" data-coach>${b.coach ? 'Сменить тренера' : 'Тренер'}</button>`);
     if (can('prices') && editable) R.push(`<button class="btn" data-disc>Скидка</button>`);
     if (live && !ended) R.push(`<button class="btn" data-move>Перенести</button>`);
     if (b.status === 'expired' && !ended) R.push(`<button class="btn" data-s="confirmed">Подтвердить заново</button>`);
@@ -2462,6 +2478,7 @@ async function openBooking(id){
   on('#bkCopy', () => { navigator.clipboard?.writeText(phoneNice(c.phone)); $('#bkCopy').textContent = 'скопировано' });
   on('#bkAddExtra', () => { $('#bkModal').classList.remove('on'); openPos({ bookingId: b.id }) });
   on('[data-move]', () => { $('#bkModal').classList.remove('on'); openMove(b) });
+  on('[data-coach]', () => { $('#bkModal').classList.remove('on'); openBookingCoach(b) });
   on('[data-pay]', () => { $('#bkModal').classList.remove('on'); openPay(b) });
   on('[data-refund]', () => { $('#bkModal').classList.remove('on'); openPay(b, 'refund') });
   on('[data-keep]', async () => {
@@ -2638,6 +2655,32 @@ $('#payOk').onclick = async () => {
 
 /* ── перенос записи ───────────────────────────────────── */
 let moving = null;
+/** Кто поедет на эту тренировку. Из приложения тренера выбирает человек,
+ *  но подтверждает клуб: менеджер созванивается и ставит того, кто сможет. */
+async function openBookingCoach(b){
+  await loadCoachBrief();
+  let pick = b.coach?.id ?? null;
+  const court = day.courts.find(c => c.id === b.courtId);
+  $('#cbSub').textContent = `${court?.name ?? ''} · ${pretty(date)} · ${hh(b.hour)}–${hh(b.hour + b.hours)}`;
+  const draw = () => {
+    const list = coachBrief.filter(c => c.isActive || c.id === pick);
+    $('#cbPick').innerHTML = `<button type="button" data-c=""${pick ? '' : ' class="on"'}>Без тренера</button>`
+      + list.map(c => `<button type="button" data-c="${c.id}" style="--cc:${c.color || 'var(--dim-2)'}"${c.id === pick ? ' class="on"' : ''}>
+        <span class="cdot"></span>${esc(c.name)} <small>${rub(c.price)}/ч${c.courtExtra ? ' + корт' : ''}</small></button>`).join('');
+    $('#cbPick').querySelectorAll('button').forEach(el => el.onclick = () => { pick = el.dataset.c ? +el.dataset.c : null; draw() });
+  };
+  draw();
+  $('#cbErr').classList.remove('on');
+  $('#cbModal').classList.add('on');
+  $('#cbOk').onclick = async () => {
+    try {
+      await call(`/admin/bookings/${b.id}/coach`, { method:'POST', body: JSON.stringify({ coachId: pick }) });
+      $('#cbModal').classList.remove('on');
+      await load(); openBooking(b.id);
+    } catch(e){ fail('#cbErr', e) }
+  };
+}
+
 function openMove(b){
   moving = b;
   const court = day.courts.find(c => c.id===b.courtId);
@@ -3229,6 +3272,7 @@ async function openSetup(){
   $('#setBookNote').value = st.bookingNote || '';
   $('#setTourn').checked = st.showTournaments !== false;
   $('#setFoot').checked = st.showFootball !== false;
+  $('#setCoach').checked = st.coachesOn !== false;
   weekRender(st.week);
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
@@ -3451,6 +3495,7 @@ $('#appSave').onclick = async () => {
       rentalsText: $('#setRentals').value, waTemplate: $('#setWaTpl').value,
       bookingNote: $('#setBookNote').value,
       showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
+      coachesOn: $('#setCoach').checked,
     })});
     ok('#appErr', '#appSave', 'Сохранить');
   } catch(e){ fail('#appErr', e) }
@@ -4601,7 +4646,8 @@ function weekText(w){
 async function openCoach(c){
   coEdit = c ?? null;
   $('#coTitle').textContent = c ? c.name : 'Новый тренер';
-  $('#coName').value = c?.name ?? ''; $('#coPhone').value = c?.phone ? phoneNice(c.phone) : ''; $('#coBio').value = c?.bio ?? '';
+  $('#coName').value = c?.name ?? ''; $('#coSurname').value = c?.surname ?? ''; $('#coExp').value = c?.experience ?? '';
+  $('#coPhone').value = c?.phone ? phoneNice(c.phone) : ''; $('#coBio').value = c?.bio ?? '';
   // Цены не придумываем: у нового тренера поля пустые — вписывает клуб
   $('#coPrice').value = c ? c.price / 100 : '';
   segSet('#coCourt', c ? (c.courtExtra ? 'extra' : 'incl') : 'extra');
@@ -4653,7 +4699,8 @@ $('#coSave').onclick = async () => {
   if ($('#coPrice').value === '' || $('#coPayV').value === '') { fail('#coErr', new Error('Впишите цену тренировки и оплату тренеру')); return }
   try {
     const r = await call('/admin/coaches', { method:'POST', body: JSON.stringify({
-      id: coEdit?.id, name: $('#coName').value, phone: $('#coPhone').value, bio: $('#coBio').value,
+      id: coEdit?.id, name: $('#coName').value, surname: $('#coSurname').value,
+      experience: $('#coExp').value, phone: $('#coPhone').value, bio: $('#coBio').value,
       price: +$('#coPrice').value, courtExtra: segGet('#coCourt') === 'extra',
       payType: segGet('#coPay'), payValue: +$('#coPayV').value, week,
       inApp: $('#coInApp').checked, isActive: $('#coActive').checked,

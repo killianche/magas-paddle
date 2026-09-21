@@ -36,6 +36,9 @@ export type ClubInfoData = {
   /** Разделы, которые клуб может выключить. */
   showTournaments: boolean;
   showFootball: boolean;
+  /** Тренеры: выбор тренера при записи и групповые тренировки.
+   *  Клуб может выключить всю функцию — тогда приложение о ней молчит. */
+  coachesOn: boolean;
   /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
   waTemplate: string | null;
   /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
@@ -96,7 +99,8 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null, heroLightUrl: null,
+  showTournaments: true, showFootball: true, coachesOn: false, waTemplate: null,
+  bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
 
 let cache: ClubInfoData = EMPTY;
@@ -130,6 +134,7 @@ export const CLUB = {
   get rentalsText() { return cache.rentalsText },
   get showTournaments() { return cache.showTournaments },
   get showFootball() { return cache.showFootball },
+  get coachesOn() { return cache.coachesOn },
   get waTemplate() { return cache.waTemplate },
 };
 

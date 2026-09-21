@@ -13,14 +13,22 @@ import { Loading, Failed } from '../../src/components/status';
 import { Pill, SectionTitle } from '../../src/components/ui';
 import { coverOf } from '../../src/components/results';
 import { IconCheck } from '../../src/components/icons';
+import { ClassRow } from '../../src/components/coach';
+import { useClub } from '../../src/club';
 import { hh, dayMonth, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
 export default function Tournaments() {
   useTheme();
   const { profile } = useProfile();
   const phone = profile?.phone;
+  const club = useClub();
   const q = useApi(() => api.tournaments(phone), [phone], `tourn.${phone ?? 'гость'}`);
-  useFocusEffect(useCallback(() => { q.refresh() }, [phone]));
+  // Групповые тренировки с тренером живут здесь же, отдельным разделом:
+  // для человека это такое же событие клуба, как турнир
+  const classes = useApi(
+    () => club.coachesOn ? api.tournaments(phone, 'class') : Promise.resolve([] as ApiTournament[]),
+    [phone, club.coachesOn], club.coachesOn ? `classes.${phone ?? 'гость'}` : undefined);
+  useFocusEffect(useCallback(() => { q.refresh(); if (club.coachesOn) classes.refresh() }, [phone, club.coachesOn]));
 
   if (q.loading) return <Loading note="Загружаю турниры" />;
   if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
@@ -31,6 +39,7 @@ export default function Tournaments() {
   const upcoming = all.filter(t => !isPast(t));
   const past = all.filter(isPast);
   const [hero, ...rest] = upcoming;
+  const lessons = (classes.data ?? []).filter(t => new Date(t.startsAt).getTime() > Date.now());
 
   const open = (t: ApiTournament) => {
     Haptics.selectionAsync();
@@ -78,7 +87,14 @@ export default function Tournaments() {
         </>
       )}
 
-      {all.length === 0 && (
+      {lessons.length > 0 && (
+        <>
+          <SectionTitle>Групповые тренировки</SectionTitle>
+          {lessons.map(t => <ClassRow key={t.id} t={t} />)}
+        </>
+      )}
+
+      {all.length === 0 && lessons.length === 0 && (
         <View style={s.empty}>
           <Text style={s.emptyT}>Турниров пока нет</Text>
           <Text style={s.emptyS}>Клуб ещё не объявил ближайшие турниры.</Text>

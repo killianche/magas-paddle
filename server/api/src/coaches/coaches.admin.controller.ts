@@ -48,7 +48,8 @@ export class AdminCoachesController {
   }
 
   private card(c: any) {
-    return { id: Number(c.id), name: c.name, phone: c.phone, photoUrl: c.photo_url, bio: c.bio,
+    return { id: Number(c.id), name: c.name, surname: c.surname, experience: c.experience,
+      phone: c.phone, photoUrl: c.photo_url, bio: c.bio,
       price: c.price, courtExtra: c.court_extra, payType: c.pay_type, payValue: c.pay_value,
       week: c.week, color: c.color, inApp: c.in_app, isActive: c.is_active,
       adminId: c.admin_id ? Number(c.admin_id) : null };
@@ -136,6 +137,8 @@ export class AdminCoachesController {
       if (n.length < 2) throw new BadRequestException('Имя от 2 знаков');
       data.name = n;
     }
+    if (body.surname !== undefined) data.surname = String(body.surname ?? '').trim().slice(0, 80) || null;
+    if (body.experience !== undefined) data.experience = String(body.experience ?? '').trim().slice(0, 120) || null;
     if (body.phone !== undefined) {
       const p = String(body.phone ?? '').trim();
       data.phone = p ? (normalizePhone(p) ?? (() => { throw new BadRequestException('Не разобрал телефон') })()) : null;

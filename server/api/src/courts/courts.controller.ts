@@ -104,6 +104,7 @@ export class ClubController {
       rentalsText: s.rentalsText,
       showTournaments: s.showTournaments,
       showFootball: s.showFootball,
+      coachesOn: s.coachesOn,
       waTemplate: s.waTemplate,
       bookingNote: s.bookingNote,
       heroUrl: s.heroUrl,
