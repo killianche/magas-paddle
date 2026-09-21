@@ -117,7 +117,7 @@ input,select{font-family:inherit;font-size:inherit}
 .bk{box-shadow:var(--shadow)}
 .bk:hover{border-color:var(--line-strong)}
 .bk .n{font-weight:700;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bk .m{font-size:11px;color:var(--dim-2);margin-top:2px}
+.bk .m{font-size:11px;color:var(--dim-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Состояние брони одним цветом: ждёт — янтарный, подтверждена без оплаты —
    синий контур, оплачена — зелёная, долг после игры — красная, отыграна —
    серая, неявка — красная с чертой. Считает bkState(), тот же расчёт и в карточке. */
@@ -205,12 +205,18 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 .pill.sm{font-size:10.5px;padding:2px 8px;gap:4px}
 .pill.sm::before{width:6px;height:6px}
 .bk.expired{opacity:.55;border-color:var(--bad-line);border-style:dashed}
-/* След несостоявшейся брони на свободном слоте: заметно, но не мешает записать */
-.slot .ghost{position:absolute;left:6px;bottom:5px;font-size:10px;letter-spacing:.02em;
-  padding:1px 7px;border-radius:999px;background:var(--fill);color:var(--dim-2);opacity:.85}
-.slot .ghost.expired{color:var(--red);background:var(--bad-bg)}
-.slot .ghost:hover{opacity:1;color:var(--text)}
-.slot .ghost{cursor:pointer}
+/* Несостоявшаяся бронь: карточка на месте, но бледная — время-то свободно.
+   Записать на него можно кнопкой в углу, она появляется под курсором. */
+.deadwrap{position:relative;height:100%}
+.bk.dead{opacity:.5;border-style:dashed;background:transparent;box-shadow:none}
+.bk.dead .n{text-decoration:line-through;font-weight:600;padding-right:26px}
+.bk.dead:hover{opacity:.85}
+.bk.cancelled{opacity:.5;text-decoration:none}
+.addover{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--dim);
+  font-size:15px;line-height:1;opacity:0;transition:opacity .12s,color .12s}
+.deadwrap:hover .addover{opacity:1}
+.addover:hover{color:var(--text);border-color:var(--line-strong)}
 
 .sheet.wide{max-width:880px}
 .sheet.mid{max-width:620px}
@@ -2043,7 +2049,7 @@ function bkState(b){
   const money = paid <= 0 ? '' : b.keptPrepay ? ` · ${rub(paid)} у клуба` : ` · вернуть ${rub(paid)}`;
   if (b.status === 'cancelled') return { cls:'cancelled', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim',
     short:'Отменена', label:'Отменена' + money };
-  if (b.status === 'expired')   return { cls:'expired', tone: paid > 0 && !b.keptPrepay ? 'warn' : 'dim',
+  if (b.status === 'expired')   return { cls:'expired', tone:'bad',
     short:'Сгорела', label:'Не подтвердили вовремя' + money };
   if (b.status === 'no_show')   return { cls:'no_show', tone:'bad', short:'Не пришёл', label:'Не пришёл' + money };
   if (b.status === 'pending')   return { cls:'pending', tone:'warn', short:'Ждёт подтверждения',
@@ -2350,12 +2356,23 @@ function render(){
         html += `<td class="lane" style="${laneOf(c)}"><div class="slot closed" title="Клуб в это время не работает"></div></td>`;
       } else {
         // Здесь бронь была, но сгорела или её отменили: время свободно,
-        // и всё же менеджеру важно видеть, что тут что-то случилось
+        // и всё же менеджеру важно видеть, кто тут был. Карточка остаётся,
+        // только приглушённой, а записать на это время можно кнопкой в углу.
         const dead = day.bookings.find(x => x.courtId === c.id && x.hour === h
           && (x.status === 'cancelled' || x.status === 'expired'));
-        html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}"><span class="plus">+</span><b>${hh(h)}</b>${
-          dead ? `<span class="ghost ${dead.status}" data-dead="${dead.id}" title="${esc(who(dead))} · нажмите, чтобы открыть">${
-            dead.status === 'expired' ? 'сгорела' : 'отменена'}</span>` : ''}</button></td>`;
+        if (dead) {
+          const ds = bkState(dead);
+          html += `<td class="lane" style="${laneOf(c)}"><div class="deadwrap">
+            <button class="bk dead ${dead.status}" data-id="${dead.id}" title="${esc(who(dead))} · ${esc(ds.label)}">
+              <div class="n">${esc(who(dead))}</div>
+              <div class="m">${hh(dead.hour)}–${hh(dead.hour + dead.hours)} · ${rub(dueOf(dead))}</div>
+              <div class="st"><span class="pill sm ${ds.tone === 'dim' ? '' : ds.tone}">${esc(ds.short)}</span></div>
+            </button>
+            <button class="addover" data-court="${c.id}" data-hour="${h}" title="Записать на ${hh(h)}">+</button>
+          </div></td>`;
+        } else {
+          html += `<td class="lane" style="${laneOf(c)}"><button class="slot" data-court="${c.id}" data-hour="${h}"><span class="plus">+</span><b>${hh(h)}</b></button></td>`;
+        }
       }
     }
     html += '</tr>';
@@ -2364,10 +2381,11 @@ function render(){
   $('#board').innerHTML = html;
 
   document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBooking(+el.dataset.id));
-  document.querySelectorAll('.slot:not(.closed)').forEach(el => el.onclick = e => {
-    const dead = e.target.closest('[data-dead]');
-    if (dead) { e.stopPropagation(); openBooking(+dead.dataset.dead); return }
+  document.querySelectorAll('.slot:not(.closed)').forEach(el => el.onclick = () => {
     openAdd(el.dataset.court, +el.dataset.hour);
+  });
+  document.querySelectorAll('.addover').forEach(el => el.onclick = e => {
+    e.stopPropagation(); openAdd(el.dataset.court, +el.dataset.hour);
   });
 }
 
