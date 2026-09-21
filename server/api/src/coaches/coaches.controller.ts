@@ -38,10 +38,27 @@ export class CoachesController {
     const classes = await this.db.tournaments.groupBy({
       by: ['coach_id'], where: { kind: 'class', state: 'open', starts_at: { gt: now } }, _count: { _all: true } });
     const cl = new Map(classes.map(c => [String(c.coach_id), c._count._all]));
+    const set = await this.club.get();
     return rows.map(c => ({
-      id: Number(c.id), name: c.name, photoUrl: c.photo_url, bio: c.bio,
+      id: Number(c.id), name: c.name, surname: c.surname, experience: c.experience,
+      photoUrl: c.photo_url, bio: c.bio,
       price: c.price, courtExtra: c.court_extra, color: c.color,
       classes: cl.get(String(c.id)) ?? 0,
+      // Когда тренер работает: по дням недели, с понедельника.
+      // Пусто в дне — в этот день не тренирует.
+      week: [1, 2, 3, 4, 5, 6, 7].map(d => {
+        const w = c.week as Record<string, [number, number]> | null;
+        if (!w || typeof w !== 'object') {
+          const day = set.week[d - 1];
+          return day && !day.closed ? { open: day.open, close: day.close } : null;
+        }
+        const r = w[String(d)];
+        if (!Array.isArray(r)) return null;
+        const day = set.week[d - 1];
+        if (!day || day.closed) return null;
+        const open = Math.max(day.open, Number(r[0])), close = Math.min(day.close, Number(r[1]));
+        return open < close ? { open, close } : null;
+      }),
     }));
   }
 

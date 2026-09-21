@@ -13,11 +13,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { C, R, S, HIT, DISP, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
-import { api, rub, mediaUrl, type ApiBooking, type ApiTournament } from '../../src/api';
+import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
+import { api, rub, mediaUrl, type ApiBooking, type ApiCoach, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
 import { useProfile, initials } from '../../src/profile';
 import { useClub } from '../../src/club';
+import { CoachFace } from '../../src/components/coach';
 import { IMG, HERO, HERO_LIGHT } from '../../src/images';
 import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../src/components/icons';
 import { bookingState, isUpcoming, StateIcon } from '../../src/components/bookingstate';
@@ -62,13 +63,14 @@ export default function Home() {
     // (например, вход устарел), главная всё равно покажет корты и цены,
     // а не станет целиком экраном «нет связи»
     const soft = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
-    const [next, tournaments, bookings, prices] = await Promise.all([
+    const [next, tournaments, bookings, prices, coaches] = await Promise.all([
       upcomingGrid(),
       soft(api.tournaments(phone), [] as ApiTournament[]),
       phone ? soft(api.myBookings(phone), [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
       api.prices(),
+      soft(api.coaches(), [] as ApiCoach[]),
     ]);
-    return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices };
+    return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices, coaches };
   }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
   useFocusEffect(useCallback(() => { q.refresh(); notes.refresh() }, [phone]));
@@ -220,6 +222,30 @@ export default function Home() {
           )}
         </View>
       </View>
+
+      {/* Тренировка с тренером — прямо под выбором площадки: это второй
+          способ попасть на корт, и искать его в глубине приложения незачем */}
+      {club.coachesOn && (q.data?.coaches ?? []).length > 0 && (
+        <Pressable onPress={() => go('/coaches')} accessibilityRole="button"
+          accessibilityLabel="Тренировка с тренером: выбрать тренера и время"
+          style={({ pressed }) => [st.coachBanner, pressed && { opacity: 0.9 }]}>
+          <View style={st.coachFaces}>
+            {(q.data?.coaches ?? []).slice(0, 3).map((c, i) => (
+              <View key={c.id} style={{ marginLeft: i ? -14 : 0, borderRadius: 24,
+                borderWidth: 2, borderColor: C.surface }}>
+                <CoachFace c={c} size={44} />
+              </View>
+            ))}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.coachT}>Тренировка с тренером</Text>
+            <Text style={st.coachS} numberOfLines={2}>
+              Выберите тренера и время — корт подберём сами
+            </Text>
+          </View>
+          <IconArrowRight size={18} color={C.accent} />
+        </Pressable>
+      )}
 
       {!!q.error && (
         <Pressable onPress={q.reload} accessibilityRole="button"
@@ -391,6 +417,13 @@ export default function Home() {
 
 const st = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
+  coachBanner: { flexDirection: 'row', alignItems: 'center', gap: 14,
+    marginHorizontal: S.xl, marginTop: 18, padding: 14,
+    borderRadius: R.xl, borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
+  coachFaces: { flexDirection: 'row' },
+  coachT: { fontFamily: DISP_MED, color: C.text, fontSize: 16 },
+  coachS: { fontFamily: BODY, color: C.dim, fontSize: 13, marginTop: 3, lineHeight: 18 },
+
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Для картинок мало одних краёв: без ширины и высоты React Native Web
   // растягивает их до собственного размера, и виден лишь угол снимка.

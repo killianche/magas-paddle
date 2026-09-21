@@ -18,6 +18,26 @@ export function CoachFace({ c, size = 56 }: { c: { name: string; photoUrl: strin
       </View>;
 }
 
+
+/** График тренера человеческим языком: «Пн–Пт 16:00–22:00, Сб 10:00–16:00». */
+export function weekText(week: ({ open: number; close: number } | null)[] | undefined): string {
+  if (!Array.isArray(week) || week.length !== 7) return 'Часы уточняет клуб';
+  const D = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const hh = (h: number) => String(h).padStart(2, '0') + ':00';
+  // Соседние дни с одинаковыми часами склеиваем в промежуток
+  const parts: string[] = [];
+  let i = 0;
+  while (i < 7) {
+    const d = week[i];
+    if (!d) { i++; continue }
+    let j = i;
+    while (j + 1 < 7 && week[j + 1] && week[j + 1]!.open === d.open && week[j + 1]!.close === d.close) j++;
+    parts.push(`${i === j ? D[i] : `${D[i]}–${D[j]}`} ${hh(d.open)}–${hh(d.close)}`);
+    i = j + 1;
+  }
+  return parts.length ? parts.join(', ') : 'Часы уточняет клуб';
+}
+
 export function ClassRow({ t }: { t: ApiTournament }) {
   const left = Math.max(0, t.seats - t.taken);
   const d = dateOfIso(t.startsAt);

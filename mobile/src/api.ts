@@ -182,16 +182,26 @@ export type ApiTournament = {
   coach?: { id: number; name: string; photoUrl: string | null } | null;
 };
 
+/** День недели в графике тренера: когда работает. null — выходной. */
+export type ApiCoachDay = { open: number; close: number } | null;
+
 /** Тренер клуба — для экрана «Тренировки». Цены в копейках. */
 export type ApiCoach = {
-  id: number; name: string; photoUrl: string | null; bio: string | null;
+  id: number; name: string; surname: string | null; experience: string | null;
+  photoUrl: string | null; bio: string | null;
   /** Цена индивидуальной тренировки за час. */
   price: number;
   /** Корт оплачивается отдельно по тарифу (true) или входит в цену. */
   courtExtra: boolean; color: string | null;
   /** Сколько у тренера открытых групповых тренировок. */
   classes: number;
+  /** График с понедельника: когда тренер работает. */
+  week: ApiCoachDay[];
 };
+
+/** Свободный час у тренера: есть корт и он сам свободен. */
+export type ApiSlot = { hour: number; courtId: string; price: number; coachPrice: number; courtPrice: number };
+
 /** Тренер, свободный в выбранное время: показываем при записи на корт. */
 export type ApiFreeCoach = {
   id: number; name: string; surname: string | null; experience: string | null;
@@ -201,9 +211,6 @@ export type ApiFreeCoach = {
   /** false — корт входит в цену тренировки, отдельно за него не берут. */
   courtExtra: boolean;
 };
-
-/** Свободный час у тренера: есть корт, тренер свободен. */
-export type ApiSlot = { hour: number; courtId: string; price: number; coachPrice: number; courtPrice: number };
 
 export type ApiPlace = { place: number; names: string; prize?: string };
 
@@ -291,6 +298,17 @@ export const api = {
   },
 
   /** Кто из тренеров свободен в выбранные день и часы. */
+  /** Тренеры клуба: фото, опыт, цена и график. */
+  coaches: () => call<ApiCoach[]>('/coaches'),
+  /** Свободные часы тренера в выбранный день. */
+  coachSlots: (id: number, date: string, hours = 1) =>
+    call<{ date: string; hours: number; slots: ApiSlot[] }>(`/coaches/${id}/slots?date=${date}&hours=${hours}`),
+  /** Записаться к тренеру: корт клуб подберёт сам. */
+  bookCoach: (id: number, b: { date: string; hour: number; hours: number; comment?: string }) =>
+    call<{ id: number; courtName: string; coachName: string; startsAt: string; endsAt: string;
+      price: number; status: string; holdMinutes: number; clientId: number }>(
+      `/coaches/${id}/book`, { method: 'POST', body: JSON.stringify(b) }),
+
   freeCoaches: (date: string, hour: number, hours: number, courtId: string) =>
     call<{ coaches: ApiFreeCoach[] }>(
       `/coaches/free?date=${date}&hour=${hour}&hours=${hours}&courtId=${encodeURIComponent(courtId)}`),

@@ -66,6 +66,9 @@ services:
       ADMIN_KEY: ${ADMIN_KEY:?нужен ADMIN_KEY в .env}
       # Ключ шифрования копий паролей сотрудников (видит владелец): 64 hex-знака
       STAFF_PASS_KEY: ${STAFF_PASS_KEY:?нужен STAFF_PASS_KEY в .env}
+      # Бот уведомлений руководителю. Пусто — уведомления просто выключены
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
       PORT: 3001
       TZ: Europe/Moscow
     ports:
