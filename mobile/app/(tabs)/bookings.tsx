@@ -1,21 +1,163 @@
-// Мои записи. Данные с сервера: брони ищутся по номеру телефона,
-// он же служит опознанием — входа в приложении нет.
-import { useCallback } from 'react';
-import {
-  ScrollView, Text, View, Pressable, StyleSheet, Alert, Platform, RefreshControl,
-} from 'react-native';
+// Мои записи. Список читается за секунду: слева дата, в строке — где, когда
+// и сколько, справа состояние. Подробности, деньги и связь с менеджером —
+// на отдельном экране записи, чтобы список не разрастался.
+//
+// Порядок: сначала ближайшие игры (самая близкая сверху), потом прошедшие
+// от свежих к старым. Раньше сервер отдавал всё по возрастанию времени,
+// и сверху оказывались давние записи.
+import { useCallback, useState } from 'react';
+import { ScrollView, Text, View, Pressable, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, type ApiBooking, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
-import { fullName, useProfile, type Profile } from '../../src/profile';
-import { whatsappUrl } from '../../src/club';
-import { openLink } from '../../src/components/contacts';
+import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
+import { IconRacket, IconChevron } from '../../src/components/icons';
+import { bookingState, entryState, holdLeft, type BookingState } from '../../src/components/bookingstate';
+import { hh, dayMonth, weekdayShort, dateOfIso, hourOfIso, plural } from '../../src/dates';
 
-import { IconRacket, IconTrophy } from '../../src/components/icons';
-import { bookingState, entryState, StateIcon } from '../../src/components/bookingstate';
-import { hh, longDate, dateOfIso, hourOfIso, plural } from '../../src/dates';
+/** Сколько платить: корт и тренер со скидкой плюс строки счёта — как считает клуб. */
+export const dueOf = (b: ApiBooking) =>
+  Math.max(0, b.price + (b.coachPrice ?? 0) - (b.discount ?? 0)) + (b.extras ?? []).reduce((n, x) => n + x.amount, 0);
+
+type Row =
+  | { kind: 'booking'; at: number; b: ApiBooking; st: BookingState }
+  | { kind: 'event'; at: number; t: ApiTournament; st: BookingState };
+
+export default function Bookings() {
+  useTheme();
+  const { profile, ready, signedIn } = useProfile();
+  const phone = signedIn ? (profile?.phone ?? '') : '';
+  const [allPast, setAllPast] = useState(false);
+
+  const q = useApi(async () => {
+    if (!phone) return { bookings: [] as ApiBooking[], tournaments: [] as ApiTournament[] };
+    const [bookings, tourn, classes] = await Promise.all([
+      api.myBookings(phone), api.tournaments(phone), api.tournaments(phone, 'class').catch(() => [] as ApiTournament[]),
+    ]);
+    const tournaments = [...tourn, ...classes];
+    return { bookings, tournaments: tournaments.filter(t =>
+      t.entry ? t.entry.status !== 'cancelled' || !!t.entry.byClub : t.entered) };
+  }, [phone], phone ? `mine.${phone}` : undefined);
+
+  useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone]));
+
+  if (!ready) return <Loading />;
+  if (!signedIn) return (
+    <NeedLogin note={profile
+      ? 'Ваши записи привязаны к аккаунту. Войдите — имя и телефон уже подставлены.'
+      : 'Войдите или заведите аккаунт, чтобы видеть свои записи.'} />
+  );
+  if (!phone) return <Empty />;
+  if (q.loading) return <Loading note="Смотрю ваши записи" />;
+  if (q.error && /войд/i.test(q.error)) return <NeedLogin note={q.error} />;
+  if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
+
+  const rows: Row[] = [
+    ...(q.data?.bookings ?? []).map(b => ({
+      kind: 'booking' as const, at: new Date(b.endsAt).getTime(), b, st: bookingState(b) })),
+    ...(q.data?.tournaments ?? []).map(t => ({
+      kind: 'event' as const,
+      at: new Date(t.startsAt).getTime() + (t.hours ?? 1) * 3600_000, t, st: entryState(t) })),
+  ];
+  if (!rows.length) return <Empty />;
+
+  const now = Date.now();
+  const soon = rows.filter(r => r.at >= now).sort((a, b) => a.at - b.at);
+  const past = rows.filter(r => r.at < now).sort((a, b) => b.at - a.at);
+  const pastShown = allPast ? past : past.slice(0, 5);
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
+      contentContainerStyle={{ paddingBottom: TAB_SPACE, paddingTop: 6 }}
+      refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
+
+      {soon.length > 0 && <Text style={s.sec}>Ближайшие</Text>}
+      {soon.map(r => <RowCard key={r.kind + (r.kind === 'booking' ? r.b.id : r.t.id)} row={r} />)}
+
+      {past.length > 0 && <Text style={s.sec}>Прошедшие</Text>}
+      {pastShown.map(r => <RowCard key={r.kind + (r.kind === 'booking' ? r.b.id : r.t.id)} row={r} past />)}
+
+      {past.length > pastShown.length && (
+        <Pressable onPress={() => setAllPast(true)} accessibilityRole="button"
+          style={({ pressed }) => [s.more, pressed && { opacity: 0.8 }]}>
+          <Text style={s.moreT}>Показать ещё {past.length - pastShown.length}</Text>
+        </Pressable>
+      )}
+    </ScrollView>
+  );
+}
+
+/** Строка списка: всё главное помещается в три строки текста. */
+function RowCard({ row, past }: { row: Row; past?: boolean }) {
+  const st = row.st;
+  const date = row.kind === 'booking' ? dateOfIso(row.b.startsAt) : dateOfIso(row.t.startsAt);
+  const open = () => {
+    Haptics.selectionAsync();
+    if (row.kind === 'booking') router.push({ pathname: '/booking', params: { id: String(row.b.id) } });
+    else router.push({ pathname: '/tournament', params: { id: String(row.t.id), kind: row.t.kind === 'class' ? 'class' : '' } });
+  };
+
+  const title = row.kind === 'booking'
+    ? (row.b.coachName ? `Тренировка · ${row.b.coachName}` : row.b.courtName)
+    : row.t.name;
+  const time = row.kind === 'booking'
+    ? `${hh(row.b.hour)} – ${hh(row.b.hour + row.b.hours)} · ${row.b.hours} ${plural(row.b.hours, 'час', 'часа', 'часов')}`
+    : `Начало ${hh(hourOfIso(row.t.startsAt))}`;
+  const money = row.kind === 'booking' ? rub(dueOf(row.b)) : rub(row.t.fee);
+  const hint = row.kind === 'booking' ? bookingHint(row.b) : null;
+
+  return (
+    <Pressable onPress={open} accessibilityRole="button"
+      accessibilityLabel={`${title}, ${dayMonth(date)}, ${time}, ${st.label}`}
+      style={({ pressed }) => [s.row, past && { opacity: 0.62 }, pressed && { opacity: 0.85 }]}>
+      <View style={s.day}>
+        <Text style={s.dayW}>{weekdayShort(date)}</Text>
+        <Text style={s.dayN}>{dayMonth(date).split(' ')[0]}</Text>
+        <Text style={s.dayM}>{(dayMonth(date).split(' ')[1] ?? '').slice(0, 3)}</Text>
+      </View>
+
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={s.titleLine}>
+          <Text style={s.title} numberOfLines={1}>{title}</Text>
+          <View style={[s.pill, { backgroundColor: st.bg }]}>
+            <Text style={[s.pillT, { color: st.fg }]} numberOfLines={1}>{st.label}</Text>
+          </View>
+        </View>
+        <Text style={s.meta} numberOfLines={1}>
+          {time}{row.kind === 'booking' && !!row.b.coachName ? ` · ${row.b.courtName}` : ''}
+        </Text>
+        <Text style={s.money} numberOfLines={1}>
+          {money}
+          {hint ? <Text style={[s.hint, hint.warn && { color: C.amber }]}> · {hint.text}</Text> : null}
+        </Text>
+      </View>
+
+      <IconChevron size={15} color={C.dim2} />
+    </Pressable>
+  );
+}
+
+/** Короткая подсказка про деньги и срок — одной строкой, без подробностей. */
+export function bookingHint(b: ApiBooking): { text: string; warn: boolean } | null {
+  const paid = b.paid ?? 0, due = dueOf(b);
+  const closed = b.status === 'cancelled' || b.status === 'no_show' || b.status === 'expired';
+  if (closed) {
+    if (paid > 0 && b.keptPrepay) return { text: `предоплата ${rub(paid)} не возвращается`, warn: true };
+    if (paid > 0) return { text: `внесено ${rub(paid)} — клуб вернёт`, warn: false };
+    if ((b.refunded ?? 0) > 0) return { text: `возвращено ${rub(b.refunded ?? 0)}`, warn: false };
+    return null;
+  }
+  if (due > 0 && paid >= due) return { text: 'оплачено', warn: false };
+  if (paid > 0) return { text: `осталось ${rub(due - paid)}`, warn: false };
+  const left = holdLeft(b);
+  if (left != null) return left > 0
+    ? { text: `держим ещё ${left} ${plural(left, 'минуту', 'минуты', 'минут')}`, warn: false }
+    : { text: 'срок удержания вышел', warn: true };
+  return null;
+}
 
 function NeedLogin({ note }: { note: string }) {
   return (
@@ -32,188 +174,12 @@ function NeedLogin({ note }: { note: string }) {
   );
 }
 
-/** Сколько платить: корт и тренер со скидкой плюс строки счёта — как считает клуб. */
-const dueOf = (b: ApiBooking) =>
-  Math.max(0, b.price + (b.coachPrice ?? 0) - (b.discount ?? 0)) + (b.extras ?? []).reduce((n, x) => n + x.amount, 0);
-
-export default function Bookings() {
-  useTheme();
-  const { profile, ready, signedIn } = useProfile();
-  const phone = signedIn ? (profile?.phone ?? '') : '';
-
-  const q = useApi(async () => {
-    if (!phone) return { bookings: [] as ApiBooking[], tournaments: [] as ApiTournament[] };
-    // Групповые тренировки — те же заявки с местами, что и турниры
-    const [bookings, tourn, classes] = await Promise.all([
-      api.myBookings(phone), api.tournaments(phone), api.tournaments(phone, 'class').catch(() => [] as ApiTournament[]),
-    ]);
-    const tournaments = [...tourn, ...classes];
-    // Заявки на турниры — как брони: ждущие, подтверждённые, не подтверждённые
-    // до начала и отклонённые клубом. Отменённую самим человеком не показываем.
-    return { bookings, tournaments: tournaments.filter(t =>
-      t.entry ? t.entry.status !== 'cancelled' || !!t.entry.byClub : t.entered) };
-  }, [phone], phone ? `mine.${phone}` : undefined);
-
-  // Вернулись на вкладку — подтянуть свежее: бронь могли подтвердить
-  useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone]));
-
-  // Отменяют только через менеджера в WhatsApp — так решил заказчик. Кнопка
-  // открывает WhatsApp с готовым текстом: что отменить, кто и с какого ID.
-  const writeManager = (text: string) => {
-    const wa = whatsappUrl();
-    if (!wa) {
-      const m = 'WhatsApp клуба пока не указан.';
-      Platform.OS === 'web' ? alert(m) : Alert.alert('Не получилось', m);
-      return;
-    }
-    openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp вручную.');
-  };
-  const who = (p: Profile | null) =>
-    p ? [`Меня зовут ${fullName(p)}.`, p.id ? `ID ${p.id}.` : ''].filter(Boolean) : [];
-
-  const aboutBooking = (b: ApiBooking) => writeManager([
-    `Хочу отменить бронь: ${b.courtName}, ${longDate(dateOfIso(b.startsAt))}, `
-      + `${hh(b.hour)} – ${hh(b.hour + b.hours)}.`,
-    `Заявка №${b.id}.`,
-    ...who(profile),
-  ].join('\n'));
-
-  const aboutTournament = (t: ApiTournament) => writeManager([
-    t.entry?.byClub
-      ? `Мою заявку на ${t.kind === 'class' ? 'тренировку' : 'турнир'} «${t.name}», ${longDate(dateOfIso(t.startsAt))}, отклонили. Хочу уточнить.`
-      : `Хочу отменить запись на ${t.kind === 'class' ? 'тренировку' : 'турнир'} «${t.name}», ${longDate(dateOfIso(t.startsAt))}.`,
-    ...who(profile),
-  ].join('\n'));
-
-  if (!ready) return <Loading />;
-
-  // Записи привязаны к аккаунту: без входа сервер их не отдаст
-  if (!signedIn) return (
-    <NeedLogin note={profile
-      ? 'Ваши записи привязаны к аккаунту. Войдите — имя и телефон уже подставлены.'
-      : 'Войдите или заведите аккаунт, чтобы видеть свои записи.'} />
-  );
-  // Вошёл, но записей ещё нет
-  if (!phone) return <Empty />;
-
-  if (q.loading) return <Loading note="Смотрю ваши записи" />;
-  // Номер защищён паролем, а входа на этом устройстве нет — зовём войти,
-  // а не показываем «не удалось загрузить».
-  if (q.error && /войд/i.test(q.error)) return <NeedLogin note={q.error} />;
-  if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
-
-  const bookings = q.data?.bookings ?? [];
-  const entries = q.data?.tournaments ?? [];
-  if (bookings.length === 0 && entries.length === 0) return <Empty />;
-
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.ink }}
-      contentContainerStyle={{ paddingBottom: TAB_SPACE, paddingTop: 8 }}
-      refreshControl={<RefreshControl refreshing={q.pulling} onRefresh={q.pull} tintColor={C.dim} />}>
-
-      {entries.map(t => {
-        // Состояние заявки на турнир — теми же цветами и значками, что у брони
-        const st = entryState(t);
-        return (
-        <View key={'t' + t.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
-          <View style={[s.band, { backgroundColor: st.bg }]}>
-            <StateIcon state={st} size={13} />
-            <Text style={[s.bandT, { color: st.fg }]}>{st.label} · {t.kind === 'class' ? 'ТРЕНИРОВКА' : 'ТУРНИР'}</Text>
-          </View>
-          <View style={s.body}>
-          <View style={s.head}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{t.name}</Text>
-              <Text style={s.date}>{longDate(dateOfIso(t.startsAt))}</Text>
-            </View>
-            <View style={s.tIcon}>{t.kind === 'class'
-              ? <IconRacket size={17} color={C.accent} /> : <IconTrophy size={17} color={C.accent} />}</View>
-          </View>
-          <View style={s.foot}>
-            <Text style={s.time}>Начало {hh(hourOfIso(t.startsAt))}</Text>
-            <Text style={s.price}>{t.kind === 'class' ? '' : 'взнос '}{rub(t.fee)}</Text>
-          </View>
-          <Text style={s.note}>{st.note}</Text>
-          <View style={s.actions}>
-            <Pressable style={s.mini}
-              onPress={() => router.push({ pathname: '/tournament', params: { id: String(t.id), kind: t.kind === 'class' ? 'class' : '' } })}>
-              <Text style={s.miniT}>{t.kind === 'class' ? 'О тренировке' : 'О турнире'}</Text>
-            </Pressable>
-            {(st.canCancel || !!t.entry?.byClub) && (
-              <Pressable style={s.mini} onPress={() => aboutTournament(t)}
-                accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
-                <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
-              </Pressable>
-            )}
-          </View>
-          </View>
-        </View>
-        );
-      })}
-
-      {bookings.map(b => {
-        const st = bookingState(b);
-        return (
-          <View key={'b' + b.id} style={[s.card, st.dim && { opacity: 0.6 }]}>
-            {/* Состояние — первое, что видит человек. Заявка и подтверждённая
-                бронь это разные вещи, и разница должна читаться сразу. */}
-            <View style={[s.band, { backgroundColor: st.bg }]}>
-              <StateIcon state={st} size={13} />
-              <Text style={[s.bandT, { color: st.fg }]}>{st.label}</Text>
-            </View>
-
-            <View style={s.body}>
-              <View style={s.head}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.name}>{b.coachName ? `Тренировка · ${b.coachName}` : b.courtName}</Text>
-                  {!!b.coachName && <Text style={s.date}>{b.courtName}</Text>}
-                  <Text style={s.date}>{longDate(dateOfIso(b.startsAt))}</Text>
-                </View>
-              </View>
-              <View style={s.foot}>
-                <Text style={s.time}>{hh(b.hour)} – {hh(b.hour + b.hours)}</Text>
-                <Text style={s.price}>{rub(dueOf(b))}</Text>
-              </View>
-              {/* Из чего сложилась сумма: скидка клуба и что добавили к игре */}
-              {(!!b.discount || !!b.extras?.length || !!b.paid || !!b.refunded || !!b.coachPrice) && (
-                <View style={s.bill}>
-                  {!!b.coachPrice && <Text style={s.billT}>Тренер {rub(b.coachPrice)}{b.price ? ` · корт ${rub(b.price)}` : ' · корт включён'}</Text>}
-                  {!!b.discount && <Text style={s.billT}>{b.coachPrice ? 'Скидка' : `Корт ${rub(b.price)} · скидка`} −{rub(b.discount)}</Text>}
-                  {(b.extras ?? []).map((x, i) => (
-                    <Text key={i} style={s.billT}>+ {x.item}{x.qty > 1 ? ` × ${x.qty}` : ''} · {rub(x.amount)}</Text>
-                  ))}
-                  <MoneyLine b={b} />
-                </View>
-              )}
-
-              <Text style={[s.note, st.warn && { color: C.amber }]}>{st.note}</Text>
-
-              <View style={s.actions}>
-                <View style={[s.mini, s.miniFit]}>
-                  <Text style={s.miniT}>{b.hours} {plural(b.hours, 'час', 'часа', 'часов')}</Text>
-                </View>
-                {st.canCancel && (
-                  <Pressable style={s.mini} onPress={() => aboutBooking(b)}
-                    accessibilityRole="button" accessibilityLabel="Написать менеджеру в WhatsApp">
-                    <Text style={[s.miniT, s.miniWa]} numberOfLines={1}>Написать менеджеру</Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
 function Empty() {
   return (
     <View style={s.empty}>
       <View style={s.emptyIcon}><IconRacket size={30} color={C.accent} /></View>
       <Text style={s.emptyT}>Записей пока нет</Text>
       <Text style={s.emptyS}>Запишитесь на корт — запись появится здесь.</Text>
-      {/* Запись начинается с выбора корта — как с главной */}
       <Pressable onPress={() => router.push('/courts')}
         style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.85 }]}>
         <Text style={s.emptyBtnT}>Забронировать корт</Text>
@@ -222,63 +188,37 @@ function Empty() {
   );
 }
 
-/** Что с деньгами по брони — одной строкой. Для отменённой брони и неявки
- *  человек видит, осталась ли предоплата у клуба или её вернули. */
-function MoneyLine({ b }: { b: ApiBooking }) {
-  const paid = b.paid ?? 0, back = b.refunded ?? 0;
-  const closed = b.status === 'cancelled' || b.status === 'no_show' || b.status === 'expired';
-  if (closed) {
-    if (paid > 0 && b.keptPrepay) return <Text style={[s.billT, { color: C.amber }]}>Предоплата {rub(paid)} не возвращается</Text>;
-    if (paid > 0) return <Text style={s.billT}>Внесено {rub(paid)} — клуб вернёт</Text>;
-    if (back > 0) return <Text style={[s.billT, { color: C.limeDim }]}>Возвращено {rub(back)}</Text>;
-    return null;
-  }
-  if (paid <= 0) return null;
-  return <Text style={[s.billT, { color: C.limeDim }]}>
-    {paid >= dueOf(b) ? 'Оплачено' : `Внесено ${rub(paid)}, осталось ${rub(dueOf(b) - paid)}`}
-  </Text>;
-}
-
 const s = sheet(() => ({
-  band: { flexDirection: 'row', alignItems: 'center', gap: 7,
-    paddingVertical: 8, paddingHorizontal: 14 },
-  bandT: { ...EYEBROW },
-  body: { padding: 14 },
-  note: { fontFamily: BODY, color: C.dim, fontSize: 13, lineHeight: 19, marginTop: 10 },
-  bill: { marginTop: 6, gap: 2 },
-  billT: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, lineHeight: 17 },
+  sec: { ...EYEBROW, color: C.dim2, marginHorizontal: S.xl, marginTop: 16, marginBottom: 8 },
+
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: S.xl, marginBottom: 8, padding: 12,
+    borderRadius: R.xl, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+
+  day: { width: 52, paddingVertical: 8, borderRadius: R.md, backgroundColor: C.surface2, alignItems: 'center' },
+  dayW: { fontFamily: BODY, color: C.dim2, fontSize: 11, textTransform: 'uppercase' },
+  dayN: { fontFamily: DISP, color: C.text, fontSize: 22, letterSpacing: -0.5, lineHeight: 26 },
+  dayM: { fontFamily: BODY, color: C.dim2, fontSize: 11 },
+
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { flex: 1, fontFamily: DISP_MED, color: C.text, fontSize: 15.5 },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, maxWidth: 150 },
+  pillT: { fontFamily: DISP_MED, fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase' },
+
+  meta: { fontFamily: BODY, color: C.dim, fontSize: 13, fontVariant: ['tabular-nums'] },
+  money: { fontFamily: BODY, color: C.text, fontSize: 13.5, fontVariant: ['tabular-nums'] },
+  hint: { color: C.dim2, fontSize: 13 },
+
+  more: { marginHorizontal: S.xl, marginTop: 4, paddingVertical: 13, borderRadius: R.lg,
+    borderWidth: 1, borderColor: C.line, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
+  moreT: { fontFamily: DISP_MED, color: C.dim, fontSize: 11.5, letterSpacing: 1.1, textTransform: 'uppercase' },
+
   empty: { flex: 1, backgroundColor: C.ink, paddingTop: 84, paddingHorizontal: 40, alignItems: 'center' },
   emptyIcon: { width: 62, height: 62, borderRadius: R.xl, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft,
-    marginBottom: 18 },
+    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft, marginBottom: 18 },
   emptyT: { ...TITLE.card, color: C.text, textAlign: 'center' },
   emptyS: { fontFamily: BODY, color: C.dim, fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
   emptyBtn: { marginTop: 20, paddingHorizontal: 22, paddingVertical: 14, borderRadius: R.lg,
     backgroundColor: C.lime, minHeight: HIT, justifyContent: 'center' },
-  emptyBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
-    textTransform: 'uppercase' },
-
-  cardT: { borderColor: C.accentBorder, backgroundColor: C.accentSoft },
-  tIcon: { width: 34, height: 34, borderRadius: R.md, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.accentBorder, backgroundColor: C.accentSoft },
-  card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: R.xl,
-    marginHorizontal: S.xl, marginBottom: 10, overflow: 'hidden' },
-  head: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
-  name: { ...TITLE.section, color: C.text, textTransform: 'uppercase' },
-  date: { fontFamily: BODY, color: C.dim2, fontSize: 13, marginTop: 2 },
-  foot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
-    borderTopWidth: 1, borderTopColor: C.line, paddingTop: 11 },
-  time: { color: C.text, fontFamily: DISP, fontSize: 17, letterSpacing: -0.5,
-    fontVariant: ['tabular-nums'] },
-  price: { fontFamily: BODY, color: C.dim, fontSize: 15, fontVariant: ['tabular-nums'] },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  mini: { flex: 1, borderWidth: 1, borderColor: C.line, borderRadius: R.md,
-    paddingVertical: 11, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
-  miniDg: { borderColor: C.dangerBorder },
-  // Плитка с часами — по содержимому: место отдаём кнопке рядом
-  miniFit: { flex: 0, flexGrow: 0, flexShrink: 0, flexBasis: 'auto', paddingHorizontal: 16 },
-  // «Написать менеджеру» длиннее прочих подписей — плотнее, чтобы в одну строку
-  miniWa: { color: C.accent, letterSpacing: 0.3, textAlign: 'center', paddingHorizontal: 6 },
-  miniT: { color: C.dim, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
-    textTransform: 'uppercase' },
+  emptyBtnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6, textTransform: 'uppercase' },
 }));
