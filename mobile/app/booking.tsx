@@ -86,6 +86,7 @@ export default function BookingScreen() {
         <View style={s.card}>
           <Row k="Площадка" v={b.courtName} />
           {!!b.coachName && <Row k="Тренер" v={b.coachName} />}
+          {!!b.family && <Row k="Услуга" v="Семейный" />}
           <Row k="Дата" v={longDate(dateOfIso(b.startsAt))} />
           <Row k="Время" v={`${hh(b.hour)} – ${hh(b.hour + b.hours)}`} mono />
           <Row k="Длительность" v={`${b.hours} ${plural(b.hours, 'час', 'часа', 'часов')}`} />

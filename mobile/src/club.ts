@@ -39,6 +39,8 @@ export type ClubInfoData = {
   /** Тренеры: выбор тренера при записи и групповые тренировки.
    *  Клуб может выключить всю функцию — тогда приложение о ней молчит. */
   coachesOn: boolean;
+  /** Услуга «Семейный» на крытом корте. */
+  familyOn: boolean;
   /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
   waTemplate: string | null;
   /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
@@ -99,7 +101,7 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, coachesOn: true, waTemplate: null,
+  showTournaments: true, showFootball: true, coachesOn: true, familyOn: true, waTemplate: null,
   bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
 
@@ -135,6 +137,7 @@ export const CLUB = {
   get showTournaments() { return cache.showTournaments },
   get showFootball() { return cache.showFootball },
   get coachesOn() { return cache.coachesOn !== false },
+  get familyOn() { return cache.familyOn !== false },
   get waTemplate() { return cache.waTemplate },
 };
 

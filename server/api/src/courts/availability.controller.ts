@@ -83,7 +83,7 @@ export class AvailabilityController {
       }
       // Корт «закрыт» на этот день, если закрытие покрывает весь день
       const closed = closedUntil != null && closedUntil >= clubHour(day, close);
-      return { courtId: c.id, name: c.name, isFootball: c.is_football, closed, hours,
+      return { courtId: c.id, name: c.name, isFootball: c.is_football, isFamily: c.is_family, closed, hours,
         photo: firstPhoto.get(c.id) ?? null,
         // Цвет и особенности — для карточек кортов на главной
         color: colorOf(c.color), tags: c.tags };

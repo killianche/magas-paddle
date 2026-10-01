@@ -100,6 +100,7 @@ export class BookingsController {
       price: b.price,
       // Тренировка: имя тренера и его часть цены
       coachName: b.coaches?.name ?? null, coachPrice: b.coach_price,
+      family: b.family,
       discount: b.discount,
       paid: paidBy.get(String(b.id)) ?? 0,
       // Отмена или неявка: предоплата осталась клубу или её вернули
@@ -142,6 +143,11 @@ export class BookingsController {
     // на следующей неделе снова доступен
     if (court.closed_until && court.closed_until > clubHour(dto.date, dto.hour)) {
       throw new ConflictException({ code: 'court_closed', message: court.closed_reason ?? 'Площадка закрыта' });
+    }
+
+    const family = !!dto.family;
+    if (family && (!set.familyOn || !court.is_family)) {
+      throw new BadRequestException('На этой площадке услуга «Семейный» недоступна');
     }
 
     const startsAt = clubHour(dto.date, dto.hour);
@@ -209,7 +215,7 @@ export class BookingsController {
         data: {
           court_id: court.id, client_id: client.id,
           starts_at: startsAt, ends_at: endsAt,
-          price, comment: dto.comment, source: 'app',
+          price, comment: dto.comment, source: 'app', family,
           coach_id: coach?.id ?? null, coach_price: coachPrice,
           // Держим время ограниченный срок: оплата идёт через менеджера,
           // и до подтверждения место не должно висеть занятым бесконечно.
@@ -223,6 +229,7 @@ export class BookingsController {
         rows: [
           `🎾 ${esc(court.name)} · ${whenLine(startsAt, endsAt)}`,
           coach && `👤 Тренер: ${esc(coach.name)}`,
+          family && '👨‍👩‍👧 Услуга «Семейный»',
           '⏳ Ждёт подтверждения',
         ],
         foot: 'из приложения',
@@ -230,7 +237,7 @@ export class BookingsController {
       return {
         id: Number(b.id), courtId: court.id, courtName: court.name,
         startsAt: b.starts_at, endsAt: b.ends_at, price: price + coachPrice, status: b.status,
-        coachName: coach ? coach.name : null, coachPrice,
+        coachName: coach ? coach.name : null, coachPrice, family,
         holdUntil: b.hold_until, holdMinutes: set.holdMinutes,
         // Номер аккаунта: приложение пишет его в сообщение WhatsApp, чтобы
         // менеджер отличал заявки разных людей, пришедшие одновременно

@@ -15,6 +15,9 @@ ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name, price_morning = EXCLUDED.price_morning,
   price_standard = EXCLUDED.price_standard, sort_order = EXCLUDED.sort_order;
 
+-- Корт 6 крытый: на нём доступна услуга «Семейный»
+UPDATE courts SET is_family = true WHERE id = 'c6';
+
 -- Корт 6 закрыт на ремонт: показываем, но занять нельзя
 UPDATE courts SET closed_until = now() + interval '2 days',
                   closed_reason = 'Ремонт покрытия'

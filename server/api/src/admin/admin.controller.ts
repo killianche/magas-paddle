@@ -360,7 +360,7 @@ export class AdminController {
         id: c.id, name: c.name, isActive: c.is_active,
         closedUntil: c.closed_until, closedReason: c.closed_reason,
         // Цвет покрытия — в сетке дня столбец корта выделен своим цветом
-        color: colorOf(c.color), isFootball: c.is_football, tags: c.tags,
+        color: colorOf(c.color), isFootball: c.is_football, isFamily: c.is_family, tags: c.tags,
       })),
       bookings: rows.map(b => {
         const cl = b.client_id ? byId.get(String(b.client_id)) : null;
@@ -381,6 +381,7 @@ export class AdminController {
           // Тренировка: тренер и его часть цены
           coach: b.coaches ? { id: Number(b.coaches.id), name: b.coaches.name, color: b.coaches.color } : null,
           coachPrice: b.coach_price,
+          family: b.family,
           // Можно ли сейчас добавить к брони продажу (окно SALE_WINDOW_H)
           saleOpen: !b.tournament_id && ['pending', 'confirmed', 'done'].includes(b.status)
             && saleWindowOk(b.starts_at, b.ends_at),
@@ -609,6 +610,7 @@ export class AdminController {
           head: [`${esc(whoName)}${c?.phone ? ` · ${phoneLink(c.phone)}` : ''}`],
           rows: [
             `🎾 ${esc(court?.name ?? b.court_id)} · ${whenLine(b.starts_at, b.ends_at)}`,
+            b.family && '👨‍👩‍👧 Услуга «Семейный»',
             money && `💰 ${money}`,
           ],
           foot: req.admin.name,
@@ -2347,7 +2349,7 @@ export class AdminController {
       colors: colorList(),
       courts: courts.map(c => ({
         photos: c.court_photos.map(ph => ({ id: Number(ph.id), url: ph.url })),
-        id: c.id, name: c.name, isFootball: c.is_football,
+        id: c.id, name: c.name, isFootball: c.is_football, isFamily: c.is_family,
         priceMorning: c.price_morning, priceStandard: c.price_standard,
         isActive: c.is_active, sortOrder: c.sort_order, description: c.description,
         color: c.color, tags: c.tags,
@@ -2366,7 +2368,7 @@ export class AdminController {
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string; telegram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
-    showTournaments: boolean; showFootball: boolean; coachesOn: boolean; waTemplate: string;
+    showTournaments: boolean; showFootball: boolean; coachesOn: boolean; familyOn: boolean; waTemplate: string;
     bookingNote: string;
   }>) {
     const cur = await this.club.get();
@@ -2412,6 +2414,7 @@ export class AdminController {
         ? cur.showTournaments : !!body.showTournaments,
       show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
       coaches_on: body.coachesOn === undefined ? cur.coachesOn : !!body.coachesOn,
+      family_on: body.familyOn === undefined ? cur.familyOn : !!body.familyOn,
       wa_template: body.waTemplate === undefined
         ? cur.waTemplate : (String(body.waTemplate).trim().slice(0, 500) || null),
       booking_note: body.bookingNote === undefined
@@ -2979,6 +2982,8 @@ export class AdminController {
     clientId?: number;
     /** Тренировка: тренер и, если нужно, своя цена тренировки (рубли). */
     coachId?: number; coachPrice?: number;
+    /** Услуга «Семейный». */
+    family?: boolean;
   }) {
     if (!isValidDate(body.date)) throw new BadRequestException('Дата в виде ГГГГ-ММ-ДД');
     const court = await this.db.courts.findUnique({ where: { id: body.courtId } });
@@ -3053,6 +3058,7 @@ export class AdminController {
         starts_at: clubHour(body.date, body.hour),
         ends_at: clubHour(body.date, body.hour + hoursCount),
         price, status: 'confirmed', source: 'admin', comment: body.comment,
+        family: !!body.family && court.is_family && set.familyOn,
         created_by: req.admin.login, players: players,
         // имя гостя без телефона больше не теряется
         guest_name: clientId == null ? name : null,
@@ -3067,6 +3073,7 @@ export class AdminController {
         rows: [
           `🎾 ${esc(court.name)} · ${whenLine(b.starts_at, b.ends_at)}`,
           coach && `👤 Тренер: ${esc(coach.name)}`,
+          !!body.family && court.is_family && set.familyOn && '👨‍👩‍👧 Услуга «Семейный»',
         ],
         foot: req.admin.name,
       }));

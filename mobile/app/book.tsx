@@ -24,7 +24,8 @@ export default function Book() {
   useTheme();
   const club = useClub();
   const p = useLocalSearchParams<{
-    courtId: string; name: string; date: string; hour: string; hours: string; price: string }>();
+    courtId: string; name: string; date: string; hour: string; hours: string; price: string;
+    family?: string }>();
   const hydrated = useHydrated();
   const { profile, ready, save } = useProfile();
 
@@ -81,7 +82,7 @@ export default function Book() {
         courtId, date, hour, hours,
         name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
-        coachId: coach?.id,
+        coachId: coach?.id, family: p.family === '1',
       });
       await save({ ...profile, name: name.trim(),
         surname: surname.trim() || undefined, phone: cleanPhone });

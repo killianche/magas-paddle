@@ -1635,6 +1635,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
         <div><label for="addComment">Заметка</label>
           <input id="addComment" placeholder="Необязательно"></div>
       </div>
+      <label class="chk" id="addFamilyRow" hidden><input type="checkbox" id="addFamily"> Семейный</label>
       <p class="hint" id="addWho" hidden></p>
     </div>
 
@@ -1837,6 +1838,7 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <label class="chk"><input type="checkbox" id="setTourn"> Показывать турниры</label>
       <label class="chk"><input type="checkbox" id="setFoot"> Показывать мини-футбольное поле</label>
       <label class="chk"><input type="checkbox" id="setCoach"> Тренеры в приложении: галочка «играть с тренером» и групповые тренировки</label>
+      <label class="chk"><input type="checkbox" id="setFamily"> Услуга «Семейный»: галочка при записи на крытый корт</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
     </div>
@@ -2491,6 +2493,7 @@ function render(){
           html += `<td class="lane" style="${laneOf(c)}" rowspan="${b.hours}"><button class="bk ${stt.cls}" data-id="${b.id}" title="${nm} · ${esc(stt.label)}">
             <div class="n">${nm}${flags}</div>
             ${b.coach ? `<div class="m co-line" style="--cc:${b.coach.color || 'var(--dim-2)'}"><span class="cdot"></span>тренер ${esc(b.coach.name)}</div>` : ''}
+            ${b.family ? `<div class="m">👨‍👩‍👧 Семейный</div>` : ''}
             <div class="m">${hh(b.hour)}–${hh(b.hour+b.hours)} · ${b.discount ? `<s>${rub(b.price + (b.coachPrice || 0))}</s>` : ''}${rub(dueOf(b))}${extrasOf(b) ? ' <small title="с доп. позициями">+доп.</small>' : ''}</div>
             <div class="st"><span class="pill sm ${stt.tone === 'dim' ? '' : stt.tone}">${esc(stt.short || stt.label)}</span>${
               stt.tone === 'warn' && /^⏳/.test(stt.label) ? `<span class="hold">${esc(stt.label.replace('⏳ ', ''))}</span>` : ''}</div>
@@ -2562,7 +2565,7 @@ async function openBooking(id){
     <div class="t">
       <h3>${esc(who(b))}${b.client && (b.client.noShows>0 || b.client.cancels>1) ? ' <span title="Бывали отмены или неявки" style="color:var(--amber)">⚠</span>' : ''}</h3>
       <div class="when">${esc(court.name)} · ${wd}, ${pretty(date)} · ${hh(b.hour)}–${hh(b.hour+b.hours)}</div>
-      <div class="meta">${b.coach ? 'Тренировка · ' : ''}Заявка №${b.id}${b.client ? ' · ID ' + b.client.id : ''} · ${b.source==='app' ? 'из приложения' : 'записал менеджер'}</div>
+      <div class="meta">${b.coach ? 'Тренировка · ' : ''}${b.family ? 'Семейный · ' : ''}Заявка №${b.id}${b.client ? ' · ID ' + b.client.id : ''} · ${b.source==='app' ? 'из приложения' : 'записал менеджер'}</div>
     </div>
     <span class="pill ${st.tone === 'dim' ? '' : st.tone}">${esc(st.label)}</span>`;
 
@@ -2998,6 +3001,10 @@ function renderAddCourts(){
   $('#addCourts').querySelectorAll('button').forEach(b => b.onclick = () => {
     addCourtId = b.dataset.c; renderAddCourts(); addTotal();
   });
+  const fam = setup?.settings?.familyOn !== false
+    && !!list.find(c => c.id === addCourtId)?.isFamily;
+  $('#addFamilyRow').hidden = !fam;
+  if (!fam) $('#addFamily').checked = false;
 }
 
 /** До какого часа работает выбранный тренер в день записи (или клуб). */
@@ -3153,6 +3160,7 @@ $('#addOk').onclick = async () => {
     coachId: addCoachId || undefined,
     players: +$('#addPlayers').value || undefined,
     comment: $('#addComment').value.trim() || undefined,
+    family: $('#addFamily').checked || undefined,
   };
   try {
     await call('/admin/bookings', { method:'POST', body: JSON.stringify(body) });
@@ -3507,6 +3515,7 @@ async function openSetup(){
   $('#setTourn').checked = st.showTournaments !== false;
   $('#setFoot').checked = st.showFootball !== false;
   $('#setCoach').checked = st.coachesOn !== false;
+  $('#setFamily').checked = st.familyOn !== false;
   weekRender(st.week);
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
@@ -3730,6 +3739,7 @@ $('#appSave').onclick = async () => {
       bookingNote: $('#setBookNote').value,
       showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
       coachesOn: $('#setCoach').checked,
+      familyOn: $('#setFamily').checked,
     })});
     ok('#appErr', '#appSave', 'Сохранить');
   } catch(e){ fail('#appErr', e) }

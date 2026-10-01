@@ -15,7 +15,7 @@ import { C, S, HIT, DISP, DISP_MED, EYEBROW, BODY, sheet, R } from '../theme';
 import { api, rub, mediaUrl, getToken, ApiError, type ApiCourt, type ApiFreeCoach, type ApiGrid, type ApiHour } from '../api';
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
-import { IconWhatsApp } from './icons';
+import { IconWhatsApp, IconCheck } from './icons';
 import { CoachPick } from './coach';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
@@ -205,6 +205,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   const [problem, setProblem] = useState<string | null>(null);
   // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
+  const [family, setFamily] = useState(false);
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
 
@@ -263,7 +264,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/book', params: {
       courtId: sel.courtId, name: court.name, date,
-      hour: String(sel.hour), hours: String(hours), price: String(courtPrice) } });
+      hour: String(sel.hour), hours: String(hours), price: String(courtPrice),
+      family: family ? '1' : '' } });
   };
 
   // На случай, если номер WhatsApp в админке сотрут: кнопка не мёртвая, а
@@ -294,7 +296,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
       const res = await api.book({
         courtId: sel.courtId, date, hour: sel.hour, hours,
         name: who.name, surname: who.surname, phone: who.phone, whatsapp: who.whatsapp,
-        coachId: coach?.id,
+        coachId: coach?.id, family,
       });
       // ID аккаунта становится известен с первой заявкой — запоминаем
       if (res.clientId && who.id !== res.clientId) await save({ ...who, id: res.clientId });
@@ -320,7 +322,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   };
 
   return {
-    total, courtDue, courtPrice, coach, setCoach, sending, prepay, problem, setProblem,
+    total, courtDue, courtPrice, coach, setCoach, family, setFamily, sending, prepay, problem, setProblem,
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,
   };
@@ -367,6 +369,20 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
       {club.coachesOn && !court.isFootball && (
         <CoachPick date={date} hour={sel.hour} hours={hours} courtId={sel.courtId}
           coach={booking.coach} onPick={booking.setCoach} compact />
+      )}
+
+      {club.familyOn && court.isFamily && (
+        <Pressable onPress={() => { Haptics.selectionAsync(); booking.setFamily(!booking.family) }}
+          accessibilityRole="checkbox" accessibilityState={{ checked: booking.family }}
+          style={({ pressed }) => [b.fam, pressed && { opacity: 0.85 }]}>
+          <View style={[b.famBox, booking.family && b.famBoxOn]}>
+            {booking.family && <IconCheck size={13} color={C.onLime} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={b.famT}>Семейный</Text>
+            <Text style={b.famS}>Корт закроют от посторонних глаз</Text>
+          </View>
+        </Pressable>
       )}
 
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}
@@ -488,6 +504,14 @@ const b = sheet(() => ({
   prepayR: { fontFamily: DISP, color: C.accent, fontSize: 16, letterSpacing: -0.4,
     fontVariant: ['tabular-nums'] },
   problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  fam: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, minHeight: HIT + 6,
+    marginHorizontal: S.xl, marginTop: 6, marginBottom: 4, borderRadius: R.xl,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  famBox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: C.lineStrong,
+    alignItems: 'center', justifyContent: 'center' },
+  famBoxOn: { backgroundColor: C.lime, borderColor: C.lime },
+  famT: { fontFamily: DISP_MED, color: C.text, fontSize: 15.5 },
+  famS: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2 },
   incl: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: -4, marginBottom: 12 },
   inclT: { fontFamily: BODY, color: C.dim, fontSize: 12, lineHeight: 16 },
   wa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

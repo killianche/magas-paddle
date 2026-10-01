@@ -107,6 +107,7 @@ model settings {
   sales_on         Boolean  @default(true)
   sales_in_stats   Boolean  @default(true)
   coaches_on       Boolean  @default(true)
+  family_on        Boolean  @default(true)
   tg_offset        BigInt?
   tg_daily_at      String?
   updated_at       DateTime @default(now()) @db.Timestamptz(6)
@@ -160,6 +161,7 @@ model bookings {
   created_by String?
   tournament_id BigInt?
   kept_prepay Boolean        @default(false)
+  family     Boolean        @default(false)
   coach_id   BigInt?
   coach_price Int           @default(0)
   created_at DateTime       @default(now()) @db.Timestamptz(6)
@@ -215,6 +217,7 @@ model courts {
   id            String     @id
   name          String
   is_football   Boolean    @default(false)
+  is_family     Boolean    @default(false)
   price_morning  Int
   price_standard Int
   is_active     Boolean    @default(true)

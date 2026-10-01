@@ -127,7 +127,7 @@ function RowCard({ row, past }: { row: Row; past?: boolean }) {
           </View>
         </View>
         <Text style={s.meta} numberOfLines={1}>
-          {time}{row.kind === 'booking' && !!row.b.coachName ? ` · ${row.b.courtName}` : ''}
+          {time}{row.kind === 'booking' && !!row.b.coachName ? ` · ${row.b.courtName}` : ''}{row.kind === 'booking' && !!row.b.family ? ' · Семейный' : ''}
         </Text>
         <Text style={s.money} numberOfLines={1}>
           {money}

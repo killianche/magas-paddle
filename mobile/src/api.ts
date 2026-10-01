@@ -90,7 +90,7 @@ export type SlotStatus = 'free' | 'busy' | 'past' | 'closed';
 export type CourtColor = { key: string; name: string; hex: string };
 
 export type ApiCourt = {
-  id: string; name: string; isFootball: boolean; description: string | null;
+  id: string; name: string; isFootball: boolean; isFamily?: boolean; description: string | null;
   /** Цвет покрытия и особенности («Ультраширокий»). Пусто — клуб не указал. */
   color?: CourtColor | null; tags?: string[];
   priceMorning: number; priceStandard: number; morningUntil: number;
@@ -118,7 +118,7 @@ export type ApiGrid = {
   date: string; openHour: number; closeHour: number; morningUntil: number; maxHours: number;
   /** Клуб в этот день не работает (часы по дням задаются в админке). */
   dayOff?: boolean;
-  courts: { courtId: string; name: string; isFootball: boolean; closed: boolean;
+  courts: { courtId: string; name: string; isFootball: boolean; isFamily?: boolean; closed: boolean;
     /** Главное фото корта, загруженное клубом; null — временное. */
     photo?: string | null; color?: CourtColor | null; tags?: string[];
     hours: ApiHour[] }[];
@@ -154,6 +154,8 @@ export type ApiBooking = {
   extras?: { item: string; qty: number; amount: number }[];
   /** Тренировка: имя тренера и его часть цены. */
   coachName?: string | null; coachPrice?: number;
+  /** Услуга «Семейный»: корт готовят закрытым. */
+  family?: boolean;
   status: 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'done' | 'expired';
   /** До какого времени клуб держит неподтверждённую заявку. */
   holdUntil?: string | null;
@@ -249,7 +251,7 @@ export const api = {
     phone: string | null; whatsapp: string | null; address: string | null;
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
-    showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; waTemplate: string | null;
+    showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; familyOn?: boolean; waTemplate: string | null;
     bookingNote?: string | null; heroUrl?: string | null; heroLightUrl?: string | null;
   }>('/club'),
 
@@ -285,7 +287,7 @@ export const api = {
 
   book: (b: { courtId: string; date: string; hour: number; hours: number;
               name: string; surname?: string; phone: string; whatsapp?: string;
-              comment?: string; coachId?: number }) =>
+              comment?: string; coachId?: number; family?: boolean }) =>
     call<ApiBooking>('/bookings', { method: 'POST', body: JSON.stringify(b) }),
 
   cancel: (id: number, phone: string) =>

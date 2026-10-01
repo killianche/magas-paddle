@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Matches, Max, Min, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, Max, Min, MaxLength } from 'class-validator';
 
 
 export class CreateBookingDto {
@@ -37,4 +37,8 @@ export class CreateBookingDto {
    *  Клуб потом подтверждает: если тренер не сможет, менеджер предложит другого. */
   @IsOptional() @IsInt() @Min(1)
   coachId?: number;
+
+  /** Услуга «Семейный»: корт готовят закрытым. */
+  @IsOptional() @IsBoolean()
+  family?: boolean;
 }
