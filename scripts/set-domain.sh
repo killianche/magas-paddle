@@ -32,24 +32,36 @@ GOT="$(dig +short "$DOMAIN" A | tail -1)"
 [ "$GOT" = "$SERVER_IP" ] || die "$DOMAIN указывает на $GOT, а наш сервер $SERVER_IP. Поправьте запись A."
 echo "  указывает на $GOT — верно"
 
-# ---------- 2. nginx ----------
-say "Настраиваю nginx на сервере"
+# ---------- 2. Сертификат ----------
+# Сначала бумага, потом имя: если сперва добавить server_name, nginx начнёт
+# отвечать на новое имя сертификатом от старого — и браузер покажет ошибку.
+#
+# Расширяем существующий сертификат, а не выпускаем второй: тогда пути к файлам
+# в конфиге остаются прежними и certbot не трогает настройку nginx.
+# Проверка домена — через каталог сайта: блок на 80 порту (server_name _)
+# отвечает на любое имя и отдаёт /var/www/padelmagas.
+say "Добавляю $DOMAIN в сертификат Let's Encrypt"
+ssh "$HOST" "certbot certonly --webroot -w /var/www/padelmagas \
+  --cert-name padel.217-114-8-196.sslip.io \
+  -d padel.217-114-8-196.sslip.io -d '$DOMAIN' \
+  --expand --non-interactive --agree-tos --register-unsafely-without-email 2>&1 | tail -8"
+
+# ---------- 3. nginx ----------
+say "Добавляю $DOMAIN в nginx"
 ssh "$HOST" "DOMAIN='$DOMAIN' bash -s" <<'REMOTE'
 set -euo pipefail
-CONF=/etc/nginx/sites-available/padelmagas
-# Добавляем новое имя к существующим, старое не убираем: по нему ещё ходят
+# Имя падела стоит в блоке HTTPS, а не в padelmagas: там server_name _ и порт 80
+CONF=/etc/nginx/sites-available/padelmagas-ssl
+cp -a "$CONF" "$CONF.bak-$(date +%Y%m%d-%H%M%S)"
+# Новое имя добавляем к старому, старое не убираем: по нему ходят
 # ранее собранные версии приложения
 if ! grep -q "$DOMAIN" "$CONF"; then
-  sed -i "s/^\(\s*server_name .*\)padel\.217-114-8-196\.sslip\.io/\1padel.217-114-8-196.sslip.io $DOMAIN/" "$CONF"
+  sed -i "s/^\(\s*server_name .*\)padel\.217-114-8-196\.sslip\.io;/\1padel.217-114-8-196.sslip.io $DOMAIN;/" "$CONF"
 fi
+grep -q "$DOMAIN" "$CONF" || { echo "не удалось добавить имя в $CONF"; exit 1; }
 nginx -t && systemctl reload nginx
-grep -h "server_name" "$CONF" | head -3
+grep -h "server_name" "$CONF"
 REMOTE
-
-# ---------- 3. Сертификат ----------
-say "Выпускаю сертификат Let's Encrypt"
-ssh "$HOST" "certbot --nginx -d '$DOMAIN' --expand --non-interactive --agree-tos \
-  --register-unsafely-without-email --redirect 2>&1 | tail -6"
 
 say "Проверяю сертификат"
 echo | openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" 2>/dev/null \
