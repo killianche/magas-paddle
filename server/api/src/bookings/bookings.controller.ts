@@ -210,6 +210,35 @@ export class BookingsController {
       ? await this.db.clients.update({ where: { id: me.id }, data: { whatsapp: wa } })
       : me;
 
+    // Повтор той же заявки — не вторая бронь.
+    //
+    // Человек нажимает «Забронировать в WhatsApp»: заявка создаётся, и только
+    // потом открывается WhatsApp. Если он не открылся (например, не включён
+    // VPN), человек возвращается и нажимает снова — и упирался в «это время
+    // только что заняли», хотя занял его сам минуту назад. Отдаём ту же бронь:
+    // приложение просто ещё раз откроет WhatsApp с тем же номером заявки.
+    const already = await this.db.bookings.findFirst({
+      where: {
+        client_id: client.id, court_id: court.id,
+        starts_at: startsAt, ends_at: endsAt,
+        status: { in: ['pending', 'confirmed'] },
+      },
+      include: { coaches: { select: { name: true } } },
+    });
+    if (already) {
+      return {
+        id: Number(already.id), courtId: court.id, courtName: court.name,
+        startsAt: already.starts_at, endsAt: already.ends_at,
+        price: already.price + already.coach_price, status: already.status,
+        coachName: already.coaches?.name ?? null, coachPrice: already.coach_price,
+        family: already.family,
+        holdUntil: already.hold_until, holdMinutes: set.holdMinutes,
+        clientId: Number(client.id),
+        // Приложению: это та же заявка, а не новая
+        repeated: true,
+      };
+    }
+
     try {
       const b = await this.db.bookings.create({
         data: {
@@ -252,6 +281,28 @@ export class BookingsController {
       // База не дала создать пересекающуюся бронь — значит время увели,
       // пока человек заполнял заявку. Отвечаем честно и с заменой.
       if (e?.meta?.code === EXCLUSION_VIOLATION || String(e?.message).includes(EXCLUSION_VIOLATION)) {
+        // Две одинаковые заявки ушли почти одновременно (два нажатия подряд):
+        // первая успела в базу, вторая упёрлась в ограничение. Это не «время
+        // увели» — это та же заявка, её и отдаём.
+        const mine = await this.db.bookings.findFirst({
+          where: {
+            client_id: client.id, court_id: court.id,
+            starts_at: startsAt, ends_at: endsAt,
+            status: { in: ['pending', 'confirmed'] },
+          },
+          include: { coaches: { select: { name: true } } },
+        });
+        if (mine) {
+          return {
+            id: Number(mine.id), courtId: court.id, courtName: court.name,
+            startsAt: mine.starts_at, endsAt: mine.ends_at,
+            price: mine.price + mine.coach_price, status: mine.status,
+            coachName: mine.coaches?.name ?? null, coachPrice: mine.coach_price,
+            family: mine.family,
+            holdUntil: mine.hold_until, holdMinutes: set.holdMinutes,
+            clientId: Number(client.id), repeated: true,
+          };
+        }
         throw new ConflictException({
           code: 'slot_taken',
           message: 'Это время только что заняли',
