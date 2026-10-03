@@ -1,8 +1,8 @@
 import json, importlib.util
 spec = importlib.util.spec_from_file_location('asc','asc.py'); asc = importlib.util.module_from_spec(spec); spec.loader.exec_module(asc)
 APP='6808335944'; VID='d98f5a08-4d50-4543-b6f7-087427d3b640'
-PRIVACY='https://padel.217-114-8-196.sslip.io/privacy.html'
-SUPPORT='https://padel.217-114-8-196.sslip.io/'
+PRIVACY='https://padelmagas.ru/privacy.html'
+SUPPORT='https://padelmagas.ru/'
 
 def show(l, st, out):
     ok = st in (200,201,204)
