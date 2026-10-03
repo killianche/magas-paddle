@@ -16,7 +16,6 @@ import { api, rub, mediaUrl, getToken, ApiError, type ApiCourt, type ApiFreeCoac
 import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp, IconCheck } from './icons';
-import { CoachPick } from './coach';
 import { Gallery } from './gallery';
 import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
 import { BOOKING_NOTE, useClub } from '../club';
@@ -364,11 +363,6 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
           <PadelMark />
           <Text style={[b.inclT, { flex: 1 }]}>{club.bookingNote?.trim() || BOOKING_NOTE}</Text>
         </View>
-      )}
-
-      {club.coachesOn && !court.isFootball && (
-        <CoachPick date={date} hour={sel.hour} hours={hours} courtId={sel.courtId}
-          coach={booking.coach} onPick={booking.setCoach} compact />
       )}
 
       {club.familyOn && court.isFamily && (

@@ -18,6 +18,8 @@ import { NotFound } from './state';
 import { Eyebrow } from './velocity';
 import { Gallery } from './gallery';
 import { Look } from './courtlook';
+import { CoachPick } from './coach';
+import { useClub } from '../club';
 import { RentalsSection } from './extras';
 import { addDays, today } from '../dates';
 import {
@@ -28,6 +30,7 @@ import {
 /** courtId — какой корт; football — найти футбольное поле, какой бы у него ни был id. */
 export function CourtPage({ courtId, football }: { courtId?: string; football?: boolean }) {
   useTheme();
+  const club = useClub();
   const { width } = useWindowDimensions();
   const [date, setDate] = useState(today());
   const [hours, setHours] = useState(1);
@@ -119,6 +122,15 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
           <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot}
             dayOff={grid.dayOff} />
         </Card>
+
+        {/* Тренер — сразу под выбранным временем: решение о тренере человек
+            принимает здесь же, а не в нижней панели (заказчик, 04.10.2026) */}
+        {sel && club.coachesOn && !row.isFootball && (
+          <View style={{ marginTop: 10 }}>
+            <CoachPick date={date} hour={sel.hour} hours={hours} courtId={sel.courtId}
+              coach={booking.coach} onPick={booking.setCoach} compact />
+          </View>
+        )}
 
         {/* Ракетки и мячи — в бронь не входят; свёрнуто, чтобы не отвлекать */}
         {!row.isFootball && <View style={{ marginTop: 18 }}><RentalsSection /></View>}
