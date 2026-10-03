@@ -11,7 +11,8 @@ else SSH="ssh $SSHO"; RSYNC="rsync"; fi
 cd "$ROOT/mobile"
 printf '\n\033[1;32m▸ Собираю веб-версию\033[0m\n'
 rm -rf dist
-npx expo export --platform web 2>&1 | tail -4
+# Без потолка кучи экспорт на этом сервере убивает OOM-киллер (проверено 01.10.2026)
+NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2560}" npx expo export --platform web 2>&1 | tail -4
 
 printf '\n\033[1;32m▸ Выкладываю\033[0m\n'
 $RSYNC -az --delete -e "ssh $SSHO" dist/ "$HOST:/var/www/padelmagas/v1/"
