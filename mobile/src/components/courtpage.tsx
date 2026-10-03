@@ -39,6 +39,8 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
 
   // Описание, цвет и фото меняются редко — отдельный запрос с общим кэшем
   const info = useApi(() => api.courts(), [], 'courts.photos');
+  // Тот же запрос, что внутри GoodsPick: общий кэш, второй раз не ходит
+  const hasGoods = ((useApi(() => api.goods(), [], 'goods').data) ?? []).length > 0;
   const q = useApi(() => api.grid(date), [date], `grid.${date}`);
   const grid = q.data;
   const row = grid?.courts.find(c => football ? c.isFootball : c.courtId === courtId) ?? null;
@@ -138,15 +140,18 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
           </View>
         )}
 
-        {/* Прокат и мячи: что есть в каталоге — можно взять сразу, остальное
-            остаётся прайс-листом из настроек клуба */}
-        {sel && !row.isFootball && (
-          <View style={{ marginTop: 10 }}>
-            <GoodsPick picked={booking.picked}
-              onChange={(m, sum) => { booking.setPicked(m); booking.setGoodsSum(sum) }} />
+        {/* Прокат и мячи. Если клуб ведёт каталог — показываем настоящие
+            позиции с кнопкой «Добавить», и прайс-лист из настроек тогда не
+            нужен: два блока про ракетки подряд только путали. Каталога нет —
+            остаётся прежний прайс-лист. */}
+        {!row.isFootball && (
+          <View style={{ marginTop: hasGoods ? 10 : 18 }}>
+            {hasGoods
+              ? <GoodsPick picked={booking.picked}
+                  onChange={(m, sum) => { booking.setPicked(m); booking.setGoodsSum(sum) }} />
+              : <RentalsSection />}
           </View>
         )}
-        {!row.isFootball && <View style={{ marginTop: 18 }}><RentalsSection /></View>}
       </ScrollView>
 
       {sel && (
