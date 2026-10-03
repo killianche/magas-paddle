@@ -15,8 +15,9 @@ BUILDS = [
     ('2', '3528cbc0-74d0-47cc-af8e-80ae160e3865'),
     ('1', '58f1dd55-f041-4f3a-873e-ec8b0b43b153'),
 ]
-VID   = '78967d3c-f94a-40b0-b99f-3836c01f05f0'   # 1.0.1, на проверке
-VID_10 = 'd98f5a08-4d50-4543-b6f7-087427d3b640'  # 1.0, уже в магазине
+VID   = '0671853e-f872-43f5-b33c-75b9116505a3'   # 1.0.2, на проверке
+VID_101 = '78967d3c-f94a-40b0-b99f-3836c01f05f0' # 1.0.1, в магазине
+VID_10 = 'd98f5a08-4d50-4543-b6f7-087427d3b640'  # 1.0, прежняя
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'
 
 here = pathlib.Path(__file__).parent
