@@ -11,9 +11,21 @@
  * Пароль генерируется здесь же и печатается один раз — в базе только хэш.
  */
 const { PrismaClient } = require('@prisma/client');
-const { randomBytes, scrypt } = require('crypto');
+const { randomBytes, scrypt, createCipheriv } = require('crypto');
 const { promisify } = require('util');
 const scryptAsync = promisify(scrypt);
+
+/** Копия пароля для владельца — тем же способом, что и в админке
+ *  (auth.service.ts, sealPassword): aes-256-gcm, iv(12) | tag(16) | шифртекст.
+ *  Без неё после сброса админка показывала бы владельцу прежний пароль. */
+function sealPassword(pw) {
+  const hex = process.env.STAFF_PASS_KEY ?? '';
+  if (!/^[0-9a-f]{64}$/i.test(hex)) return null;
+  const iv = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', Buffer.from(hex, 'hex'), iv);
+  const ct = Buffer.concat([c.update(pw, 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
+}
 
 /** Пароль из слов и цифр: его диктуют по телефону, поэтому без похожих знаков. */
 function makePassword() {
@@ -40,8 +52,8 @@ async function hash(password) {
       const l = login.trim().toLowerCase();
       await db.admins.upsert({
         where: { login: l },
-        update: { name, role: 'owner', password_hash, is_active: true },
-        create: { login: l, name, role: 'owner', perms: [], password_hash },
+        update: { name, role: 'owner', password_hash, password_enc: sealPassword(password), is_active: true },
+        create: { login: l, name, role: 'owner', perms: [], password_hash, password_enc: sealPassword(password) },
       });
       console.log(`\nВладелец готов.\n  логин:  ${l}\n  пароль: ${password}\n`);
       console.log('Пароль показан один раз — в базе лежит только хэш.\n');
@@ -52,7 +64,8 @@ async function hash(password) {
       if (!row) throw new Error('Такого логина нет');
       const password = makePassword();
       await db.admins.update({
-        where: { login: l }, data: { password_hash: await hash(password) },
+        where: { login: l },
+        data: { password_hash: await hash(password), password_enc: sealPassword(password) },
       });
       await db.admin_sessions.deleteMany({ where: { admin_id: row.id } });
       console.log(`\nНовый пароль для ${l}: ${password}\n`);
