@@ -1,4 +1,4 @@
-const API = 'http://127.0.0.1:3101/api';
+const API = process.env.STAND_API || 'http://127.0.0.1:3101/api';
 const out = []; const say = (g, w, d = '') => out.push((g ? '  ✓ ' : '  ✗ ') + w + (d ? ' — ' + d : ''));
 const call = async (p, o = {}) => {
   const r = await fetch(API + p, { method: o.method || 'GET',

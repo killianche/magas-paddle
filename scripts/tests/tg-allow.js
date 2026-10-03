@@ -1,6 +1,6 @@
 /** Отчёты приходят только разрешённым ID. */
-const API = 'http://127.0.0.1:3101/api';
-const TG = 'http://127.0.0.1:3199/botTEST';
+const API = process.env.STAND_API || 'http://127.0.0.1:3101/api';
+const TG = process.env.STAND_TG || 'http://127.0.0.1:3199/botTEST';
 let ok = 0, bad = 0;
 const say = (g, w, d = '') => { g ? ok++ : bad++; console.log(`${g ? '  ✓' : '  ✗'} ${w}${d ? ' — ' + d : ''}`) };
 const head = t => console.log(`\n── ${t} ──`);

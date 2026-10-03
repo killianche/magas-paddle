@@ -4,8 +4,8 @@
  *  Запуск на стенде: STAND_PASS=<пароль> node scripts/tests/family.js
  */
 const { execSync } = require('child_process');
-const API = 'http://127.0.0.1:3101/api';
-const TG = 'http://127.0.0.1:3199/botTEST';
+const API = process.env.STAND_API || 'http://127.0.0.1:3101/api';
+const TG = process.env.STAND_TG || 'http://127.0.0.1:3199/botTEST';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function call(path, { method = 'GET', body, token, raw } = {}) {

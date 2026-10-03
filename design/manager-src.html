@@ -263,6 +263,52 @@ tr.now td.hcell{color:var(--lime);font-weight:700}
 
 .sheet.wide{max-width:880px}
 .sheet.mid{max-width:620px}
+/* Окно записи: слева — когда, где и кто, справа — прокат, товары и итог.
+   Раньше это была одна длинная колонка: приходилось прокручивать, а товары
+   добавляли вторым заходом через кассу. */
+.sheet.add{max-width:1020px}
+.add-cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;margin-top:14px}
+.ablock{padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.ablock + .ablock,.add-side .ablock{margin-top:12px}
+.add-side .ablock:first-child{margin-top:0}
+.ab-h{font-family:var(--disp);font-size:13px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:10px}
+.ablock > label:first-of-type{margin-top:0}
+.ablock .seg{margin-top:0}
+.add-side{position:sticky;top:0}
+.pos-grid.mini{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:10px;
+  max-height:264px;overflow:auto}
+.pos-grid.mini .pt{justify-content:space-between}
+.pos-grid.mini .pt .ph{aspect-ratio:3/2}
+/* Длинные названия в узкой колонке уходили в три строки и выдавливали цену
+   за край плитки — оставляем две строки с многоточием */
+.pos-grid.mini .pt > b{padding:7px 8px 0;font-size:11.5px;min-height:30px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pos-grid.mini .pt .pr{padding:2px 8px 8px;font-size:11.5px}
+.pos-grid.mini .pt .ph i.gl svg{width:26px;height:26px}
+.pos-grid.mini .pt .ph em{min-width:20px;height:20px;font-size:11px}
+.pos-grid.mini .pt .ph s{font-size:10px;padding:1px 6px}
+.acart{margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)}
+.acart .ln{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px}
+.acart .ln > span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acart .ln b{white-space:nowrap}
+.acart .qty{display:flex;align-items:center;gap:5px}
+.acart .qty button{width:24px;height:24px;border-radius:7px;border:1px solid var(--line-strong);
+  background:var(--surface-2);color:var(--text);line-height:1}
+.acart .qty i{font-style:normal;min-width:16px;text-align:center}
+.asum{margin-top:12px;padding:14px 16px;border-radius:14px;border:1px solid var(--ok-line);background:var(--ok-bg)}
+.asum .when{font-size:12.5px;color:var(--dim)}
+.asum-lines{margin-top:8px}
+.asum-lines .l{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;color:var(--dim)}
+.asum-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  margin-top:9px;padding-top:9px;border-top:1px solid var(--ok-line)}
+.asum-total b{font-family:var(--disp);font-size:26px}
+.asum .acts{margin-top:14px}
+@media(max-width:920px){
+  .add-cols{grid-template-columns:1fr}
+  .add-side{position:static}
+  .pos-grid.mini{max-height:none}
+}
 /* Окно записи: поля собраны в блоки, площадка и длительность — плитками */
 /* ── формы в духе системных окон Apple: заголовок, сегменты, вставные
       списки строк «подпись — значение», итог внизу ─────────────────── */
@@ -1587,66 +1633,83 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
 
 <!-- занять время вручную -->
 <div class="modal" id="addModal">
-  <div class="sheet mid">
+  <div class="sheet add">
     <h3>Записать клиента</h3>
 
-    <div class="fgroup">
-      <div class="fh">Когда и где</div>
-      <div class="grid2">
-        <div><label for="addDate">Дата</label><input id="addDate" type="date"></div>
-        <div><label for="addHour">Начало</label><select id="addHour"></select></div>
-      </div>
-      <label>Площадка</label>
-      <div class="picks" id="addCourts"></div>
-      <label>Сколько часов</label>
-      <div class="picks" id="addHoursPick"></div>
-      <div id="addCoachBox" hidden>
-        <label>Тренер</label>
-        <div class="picks" id="addCoachPick"></div>
-      </div>
-    </div>
+    <div class="add-cols">
+      <div class="add-main">
 
-    <div class="fgroup">
-      <div class="fh">Кто играет</div>
-      <!-- Основной путь — запись на аккаунт приложения; без приложения — по номеру -->
-      <div class="seg" style="margin-top:10px" id="addWhoSeg">
-        <button type="button" data-w="app" class="on">Есть аккаунт в приложении</button>
-        <button type="button" data-w="none">Без приложения</button>
-      </div>
-      <div id="addAppBox">
-        <div class="rel">
-          <label for="addFind">Найти аккаунт</label>
-          <input id="addFind" autocomplete="off" placeholder="телефон, имя или ID">
-          <div class="sugg" id="addSugg" hidden></div>
-        </div>
-        <div class="picked" id="addPicked" hidden>
-          <div><b id="addPickedName"></b><span id="addPickedSub"></span></div>
-          <button type="button" class="copy" id="addPickedClear">сменить</button>
-        </div>
-      </div>
-      <div class="grid2" id="addGuestBox" hidden>
-        <div><label for="addName">Имя</label><input id="addName" placeholder="Кто играет"></div>
-        <div><label for="addPhone">Телефон</label>
-          <input id="addPhone" inputmode="tel" autocomplete="off" placeholder="89289204029"></div>
-      </div>
-      <div class="grid2">
-        <div><label for="addPlayers">Сколько человек</label>
-          <input id="addPlayers" type="number" min="1" max="30" placeholder="Необязательно"></div>
-        <div><label for="addComment">Заметка</label>
-          <input id="addComment" placeholder="Необязательно"></div>
-      </div>
-      <label class="chk" id="addFamilyRow" hidden><input type="checkbox" id="addFamily"> Семейный</label>
-      <p class="hint" id="addWho" hidden></p>
-    </div>
+        <section class="ablock">
+          <div class="ab-h">Когда и где</div>
+          <div class="grid2">
+            <div><label for="addDate">Дата</label><input id="addDate" type="date"></div>
+            <div><label for="addHour">Начало</label><select id="addHour"></select></div>
+          </div>
+          <label>Площадка</label>
+          <div class="picks" id="addCourts"></div>
+          <label>Сколько часов</label>
+          <div class="picks" id="addHoursPick"></div>
+          <div id="addCoachBox" hidden>
+            <label>Тренер</label>
+            <div class="picks" id="addCoachPick"></div>
+          </div>
+          <label class="chk" id="addFamilyRow" hidden><input type="checkbox" id="addFamily"> Семейный</label>
+        </section>
 
-    <div class="sumBox">
-      <div class="sumWhen" id="addWhen">—</div>
-      <div class="sumPrice" id="addTotal">—</div>
-    </div>
-    <div class="err" id="addErr"></div>
-    <div class="acts">
-      <button class="btn" id="addCancel">Отмена</button>
-      <button class="btn acc" id="addOk">Записать</button>
+        <section class="ablock">
+          <div class="ab-h">Кто играет</div>
+          <!-- Основной путь — запись на аккаунт приложения; без приложения — по номеру -->
+          <div class="seg" id="addWhoSeg">
+            <button type="button" data-w="app" class="on">Есть аккаунт в приложении</button>
+            <button type="button" data-w="none">Без приложения</button>
+          </div>
+          <div id="addAppBox">
+            <div class="rel">
+              <label for="addFind">Найти аккаунт</label>
+              <input id="addFind" autocomplete="off" placeholder="телефон, имя или ID">
+              <div class="sugg" id="addSugg" hidden></div>
+            </div>
+            <div class="picked" id="addPicked" hidden>
+              <div><b id="addPickedName"></b><span id="addPickedSub"></span></div>
+              <button type="button" class="copy" id="addPickedClear">сменить</button>
+            </div>
+          </div>
+          <div class="grid2" id="addGuestBox" hidden>
+            <div><label for="addName">Имя</label><input id="addName" placeholder="Кто играет"></div>
+            <div><label for="addPhone">Телефон</label>
+              <input id="addPhone" inputmode="tel" autocomplete="off" placeholder="89289204029"></div>
+          </div>
+          <div class="grid2">
+            <div><label for="addPlayers">Сколько человек</label>
+              <input id="addPlayers" type="number" min="1" max="30" placeholder="Необязательно"></div>
+            <div><label for="addComment">Заметка</label>
+              <input id="addComment" placeholder="Необязательно"></div>
+          </div>
+          <p class="hint" id="addWho" hidden></p>
+        </section>
+      </div>
+
+      <aside class="add-side">
+        <!-- Прокат и товары сразу при записи: раньше их добавляли вторым
+             заходом через кассу, уже после того как бронь создана -->
+        <section class="ablock" id="addGoodsBox" hidden>
+          <div class="ab-h">Прокат и товары</div>
+          <input id="addGoodsQ" autocomplete="off" placeholder="Найти товар">
+          <div class="pos-grid mini" id="addGoodsGrid"></div>
+          <div class="acart" id="addCart" hidden></div>
+        </section>
+
+        <div class="asum">
+          <div class="when" id="addWhen">—</div>
+          <div class="asum-lines" id="addLines"></div>
+          <div class="asum-total"><span>Итого</span><b id="addTotal">—</b></div>
+          <div class="err" id="addErr"></div>
+          <div class="acts">
+            <button class="btn" id="addCancel">Отмена</button>
+            <button class="btn acc" id="addOk">Записать</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </div>
@@ -2984,6 +3047,7 @@ function closeAdd(){
   $('#addName').value = $('#addPhone').value = $('#addComment').value = '';
   $('#addPlayers').value = '';
   $('#addSugg').hidden = true;
+  addCart = new Map();
 }
 
 /** Выбранные площадка и длительность держим в переменных: вместо выпадающих
@@ -3035,6 +3099,65 @@ function renderAddHours(){
   });
 }
 
+/** Прокат и товары, выбранные прямо при записи: id товара → сколько. */
+let addCart = new Map(), addGoodsQ = '';
+
+/** Прокат берут на всю игру: к броне на два часа ракетка идёт за два часа. */
+function addGoodsAdd(id, d){
+  const p = products.find(x => x.id === id); if (!p) return;
+  const n = Math.max(0, (addCart.get(id) ?? 0) + d);
+  if (d > 0 && p.category !== 'rental' && p.stock != null && n > p.stock) {
+    $('#addErr').textContent = `«${p.name}»: на складе только ${p.stock} шт.`;
+    $('#addErr').classList.add('on'); return;
+  }
+  $('#addErr').classList.remove('on');
+  if (n) addCart.set(id, n); else addCart.delete(id);
+  renderAddGoods(); addTotal();
+}
+
+function renderAddGoods(){
+  const on = setup?.settings?.salesOn !== false && products.some(p => p.isActive);
+  $('#addGoodsBox').hidden = !on;
+  if (!on) return;
+  const q = addGoodsQ.trim().toLowerCase();
+  const list = products.filter(p => p.isActive && (!q || p.name.toLowerCase().includes(q)));
+  $('#addGoodsGrid').innerHTML = list.length ? list.map(p => {
+    const inCart = addCart.get(p.id) ?? 0;
+    const out = p.category !== 'rental' && p.stock != null && p.stock <= 0;
+    return `<button type="button" class="pt${inCart ? ' in' : ''}" data-p="${p.id}"${out ? ' disabled' : ''}>
+      <span class="ph">${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="" loading="lazy">` : `<i class="gl">${POS_GLYPH[p.category] || POS_GLYPH.shop}</i>`}
+        ${inCart ? `<em>${inCart}</em>` : ''}${p.category === 'rental' ? '<s>прокат</s>' : ''}</span>
+      <b>${esc(p.name)}</b>
+      <span class="pr">${rub(p.price)}${out ? '<small class="out">нет</small>' : ''}</span>
+    </button>`;
+  }).join('') : '<div class="pos-empty"><span>Ничего не нашлось</span></div>';
+  $('#addGoodsGrid').querySelectorAll('.pt').forEach(el => el.onclick = () => {
+    const p = products.find(x => x.id === +el.dataset.p);
+    const step = p && p.category === 'rental' && !addCart.get(p.id) ? Math.max(1, addHoursN) : 1;
+    addGoodsAdd(+el.dataset.p, step);
+  });
+
+  const box = $('#addCart');
+  box.hidden = !addCart.size;
+  box.innerHTML = [...addCart.entries()].map(([id, qty]) => {
+    const p = products.find(x => x.id === id); if (!p) return '';
+    return `<div class="ln"><span>${esc(p.name)}</span>
+      <span class="qty"><button type="button" data-m="${id}">−</button><i>${qty}</i><button type="button" data-pl="${id}">+</button></span>
+      <b>${rub(p.price * qty)}</b></div>`;
+  }).join('');
+  box.querySelectorAll('[data-m]').forEach(b2 => b2.onclick = () => addGoodsAdd(+b2.dataset.m, -1));
+  box.querySelectorAll('[data-pl]').forEach(b2 => b2.onclick = () => addGoodsAdd(+b2.dataset.pl, 1));
+}
+
+/** Сколько стоят выбранные товары. */
+function addGoodsSum(){
+  let sum = 0;
+  for (const [id, qty] of addCart) {
+    const p = products.find(x => x.id === id); if (p) sum += p.price * qty;
+  }
+  return sum;
+}
+
 function addTotal(){
   const hour = +$('#addHour').value;
   const p = priceFor(addCourtId, hour, addHoursN);
@@ -3042,12 +3165,19 @@ function addTotal(){
   // Тренировка: цена тренера за часы, корт — по тарифу или входит в цену
   const co = coachBrief.find(c => c.id === addCoachId);
   const courtP = co && !co.courtExtra ? 0 : p;
-  const total = courtP == null ? null : courtP + (co ? co.price * addHoursN : 0);
+  const goods = addGoodsSum();
+  const total = courtP == null ? null : courtP + (co ? co.price * addHoursN : 0) + goods;
   $('#addTotal').textContent = total == null ? '—' : rub(total);
   $('#addWhen').textContent = court
     ? `${court.name} · ${pretty($('#addDate').value || date)} · ${hh(hour)}–${hh(hour + addHoursN)}`
-      + (co ? ` · тренер ${co.name}` : '')
     : '—';
+  // Разбивка: из чего сложилась сумма — видно до записи, а не в карточке потом
+  const lines = [];
+  if (courtP != null && (courtP || !co)) lines.push([`Корт, ${addHoursN} ${plural(addHoursN,'час','часа','часов')}`, rub(courtP)]);
+  if (co) lines.push([`Тренер ${co.name}`, rub(co.price * addHoursN)]);
+  if (goods) lines.push([`Прокат и товары, ${addCart.size} ${plural(addCart.size,'позиция','позиции','позиций')}`, rub(goods)]);
+  $('#addLines').innerHTML = lines.length > 1
+    ? lines.map(([k, v]) => `<div class="l"><span>${k}</span><span>${v}</span></div>`).join('') : '';
 }
 /** Тренер для записи: «без тренера» или один из работающих. */
 let addCoachId = null;
@@ -3078,10 +3208,16 @@ function openAdd(courtId, hour, preset){
   // стойке (/admin/find), отдельное право не нужно.
   addSetWho('app');
   if (preset?.client) addPick(preset.client);
+  addCart = new Map(); addGoodsQ = ''; $('#addGoodsQ').value = '';
+  $('#addGoodsBox').hidden = true;
+  // Товары нужны только здесь и в кассе — тянем при первом открытии
+  (products.length ? Promise.resolve() : call('/admin/products').then(r => { products = r }).catch(() => {}))
+    .then(() => { renderAddGoods(); addTotal() });
   $('#addModal').classList.add('on');
   if (!addClient) (addWho === 'app' ? $('#addFind') : $('#addName')).focus();
 }
 
+$('#addGoodsQ').oninput = () => { addGoodsQ = $('#addGoodsQ').value; renderAddGoods() };
 $('#addHour').onchange = () => { renderAddHours(); addTotal() };
 $('#addDate').onchange = () => { date = $('#addDate').value; load() };
 
@@ -3162,12 +3298,32 @@ $('#addOk').onclick = async () => {
     comment: $('#addComment').value.trim() || undefined,
     family: $('#addFamily').checked || undefined,
   };
+  const lines = [...addCart.entries()].map(([productId, qty]) => ({ productId, qty }));
+  let created = null;
   try {
-    await call('/admin/bookings', { method:'POST', body: JSON.stringify(body) });
-    closeAdd();
-    date = when;
-    load();
-  } catch(e){ $('#addErr').textContent = e.message; $('#addErr').classList.add('on') }
+    created = await call('/admin/bookings', { method:'POST', body: JSON.stringify(body) });
+  } catch(e){ $('#addErr').textContent = e.message; $('#addErr').classList.add('on'); return }
+
+  // Товары отдельным шагом: бронь уже есть, и если склад подвёл, терять её
+  // незачем — говорим, что именно не прошло, остальное на месте
+  if (lines.length) {
+    try {
+      await call('/admin/sales/checkout', { method:'POST',
+        body: JSON.stringify({ bookingId: created.id, lines }) });
+      try { products = await call('/admin/products') } catch {}
+    } catch(e){
+      closeAdd();
+      date = when;
+      await load();
+      openBooking(created.id);
+      $('#addErr').classList.remove('on');
+      posDone(`Бронь создана, но товары не добавились: ${e.message}`);
+      return;
+    }
+  }
+  closeAdd();
+  date = when;
+  load();
 };
 
 /* ── поиск клиента в панели инструментов ──────────────── */

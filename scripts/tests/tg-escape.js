@@ -10,8 +10,8 @@
  *
  *  Запуск:  STAND_PASS=<пароль владельца> node scripts/tests/tg-escape.js
  */
-const API = 'http://127.0.0.1:3101/api';
-const TG = 'http://127.0.0.1:3199/botTEST';
+const API = process.env.STAND_API || 'http://127.0.0.1:3101/api';
+const TG = process.env.STAND_TG || 'http://127.0.0.1:3199/botTEST';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

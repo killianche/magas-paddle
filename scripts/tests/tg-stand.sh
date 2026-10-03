@@ -18,9 +18,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DB=magas-test-db
-DB_PORT=55432
-API_PORT=3101
-TG_PORT=3199
+# Порты можно переопределить: на сервере живут и другие проекты,
+# и занятый порт раньше ронял стенд молча, уже после запуска
+DB_PORT="${DB_PORT:-55432}"
+API_PORT="${API_PORT:-3101}"
+TG_PORT="${TG_PORT:-3199}"
+
 RUN="$ROOT/.stand"
 
 say(){ printf '\033[1;32m▸ %s\033[0m\n' "$1"; }
@@ -57,6 +60,9 @@ up () {
   node "$ROOT/scripts/tests/fake-tg.js" > "$RUN/tg.log" 2>&1 &
   echo $! > "$RUN/tg.pid"
 
+  if ss -ltn "sport = :$API_PORT" 2>/dev/null | grep -q LISTEN; then
+    echo "порт $API_PORT уже занят — запустите с другим: API_PORT=3401 $0 up" >&2; exit 1
+  fi
   say "API на 127.0.0.1:$API_PORT"
   DATABASE_URL="postgresql://magas:test@127.0.0.1:$DB_PORT/magas" \
   ADMIN_KEY=test STAFF_PASS_KEY="$(python3 -c "print('ab'*32)")" \
