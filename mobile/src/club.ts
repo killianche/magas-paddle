@@ -117,7 +117,7 @@ export const CLUB_STATIC = {
   city: 'Магас',
   region: 'Республика Ингушетия',
   point: { lat: 43.184968, lon: 44.816118 },
-  privacyUrl: 'https://padel.217-114-8-196.sslip.io/privacy.html',
+  privacyUrl: 'https://padelmagas.ru/privacy.html',
 } as const;
 
 /** Контакты одним объектом: постоянное плюс присланное клубом. */

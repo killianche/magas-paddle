@@ -3,7 +3,7 @@
 import Constants from 'expo-constants';
 
 const BASE = (Constants.expoConfig?.extra as any)?.apiUrl
-  ?? 'https://padel.217-114-8-196.sslip.io/api';
+  ?? 'https://padelmagas.ru/api';
 
 /** Ошибка, которую не стыдно показать человеку. */
 export class ApiError extends Error {

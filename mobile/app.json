@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ru.padelmagas.app",
-      "buildNumber": "64",
+      "buildNumber": "65",
       "infoPlist": {
         "CFBundleDisplayName": "Padel Magas",
         "ITSAppUsesNonExemptEncryption": false
@@ -53,7 +53,7 @@
       "baseUrl": "/v1"
     },
     "extra": {
-      "apiUrl": "https://padel.217-114-8-196.sslip.io/api"
+      "apiUrl": "https://padelmagas.ru/api"
     }
   }
 }
