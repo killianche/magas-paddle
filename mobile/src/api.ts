@@ -138,6 +138,14 @@ export type ClientCard = {
 
 export type Session = { token: string; profile: ClientCard };
 
+/** Прокат и мячи, которые клиент может добавить к брони. */
+export type ApiGood = {
+  id: number; name: string; category: string; price: number;
+  photoUrl: string | null;
+  /** Сколько осталось на складе; null — прокат, не кончается. */
+  left: number | null;
+};
+
 export type ApiBooking = {
   id: number; courtId: string; courtName: string;
   /** Бронь отменил клуб, а не сам человек. */
@@ -285,9 +293,12 @@ export const api = {
   myBookings: (phone: string) =>
     call<ApiBooking[]>(`/bookings?phone=${encodeURIComponent(phone)}`),
 
+  goods: () => call<ApiGood[]>('/goods'),
+
   book: (b: { courtId: string; date: string; hour: number; hours: number;
               name: string; surname?: string; phone: string; whatsapp?: string;
-              comment?: string; coachId?: number; family?: boolean }) =>
+              comment?: string; coachId?: number; family?: boolean;
+              items?: { productId: number; qty: number }[] }) =>
     call<ApiBooking>('/bookings', { method: 'POST', body: JSON.stringify(b) }),
 
   cancel: (id: number, phone: string) =>

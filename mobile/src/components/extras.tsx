@@ -12,11 +12,14 @@
 //
 // Текст пишет клуб в админке («Приложение» → «Прокат ракеток и мячи»).
 import { Modal, Pressable, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, S, DISP, DISP_MED, BODY, EYEBROW, sheet, R } from '../theme';
 import { useClub } from '../club';
 import { cheapest, ownAllowed, parseRentals, type RentalGroup } from '../rentals';
 import { Section } from './section';
+import { api, rub, type ApiGood } from '../api';
+import { useApi } from '../useApi';
 
 export function useRentals(): RentalGroup[] {
   return parseRentals(useClub().rentalsText);
@@ -65,6 +68,66 @@ export function RentalsSection() {
   );
 }
 
+/** Прокат и мячи, которые можно взять сразу при записи: клуб ведёт их
+ *  в том же каталоге, что и касса, поэтому видны настоящие цены и остатки.
+ *  Выбранное уходит в счёт брони и оплачивается вместе с кортом. */
+export function GoodsPick({ picked, onChange }: {
+  picked: Map<number, number>;
+  onChange: (next: Map<number, number>, sum: number) => void;
+}) {
+  const q = useApi(() => api.goods(), [], 'goods');
+  const list = q.data ?? [];
+  if (list.length === 0) return null;
+
+  const set = (g: ApiGood, n: number) => {
+    Haptics.selectionAsync();
+    const next = new Map(picked);
+    const v = Math.max(0, Math.min(g.left ?? 20, n));
+    if (v) next.set(g.id, v); else next.delete(g.id);
+    onChange(next, list.reduce((acc, x) => acc + x.price * (next.get(x.id) ?? 0), 0));
+  };
+  const sum = list.reduce((acc, g) => acc + g.price * (picked.get(g.id) ?? 0), 0);
+
+  return (
+    <View style={s.box2}>
+      <Text style={s.h2}>Ракетки и мячи</Text>
+      <Text style={s.sub2}>Добавим в счёт брони — оплатите вместе с кортом</Text>
+      {list.map(g => {
+        const n = picked.get(g.id) ?? 0;
+        return (
+          <View key={g.id} style={s.row2}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name2}>{g.name}</Text>
+              <Text style={s.price2}>{rub(g.price)}</Text>
+            </View>
+            {n > 0 ? (
+              <View style={s.step}>
+                <Pressable onPress={() => set(g, n - 1)} accessibilityRole="button"
+                  accessibilityLabel={`Убрать ${g.name}`}
+                  style={({ pressed }) => [s.stepB, pressed && { opacity: 0.7 }]}>
+                  <Text style={s.stepT}>−</Text>
+                </Pressable>
+                <Text style={s.stepN}>{n}</Text>
+                <Pressable onPress={() => set(g, n + 1)} accessibilityRole="button"
+                  accessibilityLabel={`Ещё ${g.name}`}
+                  style={({ pressed }) => [s.stepB, pressed && { opacity: 0.7 }]}>
+                  <Text style={s.stepT}>+</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => set(g, 1)} accessibilityRole="button"
+                style={({ pressed }) => [s.add, pressed && { opacity: 0.85 }]}>
+                <Text style={s.addT}>Добавить</Text>
+              </Pressable>
+            )}
+          </View>
+        );
+      })}
+      {sum > 0 && <Text style={s.sum2}>К брони: <Text style={s.sumB}>{rub(sum)}</Text></Text>}
+    </View>
+  );
+}
+
 /** Окно со списком — открывается со строки на панели брони. */
 export function RentalsSheet({ visible, groups, onClose }: {
   visible: boolean; groups: RentalGroup[]; onClose: () => void;
@@ -98,6 +161,26 @@ const s = sheet(() => ({
   line: { fontFamily: BODY, color: C.dim, fontSize: 15, lineHeight: 26 },
   price: { fontFamily: DISP_MED, color: C.text },
   note: { color: C.accent },
+
+  box2: { marginHorizontal: S.xl, borderRadius: R.xl, borderWidth: 1, borderColor: C.line,
+    backgroundColor: C.surface, paddingHorizontal: 14, paddingTop: 13, paddingBottom: 6 },
+  h2: { fontFamily: DISP_MED, color: C.text, fontSize: 15.5 },
+  sub2: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 2, marginBottom: 6 },
+  row2: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9,
+    borderTopWidth: 1, borderTopColor: C.lineSoft },
+  name2: { fontFamily: BODY, color: C.text, fontSize: 14.5 },
+  price2: { fontFamily: DISP_MED, color: C.dim, fontSize: 13, marginTop: 1 },
+  add: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    borderWidth: 1, borderColor: C.lineStrong },
+  addT: { fontFamily: DISP_MED, color: C.text, fontSize: 13 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepB: { width: 32, height: 32, borderRadius: 999, borderWidth: 1, borderColor: C.lineStrong,
+    alignItems: 'center', justifyContent: 'center' },
+  stepT: { fontFamily: DISP_MED, color: C.text, fontSize: 17, lineHeight: 20 },
+  stepN: { fontFamily: DISP_MED, color: C.text, fontSize: 15, minWidth: 14, textAlign: 'center' },
+  sum2: { fontFamily: BODY, color: C.dim, fontSize: 13, paddingTop: 10, paddingBottom: 6,
+    borderTopWidth: 1, borderTopColor: C.lineSoft },
+  sumB: { fontFamily: DISP_MED, color: C.text },
 
   back: { flex: 1, backgroundColor: C.scrim },
   box: { backgroundColor: C.ink2, paddingHorizontal: S.xl, paddingTop: 20,

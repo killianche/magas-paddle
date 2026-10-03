@@ -205,6 +205,9 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
   const [family, setFamily] = useState(false);
+  // Прокат и мячи, отмеченные при записи: id товара → сколько
+  const [picked, setPicked] = useState<Map<number, number>>(new Map());
+  const [goodsSum, setGoodsSum] = useState(0);
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
 
@@ -296,6 +299,7 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
         courtId: sel.courtId, date, hour: sel.hour, hours,
         name: who.name, surname: who.surname, phone: who.phone, whatsapp: who.whatsapp,
         coachId: coach?.id, family,
+        items: [...picked].map(([productId, qty]) => ({ productId, qty })),
       });
       // ID аккаунта становится известен с первой заявкой — запоминаем
       if (res.clientId && who.id !== res.clientId) await save({ ...who, id: res.clientId });
@@ -321,7 +325,8 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   };
 
   return {
-    total, courtDue, courtPrice, coach, setCoach, family, setFamily, sending, prepay, problem, setProblem,
+    total, courtDue, courtPrice, coach, setCoach, family, setFamily, picked, setPicked, goodsSum, setGoodsSum,
+    sending, prepay, problem, setProblem,
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,
   };
@@ -350,6 +355,12 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
           <Text style={b.prepayR}>{rub(booking.coach.total)}</Text>
         </View>
       )}
+      {booking.goodsSum > 0 && (
+        <View style={[b.sumRow, b.sumRow2]}>
+          <Text style={b.prepayL}>Ракетки и мячи</Text>
+          <Text style={b.prepayR}>{rub(booking.goodsSum)}</Text>
+        </View>
+      )}
       <View style={[b.sumRow, b.sumRow2]}>
         <Text style={b.prepayL}>Предоплата {booking.prepayPercent} %</Text>
         <Text style={b.prepayR}>{rub(booking.prepay)}</Text>
@@ -365,20 +376,6 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
         </View>
       )}
 
-      {club.familyOn && court.isFamily && (
-        <Pressable onPress={() => { Haptics.selectionAsync(); booking.setFamily(!booking.family) }}
-          accessibilityRole="checkbox" accessibilityState={{ checked: booking.family }}
-          style={({ pressed }) => [b.fam, pressed && { opacity: 0.85 }]}>
-          <View style={[b.famBox, booking.family && b.famBoxOn]}>
-            {booking.family && <IconCheck size={13} color={C.onLime} />}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={b.famT}>Семейный</Text>
-            <Text style={b.famS}>Корт закроют от посторонних глаз</Text>
-          </View>
-        </Pressable>
-      )}
-
       {!!booking.problem && <Text style={b.problem}>{booking.problem}</Text>}
 
       <Pressable onPress={booking.submit} disabled={booking.sending}
@@ -389,6 +386,24 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
       </Pressable>
 
     </View>
+  );
+}
+
+/** Галочка «Семейный»: корт готовят закрытым. Стоит рядом с выбором тренера,
+ *  под выбранным временем, а не в нижней панели (заказчик, 04.10.2026). */
+export function FamilyPick({ on, onToggle }: { on: boolean; onToggle: (v: boolean) => void }) {
+  return (
+    <Pressable onPress={() => { Haptics.selectionAsync(); onToggle(!on) }}
+      accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+      style={({ pressed }) => [b.fam, pressed && { opacity: 0.85 }]}>
+      <View style={[b.famBox, on && b.famBoxOn]}>
+        {on && <IconCheck size={13} color={C.onLime} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={b.famT}>Семейный</Text>
+        <Text style={b.famS}>Корт закроют от посторонних глаз</Text>
+      </View>
+    </Pressable>
   );
 }
 

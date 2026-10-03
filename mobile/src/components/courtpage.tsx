@@ -20,10 +20,10 @@ import { Gallery } from './gallery';
 import { Look } from './courtlook';
 import { CoachPick } from './coach';
 import { useClub } from '../club';
-import { RentalsSection } from './extras';
+import { GoodsPick, RentalsSection } from './extras';
 import { addDays, today } from '../dates';
 import {
-  BookingSheet, Card, DateStrip, Durations, Slots, Step,
+  BookingSheet, Card, DateStrip, Durations, FamilyPick, Slots, Step,
   canStart, photosOf, useBooking, usePillWidth, type Sel,
 } from './booking';
 
@@ -132,7 +132,20 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
           </View>
         )}
 
-        {/* Ракетки и мячи — в бронь не входят; свёрнуто, чтобы не отвлекать */}
+        {sel && club.familyOn && !!row.isFamily && (
+          <View style={{ marginTop: 10 }}>
+            <FamilyPick on={booking.family} onToggle={booking.setFamily} />
+          </View>
+        )}
+
+        {/* Прокат и мячи: что есть в каталоге — можно взять сразу, остальное
+            остаётся прайс-листом из настроек клуба */}
+        {sel && !row.isFootball && (
+          <View style={{ marginTop: 10 }}>
+            <GoodsPick picked={booking.picked}
+              onChange={(m, sum) => { booking.setPicked(m); booking.setGoodsSum(sum) }} />
+          </View>
+        )}
         {!row.isFootball && <View style={{ marginTop: 18 }}><RentalsSection /></View>}
       </ScrollView>
 

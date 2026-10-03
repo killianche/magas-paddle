@@ -1,4 +1,6 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Matches, Max, Min, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, Max, Min,
+  MaxLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 
 export class CreateBookingDto {
@@ -41,4 +43,19 @@ export class CreateBookingDto {
   /** Услуга «Семейный»: корт готовят закрытым. */
   @IsOptional() @IsBoolean()
   family?: boolean;
+
+  /** Прокат и мячи, отмеченные при записи: идут в счёт брони
+   *  и оплачиваются вместе с кортом. */
+  @IsOptional() @IsArray() @ArrayMaxSize(20)
+  @ValidateNested({ each: true }) @Type(() => BookingItemDto)
+  items?: BookingItemDto[];
+}
+
+/** Одна позиция проката или товара в заявке. */
+export class BookingItemDto {
+  @IsInt() @Min(1)
+  productId: number;
+
+  @IsInt() @Min(1) @Max(20)
+  qty: number;
 }

@@ -40,6 +40,32 @@ export class CourtsController {
 
 }
 
+/** Прокат и мячи для приложения: то, что клиент может отметить при записи.
+ *  Бар и прочее сюда не попадают — их продают на стойке (заказчик 04.10.2026).
+ *  Цены и остатки берутся из того же каталога, которым пользуется касса. */
+@Controller('goods')
+export class GoodsController {
+  constructor(private readonly db: PrismaService, private readonly club: ClubService) {}
+
+  @Get()
+  async list() {
+    if (!(await this.club.get()).salesOn) return [];
+    const rows = await this.db.products.findMany({
+      where: { is_active: true, category: { in: ['rental', 'shop'] } },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
+    return rows
+      // Товар, которого нет на складе, не предлагаем: прокат не кончается
+      .filter(p => p.category === 'rental' || p.stock == null || p.stock > 0)
+      .map(p => ({
+        id: Number(p.id), name: p.name, category: p.category, price: p.price,
+        photoUrl: p.photo_url,
+        // Сколько ещё можно взять; у проката ограничения нет
+        left: p.category === 'rental' ? null : p.stock,
+      }));
+  }
+}
+
 /** Всё о ценах разом: обычные тарифы площадок и особые цены.
  *  Нужен прайс-листу в приложении: без правил он показывал бы одну цену,
  *  а человек в субботу видел бы в сетке другую. */

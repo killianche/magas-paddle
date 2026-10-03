@@ -27,6 +27,10 @@ export const whenRu = (a: Date, b: Date) =>
   + ', ' + a.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
   + '–' + b.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
 
+/** Что клиент может добавить к брони сам: прокат и мячи. Бар и прочее
+ *  продаются на стойке — решение заказчика 04.10.2026. */
+const CLIENT_GOODS = ['rental', 'shop'];
+
 /** Код PostgreSQL для нарушения exclusion-ограничения: время уже занято. */
 const EXCLUSION_VIOLATION = '23P01';
 
@@ -239,34 +243,85 @@ export class BookingsController {
       };
     }
 
+    // Прокат и мячи, отмеченные при записи. Одинаковые позиции складываем.
+    const want = new Map<string, number>();
+    for (const it of dto.items ?? []) {
+      const k = String(it.productId);
+      want.set(k, Math.min(20, (want.get(k) ?? 0) + it.qty));
+    }
+
     try {
-      const b = await this.db.bookings.create({
-        data: {
-          court_id: court.id, client_id: client.id,
-          starts_at: startsAt, ends_at: endsAt,
-          price, comment: dto.comment, source: 'app', family,
-          coach_id: coach?.id ?? null, coach_price: coachPrice,
-          // Держим время ограниченный срок: оплата идёт через менеджера,
-          // и до подтверждения место не должно висеть занятым бесконечно.
-          hold_until: holdUntil,
-        },
+      // Бронь и её счёт — одной транзакцией: если последней банки мячей
+      // на складе уже нет, человек узнает об этом до того, как бронь создана,
+      // а не получит корт без того, за чем шёл
+      const { b, goods } = await this.db.$transaction(async tx => {
+        const b = await tx.bookings.create({
+          data: {
+            court_id: court.id, client_id: client.id,
+            starts_at: startsAt, ends_at: endsAt,
+            price, comment: dto.comment, source: 'app', family,
+            coach_id: coach?.id ?? null, coach_price: coachPrice,
+            // Держим время ограниченный срок: оплата идёт через менеджера,
+            // и до подтверждения место не должно висеть занятым бесконечно.
+            hold_until: holdUntil,
+          },
+        });
+
+        const goods: { name: string; qty: number; amount: number }[] = [];
+        for (const [pid, qty] of want) {
+          const pr = await tx.products.findUnique({ where: { id: BigInt(pid) } });
+          if (!pr || !pr.is_active || !CLIENT_GOODS.includes(pr.category)) {
+            throw new NotFoundException('Такой позиции нет в прокате');
+          }
+          const fromStock = pr.category !== 'rental' && pr.stock != null;
+          if (fromStock) {
+            // Под блокировкой: двое не закажут последнюю банку мячей
+            const upd = await tx.products.updateMany({
+              where: { id: pr.id, stock: { gte: qty } }, data: { stock: { decrement: qty } } });
+            if (!upd.count) {
+              const cur = await tx.products.findUnique({ where: { id: pr.id }, select: { stock: true } });
+              throw new ConflictException({ code: 'out_of_stock',
+                message: `«${pr.name}»: осталось ${cur?.stock ?? 0} шт.` });
+            }
+          }
+          const amount = pr.price * qty;
+          const sale = await tx.sales.create({ data: {
+            day: new Date(dto.date), category: pr.category, amount, method: 'bill', qty,
+            item: pr.name, booking_id: b.id, client_id: client.id, product_id: pr.id,
+            cost: pr.category !== 'rental' && pr.cost != null ? pr.cost * qty : null,
+            admin_name: 'приложение',
+          }});
+          if (fromStock) {
+            const after = await tx.products.findUnique({ where: { id: pr.id }, select: { stock: true } });
+            await tx.stock_moves.create({ data: {
+              product_id: pr.id, kind: 'sale', qty: -qty, stock_after: after?.stock ?? null,
+              sale_id: sale.id, note: `к заявке №${Number(b.id)} из приложения`,
+              admin_name: 'приложение',
+            }});
+          }
+          goods.push({ name: pr.name, qty, amount });
+        }
+        return { b, goods };
       });
+      const goodsSum = goods.reduce((n, g) => n + g.amount, 0);
       // Руководителю в Telegram: заявка пришла прямо сейчас, её ждут
       this.tg.notify('booking', tgMsg({
-        icon: '🆕', title: 'Новая заявка', amount: price + coachPrice,
+        icon: '🆕', title: 'Новая заявка', amount: price + coachPrice + goodsSum,
         head: [`${esc([client.name, client.surname].filter(Boolean).join(' ') || 'Без имени')} · ${phoneLink(client.phone)}`],
         rows: [
           `🎾 ${esc(court.name)} · ${whenLine(startsAt, endsAt)}`,
           coach && `👤 Тренер: ${esc(coach.name)}`,
           family && '👨‍👩‍👧 Услуга «Семейный»',
+          goods.length > 0 && `📦 ${esc(goods.map(g => g.name + (g.qty > 1 ? ` × ${g.qty}` : '')).join(', '))}`,
           '⏳ Ждёт подтверждения',
         ],
         foot: 'из приложения',
       }));
       return {
         id: Number(b.id), courtId: court.id, courtName: court.name,
-        startsAt: b.starts_at, endsAt: b.ends_at, price: price + coachPrice, status: b.status,
+        startsAt: b.starts_at, endsAt: b.ends_at, price: price + coachPrice + goodsSum, status: b.status,
         coachName: coach ? coach.name : null, coachPrice, family,
+        extras: goods.map(g => ({ item: g.name, qty: g.qty, amount: g.amount })),
         holdUntil: b.hold_until, holdMinutes: set.holdMinutes,
         // Номер аккаунта: приложение пишет его в сообщение WhatsApp, чтобы
         // менеджер отличал заявки разных людей, пришедшие одновременно

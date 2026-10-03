@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
 import { ClubService } from './club';
-import { ClubController, CourtsController, PricesController } from './courts/courts.controller';
+import { ClubController, CourtsController, GoodsController, PricesController } from './courts/courts.controller';
 import { AvailabilityController } from './courts/availability.controller';
 import { BookingsController } from './bookings/bookings.controller';
 import { ClientsController } from './clients/clients.controller';
@@ -18,7 +18,7 @@ import { TelegramService } from './telegram/telegram.service';
 
 @Module({
   controllers: [
-    HealthController, CourtsController, PricesController, AvailabilityController,
+    HealthController, CourtsController, PricesController, GoodsController, AvailabilityController,
     ClubController,
     BookingsController, ClientsController, NotificationsController, TournamentsController,
     AdminController, AdminAuthController, CoachesController, AdminCoachesController,
