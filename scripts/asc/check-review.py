@@ -6,6 +6,7 @@ import importlib.util, pathlib, urllib.request
 
 # Сборки TestFlight: свежая сверху. Добавляя новую, дописывайте строку сюда.
 BUILDS = [
+    ('68', 'c826c5bf-6f6b-488a-841b-1033a63c9f85'),
     ('66', 'c92eead0-c3fc-4822-b5bb-2c13c10f700c'),
     ('65', '90c9e0a9-8658-4453-890c-4b411dda5b69'),
     ('64', '163396ab-756e-49f4-a9e5-a7f5ae92cc38'),
