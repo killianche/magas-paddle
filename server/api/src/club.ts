@@ -79,6 +79,10 @@ export type ClubSettings = {
   coachesOn: boolean;
   /** Услуга «Семейный» на крытом корте. */
   familyOn: boolean;
+  /** Приложение начинается с экрана входа по номеру. */
+  phoneGate: boolean;
+  /** Номер при регистрации подтверждается звонком. */
+  phoneVerifyOn: boolean;
   /** Фото первого экрана, загруженное клубом; null — встроенное в приложение. */
   heroUrl: string | null;
   /** То же фото для светлой темы: клубные снимки тёмные. */
@@ -94,6 +98,7 @@ export const FALLBACK: ClubSettings = {
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null, heroLightUrl: null,
   salesOn: true, salesInStats: true, coachesOn: true, familyOn: true,
+  phoneGate: true, phoneVerifyOn: true,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */
@@ -151,6 +156,8 @@ export class ClubService {
       salesInStats: row.sales_in_stats,
       coachesOn: row.coaches_on,
       familyOn: row.family_on,
+      phoneGate: row.phone_gate,
+      phoneVerifyOn: row.phone_verify_on,
       heroLightUrl: row.hero_light_url ?? null,
     } : FALLBACK;
     this.readAt = Date.now();

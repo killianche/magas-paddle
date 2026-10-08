@@ -23,6 +23,7 @@ DB=magas-test-db
 DB_PORT="${DB_PORT:-55432}"
 API_PORT="${API_PORT:-3101}"
 TG_PORT="${TG_PORT:-3199}"
+SMS_PORT="${SMS_PORT:-3198}"
 
 RUN="$ROOT/.stand"
 
@@ -31,6 +32,7 @@ say(){ printf '\033[1;32m▸ %s\033[0m\n' "$1"; }
 down () {
   [ -f "$RUN/api.pid" ] && kill "$(cat "$RUN/api.pid")" 2>/dev/null || true
   [ -f "$RUN/tg.pid" ]  && kill "$(cat "$RUN/tg.pid")"  2>/dev/null || true
+  [ -f "$RUN/sms.pid" ] && kill "$(cat "$RUN/sms.pid")" 2>/dev/null || true
   docker rm -f "$DB" >/dev/null 2>&1 || true
   rm -rf "$RUN"
   say "стенд убран"
@@ -56,6 +58,10 @@ up () {
   npx prisma generate >/dev/null 2>&1
   npx nest build >/dev/null
 
+  say "поддельный SMS.ru на 127.0.0.1:$SMS_PORT"
+  FAKE_SMSRU_PORT=$SMS_PORT node "$ROOT/scripts/tests/fake-smsru.js" > "$RUN/sms.log" 2>&1 &
+  echo $! > "$RUN/sms.pid"
+
   say "поддельный Telegram на 127.0.0.1:$TG_PORT"
   node "$ROOT/scripts/tests/fake-tg.js" > "$RUN/tg.log" 2>&1 &
   echo $! > "$RUN/tg.pid"
@@ -68,6 +74,7 @@ up () {
   ADMIN_KEY=test STAFF_PASS_KEY="$(python3 -c "print('ab'*32)")" \
   TELEGRAM_BOT_TOKEN=TEST TELEGRAM_BOT_NAME=stand_bot \
   TELEGRAM_API_BASE="http://127.0.0.1:$TG_PORT/bot" \
+  SMSRU_API_ID=stand SMSRU_API_BASE="http://127.0.0.1:$SMS_PORT/callcheck" \
   TZ=Europe/Moscow PORT=$API_PORT node dist/main.js > "$RUN/api.log" 2>&1 &
   echo $! > "$RUN/api.pid"
   for _ in $(seq 1 40); do

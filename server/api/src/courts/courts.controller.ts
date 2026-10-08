@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubService } from '../club';
 import { colorOf } from './look';
+import { callCheckReady } from '../clients/callcheck';
 
 @Controller('courts')
 export class CourtsController {
@@ -133,6 +134,9 @@ export class ClubController {
       showFootball: s.showFootball,
       coachesOn: s.coachesOn,
       familyOn: s.familyOn,
+      phoneGate: s.phoneGate,
+      // Ключа SMS.ru нет — подтверждать нечем, и приложение этот шаг не рисует
+      phoneVerifyOn: s.phoneVerifyOn && callCheckReady(),
       waTemplate: s.waTemplate,
       bookingNote: s.bookingNote,
       heroUrl: s.heroUrl,

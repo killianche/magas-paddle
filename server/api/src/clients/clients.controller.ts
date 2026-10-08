@@ -9,9 +9,12 @@
 // тестировщикам, перестали бы показывать записи. Как только человек задал
 // пароль, доступ по одному номеру для него закрывается.
 //
+// Вход начинается с номера (решение заказчика 08.10.2026): человек вводит
+// номер, и приложение спрашивает сервер, знаком ли он. Знаком — просим пароль;
+// нет — подтверждаем номер обратным звонком и заводим аккаунт.
+//
 // Восстановление пароля: через менеджера. Он и так разговаривает с человеком
-// по телефону и может сбросить пароль из админки. Кода по SMS нет — нужен
-// провайдер рассылки и решение клуба (вопрос Q57).
+// по телефону и может сбросить пароль из админки.
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Headers,
   ForbiddenException, HttpException, Post, Query, Req, UnauthorizedException,
@@ -21,10 +24,25 @@ import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizePhone } from '../phone';
 import { ClientAuthService, checkClientPassword } from './client-auth.service';
+import { ClubService } from '../club';
+import { CallChecks, SmsRuCallCheck, LIMIT_TEXT, type CallCheckProvider } from './callcheck';
+
+/** Подтверждение номера звонком. Ключа нет — способ выключен, и служба
+ *  честно отвечает, что он недоступен. */
+const SMSRU_KEY = (process.env.SMSRU_API_ID ?? '').trim();
+const callProvider: CallCheckProvider | null = SMSRU_KEY ? new SmsRuCallCheck(SMSRU_KEY) : null;
+const calls = new CallChecks();
+
+/** Подтверждаем только мобильные России: на городской номер не позвонить. */
+const RU_MOBILE = /^79\d{9}$/;
 
 export class RegisterDto {
   @IsString() @MaxLength(80)
   name: string;
+
+  /** Подтверждение номера звонком, выданное /clients/call/status. */
+  @IsOptional() @IsString() @MaxLength(80)
+  verificationToken?: string;
 
   @IsOptional() @IsString() @MaxLength(80)
   surname?: string;
@@ -87,6 +105,7 @@ export class ClientsController {
   constructor(
     private readonly db: PrismaService,
     private readonly auth: ClientAuthService,
+    private readonly club: ClubService,
   ) {}
 
   /** Есть ли такой номер и защищён ли он паролем.
@@ -105,6 +124,94 @@ export class ClientsController {
     return { known: !!c, hasPassword: !!c?.pass_hash, profile: null };
   }
 
+  /* ── подтверждение номера звонком ─────────────────────────────────────
+     Человек звонит на выданный номер 8-800, звонок сбрасывается, SMS.ru
+     отмечает номер подтверждённым. Приложение спрашивает статус раз в три
+     секунды и, получив подтверждение, заканчивает регистрацию. */
+
+  /** Выдать номер, на который надо позвонить. */
+  @Post('call/start')
+  async callStart(@Req() req: any, @Body() body: { phone?: string; secret?: string }) {
+    if (!callProvider) {
+      throw new HttpException({ code: 'call_disabled',
+        message: 'Подтверждение номера сейчас недоступно. Позвоните в клуб.' }, 503);
+    }
+    const phone = normalizePhone(body?.phone);
+    if (!phone) throw new BadRequestException('Введите номер полностью');
+    if (!RU_MOBILE.test(phone)) {
+      throw new HttpException({ code: 'phone_not_supported',
+        message: 'Подтверждаем только мобильные номера России' }, 422);
+    }
+    // Номер уже зарегистрирован — подтверждать нечего, надо входить паролем
+    const known = await this.db.clients.findUnique({ where: { phone } });
+    if (known?.pass_hash) {
+      throw new HttpException({ code: 'phone_taken',
+        message: 'Этот номер уже зарегистрирован. Войдите по паролю.' }, 409);
+    }
+
+    const ip = ipOf(req);
+    const now = Date.now();
+    const toClient = (e: { secret: string; callPhone: string; callPhonePretty: string; expiresAt: number }) => ({
+      secret: e.secret, callPhone: e.callPhone, callPhonePretty: e.callPhonePretty,
+      expiresInSec: Math.max(1, Math.round((e.expiresAt - now) / 1000)),
+    });
+
+    // Номер уже ждёт звонка: той же вкладке — тот же номер, чужой — отказ.
+    // Иначе посторонний, опрашивая статус, забрал бы чужое подтверждение.
+    const live = calls.active(phone);
+    if (live) {
+      if (calls.owns(live, body?.secret)) return toClient(live);
+      const left = Math.max(1, Math.ceil((live.expiresAt - now) / 60_000));
+      throw new HttpException({ code: 'call_busy',
+        message: `Этот номер уже ждёт звонка. Попробуйте через ${left} мин.` }, 429);
+    }
+
+    const can = calls.canStart(phone, ip);
+    if (!can.ok) throw new HttpException({ code: 'call_rate_limited', message: LIMIT_TEXT[can.reason] }, 429);
+    calls.countStart(phone, ip);
+
+    const added = await callProvider.add(phone, ip || null);
+    if (!added.ok) {
+      calls.forget(phone);
+      const bad = added.reason === 'invalid_number';
+      throw new HttpException({ code: bad ? 'phone_invalid' : 'call_unavailable',
+        message: bad ? 'Этот номер не подходит. Проверьте его.'
+                     : 'Подтверждение звонком сейчас недоступно. Попробуйте через минуту.' },
+        bad ? 422 : 503);
+    }
+    return toClient(calls.remember(phone, added));
+  }
+
+  /** Был ли звонок. Приложение спрашивает раз в три секунды. */
+  @Post('call/status')
+  async callStatus(@Req() req: any, @Body() body: { phone?: string; secret?: string }) {
+    if (!callProvider) {
+      throw new HttpException({ code: 'call_disabled',
+        message: 'Подтверждение номера сейчас недоступно. Позвоните в клуб.' }, 503);
+    }
+    const phone = normalizePhone(body?.phone);
+    if (!phone) throw new BadRequestException('Введите номер полностью');
+    limitRate(`callst:${ipOf(req)}`, 240, 60_000, 'Слишком часто. Подождите минуту');
+
+    const e = calls.active(phone);
+    if (!e || !calls.owns(e, body?.secret)) {
+      throw new HttpException({ code: 'call_expired',
+        message: 'Время вышло — получите новый номер' }, 410);
+    }
+    // К SMS.ru — не чаще раза в две секунды на номер; между опросами
+    // отвечаем «ещё ждём», не тратя запрос
+    if (!calls.shouldPoll(e)) return { confirmed: false };
+
+    const st = await callProvider.status(e.checkId);
+    if (st === 'confirmed') return { confirmed: true, verificationToken: calls.confirm(phone) };
+    if (st === 'expired') {
+      calls.forget(phone);
+      throw new HttpException({ code: 'call_expired', message: 'Время вышло — получите новый номер' }, 410);
+    }
+    // Сбой провайдера — тоже «ждём»: следующий опрос спросит снова
+    return { confirmed: false };
+  }
+
   /** Завести аккаунт или задать пароль номеру, который клуб уже знает. */
   @Post('register')
   async register(@Req() req: any, @Body() dto: RegisterDto) {
@@ -118,9 +225,18 @@ export class ClientsController {
     try { password = checkClientPassword(dto.password) }
     catch (e) { throw new BadRequestException((e as Error).message) }
 
+    // Номер должен быть подтверждён звонком. Иначе тот, кто знает чужой
+    // номер, задавал бы по нему пароль и видел чужие записи.
+    const set = await this.club.get();
+    if (set.phoneVerifyOn) {
+      if (!calls.tokenValid(dto.verificationToken, key)) {
+        throw new HttpException({ code: 'phone_verification_required',
+          message: 'Подтвердите номер звонком ещё раз.' }, 428);
+      }
+    }
+
     const exists = await this.db.clients.findUnique({ where: { phone: key } });
-    // Пароль ставят на номер, который клуб уже знает, — клубу это видно в журнале:
-    // подтверждения номера по SMS пока нет (вопрос Q57)
+    // Клуб видит в журнале, что на известный ему номер задали пароль
     if (exists && !exists.pass_hash) {
       const played = await this.db.bookings.count({ where: { client_id: exists.id } });
       if (played > 0) {
@@ -147,6 +263,7 @@ export class ClientsController {
         pass_hash: await this.auth.hash(password), pass_at: new Date(),
       },
     });
+    calls.consume(dto.verificationToken);
     return { token: await this.auth.startSession(c.id), profile: card(c) };
   }
 

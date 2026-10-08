@@ -2368,7 +2368,8 @@ export class AdminController {
     phone: string; whatsapp: string; address: string;
     mapUrl: string; instagram: string; telegram: string;
     prepayPercent: number; lateMinutes: number; rentalsText: string;
-    showTournaments: boolean; showFootball: boolean; coachesOn: boolean; familyOn: boolean; waTemplate: string;
+    showTournaments: boolean; showFootball: boolean; coachesOn: boolean; familyOn: boolean;
+    phoneGate: boolean; phoneVerifyOn: boolean; waTemplate: string;
     bookingNote: string;
   }>) {
     const cur = await this.club.get();
@@ -2415,6 +2416,8 @@ export class AdminController {
       show_football: body.showFootball === undefined ? cur.showFootball : !!body.showFootball,
       coaches_on: body.coachesOn === undefined ? cur.coachesOn : !!body.coachesOn,
       family_on: body.familyOn === undefined ? cur.familyOn : !!body.familyOn,
+      phone_gate: body.phoneGate === undefined ? cur.phoneGate : !!body.phoneGate,
+      phone_verify_on: body.phoneVerifyOn === undefined ? cur.phoneVerifyOn : !!body.phoneVerifyOn,
       wa_template: body.waTemplate === undefined
         ? cur.waTemplate : (String(body.waTemplate).trim().slice(0, 500) || null),
       booking_note: body.bookingNote === undefined
