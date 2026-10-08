@@ -98,7 +98,7 @@ export const FALLBACK: ClubSettings = {
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, waTemplate: null, bookingNote: null, heroUrl: null, heroLightUrl: null,
   salesOn: true, salesInStats: true, coachesOn: true, familyOn: true,
-  phoneGate: true, phoneVerifyOn: true,
+  phoneGate: true, phoneVerifyOn: false,
 };
 
 /** Правило особой цены. Пустой days — любой день недели. */

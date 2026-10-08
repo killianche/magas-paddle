@@ -28,6 +28,14 @@ const check = (what, ok, detail) => {
 const head = t => console.log(`\n\x1b[1m── ${t} ──\x1b[0m`);
 
 (async () => {
+  // Подтверждение по умолчанию выключено (старые сборки его не умеют) —
+  // для проверки включаем его так же, как это сделает клуб в админке
+  const adm = (await call('/admin/login', { method: 'POST',
+    body: { login: 'vladelec', password: process.env.STAND_PASS } })).data?.token;
+  if (!adm) { console.error('не вошёл: задайте STAND_PASS'); process.exit(1) }
+  await call('/admin/settings', { method: 'POST', token: adm,
+    body: { phoneGate: true, phoneVerifyOn: true } });
+
   const rnd = Math.floor(Math.random() * 9000 + 1000);
   const fresh = `7928500${rnd}`;
 
@@ -88,6 +96,10 @@ const head = t => console.log(`\n\x1b[1m── ${t} ──\x1b[0m`);
   const started = await call('/clients/call/start', { method: 'POST', body: { phone: fresh } });
   check('зарегистрированному номеру звонок не предлагают',
     started.status === 409 && started.data?.code === 'phone_taken', started.data);
+
+  // Возвращаем как было: с включённым подтверждением прочие проверки
+  // не смогут завести клиента — они не присылают подтверждение
+  await call('/admin/settings', { method: 'POST', token: adm, body: { phoneVerifyOn: false } });
 
   console.log(bad ? `\n\x1b[31mНе прошло: ${bad}\x1b[0m` : '\n\x1b[32mВсё прошло\x1b[0m');
   process.exit(bad ? 1 : 0);
