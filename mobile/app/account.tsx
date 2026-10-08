@@ -182,9 +182,11 @@ function Enter({ onDone, why, prefill, gate }: {
     }
   };
 
+  // На первом шаге — только заголовок и поле: заказчик просил убрать с экрана
+  // входа всё лишнее (08.10.2026). Пояснения остаются там, где без них
+  // непонятно: почему просят пароль и что делать со звонком.
   const HEAD: Record<typeof step, { eyebrow: string; title: string; lede: string }> = {
-    phone: { eyebrow: 'Вход и регистрация', title: 'ВАШ\nНОМЕР',
-      lede: 'Клуб узнаёт вас по номеру телефона. Введите его — дальше подскажем.' },
+    phone: { eyebrow: '', title: 'ВАШ\nНОМЕР', lede: '' },
     password: { eyebrow: 'Вход', title: 'С ВОЗВРАЩЕНИЕМ',
       lede: 'Этот номер уже зарегистрирован. Введите пароль, чтобы увидеть свои записи.' },
     call: { eyebrow: 'Подтверждение номера', title: 'ПОЗВОНИТЕ\nНАМ',
@@ -202,9 +204,11 @@ function Enter({ onDone, why, prefill, gate }: {
       <Stack.Screen options={{ title: 'Аккаунт' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={s.head}>
-          <Eyebrow>{h.eyebrow}</Eyebrow>
+          {!!h.eyebrow && <Eyebrow>{h.eyebrow}</Eyebrow>}
           <Text style={s.h1} allowFontScaling={false}>{h.title}</Text>
-          <Text style={s.lede}>{why && step === 'phone' ? why + ' ' : ''}{h.lede}</Text>
+          {(!!why || !!h.lede) && (
+            <Text style={s.lede}>{why && step === 'phone' ? why + ' ' : ''}{h.lede}</Text>
+          )}
         </View>
 
         {step === 'phone' ? (
@@ -308,10 +312,9 @@ function Enter({ onDone, why, prefill, gate }: {
                   : step === 'password' ? 'Войти' : 'Создать аккаунт'}
               </Text>
             </Pressable>
-            {!ok && (
+            {!ok && step !== 'phone' && (
               <Text style={s.barSub}>
-                {step === 'phone' ? 'Введите номер телефона'
-                  : (step === 'signup' && name.trim().length < 2) ? 'Введите имя'
+                {(step === 'signup' && name.trim().length < 2) ? 'Введите имя'
                   : 'Пароль не короче 6 знаков'}
               </Text>
             )}
@@ -328,9 +331,6 @@ function Enter({ onDone, why, prefill, gate }: {
           </Pressable>
         )}
 
-        {/* Тему можно выбрать и без аккаунта */}
-        <Text style={s.group}>Оформление</Text>
-        <ThemePicker />
       </ScrollView>
     </KeyboardAvoidingView>
   );
