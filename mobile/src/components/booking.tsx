@@ -204,10 +204,10 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   const [problem, setProblem] = useState<string | null>(null);
   // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
+  const [goodsSum, setGoodsSum] = useState(0);
   const [family, setFamily] = useState(false);
   // Прокат и мячи, отмеченные при записи: id товара → сколько
   const [picked, setPicked] = useState<Map<number, number>>(new Map());
-  const [goodsSum, setGoodsSum] = useState(0);
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
 
@@ -223,7 +223,10 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   // С тренером, у которого корт входит в цену, за корт отдельно не берут —
   // так же это считает сервер
   const courtDue = coach && !coach.courtExtra ? 0 : courtPrice;
-  const total = courtDue + (coach?.total ?? 0);
+  // Прокат и мячи — часть счёта брони («оплатите вместе с кортом»), поэтому
+  // входят и в крупную сумму, и в предоплату: иначе число наверху не сходилось
+  // со строками под ним
+  const total = courtDue + (coach?.total ?? 0) + goodsSum;
   // Округляем до рубля вверх — так менеджеру называть сумму проще
   const prepay = Math.ceil(total * club.prepayPercent / 100 / 100) * 100;
 
@@ -348,12 +351,18 @@ export function BookingSheet({ court, date, sel, hours, booking }: {
         </Text>
       </View>
       {!!booking.coach && (
-        <View style={[b.sumRow, b.sumRow2]}>
-          <Text style={b.prepayL}>
-            {booking.courtDue ? `Корт ${rub(booking.courtDue)} + тренер` : 'Корт входит в тренировку ·'}
-          </Text>
-          <Text style={b.prepayR}>{rub(booking.coach.total)}</Text>
-        </View>
+        <>
+          <View style={[b.sumRow, b.sumRow2]}>
+            <Text style={b.prepayL}>
+              {booking.courtDue ? `Корт, ${hours} ${plural(hours, 'час', 'часа', 'часов')}` : 'Корт входит в тренировку'}
+            </Text>
+            <Text style={b.prepayR}>{booking.courtDue ? rub(booking.courtDue) : '0 ₽'}</Text>
+          </View>
+          <View style={[b.sumRow, b.sumRow2]}>
+            <Text style={b.prepayL}>Тренер {booking.coach.name}</Text>
+            <Text style={b.prepayR}>{rub(booking.coach.total)}</Text>
+          </View>
+        </>
       )}
       {booking.goodsSum > 0 && (
         <View style={[b.sumRow, b.sumRow2]}>
@@ -401,7 +410,7 @@ export function FamilyPick({ on, onToggle }: { on: boolean; onToggle: (v: boolea
       </View>
       <View style={{ flex: 1 }}>
         <Text style={b.famT}>Семейный</Text>
-        <Text style={b.famS}>Корт закроют от посторонних глаз</Text>
+        <Text style={b.famS}>Корт закроют от посторонних глаз. Без доплаты.</Text>
       </View>
     </Pressable>
   );
