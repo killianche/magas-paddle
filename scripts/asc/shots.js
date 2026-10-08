@@ -22,6 +22,12 @@ const scroll = async (p, y) => {
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const errs = []; p.on('pageerror', e => errs.push(String(e).split('\n')[0]));
+  // Приложение открывается экраном входа (settings.phone_gate). Для витрины
+  // он не годится: Apple видит форму регистрации вместо клуба. Ставим признак
+  // «смотрю без входа» до загрузки — тот же, что ставит кнопка в приложении.
+  await p.addInitScript(() => {
+    try { localStorage.setItem('magas.guest', '1') } catch {}
+  });
   const shot = async (n, name) => { await p.screenshot({ path: `as-${n}-${name}.png` }); console.log(`  снято ${n}. ${name}`) };
 
   await p.goto(`${B}/`, { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
