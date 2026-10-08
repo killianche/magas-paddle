@@ -64,7 +64,16 @@ export class AdminCoachesController {
         orderBy: { starts_at: 'desc' }, include: { clients: true, courts: true } }),
       this.db.tournaments.findMany({ where: { coach_id: c.id, kind: 'class', starts_at: { gte: a, lt: b } },
         orderBy: { starts_at: 'desc' }, include: { tournament_entries: true } }),
-      this.db.coach_payouts.findMany({ where: { coach_id: c.id, created_at: { gte: a, lt: b } }, orderBy: { id: 'desc' } }),
+      // Выплату относим к периоду, за который она сделана, а не к дню, когда
+      // её записали: иначе выплата за прошлый месяц, внесённая сегодня,
+      // в отчёте за прошлый месяц не появлялась, и «к выплате» там
+      // оставалось завышенным. Период не указан — считаем по дате записи.
+      this.db.coach_payouts.findMany({
+        where: { coach_id: c.id, OR: [
+          { period_from: { lte: new Date(to) }, period_to: { gte: new Date(from) } },
+          { period_from: null, period_to: null, created_at: { gte: a, lt: b } },
+        ] },
+        orderBy: { id: 'desc' } }),
     ]);
     const lessons = bk.map(x => {
       const hours = Math.round((+x.ends_at - +x.starts_at) / 3600_000);

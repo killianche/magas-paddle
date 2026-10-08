@@ -10,7 +10,7 @@
  *    node tools/admin-user.js owner vladelec "Владелец клуба"   # напечатает пароль
  *
  *  Запуск:  STAND_PASS=<пароль владельца> node scripts/tests/coaches-stand.js */
-const API = 'http://127.0.0.1:3101/api';
+const API = process.env.STAND_API || 'http://127.0.0.1:3101/api';
 const ADMIN = { login: 'vladelec', password: process.env.STAND_PASS };
 
 let ok = 0, bad = 0;
