@@ -41,6 +41,10 @@ export type ClubInfoData = {
   coachesOn: boolean;
   /** Услуга «Семейный» на крытом корте. */
   familyOn: boolean;
+  /** Приложение открывается экраном входа по номеру. */
+  phoneGate: boolean;
+  /** Новый номер подтверждается обратным звонком. */
+  phoneVerifyOn: boolean;
   /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
   waTemplate: string | null;
   /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
@@ -101,7 +105,8 @@ const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
-  showTournaments: true, showFootball: true, coachesOn: true, familyOn: true, waTemplate: null,
+  showTournaments: true, showFootball: true, coachesOn: true, familyOn: true,
+  phoneGate: true, phoneVerifyOn: false, waTemplate: null,
   bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
 
@@ -138,6 +143,8 @@ export const CLUB = {
   get showFootball() { return cache.showFootball },
   get coachesOn() { return cache.coachesOn !== false },
   get familyOn() { return cache.familyOn !== false },
+  get phoneGate() { return cache.phoneGate !== false },
+  get phoneVerifyOn() { return cache.phoneVerifyOn === true },
   get waTemplate() { return cache.waTemplate },
 };
 

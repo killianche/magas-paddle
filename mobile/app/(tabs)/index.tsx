@@ -16,8 +16,9 @@ import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, mediaUrl, type ApiBooking, type ApiCoach, type ApiTournament } from '../../src/api';
 import { useApi } from '../../src/useApi';
-import { useProfile, initials } from '../../src/profile';
-import { useClub } from '../../src/club';
+import { useProfile, initials, isSignedIn, loadProfile } from '../../src/profile';
+import { loadGuest } from '../../src/guest';
+import { CLUB, loadClub, useClub } from '../../src/club';
 import { CoachFace } from '../../src/components/coach';
 import { IMG, HERO, HERO_LIGHT } from '../../src/images';
 import { Mark, IconChevron, IconBell, IconAccount, IconArrowRight } from '../../src/components/icons';
@@ -34,6 +35,22 @@ const ON_PHOTO = '#F5F8F2';
 const TILE_GAP = 10;
 
 export default function Home() {
+  // Вход при запуске: приложение открывается экраном номера, как в крупных
+  // сервисах. Отказавшемуся («Посмотреть без входа») больше не напоминаем —
+  // смотреть цены и часы можно и без аккаунта.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      await loadProfile();
+      if (!alive || isSignedIn()) return;
+      await loadClub();            // настройки клуба могли ещё не приехать
+      if (!alive || !CLUB.phoneGate) return;
+      if (await loadGuest()) return;
+      if (alive) router.replace('/account?gate=1');
+    })();
+    return () => { alive = false };
+  }, []);
+
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { profile } = useProfile();

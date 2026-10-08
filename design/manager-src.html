@@ -1902,6 +1902,8 @@ label{font-size:12px;color:var(--dim);margin:12px 0 5px}
       <label class="chk"><input type="checkbox" id="setFoot"> Показывать мини-футбольное поле</label>
       <label class="chk"><input type="checkbox" id="setCoach"> Тренеры в приложении: галочка «играть с тренером» и групповые тренировки</label>
       <label class="chk"><input type="checkbox" id="setFamily"> Услуга «Семейный»: галочка при записи на крытый корт</label>
+      <label class="chk"><input type="checkbox" id="setGate"> Приложение открывается экраном входа по номеру</label>
+      <label class="chk"><input type="checkbox" id="setVerify"> Новый номер подтверждается звонком</label>
       <div class="err" id="appErr"></div>
       <div class="acts"><button class="btn acc" id="appSave">Сохранить</button></div>
     </div>
@@ -3672,6 +3674,8 @@ async function openSetup(){
   $('#setFoot').checked = st.showFootball !== false;
   $('#setCoach').checked = st.coachesOn !== false;
   $('#setFamily').checked = st.familyOn !== false;
+  $('#setGate').checked = st.phoneGate !== false;
+  $('#setVerify').checked = st.phoneVerifyOn !== false;
   weekRender(st.week);
   $('#setMorning').value = st.morningUntil; $('#setMax').value = st.maxHours;
   $('#setCancel').value = st.cancelHours;
@@ -3896,6 +3900,8 @@ $('#appSave').onclick = async () => {
       showTournaments: $('#setTourn').checked, showFootball: $('#setFoot').checked,
       coachesOn: $('#setCoach').checked,
       familyOn: $('#setFamily').checked,
+      phoneGate: $('#setGate').checked,
+      phoneVerifyOn: $('#setVerify').checked,
     })});
     ok('#appErr', '#appSave', 'Сохранить');
   } catch(e){ fail('#appErr', e) }

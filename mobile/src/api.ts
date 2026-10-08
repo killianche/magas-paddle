@@ -259,7 +259,8 @@ export const api = {
     phone: string | null; whatsapp: string | null; address: string | null;
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
-    showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; familyOn?: boolean; waTemplate: string | null;
+    showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; familyOn?: boolean;
+    phoneGate?: boolean; phoneVerifyOn?: boolean; waTemplate: string | null;
     bookingNote?: string | null; heroUrl?: string | null; heroLightUrl?: string | null;
   }>('/club'),
 
@@ -269,7 +270,7 @@ export const api = {
       `/clients/check?phone=${encodeURIComponent(phone)}`),
 
   register: (c: { name: string; surname?: string; phone: string;
-                  whatsapp?: string; password: string }) =>
+                  whatsapp?: string; password: string; verificationToken?: string }) =>
     call<Session>('/clients/register', { method: 'POST', body: JSON.stringify(c) }),
 
   login: (phone: string, password: string) =>
@@ -294,6 +295,16 @@ export const api = {
     call<ApiBooking[]>(`/bookings?phone=${encodeURIComponent(phone)}`),
 
   goods: () => call<ApiGood[]>('/goods'),
+
+  /** Подтверждение номера обратным звонком: получить номер, на который звонить. */
+  callStart: (phone: string, secret?: string) =>
+    call<{ secret: string; callPhone: string; callPhonePretty: string; expiresInSec: number }>(
+      '/clients/call/start', { method: 'POST', body: JSON.stringify({ phone, secret }) }),
+
+  /** Был ли звонок. Приложение спрашивает раз в три секунды. */
+  callStatus: (phone: string, secret: string) =>
+    call<{ confirmed: boolean; verificationToken?: string }>(
+      '/clients/call/status', { method: 'POST', body: JSON.stringify({ phone, secret }) }),
 
   book: (b: { courtId: string; date: string; hour: number; hours: number;
               name: string; surname?: string; phone: string; whatsapp?: string;

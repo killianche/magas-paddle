@@ -1,6 +1,7 @@
 // Имя и телефон человека. Входа в приложении нет — по номеру сервер и узнаёт,
 // чьи это записи. Храним на устройстве, никуда больше не отправляем.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setGuest } from './guest';
 import { useCallback, useEffect, useState } from 'react';
 import { setToken, setUnauthorizedHandler } from './api';
 
@@ -67,6 +68,8 @@ export async function saveToken(t: string | null) {
 
 /** Выход: с устройства уходит всё, включая имя. */
 export async function forgetProfile() {
+  // Вышел из аккаунта — экран входа при запуске снова уместен
+  setGuest(false).catch(() => {});
   cache = null;
   signedIn = false;
   setToken(null);

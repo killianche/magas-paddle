@@ -22,8 +22,9 @@ import {
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
 import { openLink } from '../src/components/contacts';
-import { whatsappUrl } from '../src/club';
+import { useClub, whatsappUrl } from '../src/club';
 import { ThemePicker } from '../src/components/themepicker';
+import { setGuest } from '../src/guest';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
 
 /** Записи, которые уже прошли: их и показываем историей. */
@@ -38,7 +39,7 @@ export default function Account() {
   const { profile, ready, save, forget, signedIn } = useProfile();
   const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
   // Сюда возвращаемся после входа: на экран корта или записи на турнир
-  const { next } = useLocalSearchParams<{ next?: string }>();
+  const { next, gate } = useLocalSearchParams<{ next?: string; gate?: string }>();
 
   if (!ready) return <><Stack.Screen options={{ title: 'Аккаунт' }} /><View style={s.root} /></>;
 
@@ -46,10 +47,10 @@ export default function Account() {
   // это ещё не аккаунт: в старых версиях они оставались после записи без
   // регистрации, и экран показывал карточку, а сервер отвечал «войдите».
   if (!profile || !signedIn) {
-    return <Enter prefill={profile}
+    return <Enter prefill={profile} gate={gate === '1'}
       why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
       onDone={async (p, token) => {
-        await saveToken(token); await save(p);
+        await saveToken(token ?? null); await save(p);
         if (next) router.replace(next as never);
       }} />;
   }
@@ -70,13 +71,14 @@ export default function Account() {
 
 /* ── Вход и регистрация ────────────────────────────────────────────────── */
 
-function Enter({ onDone, why, prefill }: {
-  onDone: (p: Profile, token: string) => void;
-  /** Зачем его сюда привели: «чтобы записаться». */
+function Enter({ onDone, why, prefill, gate }: {
+  onDone: (p: Profile, token?: string) => void;
   why?: string | null;
-  /** Что уже знаем о человеке с прошлых записей: подставляем в поля. */
   prefill?: Profile | null;
+  /** Экран открылся сам при запуске: даём уйти смотреть без входа. */
+  gate?: boolean;
 }) {
+  const club = useClub();
   const [phone, setPhone] = useState(prefill ? plainPhone(prefill.phone) : '');
   const [name, setName] = useState(prefill?.name ?? '');
   const [surname, setSurname] = useState(prefill?.surname ?? '');
@@ -87,65 +89,87 @@ function Enter({ onDone, why, prefill }: {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  /** Забыл пароль — пишет менеджеру в WhatsApp готовым текстом: кто он,
-   *  номер и ID. Кода по SMS нет, пароль сбрасывает менеджер в админке. */
+  /** Шаг входа. Сначала один номер — так же, как в крупных приложениях:
+   *  знакомый номер просит пароль, незнакомый сначала подтверждается
+   *  звонком и только потом заводит аккаунт (заказчик, 08.10.2026). */
+  const [step, setStep] = useState<'phone' | 'password' | 'call' | 'signup'>(
+    prefill ? 'signup' : 'phone');
+  /** Выданный номер 8-800 и наш секрет проверки. */
+  const [call, setCall] = useState<{ phone: string; pretty: string; secret: string } | null>(null);
+  const [token, setToken] = useState<string | undefined>();
+
+  const clean = normalizePhone(phone);
+
   const forgot = () => {
     const wa = whatsappUrl();
-    const me = prefill;
-    const text = [
-      'Здравствуйте! Я забыл пароль от аккаунта в приложении Magas Padel.',
-      `Мой номер: ${clean ? prettyPhone(clean) : (me ? prettyPhone(me.phone) : '')}.`,
-      me?.name ? `Меня зовут ${fullName(me)}.` : '',
-      me?.id ? `ID аккаунта ${me.id}.` : '',
-      'Сбросьте, пожалуйста, пароль — я задам новый в приложении.',
-    ].filter(Boolean).join('\n');
+    const text = 'Здравствуйте! Я забыл пароль от аккаунта в приложении Magas Padel.'
+      + (clean ? ` Мой номер: ${prettyPhone(clean)}.` : '');
     if (!wa) {
-      const m = 'WhatsApp клуба пока не указан. Позвоните в клуб — менеджер сбросит пароль.';
-      Platform.OS === 'web' ? alert(m) : Alert.alert('Забыли пароль', m);
+      Alert.alert('Пароль', 'Позвоните в клуб — менеджер сбросит пароль.');
       return;
     }
     openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp: он сбросит пароль.');
   };
 
-  /** Что делать с этим номером: клуб его ещё не знает, знает без пароля
-   *  или на нём уже стоит пароль. Пока не спросили — 'unknown'. */
-  const [state, setState] = useState<'unknown' | 'new' | 'known' | 'protected'>('unknown');
+  /** Номер введён — спрашиваем сервер, знаком ли он, и решаем, что дальше. */
+  const next = async () => {
+    if (!clean || busy) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBusy(true); setProblem(null);
+    try {
+      const r = await api.checkPhone(clean);
+      if (r.hasPassword) { setStep('password'); setBusy(false); return }
+      if (!club.phoneVerifyOn) { setStep('signup'); setBusy(false); return }
+      const c = await api.callStart(clean);
+      setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
+      setStep('call');
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
+    }
+    setBusy(false);
+  };
 
-  const clean = normalizePhone(phone);
-  const asked = useRef<string | null>(null);
-
-  // Спрашиваем сервер, как только номер стал похож на настоящий. Ключ уже
-  // спрошенного держим в ref: состояние меняло бы зависимости эффекта, и тот
-  // перезапускался бы, отменяя собственный запрос.
+  // Ждём звонок: спрашиваем сервер раз в три секунды, пока открыт этот шаг
   useEffect(() => {
-    if (!clean || clean === asked.current) return;
-    asked.current = clean;
-    api.checkPhone(clean).then(r => {
-      setState(!r.known ? 'new' : r.hasPassword ? 'protected' : 'known');
-      const p = r.profile;
-      if (p) {
-        setName(n => n.trim() ? n : p.name);
-        setSurname(x => x.trim() ? x : (p.surname ?? ''));
-        if (p.whatsapp) setWa(x => x.trim() ? x : plainPhone(p.whatsapp!));
+    if (step !== 'call' || !call || !clean) return;
+    let alive = true;
+    const t = setInterval(async () => {
+      try {
+        const r = await api.callStatus(clean, call.secret);
+        if (!alive) return;
+        if (r.confirmed) {
+          clearInterval(t);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setToken(r.verificationToken);
+          setStep('signup');
+        }
+      } catch (e) {
+        if (!alive) return;
+        clearInterval(t);
+        setProblem(e instanceof ApiError ? e.message : 'Время вышло — начните заново.');
+        setStep('phone'); setCall(null);
       }
-    }).catch(() => {});
-  }, [clean]);
+    }, 3000);
+    return () => { alive = false; clearInterval(t) };
+  }, [step, call, clean]);
 
-  const login = state === 'protected';
-  const ok = !!clean && password.length >= 6 && (login || name.trim().length >= 2);
+  const ok = step === 'password' ? password.length >= 6
+    : step === 'signup' ? password.length >= 6 && name.trim().length >= 2
+    : !!clean;
 
   const submit = async () => {
+    if (step === 'phone') return next();
     if (!ok || !clean || busy) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
       const cleanWa = normalizePhone(wa);
-      const res = login
+      const res = step === 'password'
         ? await api.login(clean, password)
         : await api.register({
             name: name.trim(), surname: surname.trim() || undefined,
             phone: clean, whatsapp: cleanWa && cleanWa !== clean ? cleanWa : undefined,
-            password,
+            password, verificationToken: token,
           });
       onDone({
         id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
@@ -158,34 +182,63 @@ function Enter({ onDone, why, prefill }: {
     }
   };
 
+  const HEAD: Record<typeof step, { eyebrow: string; title: string; lede: string }> = {
+    phone: { eyebrow: 'Вход и регистрация', title: 'ВАШ\nНОМЕР',
+      lede: 'Клуб узнаёт вас по номеру телефона. Введите его — дальше подскажем.' },
+    password: { eyebrow: 'Вход', title: 'С ВОЗВРАЩЕНИЕМ',
+      lede: 'Этот номер уже зарегистрирован. Введите пароль, чтобы увидеть свои записи.' },
+    call: { eyebrow: 'Подтверждение номера', title: 'ПОЗВОНИТЕ\nНАМ',
+      lede: 'Позвоните с этого номера — звонок сбросится сам и ничего не будет стоить. Так мы убеждаемся, что номер ваш.' },
+    signup: { eyebrow: 'Регистрация · 30 секунд', title: 'СОЗДАТЬ\nАККАУНТ',
+      lede: prefill
+        ? 'Ваши данные сохранились, но пароля у аккаунта ещё нет — придумайте его. Прошлые записи останутся на месте.'
+        : 'Осталось назвать себя и придумать пароль — он закроет ваши записи от чужих глаз.' },
+  };
+  const h = HEAD[step];
+
   return (
     <KeyboardAvoidingView style={s.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Stack.Screen options={{ title: 'Аккаунт' }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={s.head}>
-          <Eyebrow>{login ? 'Вход' : prefill ? 'Остался пароль' : 'Регистрация · 30 секунд'}</Eyebrow>
-          <Text style={s.h1} allowFontScaling={false}>
-            {login ? 'ВХОД\nВ АККАУНТ' : prefill ? 'ЗАВЕРШИТЕ\nРЕГИСТРАЦИЮ' : 'СОЗДАТЬ\nАККАУНТ'}
-          </Text>
-          <Text style={s.lede}>
-            {why ? why + ' ' : ''}
-            {login
-              ? 'Этот номер уже защищён паролем. Введите его, чтобы увидеть свои записи.'
-              : prefill
-                ? 'Ваши данные сохранились, но пароля у аккаунта ещё нет — придумайте его. '
-                  + 'Прошлые записи останутся на месте.'
-                : 'Клуб узнаёт вас по номеру телефона, а пароль закрывает ваши записи от чужих глаз.'}
-          </Text>
+          <Eyebrow>{h.eyebrow}</Eyebrow>
+          <Text style={s.h1} allowFontScaling={false}>{h.title}</Text>
+          <Text style={s.lede}>{why && step === 'phone' ? why + ' ' : ''}{h.lede}</Text>
         </View>
 
-        <Text style={s.label}>Телефон</Text>
-        <TextInput style={s.input} value={phone} onChangeText={setPhone}
-          placeholder="89289204029" placeholderTextColor={C.busy}
-          keyboardType="phone-pad" textContentType="telephoneNumber"
-          accessibilityLabel="Номер телефона" />
+        {step === 'phone' ? (
+          <>
+            <Text style={s.label}>Телефон</Text>
+            <TextInput style={s.input} value={phone} onChangeText={setPhone}
+              placeholder="89289204029" placeholderTextColor={C.busy}
+              keyboardType="phone-pad" textContentType="telephoneNumber"
+              autoFocus onSubmitEditing={next} returnKeyType="next"
+              accessibilityLabel="Номер телефона" />
+          </>
+        ) : (
+          /* Номер уже введён: показываем его строкой с возможностью поправить */
+          <Pressable onPress={() => { setStep('phone'); setCall(null); setPassword('') }}
+            accessibilityRole="button" accessibilityLabel="Изменить номер"
+            style={({ pressed }) => [s.phoneRow, pressed && { opacity: 0.7 }]}>
+            <Text style={s.phoneT}>{prettyPhone(clean ?? phone)}</Text>
+            <Text style={s.phoneEdit}>изменить</Text>
+          </Pressable>
+        )}
 
-        {!login && (
+        {step === 'call' && !!call && (
+          <View style={s.callBox}>
+            <Text style={s.callNum} allowFontScaling={false}>{call.pretty}</Text>
+            <Pressable onPress={() => openLink(`tel:+${call.phone}`, 'Наберите номер вручную.')}
+              accessibilityRole="button"
+              style={({ pressed }) => [s.callBtn, pressed && { opacity: 0.9 }]}>
+              <Text style={s.callBtnT}>Позвонить</Text>
+            </Pressable>
+            <Text style={s.callWait}>Ждём звонок… Вернитесь сюда — экран сам продолжит.</Text>
+          </View>
+        )}
+
+        {step === 'signup' && (
           <>
             <Text style={s.label}>Имя</Text>
             <TextInput style={s.input} value={name} onChangeText={setName}
@@ -193,8 +246,7 @@ function Enter({ onDone, why, prefill }: {
               autoCapitalize="words" textContentType="givenName"
               accessibilityLabel="Имя" />
 
-            {/* Регистрация быстрая: фамилия и второй номер — по желанию,
-                свёрнуты, чтобы не занимать место (заказчик, 19.09.2026) */}
+            {/* Фамилия и второй номер — по желанию, свёрнуты (заказчик, 19.09.2026) */}
             {!more ? (
               <Pressable onPress={() => setMore(true)} hitSlop={8} accessibilityRole="button"
                 style={({ pressed }) => [s.moreBtn, pressed && { opacity: 0.6 }]}>
@@ -217,48 +269,63 @@ function Enter({ onDone, why, prefill }: {
           </>
         )}
 
-        <View style={s.labelRow}>
-          <Text style={[s.label, { flex: 1, marginTop: 0, paddingRight: 0 }]}>Пароль</Text>
-          <Pressable onPress={() => setShow(v => !v)} hitSlop={10} style={s.showBtn}
-            accessibilityRole="button"
-            accessibilityLabel={show ? 'Скрыть пароль' : 'Показать пароль'}>
-            <Text style={s.showT}>{show ? 'скрыть' : 'показать'}</Text>
-          </Pressable>
-        </View>
-        <TextInput style={s.input} value={password} onChangeText={setPassword}
-          placeholder={login ? 'Ваш пароль' : 'Не короче 6 знаков'}
-          placeholderTextColor={C.busy} secureTextEntry={!show}
-          autoCapitalize="none" autoCorrect={false}
-          textContentType={login ? 'password' : 'newPassword'}
-          accessibilityLabel="Пароль" />
+        {(step === 'password' || step === 'signup') && (
+          <>
+            <View style={s.labelRow}>
+              <Text style={[s.label, { flex: 1, marginTop: 0, paddingRight: 0 }]}>Пароль</Text>
+              <Pressable onPress={() => setShow(v => !v)} hitSlop={10} style={s.showBtn}
+                accessibilityRole="button"
+                accessibilityLabel={show ? 'Скрыть пароль' : 'Показать пароль'}>
+                <Text style={s.showT}>{show ? 'скрыть' : 'показать'}</Text>
+              </Pressable>
+            </View>
+            <TextInput style={s.input} value={password} onChangeText={setPassword}
+              placeholder={step === 'password' ? 'Ваш пароль' : 'Не короче 6 знаков'}
+              placeholderTextColor={C.busy} secureTextEntry={!show}
+              autoCapitalize="none" autoCorrect={false} autoFocus
+              textContentType={step === 'password' ? 'password' : 'newPassword'}
+              onSubmitEditing={submit} returnKeyType="go"
+              accessibilityLabel="Пароль" />
+          </>
+        )}
 
-
-        {login && (
+        {step === 'password' && (
           <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button"
             style={({ pressed }) => [s.moreBtn, pressed && { opacity: 0.6 }]}>
             <Text style={s.moreT}>Забыли пароль? Написать менеджеру в WhatsApp</Text>
           </Pressable>
         )}
-        {state === 'known' && (
-          <Text style={s.found}>
-            Клуб уже знает этот номер — данные подставились. Осталось придумать пароль.
-          </Text>
-        )}
         {!!problem && <Text style={s.problem}>{problem}</Text>}
 
-        <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
-          style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff,
-            pressed && ok && { opacity: 0.9 }]}>
-          <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
-            {busy ? 'Минуту…' : login ? 'Войти' : 'Создать аккаунт'}
-          </Text>
-        </Pressable>
-        {!ok && (
-          <Text style={s.barSub}>
-            {!clean ? 'Введите номер телефона'
-              : (!login && name.trim().length < 2) ? 'Введите имя'
-              : 'Пароль не короче 6 знаков'}
-          </Text>
+        {step !== 'call' && (
+          <>
+            <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+              style={({ pressed }) => [s.cta, (!ok || busy) && s.ctaOff,
+                pressed && ok && { opacity: 0.9 }]}>
+              <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
+                {busy ? 'Минуту…'
+                  : step === 'phone' ? 'Далее'
+                  : step === 'password' ? 'Войти' : 'Создать аккаунт'}
+              </Text>
+            </Pressable>
+            {!ok && (
+              <Text style={s.barSub}>
+                {step === 'phone' ? 'Введите номер телефона'
+                  : (step === 'signup' && name.trim().length < 2) ? 'Введите имя'
+                  : 'Пароль не короче 6 знаков'}
+              </Text>
+            )}
+          </>
+        )}
+
+        {/* Открылись при запуске — даём посмотреть клуб без аккаунта.
+            Цены и свободные часы доступны всем; аккаунт нужен для записи. */}
+        {gate && step === 'phone' && (
+          <Pressable onPress={async () => { await setGuest(true); router.replace('/') }}
+            hitSlop={8} accessibilityRole="button"
+            style={({ pressed }) => [s.skip, pressed && { opacity: 0.6 }]}>
+            <Text style={s.skipT}>Посмотреть без входа</Text>
+          </Pressable>
         )}
 
         {/* Тему можно выбрать и без аккаунта */}
@@ -679,6 +746,24 @@ const s = sheet(() => ({
   ctaT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6,
     textTransform: 'uppercase' },
   barSub: { fontFamily: BODY, color: C.dim2, fontSize: 11.5, textAlign: 'center', marginTop: 9 },
+  skip: { alignSelf: 'center', marginTop: 18, paddingVertical: 8, paddingHorizontal: 12 },
+  skipT: { fontFamily: BODY, color: C.dim, fontSize: 14 },
+  // Введённый номер строкой: видно, куда идёт вход, и можно поправить
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: S.xl, marginTop: 4, paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: R.lg, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  phoneT: { flex: 1, fontFamily: DISP_MED, color: C.text, fontSize: 16 },
+  phoneEdit: { fontFamily: BODY, color: C.accent, fontSize: 13 },
+
+  // Подтверждение звонком: крупный номер и одна кнопка
+  callBox: { marginHorizontal: S.xl, marginTop: 14, padding: 18, borderRadius: R.xl,
+    borderWidth: 1, borderColor: C.line, backgroundColor: C.surface, alignItems: 'center' },
+  callNum: { fontFamily: DISP, color: C.text, fontSize: 30, letterSpacing: -0.5 },
+  callBtn: { marginTop: 14, alignSelf: 'stretch', height: HIT + 8, borderRadius: R.lg,
+    backgroundColor: C.lime, alignItems: 'center', justifyContent: 'center' },
+  callBtnT: { fontFamily: DISP_MED, color: C.onLime, fontSize: 16 },
+  callWait: { fontFamily: BODY, color: C.dim2, fontSize: 12.5, marginTop: 12, textAlign: 'center' },
+
   moreBtn: { marginHorizontal: S.xl, marginTop: 12, minHeight: 36, justifyContent: 'center' },
   moreT: { fontFamily: DISP_MED, color: C.accent, fontSize: 13 },
   opt: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 0, textTransform: 'none' },
