@@ -184,3 +184,17 @@ Apple reviews the build and its accompanying metadata»*.
 Если минуты кончились: либо ждать первого числа, либо задать лимит трат
 с привязанной картой. Других способов собрать iOS у нас нет — сборка требует
 macOS, а на VDS его нет.
+
+## Ключ App Store Connect: больше не нужно подставлять руками
+
+`scripts/asc/asc.py` берёт `ASC_KEY_ID` и `ASC_ISSUER_ID` из `secrets/asc.env`,
+если их нет в окружении. Поэтому любой скрипт запускается одной командой:
+
+```bash
+python3 scripts/asc/check-review.py     # где сейчас обе проверки
+python3 scripts/asc/release.py          # план выпуска, ничего не меняет
+python3 scripts/asc/release.py --go     # выполнить выпуск
+```
+
+Сам ключ в вывод не попадает. В `.claude/settings.json` разрешён запуск
+только `python3 scripts/asc/*` — без общего доступа к сети.

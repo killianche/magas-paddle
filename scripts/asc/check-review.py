@@ -6,6 +6,7 @@ import importlib.util, pathlib, urllib.request
 
 # Сборки TestFlight: свежая сверху. Добавляя новую, дописывайте строку сюда.
 BUILDS = [
+    ('69', 'c5090884-8719-4938-8de3-c04dc3cd2e90'),
     ('68', 'c826c5bf-6f6b-488a-841b-1033a63c9f85'),
     ('66', 'c92eead0-c3fc-4822-b5bb-2c13c10f700c'),
     ('65', '90c9e0a9-8658-4453-890c-4b411dda5b69'),
@@ -17,7 +18,7 @@ BUILDS = [
     ('2', '3528cbc0-74d0-47cc-af8e-80ae160e3865'),
     ('1', '58f1dd55-f041-4f3a-873e-ec8b0b43b153'),
 ]
-VID   = '36215d4b-1d43-46da-bc51-616c40582fe7'   # 1.0.3, на проверке
+VID   = '36215d4b-1d43-46da-bc51-616c40582fe7'   # 1.0.4, на проверке
 VID_101 = '78967d3c-f94a-40b0-b99f-3836c01f05f0' # 1.0.1, в магазине
 VID_10 = 'd98f5a08-4d50-4543-b6f7-087427d3b640'  # 1.0, прежняя
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'

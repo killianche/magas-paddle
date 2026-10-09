@@ -1,10 +1,26 @@
 """Клиент App Store Connect API. Ключ читается из файла, в вывод не попадает."""
-import os, time, json, sys, urllib.request, urllib.error
+import os, time, json, sys, pathlib, urllib.request, urllib.error
 import jwt
 
 KEY_PATH = os.environ.get('ASC_KEY_PATH', '/root/projects/Magas Paddle/secrets/AuthKey.p8')
-KEY_ID   = os.environ['ASC_KEY_ID']
-ISSUER   = os.environ['ASC_ISSUER_ID']
+
+def _ident(name):
+    """Идентификатор ключа: из окружения, иначе из asc.env рядом с самим ключом.
+    Так скрипты запускаются одной командой, без подстановки переменных руками."""
+    if os.environ.get(name):
+        return os.environ[name]
+    envfile = pathlib.Path(KEY_PATH).with_name('asc.env')
+    if envfile.exists():
+        for line in envfile.read_text().splitlines():
+            line = line.strip()
+            if line.startswith('export '):
+                line = line[7:].strip()
+            if line.startswith(name + '='):
+                return line.split('=', 1)[1].strip().strip('\'"')
+    raise SystemExit(f'Не найден {name}. Задайте его в окружении или в {envfile}')
+
+KEY_ID   = _ident('ASC_KEY_ID')
+ISSUER   = _ident('ASC_ISSUER_ID')
 BASE     = 'https://api.appstoreconnect.apple.com'
 
 def token(exp=1200):
