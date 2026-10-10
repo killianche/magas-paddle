@@ -20,13 +20,27 @@ import importlib.util, pathlib, sys, time
 APP         = '6808335944'
 VERSION_ID  = '36215d4b-1d43-46da-bc51-616c40582fe7'   # карточка версии в магазине
 TARGET      = '1.0.4'                                   # номер, который должен в ней стоять
-BUILD_NUM   = '69'                                      # номер сборки
+BUILD_NUM   = '70'                                      # номер сборки
 GROUP_FRIEND= 'ef6e1f33-4e97-48b4-9dbf-4aab01165420'   # внешняя группа «Друзья»
-OLD_SUB     = '9068f2ef-2bec-4f1f-8f55-213f802b2ead'   # заявка на 1.0.3, стоит в очереди
-EMPTY_SUBS  = ['d19a82fa-b21b-4bb2-8648-777e26faa6e2',  # пустые заявки от неудачных
-               '5a38229d-df61-44c4-b05c-855a86a06481',  # попыток — мешают создать новую
-               '5d534c86-e420-401d-85d7-c7a78ee9cb5d']
-MODEL_BUILD = 'c826c5bf-6f6b-488a-841b-1033a63c9f85'   # сборка 68: с неё берём «что тестировать»
+OLD_SUB     = 'd19a82fa-b21b-4bb2-8648-777e26faa6e2'   # заявка, стоящая в очереди сейчас
+EMPTY_SUBS  = ['5a38229d-df61-44c4-b05c-855a86a06481',  # пустые заявки от прошлых попыток:
+               '5d534c86-e420-401d-85d7-c7a78ee9cb5d']  # отозвать нельзя, но можно использовать
+MODEL_BUILD = 'c5090884-8719-4938-8de3-c04dc3cd2e90'   # сборка 69: с неё берём «что тестировать»
+
+# Что нового в магазине — первой строкой то, ради чего выпускаем
+WHATS_NEW = '''Что нового:
+
+• Забыли пароль — вернём по звонку. Позвоните с вашего номера: звонок сбросится сам, ничего не спишется, и вы сразу зададите новый пароль. Ждать менеджера больше не нужно.
+
+• Вход начинается с номера телефона: ввели номер — и приложение само поймёт, войти вам или завести аккаунт.
+
+• Новые цены на корт: 2 500 ₽ с 09:00 до 13:00 и 3 000 ₽ после. Ракетка для игры входит в цену корта.
+
+• Прокат и мячи можно добавить прямо при записи: премиальная ракетка, банка мячей, корзина мячей — попадут в счёт брони и оплатятся вместе с кортом.
+
+• Выбор тренера и услуга «Семейный» — сразу под выбором времени.
+
+• Ультрапанорамный корт виден на схеме шире остальных.'''
 
 spec = importlib.util.spec_from_file_location('asc', pathlib.Path(__file__).parent / 'asc.py')
 asc = importlib.util.module_from_spec(spec); spec.loader.exec_module(asc)
@@ -94,14 +108,15 @@ def version_state():
 
 
 # ── сборка ────────────────────────────────────────────────────────────────────
+def find_build_id():
+    """После загрузки сборка появляется в кабинете не сразу — ждём её."""
+    st, out = asc.call('GET', f'/v1/builds?filter[app]={APP}&limit=10&sort=-version')
+    b = next((x for x in out.get('data', []) if x['attributes']['version'] == BUILD_NUM), None)
+    return b['id'] if b else 'ещё не принята'
+
 step(f'Ищу сборку {BUILD_NUM}')
-st, out = asc.call('GET', f'/v1/builds?filter[app]={APP}&limit=10&sort=-version')
-build = next((b for b in out.get('data', []) if b['attributes']['version'] == BUILD_NUM), None)
-if not build:
-    print(f'  ✗ сборки {BUILD_NUM} в App Store Connect нет — Apple её ещё не приняла')
-    sys.exit(1)
-BUILD_ID = build['id']
-print(f'  ✓ id {BUILD_ID}, состояние {build["attributes"]["processingState"]}')
+BUILD_ID = wait('сборка в кабинете', find_build_id,
+                lambda v: v != 'ещё не принята', limit=1200, pause=30)
 
 wait('обработка сборки', lambda: build_state(BUILD_ID), lambda v: v == 'VALID')
 
@@ -159,8 +174,13 @@ else:
     st, o = asc.call('POST', '/v1/betaAppReviewSubmissions', {"data": {
         "type": "betaAppReviewSubmissions",
         "relationships": {"build": {"data": {"type": "builds", "id": BUILD_ID}}}}})
-    must(st, o, 'отправлена на бета-проверку')
-    print(f'    состояние: {o["data"]["attributes"].get("betaReviewState")}')
+    # Пока прошлая сборка не прошла бета-проверку, новую Apple не принимает.
+    # Это касается только публичной ссылки: владельцу и команде сборка видна
+    # сразу, а выпуск в магазин от бета-проверки не зависит — идём дальше.
+    if soft(st, o, 'отправлена на бета-проверку', ok=(201,)):
+        print(f'    состояние: {o["data"]["attributes"].get("betaReviewState")}')
+    else:
+        print('    публичная ссылка пока раздаёт прошлую сборку — это не мешает магазину')
 
 # ── App Store: освобождаем карточку ───────────────────────────────────────────
 # Пустые заявки от прошлых неудачных попыток Apple отзывать не даёт: отвечает
@@ -205,6 +225,16 @@ st, o = asc.call('PATCH', f'/v1/appStoreVersions/{VERSION_ID}', {"data": {
     "attributes": {"versionString": TARGET},
     "relationships": {"build": {"data": {"type": "builds", "id": BUILD_ID}}}}})
 must(st, o, f'версия {TARGET} со сборкой {BUILD_NUM}')
+
+step('App Store: обновляю «Что нового»')
+st, out = asc.call('GET', f'/v1/appStoreVersions/{VERSION_ID}/appStoreVersionLocalizations')
+for loc in out.get('data', []):
+    if loc['attributes']['locale'] != 'ru':
+        continue
+    st2, o = asc.call('PATCH', f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {
+        "type": "appStoreVersionLocalizations", "id": loc['id'],
+        "attributes": {"whatsNew": WHATS_NEW}}})
+    must(st2, o, 'текст «Что нового» обновлён')
 
 step('App Store: заявка на проверку')
 if REUSABLE:
