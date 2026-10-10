@@ -296,10 +296,19 @@ export const api = {
 
   goods: () => call<ApiGood[]>('/goods'),
 
-  /** Подтверждение номера обратным звонком: получить номер, на который звонить. */
-  callStart: (phone: string, secret?: string) =>
+  /** Подтверждение номера обратным звонком: получить номер, на который звонить.
+   *
+   *  reset — звонок не для регистрации, а чтобы вернуть забытый пароль.
+   *  Требования к номеру у этих двух случаев противоположные: регистрации нужен
+   *  номер без пароля, восстановлению — с паролем. */
+  callStart: (phone: string, secret?: string, reset?: boolean) =>
     call<{ secret: string; callPhone: string; callPhonePretty: string; expiresInSec: number }>(
-      '/clients/call/start', { method: 'POST', body: JSON.stringify({ phone, secret }) }),
+      '/clients/call/start', { method: 'POST', body: JSON.stringify({ phone, secret, reset }) }),
+
+  /** Забыл пароль: номер подтверждён звонком — задаём новый и сразу входим. */
+  resetPassword: (phone: string, password: string, verificationToken: string) =>
+    call<Session>('/clients/password/reset', { method: 'POST',
+      body: JSON.stringify({ phone, password, verificationToken }) }),
 
   /** Был ли звонок. Приложение спрашивает раз в три секунды. */
   callStatus: (phone: string, secret: string) =>

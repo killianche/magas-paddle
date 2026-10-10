@@ -91,16 +91,23 @@ function Enter({ onDone, why, prefill, gate }: {
 
   /** Шаг входа. Сначала один номер — так же, как в крупных приложениях:
    *  знакомый номер просит пароль, незнакомый сначала подтверждается
-   *  звонком и только потом заводит аккаунт (заказчик, 08.10.2026). */
-  const [step, setStep] = useState<'phone' | 'password' | 'call' | 'signup'>(
+   *  звонком и только потом заводит аккаунт (заказчик, 08.10.2026).
+   *  Забытый пароль возвращается тем же звонком и шагом reset
+   *  (заказчик, 10.10.2026). */
+  const [step, setStep] = useState<'phone' | 'password' | 'call' | 'signup' | 'reset'>(
     prefill ? 'signup' : 'phone');
+  /** Зачем идёт звонок: подтвердить новый номер или вернуть забытый пароль.
+   *  От этого зависит и текст шага, и куда идти после подтверждения. */
+  const [callFor, setCallFor] = useState<'signup' | 'reset'>('signup');
   /** Выданный номер 8-800 и наш секрет проверки. */
   const [call, setCall] = useState<{ phone: string; pretty: string; secret: string } | null>(null);
   const [token, setToken] = useState<string | undefined>();
 
   const clean = normalizePhone(phone);
 
-  const forgot = () => {
+  /** Запасной путь: менеджер. Нужен, когда звонком не выходит — номер
+   *  не мобильный, другая страна, у провайдера сбой. */
+  const askManager = () => {
     const wa = whatsappUrl();
     const text = 'Здравствуйте! Я забыл пароль от аккаунта в приложении Magas Padel.'
       + (clean ? ` Мой номер: ${prettyPhone(clean)}.` : '');
@@ -109,6 +116,30 @@ function Enter({ onDone, why, prefill, gate }: {
       return;
     }
     openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp: он сбросит пароль.');
+  };
+
+  /** Забыли пароль. Возвращаем его тем же обратным звонком, которым
+   *  подтверждаем номер при регистрации: позвонить с номера может только тот,
+   *  у кого этот номер в руках. Пароль при этом не спрашиваем — его как раз
+   *  и не помнят. Если звонком не выходит, честно ведём к менеджеру. */
+  const forgot = async () => {
+    if (!clean || busy) return;
+    if (!club.phoneVerifyOn) return askManager();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBusy(true); setProblem(null);
+    try {
+      const c = await api.callStart(clean, undefined, true);
+      setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
+      setCallFor('reset');
+      setStep('call');
+    } catch (e) {
+      const code = e instanceof ApiError ? e.code : undefined;
+      const noCall = ['call_disabled', 'call_unavailable', 'reset_unavailable',
+                      'phone_not_supported', 'phone_invalid'].includes(code ?? '');
+      if (noCall) askManager();
+      else setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
+    }
+    setBusy(false);
   };
 
   /** Номер введён — спрашиваем сервер, знаком ли он, и решаем, что дальше. */
@@ -122,6 +153,7 @@ function Enter({ onDone, why, prefill, gate }: {
       if (!club.phoneVerifyOn) { setStep('signup'); setBusy(false); return }
       const c = await api.callStart(clean);
       setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
+      setCallFor('signup');
       setStep('call');
     } catch (e) {
       setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
@@ -141,7 +173,7 @@ function Enter({ onDone, why, prefill, gate }: {
           clearInterval(t);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setToken(r.verificationToken);
-          setStep('signup');
+          setStep(callFor === 'reset' ? 'reset' : 'signup');
         }
       } catch (e) {
         if (!alive) return;
@@ -151,21 +183,30 @@ function Enter({ onDone, why, prefill, gate }: {
       }
     }, 3000);
     return () => { alive = false; clearInterval(t) };
-  }, [step, call, clean]);
+  }, [step, call, clean, callFor]);
 
-  const ok = step === 'password' ? password.length >= 6
+  const ok = step === 'password' || step === 'reset' ? password.length >= 6
     : step === 'signup' ? password.length >= 6 && name.trim().length >= 2
     : !!clean;
 
   const submit = async () => {
     if (step === 'phone') return next();
     if (!ok || !clean || busy) return;
+    // Подтверждение живёт 15 минут. Если его нет — отправлять нечего,
+    // возвращаем к номеру, иначе сервер ответит отказом на пустом месте.
+    if (step === 'reset' && !token) {
+      setProblem('Подтверждение устарело. Подтвердите номер звонком ещё раз.');
+      setStep('phone'); setCall(null); setPassword('');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
       const cleanWa = normalizePhone(wa);
       const res = step === 'password'
         ? await api.login(clean, password)
+        : step === 'reset'
+        ? await api.resetPassword(clean, password, token!)
         : await api.register({
             name: name.trim(), surname: surname.trim() || undefined,
             phone: clean, whatsapp: cleanWa && cleanWa !== clean ? cleanWa : undefined,
@@ -189,12 +230,17 @@ function Enter({ onDone, why, prefill, gate }: {
     phone: { eyebrow: '', title: 'ВАШ\nНОМЕР', lede: '' },
     password: { eyebrow: 'Вход', title: 'С ВОЗВРАЩЕНИЕМ',
       lede: 'Этот номер уже зарегистрирован. Введите пароль, чтобы увидеть свои записи.' },
-    call: { eyebrow: 'Подтверждение номера', title: 'ПОЗВОНИТЕ\nНАМ',
-      lede: 'Позвоните с этого номера — звонок сбросится сам и ничего не будет стоить. Так мы убеждаемся, что номер ваш.' },
+    call: { eyebrow: callFor === 'reset' ? 'Восстановление пароля' : 'Подтверждение номера',
+      title: 'ПОЗВОНИТЕ\nНАМ',
+      lede: callFor === 'reset'
+        ? 'Позвоните с этого номера — звонок сбросится сам и ничего не будет стоить. Так мы убедимся, что номер ваш, и дадим задать новый пароль.'
+        : 'Позвоните с этого номера — звонок сбросится сам и ничего не будет стоить. Так мы убеждаемся, что номер ваш.' },
     signup: { eyebrow: 'Регистрация · 30 секунд', title: 'СОЗДАТЬ\nАККАУНТ',
       lede: prefill
         ? 'Ваши данные сохранились, но пароля у аккаунта ещё нет — придумайте его. Прошлые записи останутся на месте.'
         : 'Осталось назвать себя и придумать пароль — он закроет ваши записи от чужих глаз.' },
+    reset: { eyebrow: 'Восстановление пароля', title: 'НОВЫЙ\nПАРОЛЬ',
+      lede: 'Номер подтверждён. Придумайте новый пароль — записи и история останутся на месте, а прошлые входы на других устройствах закроются.' },
   };
   const h = HEAD[step];
 
@@ -273,7 +319,7 @@ function Enter({ onDone, why, prefill, gate }: {
           </>
         )}
 
-        {(step === 'password' || step === 'signup') && (
+        {(step === 'password' || step === 'signup' || step === 'reset') && (
           <>
             <View style={s.labelRow}>
               <Text style={[s.label, { flex: 1, marginTop: 0, paddingRight: 0 }]}>Пароль</Text>
@@ -289,14 +335,18 @@ function Enter({ onDone, why, prefill, gate }: {
               autoCapitalize="none" autoCorrect={false} autoFocus
               textContentType={step === 'password' ? 'password' : 'newPassword'}
               onSubmitEditing={submit} returnKeyType="go"
-              accessibilityLabel="Пароль" />
+              accessibilityLabel={step === 'reset' ? 'Новый пароль' : 'Пароль'} />
           </>
         )}
 
         {step === 'password' && (
           <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button"
             style={({ pressed }) => [s.moreBtn, pressed && { opacity: 0.6 }]}>
-            <Text style={s.moreT}>Забыли пароль? Написать менеджеру в WhatsApp</Text>
+            {/* Длинной подпись нужна лишь тогда, когда ссылка уводит из
+                приложения: человек должен знать это до нажатия. */}
+            <Text style={s.moreT}>
+              {club.phoneVerifyOn ? 'Забыли пароль?' : 'Забыли пароль? Напишите менеджеру в WhatsApp'}
+            </Text>
           </Pressable>
         )}
         {!!problem && <Text style={s.problem}>{problem}</Text>}
@@ -309,14 +359,12 @@ function Enter({ onDone, why, prefill, gate }: {
               <Text style={[s.ctaT, (!ok || busy) && { color: C.busy }]}>
                 {busy ? 'Минуту…'
                   : step === 'phone' ? 'Далее'
-                  : step === 'password' ? 'Войти' : 'Создать аккаунт'}
+                  : step === 'password' ? 'Войти'
+                  : step === 'reset' ? 'Сохранить и войти' : 'Создать аккаунт'}
               </Text>
             </Pressable>
-            {!ok && step !== 'phone' && (
-              <Text style={s.barSub}>
-                {(step === 'signup' && name.trim().length < 2) ? 'Введите имя'
-                  : 'Пароль не короче 6 знаков'}
-              </Text>
+            {!ok && step === 'signup' && name.trim().length < 2 && (
+              <Text style={s.barSub}>Введите имя</Text>
             )}
           </>
         )}

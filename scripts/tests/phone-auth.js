@@ -97,6 +97,45 @@ const head = t => console.log(`\n\x1b[1m── ${t} ──\x1b[0m`);
   check('зарегистрированному номеру звонок не предлагают',
     started.status === 409 && started.data?.code === 'phone_taken', started.data);
 
+  head('Забыли пароль: возвращаем звонком');
+  const noNeed = await call('/clients/call/start', { method: 'POST',
+    body: { phone: `7928502${rnd}`, reset: true } });
+  check('номеру без пароля восстанавливать нечего',
+    noNeed.status === 409 && noNeed.data?.code === 'reset_not_needed', noNeed.data);
+
+  const rs = await call('/clients/call/start', { method: 'POST', body: { phone: fresh, reset: true } });
+  check('для сброса звонок зарегистрированному номеру дают',
+    rs.status < 300 && !!rs.data?.callPhone, rs.data);
+  const rsecret = rs.data?.secret;
+
+  const early = await call('/clients/password/reset', { method: 'POST',
+    body: { phone: fresh, password: 'padel-2027', verificationToken: 'выдумка' } });
+  check('без подтверждения пароль не сменить',
+    early.status === 428 && early.data?.code === 'phone_verification_required', early.data);
+
+  await ring(fresh);
+  await new Promise(r => setTimeout(r, 2200));
+  const rdone = await call('/clients/call/status', { method: 'POST', body: { phone: fresh, secret: rsecret } });
+  check('звонок для сброса принят', rdone.data?.confirmed === true, rdone.data);
+  const rtoken = rdone.data?.verificationToken;
+
+  const reset = await call('/clients/password/reset', { method: 'POST',
+    body: { phone: fresh, password: 'padel-2027', verificationToken: rtoken } });
+  check('новый пароль принят и сразу выдан вход',
+    reset.status < 300 && !!reset.data?.token, reset.data);
+
+  const oldPw = await call('/clients/login', { method: 'POST', body: { phone: fresh, password: 'padel-2026' } });
+  check('старый пароль больше не работает', oldPw.status === 401, oldPw.data);
+  const newPw = await call('/clients/login', { method: 'POST', body: { phone: fresh, password: 'padel-2027' } });
+  check('новый пароль работает', newPw.status < 300 && !!newPw.data?.token, newPw.data);
+
+  const stale = await call('/clients/me', { token: login.data?.token });
+  check('прошлые входы закрыты', stale.status === 401, stale.data);
+
+  const twice = await call('/clients/password/reset', { method: 'POST',
+    body: { phone: fresh, password: 'padel-2028', verificationToken: rtoken } });
+  check('подтверждение сброса одноразовое', twice.status === 428, twice.data);
+
   // Возвращаем как было: с включённым подтверждением прочие проверки
   // не смогут завести клиента — они не присылают подтверждение
   await call('/admin/settings', { method: 'POST', token: adm, body: { phoneVerifyOn: false } });

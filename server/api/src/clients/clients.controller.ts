@@ -13,8 +13,12 @@
 // номер, и приложение спрашивает сервер, знаком ли он. Знаком — просим пароль;
 // нет — подтверждаем номер обратным звонком и заводим аккаунт.
 //
-// Восстановление пароля: через менеджера. Он и так разговаривает с человеком
-// по телефону и может сбросить пароль из админки.
+// Восстановление пароля: обратным звонком с того же номера (заказчик,
+// 10.10.2026). Человек звонит на выданный номер, звонок сбрасывается сам, и это
+// подтверждение даёт право задать новый пароль. Доказательство здесь то же, что
+// при регистрации: звонить с номера может только тот, у кого этот номер в руках.
+// Менеджер по-прежнему умеет сбросить пароль из админки — это запасной путь,
+// когда звонком не выходит (не мобильный номер, другая страна, сбой провайдера).
 import {
   BadRequestException, Body, ConflictException, Controller, Get, Headers,
   ForbiddenException, HttpException, Post, Query, Req, UnauthorizedException,
@@ -67,6 +71,19 @@ export class LoginDto {
 
   @IsString() @MaxLength(200)
   password: string;
+}
+
+/** Новый пароль вместо забытого. Право на это даёт подтверждение звонком —
+ *  старый пароль человек как раз и не помнит, спрашивать его бессмысленно. */
+export class ResetDto {
+  @Matches(/^[\d\s()+-]{10,20}$/, { message: 'Телефон должен состоять из 10–15 цифр' })
+  phone: string;
+
+  @IsString() @MaxLength(200)
+  password: string;
+
+  @IsString() @MaxLength(80)
+  verificationToken: string;
 }
 
 export class UpdateDto {
@@ -131,7 +148,8 @@ export class ClientsController {
 
   /** Выдать номер, на который надо позвонить. */
   @Post('call/start')
-  async callStart(@Req() req: any, @Body() body: { phone?: string; secret?: string }) {
+  async callStart(@Req() req: any,
+                  @Body() body: { phone?: string; secret?: string; reset?: boolean }) {
     if (!callProvider) {
       throw new HttpException({ code: 'call_disabled',
         message: 'Подтверждение номера сейчас недоступно. Позвоните в клуб.' }, 503);
@@ -142,9 +160,18 @@ export class ClientsController {
       throw new HttpException({ code: 'phone_not_supported',
         message: 'Подтверждаем только мобильные номера России' }, 422);
     }
-    // Номер уже зарегистрирован — подтверждать нечего, надо входить паролем
+    // Звонок служит двум делам, и требования к номеру у них противоположные:
+    // регистрации нужен номер без пароля, восстановлению — с паролем. Поэтому
+    // подтверждение, выданное в одном режиме, в другом бесполезно: /register
+    // отказывает номеру с паролем, а сброс — номеру без него. Отдельную метку
+    // режима в токен класть не нужно, это уже разделено по самим данным.
     const known = await this.db.clients.findUnique({ where: { phone } });
-    if (known?.pass_hash) {
+    if (body?.reset) {
+      if (!known?.pass_hash) {
+        throw new HttpException({ code: 'reset_not_needed',
+          message: 'У этого номера ещё нет пароля — просто заведите аккаунт.' }, 409);
+      }
+    } else if (known?.pass_hash) {
       throw new HttpException({ code: 'phone_taken',
         message: 'Этот номер уже зарегистрирован. Войдите по паролю.' }, 409);
     }
@@ -286,6 +313,55 @@ export class ClientsController {
     }
     this.auth.clearFails(keys);
     return { token: await this.auth.startSession(c.id), profile: card(c) };
+  }
+
+  /** Забыл пароль: подтвердил номер звонком — задаёт новый.
+   *
+   *  Прежние входы закрываем. Пароль забывают и тогда, когда аккаунтом успел
+   *  попользоваться кто-то чужой; если не закрыть его сессии, он останется
+   *  внутри и после смены пароля. Человек, который только что подтвердил
+   *  номер, сразу получает новый вход — переспрашивать пароль незачем. */
+  @Post('password/reset')
+  async resetPassword(@Req() req: any, @Body() dto: ResetDto) {
+    limitRate(`reset:${ipOf(req)}`, 10, 3600_000,
+      'Слишком много попыток восстановления. Попробуйте через час');
+    const key = normalizePhone(dto.phone);
+    if (!key) throw new BadRequestException('Не разобрал номер телефона');
+
+    // Способ выключен — значит подтверждать звонком нечем, и единственное
+    // честное, что можно сказать: это сделает менеджер.
+    const set = await this.club.get();
+    if (!set.phoneVerifyOn || !callProvider) {
+      throw new HttpException({ code: 'reset_unavailable',
+        message: 'Восстановление звонком сейчас недоступно. Позвоните в клуб — менеджер сбросит пароль.' }, 503);
+    }
+    if (!calls.tokenValid(dto.verificationToken, key)) {
+      throw new HttpException({ code: 'phone_verification_required',
+        message: 'Подтверждение устарело. Подтвердите номер звонком ещё раз.' }, 428);
+    }
+
+    let password: string;
+    try { password = checkClientPassword(dto.password) }
+    catch (e) { throw new BadRequestException((e as Error).message) }
+
+    const c = await this.db.clients.findUnique({ where: { phone: key } });
+    if (!c?.pass_hash) {
+      throw new HttpException({ code: 'reset_not_needed',
+        message: 'У этого номера ещё нет пароля — просто заведите аккаунт.' }, 409);
+    }
+
+    const saved = await this.db.clients.update({
+      where: { id: c.id },
+      data: { pass_hash: await this.auth.hash(password), pass_at: new Date() },
+    });
+    await this.auth.dropSessions(c.id);
+    calls.consume(dto.verificationToken);
+    // Клуб видит в журнале: пароль сменили из приложения, а не менеджер
+    await this.db.admin_log.create({ data: {
+      admin_name: 'приложение', action: 'восстановление пароля звонком',
+      details: `${saved.name}, ${key}`,
+    }});
+    return { token: await this.auth.startSession(c.id), profile: card(saved) };
   }
 
   /** Удаление аккаунта — требование Apple к приложениям с регистрацией.
