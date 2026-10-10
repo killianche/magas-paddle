@@ -97,7 +97,15 @@ const head = t => console.log(`\n\x1b[1m── ${t} ──\x1b[0m`);
   check('зарегистрированному номеру звонок не предлагают',
     started.status === 409 && started.data?.code === 'phone_taken', started.data);
 
-  head('Забыли пароль: возвращаем звонком');
+  // Дальше — как на бою: проверка при регистрации выключена, потому что её
+  // не понимают сборки из магазина. Восстановление обязано работать и так.
+  await call('/admin/settings', { method: 'POST', token: adm, body: { phoneVerifyOn: false } });
+
+  head('Забыли пароль: возвращаем звонком при выключенной проверке регистрации');
+  const cl = (await call('/club')).data;
+  check('клуб говорит: проверка регистрации выключена', cl?.phoneVerifyOn === false, cl?.phoneVerifyOn);
+  check('клуб говорит: восстановление звонком доступно', cl?.callResetOn === true, cl?.callResetOn);
+
   const noNeed = await call('/clients/call/start', { method: 'POST',
     body: { phone: `7928502${rnd}`, reset: true } });
   check('номеру без пароля восстанавливать нечего',
@@ -135,10 +143,6 @@ const head = t => console.log(`\n\x1b[1m── ${t} ──\x1b[0m`);
   const twice = await call('/clients/password/reset', { method: 'POST',
     body: { phone: fresh, password: 'padel-2028', verificationToken: rtoken } });
   check('подтверждение сброса одноразовое', twice.status === 428, twice.data);
-
-  // Возвращаем как было: с включённым подтверждением прочие проверки
-  // не смогут завести клиента — они не присылают подтверждение
-  await call('/admin/settings', { method: 'POST', token: adm, body: { phoneVerifyOn: false } });
 
   console.log(bad ? `\n\x1b[31mНе прошло: ${bad}\x1b[0m` : '\n\x1b[32mВсё прошло\x1b[0m');
   process.exit(bad ? 1 : 0);

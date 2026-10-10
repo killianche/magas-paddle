@@ -45,6 +45,10 @@ export type ClubInfoData = {
   phoneGate: boolean;
   /** Новый номер подтверждается обратным звонком. */
   phoneVerifyOn: boolean;
+  /** Забытый пароль можно вернуть звонком. Живёт отдельно от phoneVerifyOn:
+   *  тот требует подтверждения и при регистрации, чего не умеют сборки,
+   *  уже разошедшиеся по магазину. */
+  callResetOn: boolean;
   /** Текст сообщения в WhatsApp при записи; null — текст по умолчанию. */
   waTemplate: string | null;
   /** Что входит в бронь; null — текст по умолчанию (BOOKING_NOTE). */
@@ -106,7 +110,7 @@ const EMPTY: ClubInfoData = {
   openHour: 9, closeHour: 24, cancelHours: 4,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, coachesOn: true, familyOn: true,
-  phoneGate: true, phoneVerifyOn: false, waTemplate: null,
+  phoneGate: true, phoneVerifyOn: false, callResetOn: false, waTemplate: null,
   bookingNote: null, heroUrl: null, heroLightUrl: null,
 };
 
@@ -145,6 +149,7 @@ export const CLUB = {
   get familyOn() { return cache.familyOn !== false },
   get phoneGate() { return cache.phoneGate !== false },
   get phoneVerifyOn() { return cache.phoneVerifyOn === true },
+  get callResetOn() { return cache.callResetOn === true },
   get waTemplate() { return cache.waTemplate },
 };
 

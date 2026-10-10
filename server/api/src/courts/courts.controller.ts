@@ -137,6 +137,11 @@ export class ClubController {
       phoneGate: s.phoneGate,
       // Ключа SMS.ru нет — подтверждать нечем, и приложение этот шаг не рисует
       phoneVerifyOn: s.phoneVerifyOn && callCheckReady(),
+      // Возврат забытого пароля звонком живёт отдельно от выключателя
+      // регистрации. Иначе его пришлось бы включать вместе с проверкой при
+      // регистрации, а её не понимают сборки, уже разошедшиеся по магазину:
+      // они не присылают подтверждение и получали бы отказ.
+      callResetOn: callCheckReady(),
       waTemplate: s.waTemplate,
       bookingNote: s.bookingNote,
       heroUrl: s.heroUrl,

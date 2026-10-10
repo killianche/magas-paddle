@@ -329,9 +329,10 @@ export class ClientsController {
     if (!key) throw new BadRequestException('Не разобрал номер телефона');
 
     // Способ выключен — значит подтверждать звонком нечем, и единственное
-    // честное, что можно сказать: это сделает менеджер.
-    const set = await this.club.get();
-    if (!set.phoneVerifyOn || !callProvider) {
+    // честное, что можно сказать: это сделает менеджер. На выключатель
+    // phone_verify_on не смотрим: он про проверку при регистрации, которую
+    // не понимают сборки из магазина. Возврат пароля от него не зависит.
+    if (!callProvider) {
       throw new HttpException({ code: 'reset_unavailable',
         message: 'Восстановление звонком сейчас недоступно. Позвоните в клуб — менеджер сбросит пароль.' }, 503);
     }

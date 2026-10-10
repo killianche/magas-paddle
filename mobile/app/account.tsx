@@ -124,7 +124,7 @@ function Enter({ onDone, why, prefill, gate }: {
    *  и не помнят. Если звонком не выходит, честно ведём к менеджеру. */
   const forgot = async () => {
     if (!clean || busy) return;
-    if (!club.phoneVerifyOn) return askManager();
+    if (!club.callResetOn) return askManager();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
@@ -345,7 +345,7 @@ function Enter({ onDone, why, prefill, gate }: {
             {/* Длинной подпись нужна лишь тогда, когда ссылка уводит из
                 приложения: человек должен знать это до нажатия. */}
             <Text style={s.moreT}>
-              {club.phoneVerifyOn ? 'Забыли пароль?' : 'Забыли пароль? Напишите менеджеру в WhatsApp'}
+              {club.callResetOn ? 'Забыли пароль?' : 'Забыли пароль? Напишите менеджеру в WhatsApp'}
             </Text>
           </Pressable>
         )}

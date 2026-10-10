@@ -260,7 +260,8 @@ export const api = {
     mapUrl: string | null; instagram: string | null;
     prepayPercent: number; lateMinutes: number; rentalsText: string | null;
     showTournaments: boolean; showFootball: boolean; coachesOn?: boolean; familyOn?: boolean;
-    phoneGate?: boolean; phoneVerifyOn?: boolean; waTemplate: string | null;
+    phoneGate?: boolean; phoneVerifyOn?: boolean; callResetOn?: boolean;
+    waTemplate: string | null;
     bookingNote?: string | null; heroUrl?: string | null; heroLightUrl?: string | null;
   }>('/club'),
 
