@@ -363,8 +363,14 @@ function Enter({ onDone, why, prefill, gate }: {
                   : step === 'reset' ? 'Сохранить и войти' : 'Создать аккаунт'}
               </Text>
             </Pressable>
-            {!ok && step === 'signup' && name.trim().length < 2 && (
-              <Text style={s.barSub}>Введите имя</Text>
+            {/* Подсказка объясняет, почему кнопка мертва. Пустое поле уже
+                объяснено подписью внутри него — там не повторяем. */}
+            {!ok && step !== 'phone' && (
+              (step === 'signup' && name.trim().length < 2)
+                ? <Text style={s.barSub}>Введите имя</Text>
+                : password.length > 0
+                ? <Text style={s.barSub}>Пароль не короче 6 знаков</Text>
+                : null
             )}
           </>
         )}
