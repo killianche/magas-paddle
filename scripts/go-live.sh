@@ -45,8 +45,9 @@ printf "${G}▸ Включаю подтверждение звонком при 
 scripts/calls-on.sh --on || exit 1
 
 printf "${G}▸ Досылаю свежую сборку на бета-проверку TestFlight${N}\n"
-# Повторный запуск пропускает уже сделанное; бета-проверка не обязательна
-python3 scripts/asc/release.py --go || printf "${Y}  TestFlight подождёт, магазину это не мешает${N}\n"
+# Отдельным скриптом: release.py выпускает версию целиком и на уже вышедшей
+# версии буксует. Здесь нужно одно действие, и оно не обязательное.
+python3 scripts/asc/beta-submit.py --go || printf "${Y}  TestFlight подождёт, магазину это не мешает${N}\n"
 
 printf "${G}✓ Включено${N}\n"
 printf "Откат, если понадобится: scripts/calls-on.sh --off\n"
