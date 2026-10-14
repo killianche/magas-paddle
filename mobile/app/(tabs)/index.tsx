@@ -27,6 +27,7 @@ import { ClubBlock } from '../../src/components/clubblock';
 import { LookLine } from '../../src/components/courtlook';
 import { ResultsBanner, coverOf } from '../../src/components/results';
 import { TopScrim, useTopScrim } from '../../src/components/topscrim';
+import { HeroPhoto, useHeroMotion } from '../../src/components/herophoto';
 import { today, hh, plural, dayMonth, dateOfIso, hourOfIso } from '../../src/dates';
 import { upcomingGrid } from '../../src/upcoming';
 
@@ -57,6 +58,21 @@ export default function Home() {
   const club = useClub();
   const phone = profile?.phone;
   const scrim = useTopScrim();
+  // Экран входа не перекрывает главную: человек вошёл, выбрал «без входа»
+  // или клуб вход при запуске не требует. Нужно живому фото, чтобы въезд
+  // не проиграл невидимым за экраном входа. Проверяем на каждом возвращении:
+  // гость, нажавший «Посмотреть без входа», приходит на уже открытую главную
+  const [gateClear, setGateClear] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    (async () => {
+      await loadProfile();
+      if (isSignedIn()) { if (alive) setGateClear(true); return }
+      await loadClub();
+      if (!CLUB.phoneGate || await loadGuest()) { if (alive) setGateClear(true) }
+    })();
+    return () => { alive = false };
+  }, []));
   const mode = useTheme();
   // Часы и заряд над фотографией всегда светлые; в светлой теме, когда
   // фото уехало вверх, — тёмные, иначе их не видно на светлом фоне.
@@ -67,6 +83,8 @@ export default function Home() {
   }, []);
   const [focused, setFocused] = useState(true);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false) }, []));
+  // Живое фото: въезд при открытии, «камера» и параллакс при прокрутке
+  const motion = useHeroMotion(gateClear && focused);
 
   // Непрочитанные уведомления: отдельным лёгким запросом, чтобы главная не
   // ждала его и рисовалась сразу.
@@ -178,7 +196,8 @@ export default function Home() {
       {/* Большая фотография клуба: сверху марка и кнопки аккаунта, внизу —
           две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
-        <Image source={hero} style={st.fillImg} resizeMode="cover" />
+        <HeroPhoto source={hero} height={heroH} scrollY={scrim.scrollY}
+          intro={motion.intro} calm={motion.calm} onReady={motion.start} />
         {/* Затемнение сверху и снизу: марка и кнопки белые, а фото бывает
             светлым — на нём белое иначе не читается */}
         {/* Затемнение мягче прежнего: по референсу фото должно читаться
@@ -187,7 +206,7 @@ export default function Home() {
           colors={['rgba(2,7,5,.62)', 'rgba(2,7,5,.18)', 'rgba(2,7,5,0)', 'rgba(2,7,5,.55)']}
           locations={[0, 0.2, 0.55, 1]} style={st.fill} />
 
-        <View style={[st.brandRow, { paddingTop: insets.top + 12 }]}>
+        <Animated.View style={[st.brandRow, { paddingTop: insets.top + 12 }, motion.brandStyle]}>
           <Mark size={46} />
           {/* Сначала PADEL, под ним MAGAS — так попросил заказчик */}
           <Text style={st.brand} allowFontScaling={false}>PADEL{'\n'}MAGAS</Text>
@@ -207,11 +226,11 @@ export default function Home() {
               ? <Text style={st.circleT} allowFontScaling={false}>{initials(profile)}</Text>
               : <IconAccount size={22} color={ON_PHOTO} />}
           </Pressable>
-        </View>
+        </Animated.View>
 
         {/* Две кнопки одного вида в ряд: корт — залитая, поле — без цвета.
             Одинаковой высоты: «Мини-футбольное поле» занимает две строки. */}
-        <View style={st.heroActions}>
+        <Animated.View style={[st.heroActions, motion.actionsStyle]}>
           <Pressable onPress={() => go('/courts')} accessibilityRole="button"
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
             style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
@@ -237,7 +256,7 @@ export default function Home() {
                 allowFontScaling={false}>Мини-футбольное{'\n'}поле</Text>
             </Pressable>
           )}
-        </View>
+        </Animated.View>
       </View>
 
       {/* Тренировка с тренером — прямо под выбором площадки: это второй
