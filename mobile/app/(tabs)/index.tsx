@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { HeroLife } from '../../src/components/herolife';
+import { Lift } from '../../src/components/press';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
@@ -179,6 +181,10 @@ export default function Home() {
           две кнопки записи. Больше на первом экране ничего нет. */}
       <View style={[st.hero, { height: heroH }]}>
         <Image source={hero} style={st.fillImg} resizeMode="cover" />
+        {/* Живой свет: медленная смена времени суток и погоды. Лежит под
+            затемнением, чтобы марка и кнопки поверх читались так же, как
+            читались раньше. Замирает, когда главная не на виду. */}
+        <HeroLife height={heroH} active={onHero} />
         {/* Затемнение сверху и снизу: марка и кнопки белые, а фото бывает
             светлым — на нём белое иначе не читается */}
         {/* Затемнение мягче прежнего: по референсу фото должно читаться
@@ -212,9 +218,9 @@ export default function Home() {
         {/* Две кнопки одного вида в ряд: корт — залитая, поле — без цвета.
             Одинаковой высоты: «Мини-футбольное поле» занимает две строки. */}
         <View style={st.heroActions}>
-          <Pressable onPress={() => go('/courts')} accessibilityRole="button"
+          <Lift onPress={() => go('/courts')} sheen radius={R.lg}
             accessibilityLabel={`Забронировать падел-корт. ${freeText}`}
-            style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.9 }]}>
+            style={({ pressed }) => [st.cta, st.ctaLime, pressed && { opacity: 0.95 }]}>
             <View style={st.ctaTop}>
               <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: C.onLime, opacity: 0.62 }]}
                 numberOfLines={1} allowFontScaling={false}>Забронировать</Text>
@@ -222,12 +228,12 @@ export default function Home() {
             </View>
             <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: C.onLime }]}
               allowFontScaling={false}>Падел-{'\n'}корт</Text>
-          </Pressable>
+          </Lift>
 
           {club.showFootball && (
-            <Pressable onPress={() => go('/football')} accessibilityRole="button"
+            <Lift onPress={() => go('/football')} radius={R.lg}
               accessibilityLabel="Забронировать мини-футбольное поле"
-              style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.85 }]}>
+              style={({ pressed }) => [st.cta, st.ctaGhost, pressed && { opacity: 0.9 }]}>
               <View style={st.ctaTop}>
                 <Text style={[st.ctaEy, narrow && st.ctaEyNarrow, { color: 'rgba(245,248,242,.62)' }]}
                   numberOfLines={1} allowFontScaling={false}>Забронировать</Text>
@@ -235,7 +241,7 @@ export default function Home() {
               </View>
               <Text style={[st.ctaT, { fontSize: ctaSize, lineHeight: ctaSize + 3, color: ON_PHOTO }]}
                 allowFontScaling={false}>Мини-футбольное{'\n'}поле</Text>
-            </Pressable>
+            </Lift>
           )}
         </View>
       </View>
