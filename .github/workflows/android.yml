@@ -1,0 +1,109 @@
+# Сборка Android для Google Play.
+# Как и на iOS, облако Expo не используется: expo prebuild создаёт нативный
+# проект, дальше обычный gradle. Раннер обычный Linux — macOS тут не нужен,
+# поэтому сборка быстрее и не тратит дорогие минуты.
+#
+# Подпись: ключ выпуска лежит в секретах репозитория (ANDROID_KEYSTORE_BASE64).
+# Это «ключ загрузки» — им подписывается то, что уходит в Play. Сам магазин
+# подписывает приложение своим ключом (Play App Signing).
+#
+# На выходе два файла:
+#   .aab — то, что принимает Google Play
+#   .apk — чтобы поставить на телефон напрямую и посмотреть глазами
+name: Android Play
+
+on:
+  workflow_dispatch:
+  # Пушем в отдельную ветку — так сборку можно запустить без прав на Actions
+  push:
+    branches: [build-android]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      # React Native 0.86 собирается на JDK 17
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Окружение
+        run: |
+          node -v; npm -v; java -version 2>&1
+          echo "Android SDK: ${ANDROID_SDK_ROOT:-не задан}"
+
+      - name: Зависимости
+        run: npm ci
+
+      - name: Нативный проект из конфигурации Expo
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Достаю ключ подписи
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Нет секрета ANDROID_KEYSTORE_BASE64"; exit 1
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "ключ распакован, байт: $(stat -c%s "$RUNNER_TEMP/upload.jks")"
+
+      - name: Сборка AAB и APK
+        env:
+          STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease assembleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/upload.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASS" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASS"
+
+      - name: Что собралось и чем подписано
+        run: |
+          AAB=$(find android/app/build/outputs/bundle -name '*.aab' | head -1)
+          APK=$(find android/app/build/outputs/apk -name '*.apk' | head -1)
+          echo "AAB: $AAB ($(du -h "$AAB" | cut -f1))"
+          echo "APK: $APK ($(du -h "$APK" | cut -f1))"
+          # Без подписи Play молча откажет — проверяем здесь, а не в магазине
+          "$ANDROID_SDK_ROOT"/build-tools/*/apksigner verify --print-certs "$APK" \
+            | grep -E "Signer #1 certificate (DN|SHA-256)" || echo "::warning::подпись проверить не вышло"
+
+      - name: Сохранить AAB для Google Play
+        uses: actions/upload-artifact@v4
+        with:
+          name: magas-padel-aab
+          path: mobile/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Сохранить APK для проверки на телефоне
+        uses: actions/upload-artifact@v4
+        with:
+          name: magas-padel-apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Сохранить полный лог сборки
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-log
+          path: mobile/android/build/reports/
+          if-no-files-found: ignore

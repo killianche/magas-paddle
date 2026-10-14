@@ -1,5 +1,7 @@
 # Секреты Apple — в репозиторий не попадают
 secrets/*.p8
+secrets/*.jks
+secrets/*.keystore
 secrets/*.p12
 secrets/*.pem
 secrets/*.key
