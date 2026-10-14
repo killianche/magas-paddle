@@ -10,6 +10,8 @@ secrets/*.csr
 secrets/*.pass
 secrets/*.mobileprovision
 secrets/*.env
+# Ключ сервисного аккаунта Google Play — JSON, и без этой строки он ушёл бы в Git
+secrets/*.json
 server/api/.env
 server/api/node_modules/
 server/api/dist/
