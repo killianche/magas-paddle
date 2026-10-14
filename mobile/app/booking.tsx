@@ -1,12 +1,12 @@
 // Одна запись: всё про неё на своём экране — состояние, время, из чего
 // сложилась сумма и что делать дальше. Список «Моих записей» от этого
 // остаётся коротким, а подробности не теряются.
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, Text, View, Pressable, Alert, Platform, RefreshControl } from 'react-native';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
-import { api, rub, type ApiBooking } from '../src/api';
+import { api, rub, ApiError, type ApiBooking } from '../src/api';
 import { useApi } from '../src/useApi';
 import { fullName, useProfile, type Profile } from '../src/profile';
 import { whatsappUrl, useClub } from '../src/club';
@@ -19,6 +19,7 @@ import { hh, longDate, dateOfIso, plural } from '../src/dates';
 
 export default function BookingScreen() {
   useTheme();
+  const [busy, setBusy] = useState(false);
   const club = useClub();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile, signedIn } = useProfile();
@@ -60,10 +61,51 @@ export default function BookingScreen() {
     Haptics.selectionAsync();
     openLink(`${wa}?text=${encodeURIComponent(text)}`, 'Напишите менеджеру в WhatsApp вручную.');
   };
-  const askCancel = () => writeManager([
+  /** Отмена. Раньше кнопка только открывала WhatsApp, хотя сервер умеет
+   *  отменять сам — с правилом клуба и возвратом проката на склад. Человек
+   *  жал «Отменить» и не знал, отменено или нет. Теперь отменяем по-настоящему,
+   *  а менеджер остаётся запасным путём, если сервер отказал. */
+  // Время начала берём прямо из записи, а не собираем из даты и часа:
+  // сборка зависела бы от часового пояса устройства
+  const hoursLeft = (+new Date(b.startsAt) - Date.now()) / 3600_000;
+  const late = hoursLeft < club.cancelHours;
+  const willLose = late && paid > 0;
+
+  const doCancel = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.cancel(Number(b.id), phone);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await q.refresh();
+      const done = 'Запись отменена. Время снова свободно.';
+      Platform.OS === 'web' ? alert(done) : Alert.alert('Готово', done);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : 'Не вышло отменить. Попробуйте ещё раз.';
+      Platform.OS === 'web' ? alert(msg) : Alert.alert('Не получилось', msg, [
+        { text: 'Закрыть', style: 'cancel' },
+        { text: 'Написать менеджеру', onPress: () => writeManager(cancelText) },
+      ]);
+    }
+    setBusy(false);
+  };
+
+  const cancelText = [
     `Хочу отменить бронь: ${b.courtName}, ${longDate(dateOfIso(b.startsAt))}, ${hh(b.hour)} – ${hh(b.hour + b.hours)}.`,
     `Заявка №${b.id}.`, ...who(profile),
-  ].join('\n'));
+  ].join('\n');
+
+  const askCancel = () => {
+    const title = 'Отменить запись?';
+    const msg = willLose
+      ? `До игры меньше чем ${club.cancelHours} ч — внесённые ${rub(paid)} останутся клубу. Время освободится сразу.`
+      : 'Время сразу освободится и станет доступно другим.';
+    if (Platform.OS === 'web') { if (confirm(title + '\n\n' + msg)) doCancel(); return }
+    Alert.alert(title, msg, [
+      { text: 'Оставить', style: 'cancel' },
+      { text: 'Отменить запись', style: 'destructive', onPress: doCancel },
+    ]);
+  };
   const askQuestion = () => writeManager([
     `Вопрос по записи: ${b.courtName}, ${longDate(dateOfIso(b.startsAt))}, ${hh(b.hour)} – ${hh(b.hour + b.hours)}.`,
     `Заявка №${b.id}.`, ...who(profile),
@@ -125,9 +167,11 @@ export default function BookingScreen() {
             <Text style={s.btnT}>Написать менеджеру</Text>
           </Pressable>
           {st.canCancel && (
-            <Pressable onPress={askCancel} accessibilityRole="button"
+            <Pressable onPress={askCancel} disabled={busy} accessibilityRole="button"
               style={({ pressed }) => [s.btn, s.btnDg, pressed && { opacity: 0.85 }]}>
-              <Text style={[s.btnT, { color: C.dangerText }]}>Отменить запись</Text>
+              <Text style={[s.btnT, { color: C.dangerText }]}>
+                {busy ? 'Отменяю…' : 'Отменить запись'}
+              </Text>
             </Pressable>
           )}
           {st.dim && (

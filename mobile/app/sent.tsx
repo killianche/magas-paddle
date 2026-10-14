@@ -40,6 +40,15 @@ export default function Sent() {
   // Телефон клуба; пока его нет — номер WhatsApp, по нему тоже звонят
   const phone = club.phone ?? club.whatsapp;
 
+  // До какого часа держат место. Сервер это присылает, а экран раньше молчал:
+  // человек видел «место задержано», не знал срока, закрывал приложение — и
+  // через час заявка тихо становилась «не состоялась», без единого слова.
+  // Время клубное, московское: иначе часы на телефоне в другом поясе соврут.
+  const holdAt = p.holdUntil && !Number.isNaN(+new Date(String(p.holdUntil)))
+    ? new Date(String(p.holdUntil)).toLocaleTimeString('ru-RU',
+        { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
+    : null;
+
   if (!hydrated) return <ScreenSkeleton />;
   if (!p.name || !p.hour) return (
     <NotFound title="Заявки здесь нет"
@@ -89,12 +98,21 @@ export default function Sent() {
 
         <View style={s.pill}>
           <View style={s.dot} />
-          <Text style={s.pillT}>{tournament || lesson ? 'ЖДЁТ ПОДТВЕРЖДЕНИЯ' : 'МЕСТО ЗАДЕРЖАНО'}</Text>
+          <Text style={s.pillT}>
+            {tournament || lesson ? 'ЖДЁТ ПОДТВЕРЖДЕНИЯ'
+              : holdAt ? `МЕСТО ЗАДЕРЖАНО ДО ${holdAt}` : 'МЕСТО ЗАДЕРЖАНО'}
+          </Text>
         </View>
         {(tournament || lesson) && (
           <Text style={s.next}>
             Администратор проверит заявку. Когда подтвердит, придёт уведомление,
             а в «Моих записях» появится «Вы записаны».
+          </Text>
+        )}
+        {!tournament && !lesson && !!holdAt && (
+          <Text style={s.next}>
+            Клуб подтвердит заявку до {holdAt}. Если не успеет, место вернётся
+            в расписание — тогда запишитесь заново, это не займёт времени.
           </Text>
         )}
 

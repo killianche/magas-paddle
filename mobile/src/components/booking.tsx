@@ -195,8 +195,10 @@ export type Booking = ReturnType<typeof useBooking>;
  *  менеджер подтвердит. Записывается только вошедший: заявка привязана
  *  к аккаунту, и чужой номер занять нельзя (решение заказчика 17.09.2026).
  *  Без аккаунта отправляем на вход и возвращаем обратно на этот же экран. */
-export function useBooking({ date, hours, sel, court, onTaken }: {
+export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   date: string; hours: number; sel: Sel; court: Court | null; onTaken: () => void;
+  /** Прокат, отмеченный до ухода на вход, — возвращаем его в корзину. */
+  picked0?: Map<number, number>;
 }) {
   const club = useClub();
   const { profile, save } = useProfile();
@@ -207,9 +209,11 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
   const [goodsSum, setGoodsSum] = useState(0);
   const [family, setFamily] = useState(false);
   // Прокат и мячи, отмеченные при записи: id товара → сколько
-  const [picked, setPicked] = useState<Map<number, number>>(new Map());
+  const [picked, setPicked] = useState<Map<number, number>>(() => picked0 ?? new Map());
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
+  // Что человек уже выбрал — чтобы вернуть это после входа
+  const restore = { date, hours, sel, picked };
 
   // Цена складывается по часам: утро и вечер стоят по-разному
   const courtPrice = useMemo(() => {
@@ -285,8 +289,22 @@ export function useBooking({ date, hours, sel, court, onTaken }: {
     ]);
   };
 
-  /** Куда вернуться после входа: этот же экран с тем же кортом. */
-  const backHere = () => path + (params.id ? `?id=${params.id}` : '');
+  /** Куда вернуться после входа: этот же экран и тот же выбор.
+   *
+   *  Раньше сюда уходил только номер корта. Человек выбирал день, час,
+   *  длительность, добавлял ракетку — и возвращался после регистрации на
+   *  пустой экран: дата сброшена на сегодня, час и корзина пусты. Всё заново,
+   *  и ровно в этом месте бросали. */
+  const backHere = () => {
+    const q = new URLSearchParams();
+    if (params.id) q.set('id', String(params.id));
+    q.set('d', restore.date);
+    q.set('hrs', String(restore.hours));
+    if (restore.sel) q.set('h', String(restore.sel.hour));
+    const items = [...restore.picked].map(([id, n]) => `${id}:${n}`).join(',');
+    if (items) q.set('it', items);
+    return `${path}?${q.toString()}`;
+  };
 
   const bookInWhatsApp = async (who: Profile | null = profile) => {
     if (!sel || !court || sending) return;

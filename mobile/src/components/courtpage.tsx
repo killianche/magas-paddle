@@ -6,9 +6,9 @@
 // экран app/schedule.tsx и метка git before-court-cards — на случай отката.
 //
 // Футбольное поле открывается этой же страницей: запись на него устроена так же.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, TITLE, BODY, sheet, useTheme } from '../theme';
 import { api, type ApiHour } from '../api';
@@ -32,9 +32,28 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
   useTheme();
   const club = useClub();
   const { width } = useWindowDimensions();
-  const [date, setDate] = useState(today());
-  const [hours, setHours] = useState(1);
-  const [sel, setSel] = useState<Sel>(null);
+  // Что человек выбрал до ухода на вход: экран возвращает его обратно
+  // с тем же днём, часом, длительностью и корзиной — иначе после регистрации
+  // всё приходилось выбирать заново
+  const back = useLocalSearchParams<{ d?: string; h?: string; hrs?: string; it?: string }>();
+  const [date, setDate] = useState(() => (back.d && /^\d{4}-\d{2}-\d{2}$/.test(String(back.d))
+    ? String(back.d) : today()));
+  const [hours, setHours] = useState(() => {
+    const n = Number(back.hrs);
+    return Number.isFinite(n) && n >= 1 && n <= 6 ? n : 1;
+  });
+  const [sel, setSel] = useState<Sel>(() => {
+    const h = Number(back.h);
+    return courtId && Number.isFinite(h) ? { courtId, hour: h } : null;
+  });
+  const picked0 = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const part of String(back.it ?? '').split(',')) {
+      const [id, n] = part.split(':').map(Number);
+      if (Number.isFinite(id) && Number.isFinite(n) && n > 0) m.set(id, n);
+    }
+    return m;
+  }, [back.it]);
   const pillW = usePillWidth();
 
   // Описание, цвет и фото меняются редко — отдельный запрос с общим кэшем
@@ -47,7 +66,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
   const about = info.data?.find(c => c.id === row?.courtId);
 
   const booking = useBooking({ date, hours, sel, court: sel ? row : null,
-    onTaken: () => { setSel(null); q.refresh() } });
+    onTaken: () => { setSel(null); q.refresh() }, picked0 });
 
   const title = row?.name ?? (football ? 'Мини-футбольное поле' : 'Корт');
 
@@ -119,7 +138,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
         <Step n={1} title="Сколько играем" />
         <Card><Durations max={grid.maxHours} hours={hours} onPick={pickHours} /></Card>
 
-        <Step n={2} title="Выбери время" />
+        <Step n={2} title="Выберите время" />
         <Card>
           <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot}
             dayOff={grid.dayOff} />

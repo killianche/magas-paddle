@@ -10,7 +10,7 @@ import { Redirect, router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, getToken, rub, ApiError, type Alternatives, type ApiFreeCoach } from '../src/api';
-import { useProfile, normalizePhone, plainPhone } from '../src/profile';
+import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
 import { useClub } from '../src/club';
 import { IMG } from '../src/images';
 import { IconChevron } from '../src/components/icons';
@@ -27,11 +27,13 @@ export default function Book() {
     courtId: string; name: string; date: string; hour: string; hours: string; price: string;
     family?: string }>();
   const hydrated = useHydrated();
-  const { profile, ready, save } = useProfile();
+  const { profile, ready } = useProfile();
 
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [phone, setPhone] = useState('');
+  // Имя и телефон здесь больше не спрашиваем: сервер берёт их из аккаунта
+  // и присланные в заявке игнорирует. Раньше человек заполнял поля, которые
+  // ни на что не влияли, а поправленный телефон молча подменял номер
+  // в сохранённом профиле — при том что «Мои данные» честно пишут,
+  // что номер менять нельзя.
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [taken, setTaken] = useState<Alternatives | null>(null);
@@ -40,9 +42,7 @@ export default function Book() {
 
   useEffect(() => {
     if (profile) {
-      setName(profile.name);
-      setSurname(profile.surname ?? '');
-      setPhone(plainPhone(profile.phone));
+
     }
   }, [profile]);
 
@@ -70,8 +70,8 @@ export default function Book() {
   const courtDue = coach && !coach.courtExtra ? 0 : price;
   const total = courtDue + (coach ? coach.total : 0);
 
-  const cleanPhone = normalizePhone(phone);
-  const canSend = name.trim().length >= 2 && cleanPhone != null && !sending;
+  const cleanPhone = profile ? normalizePhone(profile.phone) : null;
+  const canSend = cleanPhone != null && !sending;
 
   const submit = async () => {
     if (!canSend || !cleanPhone) return;
@@ -80,12 +80,10 @@ export default function Book() {
     try {
       const booking = await api.book({
         courtId, date, hour, hours,
-        name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
+        name: profile?.name ?? '', surname: profile?.surname || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
         coachId: coach?.id, family: p.family === '1',
       });
-      await save({ ...profile, name: name.trim(),
-        surname: surname.trim() || undefined, phone: cleanPhone });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
@@ -115,13 +113,11 @@ export default function Book() {
     try {
       const booking = await api.book({
         courtId: altCourtId, date, hour: altHour, hours,
-        name: name.trim(), surname: surname.trim() || undefined, phone: cleanPhone,
+        name: profile?.name ?? '', surname: profile?.surname || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
         // На другое время тренер может быть занят — замену берём без него,
         // менеджер предложит тренера сам
       });
-      await save({ ...profile, name: name.trim(),
-        surname: surname.trim() || undefined, phone: cleanPhone });
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
         hour: String(altHour), hours: String(hours), price: String(booking.price) } });
@@ -155,25 +151,9 @@ export default function Book() {
             coach={coach} onPick={setCoach} />
         )}
 
-        <Text style={s.label}>Ваше имя</Text>
-        <TextInput style={s.input} value={name} onChangeText={setName}
-          placeholder="Как к вам обращаться" placeholderTextColor={C.dim2}
-          autoCapitalize="words" returnKeyType="next" maxLength={80}
-          accessibilityLabel="Ваше имя" />
-
-        <Text style={s.label}>Фамилия</Text>
-        <TextInput style={s.input} value={surname} onChangeText={setSurname}
-          placeholder="Необязательно" placeholderTextColor={C.dim2}
-          autoCapitalize="words" returnKeyType="next" maxLength={80}
-          accessibilityLabel="Ваша фамилия" />
-
-        <Text style={s.label}>Телефон</Text>
-        <TextInput style={s.input} value={phone} onChangeText={setPhone}
-          placeholder="89289204029" placeholderTextColor={C.dim2}
-          keyboardType="phone-pad" maxLength={20}
-          accessibilityLabel="Номер телефона" />
         <Text style={s.hint}>
-          По номеру клуб найдёт вашу запись.
+          Запись оформим на {[profile?.name, profile?.surname].filter(Boolean).join(' ') || 'ваш аккаунт'}
+          {profile?.phone ? `, ${prettyPhone(profile.phone)}` : ''}. Номер меняет только клуб.
         </Text>
 
         {!!problem && (
