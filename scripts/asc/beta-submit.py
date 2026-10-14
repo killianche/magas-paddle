@@ -16,7 +16,14 @@ Apple держит в бета-проверке одну сборку за ра�
 import importlib.util, pathlib, sys
 
 APP   = '6808335944'
-BUILD = '70'
+BUILD = sys.argv[sys.argv.index('--build') + 1] if '--build' in sys.argv else '71'
+
+# «Что тестировать» — без этого текста Apple не берёт сборку на внешнюю проверку
+WHAT_TO_TEST = '''Живая главная: фото клуба медленно проходит сутки — утренний туман, ясный день с солнцем, закат с дождём, звёздная ночь. Круг около двух минут.
+
+Кнопки записи проседают под пальцем и пружинят обратно, по главной проходит блик.
+
+Проверьте: при «Уменьшить движение» в настройках iPhone фото остаётся неподвижным. Отмена записи теперь работает прямо в приложении. После входа выбранные корт, время и прокат сохраняются.'''
 GROUP = 'ef6e1f33-4e97-48b4-9dbf-4aab01165420'   # внешняя группа «Друзья»
 LINK  = 'https://testflight.apple.com/join/ujgg3cvu'
 
@@ -40,9 +47,26 @@ if state:
     sys.exit(0)
 
 print('Бета-проверка: не отправлялась')
+
+# Текст «что тестировать» — дописываем, если его ещё нет
+st, out = asc.call('GET', f'/v1/builds/{bid}/betaBuildLocalizations')
+ru = next((l for l in out.get('data', []) if l['attributes']['locale'] == 'ru'), None)
+has_text = bool(ru and (ru['attributes'].get('whatsNew') or '').strip())
+print(f'«Что тестировать»: {"есть" if has_text else "нет"}')
 if not GO:
     print('\nОтправить: python3 scripts/asc/beta-submit.py --go')
     sys.exit(0)
+
+if not has_text:
+    if ru:
+        st, o = asc.call('PATCH', f"/v1/betaBuildLocalizations/{ru['id']}", {"data": {
+            "type": "betaBuildLocalizations", "id": ru['id'], "attributes": {"whatsNew": WHAT_TO_TEST}}})
+    else:
+        st, o = asc.call('POST', '/v1/betaBuildLocalizations', {"data": {
+            "type": "betaBuildLocalizations",
+            "attributes": {"locale": "ru", "whatsNew": WHAT_TO_TEST},
+            "relationships": {"build": {"data": {"type": "builds", "id": bid}}}}})
+    print(f'Текст «что тестировать»: HTTP {st}')
 
 # В группу «Друзья» — без этого публичная ссылка сборку не увидит
 st, out = asc.call('GET', f'/v1/builds/{bid}/betaGroups')
