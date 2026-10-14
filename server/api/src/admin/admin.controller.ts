@@ -488,12 +488,18 @@ export class AdminController {
         hold_until: dto.status === 'confirmed' ? null : b.hold_until,
       }}),
     ];
-    // Отменённая бронь и неявка не тянут за собой строки счёта: человек не
-    // играл — ракетку и мячи не брал. Товар из этих строк возвращается на
-    // склад — с записью в журнале движений.
+    // Отменённая бронь и неявка не тянут за собой то, что человек заказал
+    // в приложении заранее: не играл — ракетку и мячи не брал, товар
+    // возвращается на склад с записью в журнале движений.
+    //
+    // Проданное на стойке остаётся. Его заводит человек, а не приложение, и
+    // это уже выпитая вода и съеденная еда: раньше «не пришёл» стирало весь
+    // счёт целиком, и выручка исчезала из всех отчётов. Если строку всё же
+    // надо убрать, у менеджера для этого есть отдельное действие.
+    const inApp = { method: 'bill', admin_name: 'приложение' };
     if (dto.status === 'cancelled' || dto.status === 'no_show') {
       const lines = await this.db.sales.findMany({
-        where: { booking_id: b.id, method: 'bill', product_id: { not: null } }, include: { products: true } });
+        where: { booking_id: b.id, ...inApp, product_id: { not: null } }, include: { products: true } });
       const back = new Map<string, number>();
       for (const l of lines) {
         const pr = l.products;
@@ -506,7 +512,7 @@ export class AdminController {
           note: `бронь №${Number(b.id)} ${dto.status === 'no_show' ? '— не пришёл' : 'отменена'}`, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
         }}));
       }
-      ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, method: 'bill' } }));
+      ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, ...inApp } }));
     }
     // Возврат — отдельной строкой в платежах, минусом: видно, кто и когда вернул
     if (refundNow) {
@@ -764,7 +770,10 @@ export class AdminController {
       const c = b.client_id ? await this.db.clients.findUnique({ where: { id: b.client_id } }) : null;
       const whoName = [c?.name, c?.surname].filter(Boolean).join(' ') || b.guest_name || 'Без имени';
       const sum = (Math.abs(amount) / 100).toLocaleString('ru-RU');
-      const left = Math.max(0, b.price + b.coach_price - b.discount - (paid + amount));
+      // Прокат и бар входят в счёт: без них «оплачено полностью» уходило
+      // владельцу при неоплаченных мячах. В защите от переплаты выше они
+      // учтены — значит и здесь должны быть.
+      const left = Math.max(0, b.price + b.coach_price + extras - b.discount - (paid + amount));
       const line = tgMsg({
         icon: kind === 'refund' ? '↩️' : '💵',
         title: kind === 'refund' ? 'Возврат по броне' : 'Оплата',
@@ -1129,6 +1138,25 @@ export class AdminController {
     const coachPrice = coach ? Math.round(b.coach_price / oldHours * hoursCount) : b.coach_price;
     const price = coach && !coach.court_extra ? 0 : pricing.span(court, weekdayOf(body.date), body.hour, hoursCount);
 
+    // «Семейный» привязан к площадке. При записи это проверяется, при переносе
+    // не проверялось — и услуга переезжала на корт, где её не оказать: клиент
+    // видит её в приложении, а персонал получает невыполнимое задание.
+    if (b.family && !court.is_family) {
+      throw new BadRequestException(
+        `На площадку «${court.name}» услуга «Семейный» не переносится — сначала снимите её с брони`);
+    }
+
+    // Перенос на более дешёвое время мог оставить переплату, о которой не
+    // узнавал никто, кроме клиента: деньги уже внесены, а счёт стал меньше.
+    // Ведём себя как при смене тренера — просим сперва вернуть разницу.
+    const paidNow = await this.paidOf(b.id);
+    const extrasNow = (await this.extrasOf([b.id])).get(String(b.id))?.sum ?? 0;
+    const newTotal = price + coachPrice + extrasNow - Math.min(b.discount, price + coachPrice);
+    if (newTotal < paidNow) {
+      throw new ConflictException(
+        'На новом времени бронь дешевле уже внесённых денег — сначала верните разницу');
+    }
+
     try {
       // Одна операция обновления: старое место освобождается только вместе
       // с занятием нового, промежуточного состояния «нигде» не бывает.
@@ -1144,6 +1172,13 @@ export class AdminController {
         hold_until: b.status === 'pending' && b.hold_until
           ? new Date(Math.min(+b.hold_until, +startsAt)) : b.hold_until,
       }});
+      // Товары из счёта переезжают вместе с броней. Иначе они оставались
+      // в дне, когда игры не было: сводка по категориям и «начислено/получено»
+      // по узким периодам переставали сходиться.
+      await this.db.sales.updateMany({
+        where: { booking_id: b.id, method: 'bill' },
+        data: { day: new Date(body.date) },
+      });
       const oldCourt = await this.db.courts.findUnique({ where: { id: b.court_id } });
       await this.auth.log(req.admin, 'перенёс бронь',
         `№${Number(b.id)}: ${oldCourt?.name ?? b.court_id} ${whenText(b.starts_at, b.ends_at)} → ${court.name} ${whenText(startsAt, clubHour(body.date, body.hour + hoursCount))}`);
@@ -2321,13 +2356,25 @@ export class AdminController {
     if (!['pending', 'confirmed'].includes(e.status)) throw new ConflictException('Заявка отменена — взнос не принимают');
     const method = String(body.method ?? 'cash');
     if (!PAY_METHODS.includes(method)) throw new BadRequestException('Такого способа оплаты нет');
-    const amount = body.amount == null ? e.tournaments.fee : rubToKop(Math.max(0, Number(body.amount)));
+    // Взнос можно донести частями: раньше второй платёж затирал первый, и
+    // внесённое пропадало. Без суммы принимаем остаток, а не взнос целиком —
+    // иначе доплата после части снова считалась бы полной.
+    const already = e.paid_amount ?? 0;
+    const rest = Math.max(0, e.tournaments.fee - already);
+    const amount = body.amount == null ? rest : rubToKop(Math.max(0, Number(body.amount)));
+    if (amount > rest) {
+      throw new BadRequestException(already > 0
+        ? `По этой заявке осталось внести ${(rest / 100).toLocaleString('ru-RU')} ₽`
+        : `Взнос за турнир — ${(e.tournaments.fee / 100).toLocaleString('ru-RU')} ₽`);
+    }
+    const total = already + amount;
 
     await this.db.tournament_entries.update({ where: { id: e.id }, data: {
-      paid_amount: amount, paid_method: method, paid_at: amount > 0 ? new Date() : null,
+      paid_amount: total, paid_method: method, paid_at: total > 0 ? new Date() : null,
     }});
     await this.auth.log(req.admin, 'принял взнос за турнир',
-      `${e.clients.name}, ${(amount / 100).toLocaleString('ru-RU')} ₽`);
+      `${e.clients.name}, ${(amount / 100).toLocaleString('ru-RU')} ₽`
+      + (already > 0 ? ` (всего ${(total / 100).toLocaleString('ru-RU')} ₽)` : ''));
     return { ok: true };
   }
 
@@ -2862,16 +2909,22 @@ export class AdminController {
         throw new BadRequestException(`Уже ${activeEntries} заявок — мест не может быть меньше`);
       }
       // Баннер на главной один: включили у этого — у остальных выключаем
+      // Правка и пересборка кортов — одной транзакцией. Раньше турнир успевал
+      // переехать на новое время, а его брони оставались на старом: старые часы
+      // блокировались ни для кого, а новые уходили в продажу поверх турнира.
       const t = await this.db.$transaction(async tx => {
         if (data.banner_on) await tx.tournaments.updateMany({
           where: { banner_on: true, id: { not: before.id } }, data: { banner_on: false } });
-        return tx.tournaments.update({ where: { id: before.id }, data });
+        const updated = await tx.tournaments.update({ where: { id: before.id }, data });
+        // Корты пересобираем, только если поменялось время, площадки или
+        // состояние: правка итогов не должна трогать брони турнира
+        // в расписании и истории
+        const moved = +before.starts_at !== +updated.starts_at || before.hours !== updated.hours
+          || before.state !== updated.state || before.court_ids.join() !== updated.court_ids.join();
+        if (moved) await this.blockCourts(tx, updated);
+        return updated;
       });
-      // Корты пересобираем, только если поменялось время, площадки или состояние:
-      // правка итогов не должна трогать брони турнира в расписании и истории
-      const moved = +before.starts_at !== +t.starts_at || before.hours !== t.hours
-        || before.state !== t.state || before.court_ids.join() !== t.court_ids.join();
-      const busy = moved ? await this.blockCourts(t) : [];
+      const busy: string[] = [];
       // Турнир отменён: заявки снимаем и говорим каждому
       if (t.state === 'cancelled' && before.state !== 'cancelled') {
         const entries = await this.db.tournament_entries.findMany({
@@ -2908,65 +2961,80 @@ export class AdminController {
     if ((data.kind ?? 'tournament') === 'class') {
       await checkCoach(null, data.starts_at, data.hours ?? 1, data.coach_id ?? null);
     }
-    const t = await this.db.tournaments.create({ data: {
-      name: data.name, starts_at: data.starts_at,
-      format: data.format ?? 'Americano', fee: data.fee ?? 0,
-      seats: data.seats ?? 16, state: data.state ?? 'soon',
-      cover_url: data.cover_url ?? null, result_text: data.result_text ?? null,
-      hours: data.hours ?? 3, court_ids: data.court_ids ?? [],
-      results: data.results ?? [], banner_on: false,
-      kind: data.kind ?? 'tournament', coach_id: data.coach_id ?? null, level: data.level ?? null,
-    }});
-    const busy = await this.blockCourts(t);
+    // Турнир и его корты — одной транзакцией. Раньше турнир создавался
+    // первым, и если корты занять не вышло, он оставался в базе открытым,
+    // со взносом и записью, но без единого занятого корта.
+    const t = await this.db.$transaction(async tx => {
+      const created = await tx.tournaments.create({ data: {
+        name: data.name, starts_at: data.starts_at,
+        format: data.format ?? 'Americano', fee: data.fee ?? 0,
+        seats: data.seats ?? 16, state: data.state ?? 'soon',
+        cover_url: data.cover_url ?? null, result_text: data.result_text ?? null,
+        hours: data.hours ?? 3, court_ids: data.court_ids ?? [],
+        results: data.results ?? [], banner_on: false,
+        kind: data.kind ?? 'tournament', coach_id: data.coach_id ?? null, level: data.level ?? null,
+      }});
+      await this.blockCourts(tx, created);
+      return created;
+    });
     await this.auth.log(req.admin, 'завёл турнир', t.name);
-    return { id: Number(t.id), busy };
+    return { id: Number(t.id), busy: [] };
   }
 
-  /** Занять корты под турнир.
+  /** Занять корты под турнир. Зовётся внутри той же транзакции, в которой
+   *  турнир создаётся или правится, — поэтому принимает tx.
    *
    *  Занятие делается обычными бронями: тогда запрет на пересечение на уровне
    *  базы работает сам, менеджер видит турнир в сетке дня, а расписание
    *  в приложении показывает эти часы занятыми без отдельной логики.
    *
-   *  Возвращает площадки, которые занять не вышло — там уже есть чужая бронь.
-   *  Молча пропускать нельзя: клуб будет думать, что корт под турниром. */
-  private async blockCourts(t: {
+   *  Правило строгое: не удалось занять хотя бы одну площадку — не сохраняем
+   *  турнир вообще. Половинчатый турнир опаснее отказа: клуб собирает взносы
+   *  и продолжает продавать эти же часы поштучно, а в день игры на корте
+   *  оказываются и турнир, и частная бронь. */
+  private async blockCourts(tx: any, t: {
     id: bigint; name: string; starts_at: Date; hours: number; court_ids: string[];
     state: string; kind?: string;
-  }): Promise<string[]> {
+  }): Promise<void> {
     // Завершённый турнир корты не пересобирает: его брони — это история
     // загрузки кортов, удалять их нельзя
-    if (t.state === 'done') return [];
+    if (t.state === 'done') return;
     // Отменённый турнир корты отпускает
     if (t.state === 'cancelled' || !t.court_ids.length) {
-      await this.db.bookings.deleteMany({ where: { tournament_id: t.id } });
-      return [];
-    }
-    // Старые брони убираем и ставим новые в одной транзакции: если новое время
-    // занято, старые остаются на месте, а не пропадают
-    const failed: string[] = [];
-    await this.db.$transaction(async tx => {
       await tx.bookings.deleteMany({ where: { tournament_id: t.id } });
-      for (const courtId of t.court_ids) {
-        try {
-          await tx.bookings.create({ data: {
-            court_id: courtId, client_id: null,
-            starts_at: t.starts_at,
-            ends_at: new Date(+t.starts_at + t.hours * 3600_000),
-            price: 0, status: 'confirmed', source: 'tournament',
-            guest_name: `${t.kind === 'class' ? 'Тренировка' : 'Турнир'}: ${t.name}`,
-            tournament_id: t.id,
-          }});
-        } catch (e: any) {
-          // Время уже занято чужой бронью — сказать, а не проглотить
-          if (String(e?.message).includes(EXCLUSION) || e?.meta?.code === EXCLUSION) failed.push(courtId);
-          else throw e;
-        }
+      return;
+    }
+    await tx.bookings.deleteMany({ where: { tournament_id: t.id } });
+    const failed: string[] = [];
+    for (const courtId of t.court_ids) {
+      // Точка сохранения на каждую площадку. Без неё первая же занятая
+      // площадка переводила транзакцию в состояние aborted, и все следующие
+      // запросы падали с 25P02: менеджер получал 500, список занятых площадок
+      // не собирался, а турнир оставался в базе вообще без занятых кортов.
+      await tx.$executeRawUnsafe('SAVEPOINT block_court');
+      try {
+        await tx.bookings.create({ data: {
+          court_id: courtId, client_id: null,
+          starts_at: t.starts_at,
+          ends_at: new Date(+t.starts_at + t.hours * 3600_000),
+          price: 0, status: 'confirmed', source: 'tournament',
+          guest_name: `${t.kind === 'class' ? 'Тренировка' : 'Турнир'}: ${t.name}`,
+          tournament_id: t.id,
+        }});
+        await tx.$executeRawUnsafe('RELEASE SAVEPOINT block_court');
+      } catch (e: any) {
+        await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT block_court');
+        // Время уже занято чужой бронью — сказать, а не проглотить
+        if (String(e?.message).includes(EXCLUSION) || e?.meta?.code === EXCLUSION) failed.push(courtId);
+        else throw e;
       }
-      // Ни одну площадку занять не вышло — откатываемся, старые брони остаются
-      if (failed.length && failed.length === t.court_ids.length) throw new ConflictException('busy');
-    }).catch(e => { if (!(e instanceof ConflictException)) throw e });
-    return failed;
+    }
+    if (failed.length) {
+      const courts = await tx.courts.findMany({ where: { id: { in: failed } }, select: { name: true } });
+      const names = courts.map((c: { name: string }) => c.name).join(', ') || failed.join(', ');
+      throw new ConflictException(
+        `В это время уже заняты: ${names}. Освободите площадки или выберите другие — турнир не сохранён`);
+    }
   }
 
   /** Дата брони в часовом поясе клуба, в виде ГГГГ-ММ-ДД. */

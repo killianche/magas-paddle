@@ -87,7 +87,10 @@ export class AdminCoachesController {
     });
     const classes = cls.map(t => {
       const live = t.tournament_entries.filter(e => ['pending', 'confirmed'].includes(e.status));
-      const fees = t.tournament_entries.reduce((n, e) => n + (e.paid_amount ?? 0), 0);
+      // Взносы считаем только по живым заявкам. Отменённая заявка сохраняет
+      // paid_amount — деньги по ней либо вернули, либо вернут, — и раньше она
+      // продолжала кормить процент тренера и «выручку» группы.
+      const fees = live.reduce((n, e) => n + (e.paid_amount ?? 0), 0);
       const done = t.state !== 'cancelled' && +t.starts_at + t.hours * 3600_000 <= +now;
       return { id: Number(t.id), name: t.name, date: this.dateOf(t.starts_at), hour: hourOf(t.starts_at),
         hours: t.hours, state: t.state, done, seats: t.seats,

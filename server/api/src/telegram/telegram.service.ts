@@ -130,7 +130,12 @@ export function dayReportText(p: {
     return tgBlocks([head, ['За день ничего не было: ни игр, ни продаж.']]);
   }
 
-  const MW: Record<string, string> = { cash: 'наличными', card: 'картой', transfer: 'переводом' };
+  // Способы оплаты называем по-человечески. Неизвестный способ показываем
+  // как есть: пропасть из разбивки он не должен — так уже терялся СБП.
+  const MW: Record<string, string> = {
+    cash: 'наличными', card: 'картой', sbp: 'по СБП',
+    transfer: 'переводом', invoice: 'по счёту',
+  };
   const left = Math.max(0, p.charged - p.got);
   const money_moved = p.charged > 0 || p.shop > 0 || p.got > 0 || p.refunded > 0;
 
@@ -151,7 +156,7 @@ export function dayReportText(p: {
     ],
     [
       p.got > 0 && `💵 Получено: <b>${money(p.got)}</b>`,
-      ...(p.got > 0 ? p.byMethod.map(([m, sum]) => `— ${MW[m]} ${money(sum)}`) : []),
+      ...(p.got > 0 ? p.byMethod.map(([m, sum]) => `— ${MW[m] ?? m} ${money(sum)}`) : []),
       p.refunded > 0 && `↩️ Возвраты: −${money(p.refunded)}`,
       p.refunded > 0 && p.got > 0 && `🧾 Чистыми: <b>${money(p.got - p.refunded)}</b>`,
     ],
@@ -409,7 +414,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         select: { amount: true, item: true } }),
     ]);
 
-    const live = bookings.filter(b => !b.tournament_id && !['cancelled', 'expired'].includes(b.status));
+    // Неявка — не игра. Раньше она попадала и в «Игры», и в «Неявки», то есть
+    // одна бронь считалась дважды, а её полная цена уходила в «Начислено»,
+    // хотя никто не пришёл. Удержанная предоплата при этом никуда не девается:
+    // она уже учтена в «Получено», её берут из платежей.
+    const live = bookings.filter(b => !b.tournament_id
+      && !['cancelled', 'expired', 'no_show'].includes(b.status));
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     const noShow = bookings.filter(b => b.status === 'no_show').length;
     const charged = live.reduce((n, b) => n + Math.max(0, b.price + b.coach_price - b.discount), 0);
@@ -418,8 +428,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     // иначе возврат по броне попадал бы в сумму дважды: и минусом в платежах,
     // и строкой в refunds
     const got = pays.filter(p => p.amount > 0).reduce((n, p) => n + p.amount, 0);
-    const byMethod = ['cash', 'card', 'transfer'].map(m => [m,
-      pays.filter(p => p.method === m && p.amount > 0).reduce((n, p) => n + p.amount, 0)] as const)
+    // Способы берём из самих платежей, а не из списка в коде: список уже
+    // отставал от жизни, и деньги по СБП попадали в «Получено», но ни в одну
+    // строку разбивки. Теперь появится новый способ — он сам и покажется.
+    const byMethod = [...new Set(pays.filter(p => p.amount > 0).map(p => p.method))]
+      .map(m => [m, pays.filter(p => p.method === m && p.amount > 0)
+        .reduce((n, p) => n + p.amount, 0)] as const)
       .filter(([, sum]) => sum !== 0);
     const shop = sales.reduce((n, x) => n + x.amount, 0);
     const refunded = refunds.reduce((n, x) => n + x.amount, 0);

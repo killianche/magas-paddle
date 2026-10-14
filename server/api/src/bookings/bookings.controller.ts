@@ -391,9 +391,12 @@ export class BookingsController {
     // при отмене через менеджера (D13, D27)
     const paid = (await this.db.payments.aggregate({
       where: { booking_id: booking.id }, _sum: { amount: true } }))._sum.amount ?? 0;
-    // Ракетки и мячи из счёта человек не брал — строки убираем, товар возвращаем
+    // Ракетки и мячи, заказанные в приложении, человек не брал — строки
+    // убираем, товар возвращаем. Проданное на стойке не трогаем: это уже
+    // выпитая вода, и отмена не должна стирать выручку клуба.
+    const inApp = { method: 'bill', admin_name: 'приложение' };
     const lines = await this.db.sales.findMany({
-      where: { booking_id: booking.id, method: 'bill', product_id: { not: null } }, include: { products: true } });
+      where: { booking_id: booking.id, ...inApp, product_id: { not: null } }, include: { products: true } });
     const back = new Map<string, number>();
     const ops: any[] = [
       this.db.bookings.update({ where: { id: booking.id }, data: {
@@ -418,7 +421,7 @@ export class BookingsController {
         note: `бронь №${Number(booking.id)} отменена в приложении`, admin_name: 'приложение',
       }}));
     }
-    ops.push(this.db.sales.deleteMany({ where: { booking_id: booking.id, method: 'bill' } }));
+    ops.push(this.db.sales.deleteMany({ where: { booking_id: booking.id, ...inApp } }));
     await this.db.$transaction(ops);
     const court = await this.db.courts.findUnique({ where: { id: booking.court_id } });
     this.tg.notify('cancel', tgMsg({

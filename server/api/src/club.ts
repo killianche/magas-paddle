@@ -181,17 +181,61 @@ export class ClubService {
     if (Date.now() - this.sweptAt < 20_000) return 0;
     this.sweptAt = Date.now();
     // Заявка, по которой уже приняли деньги, не сгорает: её просто не успели
-    // подтвердить кнопкой (а приём оплаты подтверждает сам)
-    const r = await this.db.bookings.updateMany({
+    // подтвердить кнопкой (а приём оплаты подтверждает сам).
+    //
+    // Сгорающие заявки нужны поимённо: по ним возвращается на склад то, что
+    // человек заказал в приложении. Раньше менялся только статус, и мячи
+    // оставались списанными — три банки лежат на полке, а система считает их
+    // проданными и показывает в отчёте магазина выручкой.
+    const dying = await this.db.bookings.findMany({
       where: { status: 'pending', hold_until: { lt: new Date() }, payments: { none: {} } },
-      data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
+      select: { id: true },
     });
+    let r = { count: 0 };
+    if (dying.length) {
+      const ids = dying.map(b => b.id);
+      r = await this.db.bookings.updateMany({
+        where: { id: { in: ids }, status: 'pending' },
+        data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
+      });
+      await this.returnAppGoods(ids);
+    }
     // Заявки на турниры держат место так же и так же его отпускают
     const t = await this.db.tournament_entries.updateMany({
       where: { status: 'pending', hold_until: { lt: new Date() } },
       data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
     });
     return r.count + t.count;
+  }
+
+  /** Вернуть на склад заказанное в приложении и убрать эти строки счёта.
+   *
+   *  Проданное на стойке не трогаем: его заводит человек, и это уже выпитая
+   *  вода. Прокат на складе не числится, поэтому его только убираем из счёта. */
+  private async returnAppGoods(bookingIds: bigint[]) {
+    const inApp = { method: 'bill', admin_name: 'приложение' };
+    const lines = await this.db.sales.findMany({
+      where: { booking_id: { in: bookingIds }, ...inApp, product_id: { not: null } },
+      include: { products: true },
+    });
+    const ops: any[] = [];
+    const back = new Map<string, number>();
+    for (const l of lines) {
+      const pr = l.products;
+      if (!pr || pr.category === 'rental' || pr.stock == null) continue;
+      const after = (back.get(String(pr.id)) ?? pr.stock) + l.qty;
+      back.set(String(pr.id), after);
+      ops.push(this.db.products.update({
+        where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
+      ops.push(this.db.stock_moves.create({ data: {
+        product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
+        note: `заявка №${Number(l.booking_id)} — срок удержания вышел`,
+        admin_name: 'приложение',
+      }}));
+    }
+    ops.push(this.db.sales.deleteMany({
+      where: { booking_id: { in: bookingIds }, ...inApp } }));
+    await this.db.$transaction(ops);
   }
 
   /** Позвать после изменения настроек, чтобы не ждать истечения кэша. */

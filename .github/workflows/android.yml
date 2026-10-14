@@ -82,8 +82,11 @@ jobs:
           APK=$(find android/app/build/outputs/apk -name '*.apk' | head -1)
           echo "AAB: $AAB ($(du -h "$AAB" | cut -f1))"
           echo "APK: $APK ($(du -h "$APK" | cut -f1))"
-          # Без подписи Play молча откажет — проверяем здесь, а не в магазине
-          "$ANDROID_SDK_ROOT"/build-tools/*/apksigner verify --print-certs "$APK" \
+          # Без подписи Play молча откажет — проверяем здесь, а не в магазине.
+          # Берём одну версию инструмента: шаблон пути раскрывается в несколько,
+          # и тогда вторая версия уходит в аргументы, а проверка не выполняется.
+          SIGNER=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | sort -V | tail -1)
+          "$SIGNER" verify --print-certs "$APK" \
             | grep -E "Signer #1 certificate (DN|SHA-256)" || echo "::warning::подпись проверить не вышло"
 
       - name: Сохранить AAB для Google Play
