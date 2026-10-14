@@ -37,7 +37,7 @@ const LABEL: Record<string, string> = {
 export default function Account() {
   useTheme();
   const { profile, ready, save, forget, signedIn } = useProfile();
-  const [mode, setMode] = useState<'view' | 'edit' | 'password'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'password' | 'delete'>('view');
   // Сюда возвращаемся после входа: на экран корта или записи на турнир
   const { next, gate } = useLocalSearchParams<{ next?: string; gate?: string }>();
 
@@ -64,8 +64,11 @@ export default function Account() {
       onDone={async p => { await save(p); setMode('view') }}
       onCancel={() => setMode('view')} />;
   }
+  if (mode === 'delete') {
+    return <DeleteForm onForget={forget} onCancel={() => setMode('view')} />;
+  }
   return <Card profile={profile} onEdit={() => setMode('edit')}
-    onPassword={() => setMode('password')} onForget={forget}
+    onPassword={() => setMode('password')} onDelete={() => setMode('delete')} onForget={forget}
     onId={id => save({ ...profile, id })} />;
 }
 
@@ -558,10 +561,73 @@ function PasswordForm({ profile, onDone, onCancel }: {
   );
 }
 
+/* ── Удаление аккаунта ─────────────────────────────────────────────────── */
+
+/** Пароль перед удалением — на телефоне, iOS и Android одинаково.
+ *  Сюда попадают уже после подтверждения «Удалить аккаунт?» на карточке. */
+function DeleteForm({ onForget, onCancel }: {
+  onForget: () => Promise<void>; onCancel: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const ok = password.length >= 1;
+
+  const submit = async () => {
+    if (!ok || busy) return;
+    setBusy(true); setProblem(null);
+    try {
+      await api.deleteMe(password);
+      await onForget();
+      router.replace('/');
+    } catch (e) {
+      setProblem(e instanceof ApiError ? e.message : 'Не получилось удалить аккаунт.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView style={s.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Stack.Screen options={{ title: 'Удаление аккаунта' }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <View style={s.head}>
+          <Eyebrow>Удаление</Eyebrow>
+          <Text style={s.h1} allowFontScaling={false}>{'УДАЛИТЬ\nАККАУНТ'}</Text>
+          <Text style={s.lede}>
+            Имя и номер будут стёрты, будущие записи отменены, вход закроется.
+            Отменить удаление нельзя.
+          </Text>
+        </View>
+
+        <Text style={s.label}>Пароль от аккаунта</Text>
+        <TextInput style={s.input} value={password} onChangeText={setPassword}
+          secureTextEntry autoCapitalize="none" autoCorrect={false} autoFocus
+          textContentType="password" accessibilityLabel="Пароль от аккаунта"
+          onSubmitEditing={submit} returnKeyType="done" />
+
+        {!!problem && <Text style={s.problem}>{problem}</Text>}
+
+        <Pressable onPress={submit} disabled={!ok || busy} accessibilityRole="button"
+          style={({ pressed }) => [s.cta, { backgroundColor: C.red }, (!ok || busy) && s.ctaOff,
+            pressed && { opacity: 0.9 }]}>
+          <Text style={[s.ctaT, { color: '#fff' }, (!ok || busy) && { color: C.busy }]}>
+            {busy ? 'Минуту…' : 'Удалить навсегда'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onCancel} accessibilityRole="button"
+          style={({ pressed }) => [s.link, pressed && { opacity: 0.7 }]}>
+          <Text style={s.linkT}>Отмена</Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
 /* ── Карточка человека, история и настройки ────────────────────────────── */
 
-function Card({ profile, onEdit, onPassword, onForget, onId }: {
-  profile: Profile; onEdit: () => void; onPassword: () => void;
+function Card({ profile, onEdit, onPassword, onDelete, onForget, onId }: {
+  profile: Profile; onEdit: () => void; onPassword: () => void; onDelete: () => void;
   onForget: () => Promise<void>; onId: (id: number) => void;
 }) {
   // ID аккаунта у тех, кто вошёл до его появления в приложении, подтягиваем
@@ -594,17 +660,11 @@ function Card({ profile, onEdit, onPassword, onForget, onId }: {
     const go = async () => {
       let password: string | undefined;
       if (profile.hasPassword) {
-        password = Platform.OS === 'web'
-          ? (prompt('Введите пароль от аккаунта') ?? undefined)
-          : undefined;
-        if (Platform.OS !== 'web') {
-          // На телефоне пароль спрашиваем отдельным окном ввода
-          Alert.prompt?.('Пароль', 'Введите пароль от аккаунта', [
-            { text: 'Отмена', style: 'cancel' },
-            { text: 'Удалить', style: 'destructive', onPress: async (p?: string) => { await doDelete(p) } },
-          ], 'secure-text');
-          return;
-        }
+        // На телефоне пароль спрашиваем отдельным экраном. Окно с полем
+        // ввода (Alert.prompt) есть только на iOS: на Android вызов молча
+        // ничего не делал, и аккаунт с паролем было не удалить
+        if (Platform.OS !== 'web') { onDelete(); return }
+        password = prompt('Введите пароль от аккаунта') ?? undefined;
         if (!password) return;
       }
       await doDelete(password);

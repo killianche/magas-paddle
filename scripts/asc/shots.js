@@ -6,7 +6,13 @@
 // позиции с приставкой «ТЕСТ».
 const { chromium } = require('playwright');
 const B = process.env.SHOTS_BASE || 'https://padelmagas.ru/v1';
-const W = 430, H = 932;   // логические точки; при deviceScaleFactor 3 даёт 1290×2796
+// Логические точки и множитель. По умолчанию — App Store: 430×932 × 3 = 1290×2796.
+// Google Play не берёт кадры, где длинная сторона больше двух коротких
+// (у Apple 2,17), — для него SHOTS_W=405 SHOTS_H=720 SHOTS_DPR=2.6667 даёт
+// ровно 1080×1920, а SHOTS_PREFIX=gp кладёт их рядом под своим именем.
+const W = Number(process.env.SHOTS_W || 430), H = Number(process.env.SHOTS_H || 932);
+const DPR = Number(process.env.SHOTS_DPR || 3);
+const PREFIX = process.env.SHOTS_PREFIX || 'as';
 
 /** Прокрутка внутри ScrollView, а не окна: у React Native Web свой контейнер. */
 const scroll = async (p, y) => {
@@ -20,7 +26,7 @@ const scroll = async (p, y) => {
 
 (async () => {
   const b = await chromium.launch();
-  const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: DPR, isMobile: true, hasTouch: true });
   const errs = []; p.on('pageerror', e => errs.push(String(e).split('\n')[0]));
   // Приложение открывается экраном входа (settings.phone_gate). Для витрины
   // он не годится: Apple видит форму регистрации вместо клуба. Ставим признак
@@ -28,7 +34,7 @@ const scroll = async (p, y) => {
   await p.addInitScript(() => {
     try { localStorage.setItem('magas.guest', '1') } catch {}
   });
-  const shot = async (n, name) => { await p.screenshot({ path: `as-${n}-${name}.png` }); console.log(`  снято ${n}. ${name}`) };
+  const shot = async (n, name) => { await p.screenshot({ path: `${PREFIX}-${n}-${name}.png` }); console.log(`  снято ${n}. ${name}`) };
 
   await p.goto(`${B}/`, { waitUntil: 'networkidle' }); await p.waitForTimeout(2500);
   await shot(1, 'home');

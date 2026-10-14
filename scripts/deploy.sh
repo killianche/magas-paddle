@@ -43,6 +43,9 @@ wrap "$ROOT/design/manager-src.html" "$STAGE/manager.html"   "width=device-width
 # приложения — менять его нельзя, а без страницы по нему ревью отклоняют
 # по правилу 5.1.1.
 wrap "$ROOT/design/privacy-src.html" "$STAGE/privacy.html"   "width=device-width,initial-scale=1"
+# Удаление аккаунта. Адрес /delete.html указан в Google Play (Data safety):
+# Google проверяет, что по нему открывается инструкция, иначе отклоняет.
+wrap "$ROOT/design/delete-src.html"  "$STAGE/delete.html"    "width=device-width,initial-scale=1"
 
 # ---------- 2. Статика ----------
 say "Готовлю шрифты, картинки и иконку"
