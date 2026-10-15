@@ -26,6 +26,20 @@ import { useClub, whatsappUrl } from '../src/club';
 import { ThemePicker } from '../src/components/themepicker';
 import { setGuest } from '../src/guest';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
+import { dueOf } from './(tabs)/bookings';
+
+/** Секрет начатой проверки звонком — по номеру. Сервер отдаёт тот же номер
+ *  для звонка только тому, кто пришлёт прежний секрет, а остальным отвечает
+ *  «номер уже ждёт звонка, через 5 мин». Раньше секрет выбрасывали при
+ *  «изменить», сбое или повторном открытии экрана, и человек упирался
+ *  в эти 5 минут, тратя ещё и дневной лимит звонков (аудит 15.10.2026).
+ *  Держим на уровне модуля: так секрет переживает и закрытие экрана. */
+const callSecrets = new Map<string, string>();
+
+/** Куда можно вернуться после входа: только внутренний путь приложения.
+ *  Иначе ссылка …/account?next=https://чужой-сайт после ввода пароля
+ *  уводила бы человека на чужую страницу (аудит 15.10.2026). */
+const safeNext = (n?: string) => n && n.startsWith('/') && !n.startsWith('//') ? n : undefined;
 
 /** Записи, которые уже прошли: их и показываем историей. */
 const PAST: ApiBooking['status'][] = ['done', 'cancelled', 'no_show', 'expired'];
@@ -39,7 +53,9 @@ export default function Account() {
   const { profile, ready, save, forget, signedIn } = useProfile();
   const [mode, setMode] = useState<'view' | 'edit' | 'password' | 'delete'>('view');
   // Сюда возвращаемся после входа: на экран корта или записи на турнир
-  const { next, gate } = useLocalSearchParams<{ next?: string; gate?: string }>();
+  const params = useLocalSearchParams<{ next?: string; gate?: string }>();
+  const gate = params.gate;
+  const next = safeNext(params.next);
 
   if (!ready) return <><Stack.Screen options={{ title: 'Аккаунт' }} /><View style={s.root} /></>;
 
@@ -140,7 +156,8 @@ function Enter({ onDone, why, prefill, gate }: {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
-      const c = await api.callStart(clean, undefined, true);
+      const c = await api.callStart(clean, callSecrets.get(clean), true);
+      callSecrets.set(clean, c.secret);
       setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
       setCallFor('reset');
       setStep('call');
@@ -163,7 +180,8 @@ function Enter({ onDone, why, prefill, gate }: {
       const r = await api.checkPhone(clean);
       if (r.hasPassword) { setStep('password'); setBusy(false); return }
       if (!club.phoneVerifyOn) { setStep('signup'); setBusy(false); return }
-      const c = await api.callStart(clean);
+      const c = await api.callStart(clean, callSecrets.get(clean));
+      callSecrets.set(clean, c.secret);
       setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
       setCallFor('signup');
       setStep('call');
@@ -246,6 +264,20 @@ function Enter({ onDone, why, prefill, gate }: {
         hasPassword: res.profile.hasPassword,
       }, res.token);
     } catch (e) {
+      // Сервер требует подтвердить номер, а приложение об этом не знало:
+      // настройки клуба не успели загрузиться. Ведём к звонку, а не
+      // оставляем на форме, которая снова получит тот же отказ
+      if (e instanceof ApiError && e.code === 'phone_verification_required' && step === 'signup') {
+        try {
+          const c = await api.callStart(clean, callSecrets.get(clean));
+          callSecrets.set(clean, c.secret);
+          setCall({ phone: c.callPhone, pretty: c.callPhonePretty, secret: c.secret });
+          setCallFor('signup');
+          setStep('call');
+          setBusy(false);
+          return;
+        } catch (e2) { e = e2 }
+      }
       setProblem(e instanceof ApiError ? e.message : 'Не получилось. Попробуйте ещё раз.');
       setBusy(false);
     }
@@ -437,7 +469,9 @@ function EditForm({ profile, onDone, onCancel }: {
     try {
       const res = await api.updateMe({
         name: name.trim(), surname: surname.trim(),
-        whatsapp: normalizePhone(wa) ?? undefined,
+        // Пустое поле — стереть номер: сервер стирает его только по null,
+        // а undefined значит «не трогать», и старый номер возвращался
+        whatsapp: wa.trim() ? normalizePhone(wa) ?? undefined : null,
       });
       onDone({
         id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
@@ -802,7 +836,9 @@ function Card({ profile, onEdit, onPassword, onDelete, onForget, onId }: {
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.rowP}>{rub(b.price)}</Text>
+              {/* Вся сумма, как в «Моих записях»: в price только корт, и у
+                  тренировки, где корт входит в цену, было «0 ₽» */}
+              <Text style={s.rowP}>{rub(dueOf(b))}</Text>
               <Text style={[s.rowSt, b.status === 'done' && { color: C.limeDim }]}>
                 {LABEL[b.status] ?? 'сыграно'}
               </Text>

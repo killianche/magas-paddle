@@ -11,6 +11,7 @@ import { ClientAuthService } from '../clients/client-auth.service';
 import { clubHour, clubToday, hourOf, isValidDate, shiftDate, weekdayOf } from '../time';
 import { coachHours, coachBusyByClass } from '../coaches/coach.util';
 import { TelegramService, tgMsg, phoneLink, whenLine, esc } from '../telegram/telegram.service';
+import { cancelByClient } from './cancel';
 
 /** Защита от ботов (решение заказчика 17.09.2026): не больше 3 неподтверждённых
  *  заявок на номер, запись не дальше 30 дней вперёд, не больше 10 заявок в час
@@ -391,38 +392,15 @@ export class BookingsController {
     // при отмене через менеджера (D13, D27)
     const paid = (await this.db.payments.aggregate({
       where: { booking_id: booking.id }, _sum: { amount: true } }))._sum.amount ?? 0;
-    // Ракетки и мячи, заказанные в приложении, человек не брал — строки
-    // убираем, товар возвращаем. Проданное на стойке не трогаем: это уже
-    // выпитая вода, и отмена не должна стирать выручку клуба.
-    const inApp = { method: 'bill', admin_name: 'приложение' };
-    const lines = await this.db.sales.findMany({
-      where: { booking_id: booking.id, ...inApp, product_id: { not: null } }, include: { products: true } });
-    const back = new Map<string, number>();
-    const ops: any[] = [
-      this.db.bookings.update({ where: { id: booking.id }, data: {
-        status: 'cancelled', status_at: new Date(),
-        status_by: late ? 'client, поздняя отмена' : 'client',
-        kept_prepay: late && paid > 0,
-      }}),
-    ];
-    // Счётчик отмен — только за подтверждённую бронь: отказ от своей же
-    // неподтверждённой заявки человеку не в укор
-    if (booking.status === 'confirmed') {
-      ops.push(this.db.clients.update({ where: { id: client.id }, data: { cancels: { increment: 1 } } }));
-    }
-    for (const l of lines) {
-      const pr = l.products;
-      if (!pr || pr.category === 'rental' || pr.stock == null) continue;
-      const after = (back.get(String(pr.id)) ?? pr.stock) + l.qty;
-      back.set(String(pr.id), after);
-      ops.push(this.db.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
-      ops.push(this.db.stock_moves.create({ data: {
-        product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
-        note: `бронь №${Number(booking.id)} отменена в приложении`, admin_name: 'приложение',
-      }}));
-    }
-    ops.push(this.db.sales.deleteMany({ where: { booking_id: booking.id, ...inApp } }));
-    await this.db.$transaction(ops);
+    // Отмена, возврат товара и счётчик — общей процедурой (bookings/cancel.ts).
+    // Не вышло — значит, бронь успели отменить или она сгорела, пока мы считали
+    const done = await this.db.$transaction(tx => cancelByClient(tx, booking, {
+      statusBy: late ? 'client, поздняя отмена' : 'client',
+      keptPrepay: late && paid > 0,
+      countCancel: booking.status === 'confirmed',
+      note: `бронь №${Number(booking.id)} отменена в приложении`,
+    }));
+    if (!done) throw new ConflictException('Эту запись уже нельзя отменить');
     const court = await this.db.courts.findUnique({ where: { id: booking.court_id } });
     this.tg.notify('cancel', tgMsg({
       icon: '🚫', title: 'Клиент отменил бронь',

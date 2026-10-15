@@ -70,6 +70,21 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
 
   const title = row?.name ?? (football ? 'Мини-футбольное поле' : 'Корт');
 
+  // Сняли выбор часа или сменили день — тренер снимается вместе с ним.
+  // Иначе галочка «Играть с тренером» сбрасывалась, а тренер оставался
+  // в панели и в сумме и уходил в заявку (аудит 15.10.2026)
+  useEffect(() => { if (!sel) booking.setCoach(null) }, [sel]);
+
+  // У футбольного поля id заранее неизвестен — выбранный до входа час
+  // возвращаем, когда сетка приехала и поле нашлось
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !football || !row || sel) return;
+    restored.current = true;
+    const h = Number(back.h);
+    if (back.h != null && Number.isFinite(h)) setSel({ courtId: row.courtId, hour: h });
+  }, [row]);
+
   // Сегодня у корта всё прошло (поздний вечер) — сразу открываем завтра,
   // а не «время закончилось». Один раз: если человек сам вернётся на
   // сегодня, не перебрасываем его обратно.
@@ -139,6 +154,10 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
         <Card><Durations max={grid.maxHours} hours={hours} onPick={pickHours} /></Card>
 
         <Step n={2} title="Выберите время" />
+        {/* «Время заняли» — здесь, а не в нижней панели: панель в этот
+            момент закрывается вместе со снятым выбором, и сообщение
+            пропадало, не показавшись (аудит 15.10.2026) */}
+        {!sel && !!booking.problem && <Text style={s.problem}>{booking.problem}</Text>}
         <Card>
           <Slots court={row} hours={hours} sel={sel} pillW={pillW} onPick={pickSlot}
             dayOff={grid.dayOff} />
@@ -167,7 +186,7 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
           <View style={{ marginTop: hasGoods ? 10 : 18 }}>
             {hasGoods
               ? <GoodsPick picked={booking.picked}
-                  onChange={(m, sum) => { booking.setPicked(m); booking.setGoodsSum(sum) }} />
+                  onChange={m => booking.setPicked(m)} />
               : <RentalsSection />}
           </View>
         )}
@@ -182,6 +201,8 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
 
 const s = sheet(() => ({
   root: { flex: 1, backgroundColor: C.ink },
+  problem: { fontFamily: BODY, color: C.dangerText, fontSize: 13.5, lineHeight: 19,
+    marginBottom: 10, paddingHorizontal: 2 },
   head: { paddingHorizontal: S.xl, paddingTop: 16 },
   name: { ...TITLE.card, color: C.text, marginTop: 6 },
   about: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 12 },

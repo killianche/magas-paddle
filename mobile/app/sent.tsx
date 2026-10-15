@@ -58,9 +58,10 @@ export default function Sent() {
   const call = async () => {
     if (!phone) return;
     const url = `tel:${phone.replace(/[^\d+]/g, '')}`;
+    // Сразу openURL, без canOpenURL: на Android 11+ тот отвечает «нельзя»
+    // для tel:, не объявленного в манифесте, и звонилка не открывалась
     try {
-      if (await Linking.canOpenURL(url)) return Linking.openURL(url);
-      throw new Error();
+      await Linking.openURL(url);
     } catch {
       const msg = `Телефон клуба: ${prettyPhone(phone)}`;
       Platform.OS === 'web' ? alert(msg) : Alert.alert('Не получилось позвонить', msg);

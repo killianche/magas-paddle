@@ -257,15 +257,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       const q = u.callback_query;
       const chat = BigInt(q.message?.chat?.id ?? 0);
       const data = String(q.data ?? '');
-      if (data === 'today') {
-        await this.api('answerCallbackQuery', { callback_query_id: q.id });
-        await this.send(chat, await this.dayReport(clubToday()));
-        return;
-      }
+      // Сначала — разрешён ли человек. Кнопка «Итог за сегодня» раньше стояла
+      // до этой проверки: у запрещённого получателя в чате оставалось старое
+      // меню, и по нажатию бот присылал выручку клуба (аудит 15.10.2026)
       const okSub = await this.db.tg_subs.findUnique({ where: { chat_id: chat } });
       if (!okSub?.approved) {
         await this.api('answerCallbackQuery', { callback_query_id: q.id,
           text: 'Отчёты включает руководитель клуба', show_alert: true });
+        return;
+      }
+      if (data === 'today') {
+        await this.api('answerCallbackQuery', { callback_query_id: q.id });
+        await this.send(chat, await this.dayReport(clubToday()));
         return;
       }
       if (data.startsWith('t:')) {
@@ -418,8 +421,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     // одна бронь считалась дважды, а её полная цена уходила в «Начислено»,
     // хотя никто не пришёл. Удержанная предоплата при этом никуда не девается:
     // она уже учтена в «Получено», её берут из платежей.
+    // Игры — только подтверждённые и сыгранные, как в «Аналитике». Заявки,
+    // ждущие подтверждения, сюда попадали и завышали «Начислено» (аудит 15.10.2026)
     const live = bookings.filter(b => !b.tournament_id
-      && !['cancelled', 'expired', 'no_show'].includes(b.status));
+      && ['confirmed', 'done'].includes(b.status));
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     const noShow = bookings.filter(b => b.status === 'no_show').length;
     const charged = live.reduce((n, b) => n + Math.max(0, b.price + b.coach_price - b.discount), 0);

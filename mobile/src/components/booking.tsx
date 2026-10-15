@@ -206,10 +206,16 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   const [problem, setProblem] = useState<string | null>(null);
   // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
-  const [goodsSum, setGoodsSum] = useState(0);
   const [family, setFamily] = useState(false);
   // Прокат и мячи, отмеченные при записи: id товара → сколько
   const [picked, setPicked] = useState<Map<number, number>>(() => picked0 ?? new Map());
+  // Сумма проката — из самой корзины и цен. Раньше она жила отдельно и
+  // обновлялась только по нажатию: после входа корзина возвращалась, а сумма
+  // была 0 — итог и предоплата без проката, в WhatsApp уходила меньшая цена
+  // (аудит 15.10.2026). Тот же запрос, что в GoodsPick: общий кэш
+  const goodsList = useApi(() => api.goods(), [], 'goods').data ?? [];
+  const goodsSum = useMemo(() => goodsList.reduce(
+    (acc, g) => acc + g.price * (picked.get(g.id) ?? 0), 0), [goodsList, picked]);
   const path = usePathname();
   const params = useLocalSearchParams<{ id?: string }>();
   // Что человек уже выбрал — чтобы вернуть это после входа
@@ -346,7 +352,7 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   };
 
   return {
-    total, courtDue, courtPrice, coach, setCoach, family, setFamily, picked, setPicked, goodsSum, setGoodsSum,
+    total, courtDue, courtPrice, coach, setCoach, family, setFamily, picked, setPicked, goodsSum,
     sending, prepay, problem, setProblem,
     submit: () => { club.whatsapp ? bookInWhatsApp() : stub() },
     prepayPercent: club.prepayPercent,

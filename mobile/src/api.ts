@@ -287,7 +287,7 @@ export const api = {
     call<{ ok: boolean }>('/clients/me/delete', { method: 'POST',
       body: JSON.stringify({ password }) }),
 
-  updateMe: (c: { name?: string; surname?: string; whatsapp?: string;
+  updateMe: (c: { name?: string; surname?: string; whatsapp?: string | null;
                   password?: string; oldPassword?: string }) =>
     call<{ token?: string; profile: ClientCard }>('/clients/me', {
       method: 'POST', body: JSON.stringify(c) }),

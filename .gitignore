@@ -18,3 +18,4 @@ server/api/dist/
 
 # Стенд для проверок: пиды и логи локального API
 .stand/
+__pycache__/

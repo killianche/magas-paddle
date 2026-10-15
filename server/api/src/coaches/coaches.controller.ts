@@ -16,6 +16,7 @@ import { bigId } from '../phone';
 import { ipOf, limitRate } from '../ratelimit';
 import { MAX_PENDING_PER_PHONE, REQUESTS_PER_HOUR } from '../bookings/bookings.controller';
 import { coachHours, coachBusyByClass } from './coach.util';
+import { TelegramService, tgMsg, phoneLink, whenLine, esc } from '../telegram/telegram.service';
 
 const DAYS_AHEAD = 30;
 const LIVE = { notIn: ['cancelled', 'expired'] as any };
@@ -26,6 +27,7 @@ export class CoachesController {
     private readonly db: PrismaService,
     private readonly club: ClubService,
     private readonly auth: ClientAuthService,
+    private readonly tg: TelegramService,
   ) {}
 
   /** Тренеры для приложения: без схемы оплаты и служебных полей. */
@@ -196,6 +198,19 @@ export class CoachesController {
         hold_until: new Date(Math.min(Date.now() + set.holdMinutes * 60_000, +startsAt)),
       }});
       const court = await this.db.courts.findUnique({ where: { id: slot.courtId } });
+      // Руководителю в Telegram, как и про обычную заявку. Раньше запись
+      // к тренеру молчала: заявка держала корт и тихо сгорала, если никто
+      // не заглянул в «Ждут подтверждения» (аудит 15.10.2026)
+      this.tg.notify('booking', tgMsg({
+        icon: '🆕', title: 'Новая заявка на тренировку', amount: slot.price,
+        head: [`${esc([me.name, me.surname].filter(Boolean).join(' ') || 'Без имени')} · ${phoneLink(me.phone)}`],
+        rows: [
+          `🎾 ${esc(court?.name ?? slot.courtId)} · ${whenLine(startsAt, endsAt)}`,
+          `👤 Тренер: ${esc(coach.name)}`,
+          '⏳ Ждёт подтверждения',
+        ],
+        foot: 'из приложения',
+      }));
       return { id: Number(b.id), courtName: court?.name ?? slot.courtId, coachName: coach.name,
         startsAt, endsAt, price: slot.price, status: b.status, holdMinutes: set.holdMinutes, clientId: Number(me.id) };
     } catch (e: any) {

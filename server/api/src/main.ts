@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { BadRequestException, ValidationPipe, Logger, type ValidationError } from '@nestjs/common';
 import { AppModule } from './app.module';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
@@ -16,6 +16,22 @@ async function bootstrap() {
   app.enableCors({ origin: true });
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, forbidNonWhitelisted: true, transform: true,
+    // Ответ — одна строка по-русски. По умолчанию Nest отдаёт массив строк,
+    // а приложение и админка ждут строку: человек видел «Не получилось»
+    // вместо «Дата должна быть в виде ГГГГ-ММ-ДД» (аудит 15.10.2026).
+    // Английские тексты по умолчанию («name must be a string») людям
+    // не показываем — заменяем общей просьбой проверить данные.
+    exceptionFactory: (errors: ValidationError[]) => {
+      const all: string[] = [];
+      const walk = (list: ValidationError[]) => list.forEach(e => {
+        all.push(...Object.values(e.constraints ?? {}));
+        if (e.children?.length) walk(e.children);
+      });
+      walk(errors);
+      const ru = all.find(m => /[а-яё]/i.test(m));
+      return new BadRequestException({ code: 'validation',
+        message: ru ?? 'Проверьте введённые данные и попробуйте ещё раз.' });
+    },
   }));
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, '0.0.0.0');

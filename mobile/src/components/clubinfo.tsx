@@ -28,10 +28,10 @@ export function ClubInfo() {
   const club = useClub();
   const open = async (url: string, fallback: string) => {
     Haptics.selectionAsync();
+    // Сразу openURL, без canOpenURL: на Android 11+ тот отвечает «нельзя»
+    // для tel:, не объявленного в манифесте (аудит 15.10.2026)
     try {
-      const ok = await Linking.canOpenURL(url);
-      if (ok) return Linking.openURL(url);
-      throw new Error('no handler');
+      await Linking.openURL(url);
     } catch {
       const msg = `Не удалось открыть. ${fallback}`;
       if (Platform.OS === 'web') alert(msg); else Alert.alert('Не получилось', msg);
@@ -84,10 +84,11 @@ export function ClubInfo() {
       </Section>
 
       {/* Заказчик убрал длительность аренды, остаток, срок отмены и опоздание:
-          здесь только предоплата и то, что отменяют через WhatsApp */}
+          здесь только предоплата и как отменить */}
       <Section title="Оплата и правила" summary={`Предоплата ${club.prepayPercent} %`}>
         <Line k="Подтверждение" v={`предоплата ${club.prepayPercent} % менеджеру`} />
-        <Line k="Как отменить" v="написать менеджеру в WhatsApp" />
+        {/* Отмена работает в самом приложении — раньше здесь стоял WhatsApp */}
+        <Line k="Как отменить" v="в приложении: «Мои записи» → запись → «Отменить запись»" />
         <Text style={s.small}>
           После заявки менеджер связывается по телефону или в WhatsApp и говорит,
           как внести предоплату — {club.prepayPercent} % стоимости. Как только она

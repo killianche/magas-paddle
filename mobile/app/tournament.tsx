@@ -49,7 +49,11 @@ export default function TournamentScreen() {
   const date = dateOfIso(t.startsAt);
   const left = Math.max(0, t.seats - t.taken);
   const started = new Date(t.startsAt).getTime() <= Date.now();
-  const done = t.state === 'done' || started;
+  // Начался — ещё не значит прошёл: пока идёт, это «идёт сейчас», а не
+  // «завершён» (аудит 15.10.2026). Длительность неизвестна — как раньше
+  const live = started && t.state !== 'done' && !!t.hours
+    && Date.now() < new Date(t.startsAt).getTime() + t.hours * 3600_000;
+  const done = t.state === 'done' || (started && !live);
   const canEnter = t.state === 'open' && !started && left > 0 && !t.entered;
 
   const pending = t.entry?.status === 'pending';
@@ -86,7 +90,7 @@ export default function TournamentScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.ink }}>
       <Stack.Screen options={{ title: done ? (cls ? 'Тренировка прошла' : 'Турнир завершён') : W.one }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: done ? 40 : 200 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: started ? 40 : 200 }}>
 
         <View style={s.cover}>
           {/* У прошедшего турнира с фото на обложке первый снимок с турнира */}
@@ -96,6 +100,7 @@ export default function TournamentScreen() {
             locations={[0, 0.5, 1]} style={s.fill} />
           <View style={s.coverIn}>
             {done ? <Flag text="ЗАВЕРШЁН" muted />
+              : live ? <Flag text="ИДЁТ СЕЙЧАС" ok />
               : pending ? <Flag text="ЖДЁТ ПОДТВЕРЖДЕНИЯ" warn />
               : confirmed || t.entered ? <Flag text="ВЫ ЗАПИСАНЫ" ok />
               : t.state === 'open' ? <Flag text="РЕГИСТРАЦИЯ ОТКРЫТА" ok />
@@ -115,7 +120,7 @@ export default function TournamentScreen() {
           <View style={s.whenBlock}>
             <Text style={s.whenK}>Начало</Text>
             <Text style={s.whenV}>{hh(hourOfIso(t.startsAt))}</Text>
-            <Text style={s.whenS}>{done ? W.gone : 'сбор за 20 минут'}</Text>
+            <Text style={s.whenS}>{done ? W.gone : live ? 'идёт сейчас' : 'сбор за 20 минут'}</Text>
           </View>
         </View>
 
@@ -138,14 +143,15 @@ export default function TournamentScreen() {
         <View style={s.facts}>
           <Fact k={cls ? 'Тренер' : 'Формат'} v={cls ? (t.coach?.name ?? '—') : t.format} />
           <Fact k={W.fee} v={rub(t.fee)} />
+          {/* Было — сколько записалось, а не сколько мест было всего */}
           <Fact k={done ? 'Участников было' : 'Свободных мест'}
-            v={done ? String(t.seats) : `${left} из ${t.seats}`} last />
+            v={done ? String(t.taken) : `${left} из ${t.seats}`} last />
         </View>
 
-        {t.entered && !done && (
+        {t.entered && !started && (
           <View style={s.enteredNote}>
             <Text style={s.enteredT}>
-              Пары составят на месте — партнёра искать заранее не нужно.
+              {cls ? '' : 'Пары составят на месте — партнёра искать заранее не нужно. '}
               Если передумаете, отмените запись, чтобы место досталось другому.
             </Text>
             <Pressable onPress={leave} disabled={busy}
@@ -156,7 +162,7 @@ export default function TournamentScreen() {
         )}
       </ScrollView>
 
-      {!done && (
+      {!started && (
         <View style={s.bar}>
           {pending ? (
             <View style={s.barOk}>

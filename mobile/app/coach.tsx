@@ -1,7 +1,7 @@
 // Карточка тренера: кто он, сколько стоит занятие и когда свободен.
 // Человек выбирает день и час — клуб сам подбирает свободный корт,
 // поэтому выбирать площадку отдельно не нужно.
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ScrollView, Text, View, Pressable, Image, ActivityIndicator, RefreshControl, Platform, Alert,
 } from 'react-native';
@@ -22,10 +22,19 @@ const DAYS_AHEAD = 14;
 export default function Coach() {
   useTheme();
   const club = useClub();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [date, setDate] = useState(today());
-  const [hours, setHours] = useState(1);
+  // d, hrs, h — выбор до ухода на вход: возвращаем его, как на экране корта.
+  // Раньше после входа человек приходил к пустому выбору (аудит 15.10.2026)
+  const { id, d, hrs, h } = useLocalSearchParams<{ id: string; d?: string; hrs?: string; h?: string }>();
+  const [date, setDate] = useState(() => d && /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && String(d) >= today()
+    ? String(d) : today());
+  const [hours, setHours] = useState(() => {
+    const n = Number(hrs);
+    return Number.isFinite(n) && n >= 1 && n <= 3 ? n : 1;
+  });
   const [pick, setPick] = useState<ApiSlot | null>(null);
+  // Час восстанавливаем, когда приехали свободные слоты: цена берётся из них
+  const [wantHour, setWantHour] = useState<number | null>(() =>
+    h != null && Number.isFinite(Number(h)) ? Number(h) : null);
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -38,6 +47,12 @@ export default function Coach() {
     [id, date, hours], `slots.${id}.${date}.${hours}`);
 
   useFocusEffect(useCallback(() => { who.refresh(); slots.refresh() }, [id, date, hours]));
+  useEffect(() => {
+    if (wantHour == null || slots.loading || !slots.data) return;
+    const sl = slots.data.slots.find(x => x.hour === wantHour);
+    setWantHour(null);
+    if (sl) setPick(sl);
+  }, [slots.data, slots.loading]);
 
   const days = useMemo(() => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today(), i)), []);
   const screen = <Stack.Screen options={{ title: 'Тренер' }} />;
@@ -55,7 +70,8 @@ export default function Coach() {
   const book = async () => {
     if (!pick || sending) return;
     if (!getToken()) {
-      router.push({ pathname: '/account', params: { next: `/coach?id=${c.id}` } });
+      router.push({ pathname: '/account', params: {
+        next: `/coach?id=${c.id}&d=${date}&hrs=${hours}&h=${pick.hour}` } });
       return;
     }
     setSending(true); setProblem(null);
@@ -64,7 +80,10 @@ export default function Coach() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
         id: String(r.id), name: `Тренировка · ${r.coachName}`, date,
-        hour: String(pick.hour), hours: String(hours), price: String(r.price) } });
+        hour: String(pick.hour), hours: String(hours), price: String(r.price),
+        // Экран «отправлено» для тренировки: «ждёт подтверждения» и
+        // «оплачивается в клубе», а не тексты брони корта с предоплатой
+        kind: 'lesson' } });
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       const msg = e instanceof ApiError ? e.message : 'Не получилось записаться.';
@@ -148,7 +167,12 @@ export default function Coach() {
 
         <Text style={s.sec}>Свободное время · {dayMonth(date)}</Text>
         {slots.loading && <ActivityIndicator color={C.dim} style={{ marginTop: 14 }} />}
-        {!slots.loading && !free.length && (
+        {/* Сбой — это не «свободных часов нет»: иначе человек уходил,
+            хотя время было (аудит 15.10.2026) */}
+        {!slots.loading && !!slots.error && (
+          <Failed message={slots.error} onRetry={slots.reload} />
+        )}
+        {!slots.loading && !slots.error && !free.length && (
           <Text style={s.none}>
             В этот день у тренера свободных часов нет. Посмотрите другой день — или выберите другого тренера.
           </Text>

@@ -3,6 +3,7 @@ import {
   NotFoundException, Param, Post, Query, Req, UnauthorizedException, UseGuards,
 } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard, CoachOk, Needs } from './admin.guard';
 import { AuthService, PERMS, type Admin, type Perm, sealPassword, openPassword, makePassword } from './auth.service';
@@ -162,7 +163,9 @@ export class AdminController {
       p => this.auth.can(admin, p as Perm)) };
   }
 
+  // Выйти должен мочь и тренер: без этого его вход жил ещё 30 дней
   @Post('logout')
+  @CoachOk()
   async logout(@Req() req: any) {
     const header = String(req.headers['authorization'] ?? '');
     const token = header.startsWith('Bearer ') ? header.slice(7) : req.headers['x-admin-token'];
@@ -342,7 +345,9 @@ export class AdminController {
     let gridClose = dh.closed ? 0 : dh.close;
     for (const b of alive) {
       gridOpen = Math.min(gridOpen, hourOf(b.starts_at));
-      const end = hourOf(b.ends_at) === 0 ? 24 : hourOf(b.ends_at);
+      // Конец — в часах от начала этого дня: бронь за полночь (22:00 + 3 ч)
+      // тянет сетку до 24, а не до «1»
+      const end = Math.min(24, Math.ceil((+b.ends_at - +clubHour(d, 0)) / 3600_000));
       gridClose = Math.max(gridClose, end);
     }
     if (gridOpen >= gridClose) { gridOpen = 0; gridClose = 0 }
@@ -479,14 +484,22 @@ export class AdminController {
       : dto.money === 'later' ? false
       : byRule;
 
-    const ops: any[] = [
-      this.db.bookings.update({ where: { id: b.id }, data: {
+    // Шаги — функциями от транзакции: первым идёт смена статуса с условием,
+    // что статус всё ещё тот, что видел менеджер. Две одновременные отмены
+    // (менеджер и клиент, менеджер и сгорание) раньше дважды возвращали товар
+    // на склад и дважды считали отмену (аудит 15.10.2026)
+    type Step = (tx: Prisma.TransactionClient) => Promise<unknown>;
+    const ops: Step[] = [
+      async tx => {
+        const r = await tx.bookings.updateMany({ where: { id: b.id, status: b.status }, data: {
         status: dto.status, status_at: new Date(),
         status_by: byClient ? `client via ${req.admin.login}${late ? ', поздняя отмена' : ''}` : req.admin.login,
         kept_prepay: kept,
         // Подтвердили — место больше не «на удержании», срок снимаем
         hold_until: dto.status === 'confirmed' ? null : b.hold_until,
-      }}),
+        }});
+        if (r.count !== 1) throw new ConflictException('Запись только что изменили — обновите экран');
+      },
     ];
     // Отменённая бронь и неявка не тянут за собой то, что человек заказал
     // в приложении заранее: не играл — ракетку и мячи не брал, товар
@@ -506,17 +519,17 @@ export class AdminController {
         if (!pr || pr.category === 'rental' || pr.stock == null) continue;
         const after = (back.get(String(pr.id)) ?? pr.stock) + l.qty;
         back.set(String(pr.id), after);
-        ops.push(this.db.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
-        ops.push(this.db.stock_moves.create({ data: {
+        ops.push(tx => tx.products.update({ where: { id: pr.id }, data: { stock: { increment: l.qty } } }));
+        ops.push(tx => tx.stock_moves.create({ data: {
           product_id: pr.id, kind: 'return', qty: l.qty, stock_after: after,
           note: `бронь №${Number(b.id)} ${dto.status === 'no_show' ? '— не пришёл' : 'отменена'}`, admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
         }}));
       }
-      ops.push(this.db.sales.deleteMany({ where: { booking_id: b.id, ...inApp } }));
+      ops.push(tx => tx.sales.deleteMany({ where: { booking_id: b.id, ...inApp } }));
     }
     // Возврат — отдельной строкой в платежах, минусом: видно, кто и когда вернул
     if (refundNow) {
-      ops.push(this.db.payments.create({ data: {
+      ops.push(tx => tx.payments.create({ data: {
         booking_id: b.id, amount: -paidBefore, method: refundMethod, kind: 'refund',
         note: dto.status === 'no_show' ? 'возврат при неявке' : 'возврат при отмене',
         admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
@@ -525,26 +538,27 @@ export class AdminController {
     // История поведения клиента: менеджер должен видеть, кто часто пропадает.
     // Считаем только то, что на совести клиента: неявку и отмену подтверждённой
     // брони по его просьбе. Отказ клуба по заявке — не его отмена.
-    if (b.client_id) {
+    const cid = b.client_id;
+    if (cid) {
       if (dto.status === 'no_show' && b.status !== 'no_show') {
-        ops.push(this.db.clients.update({
-          where: { id: b.client_id }, data: { no_shows: { increment: 1 } } }));
+        ops.push(tx => tx.clients.update({
+          where: { id: cid }, data: { no_shows: { increment: 1 } } }));
       }
       if (b.status === 'no_show' && dto.status !== 'no_show') {
-        ops.push(this.db.clients.updateMany({
-          where: { id: b.client_id, no_shows: { gt: 0 } }, data: { no_shows: { decrement: 1 } } }));
+        ops.push(tx => tx.clients.updateMany({
+          where: { id: cid, no_shows: { gt: 0 } }, data: { no_shows: { decrement: 1 } } }));
       }
       if (dto.status === 'cancelled' && byClient && b.status === 'confirmed') {
-        ops.push(this.db.clients.update({
-          where: { id: b.client_id }, data: { cancels: { increment: 1 } } }));
+        ops.push(tx => tx.clients.update({
+          where: { id: cid }, data: { cancels: { increment: 1 } } }));
       }
       if (b.status === 'cancelled' && dto.status === 'confirmed' && (b.status_by ?? '').startsWith('client')) {
-        ops.push(this.db.clients.updateMany({
-          where: { id: b.client_id, cancels: { gt: 0 } }, data: { cancels: { decrement: 1 } } }));
+        ops.push(tx => tx.clients.updateMany({
+          where: { id: cid, cancels: { gt: 0 } }, data: { cancels: { decrement: 1 } } }));
       }
     }
     try {
-      await this.db.$transaction(ops);
+      await this.db.$transaction(async tx => { for (const op of ops) await op(tx) });
     } catch (e) {
       // Сгоревшую или отменённую заявку вернули, а время уже занял другой
       if (/23P01|no_double_booking/.test(String((e as any)?.message ?? e))) {
@@ -665,7 +679,10 @@ export class AdminController {
     const amount = rubToKop(Math.max(0, Number(body.amount ?? 0)));
     if (amount > b.price + b.coach_price) throw new BadRequestException('Скидка больше цены');
     const paidSoFar = await this.paidOf(b.id);
-    if (b.price + b.coach_price - amount < paidSoFar) {
+    // Счёт целиком: корт, тренер и прокат. Без проката проверка давала ложное
+    // «сделает переплату», а текст человеку — неверную сумму (аудит 15.10.2026)
+    const extras = (await this.extrasOf([b.id])).get(String(b.id))?.sum ?? 0;
+    if (b.price + b.coach_price + extras - amount < paidSoFar) {
       throw new BadRequestException(`Уже внесено ${(paidSoFar / 100).toLocaleString('ru-RU')} ₽ — такая скидка сделает переплату. Сначала оформите возврат`);
     }
     const reason = body.reason ? String(body.reason).trim().slice(0, 200) : null;
@@ -677,7 +694,7 @@ export class AdminController {
     if (b.client_id && amount !== b.discount && ['pending', 'confirmed'].includes(b.status)) {
       await this.notes.toClient(b.client_id, 'booking',
         amount > 0 ? `Скидка ${(amount / 100).toLocaleString('ru-RU')} ₽` : 'Скидка снята',
-        amount > 0 ? `Клуб дал скидку на бронь ${whenText(b.starts_at, b.ends_at)}: к оплате ${((b.price - amount) / 100).toLocaleString('ru-RU')} ₽.`
+        amount > 0 ? `Клуб дал скидку на бронь ${whenText(b.starts_at, b.ends_at)}: к оплате ${((b.price + b.coach_price + extras - amount) / 100).toLocaleString('ru-RU')} ₽.`
                    : `Скидка на бронь ${whenText(b.starts_at, b.ends_at)} снята.`,
         { bookingId: b.id, by: req.admin.name });
     }
@@ -874,7 +891,8 @@ export class AdminController {
     // Скидка не должна пережить цену, с которой её дали
     const discount = Math.min(b.discount, price + coachPrice);
     const paid = await this.paidOf(b.id);
-    if (price + coachPrice - discount < paid) {
+    const extras = (await this.extrasOf([b.id])).get(String(b.id))?.sum ?? 0;
+    if (price + coachPrice + extras - discount < paid) {
       throw new ConflictException('С этим тренером бронь дешевле уже внесённых денег — сначала верните разницу');
     }
     try {
@@ -894,8 +912,8 @@ export class AdminController {
       if (c?.pass_hash) {
         await this.notes.toClient(b.client_id, 'booking',
           coach ? 'Тренер на вашу игру' : 'Игра без тренера',
-          coach ? `${court.name}, ${whenText(b.starts_at, b.ends_at)}. С вами будет ${coach.name}. К оплате ${((price + coachPrice - discount) / 100).toLocaleString('ru-RU')} ₽.`
-                : `${court.name}, ${whenText(b.starts_at, b.ends_at)}. Тренера на это время нет, играете сами. К оплате ${((price - discount) / 100).toLocaleString('ru-RU')} ₽.`,
+          coach ? `${court.name}, ${whenText(b.starts_at, b.ends_at)}. С вами будет ${coach.name}. К оплате ${((price + coachPrice + extras - discount) / 100).toLocaleString('ru-RU')} ₽.`
+                : `${court.name}, ${whenText(b.starts_at, b.ends_at)}. Тренера на это время нет, играете сами. К оплате ${((price + extras - discount) / 100).toLocaleString('ru-RU')} ₽.`,
           { bookingId: b.id, by: req.admin.name });
       }
     }
@@ -1185,7 +1203,7 @@ export class AdminController {
       if (b.client_id) {
         await this.notes.toClient(b.client_id, 'booking', 'Бронь перенесена',
           `Было: ${oldCourt?.name ?? b.court_id}, ${whenText(b.starts_at, b.ends_at)}. Стало: ${court.name}, ${whenText(startsAt, clubHour(body.date, body.hour + hoursCount))}.${
-            price + coachPrice !== b.price + b.coach_price ? ` К оплате теперь ${((price + coachPrice - Math.min(b.discount, price + coachPrice)) / 100).toLocaleString('ru-RU')} ₽.` : ''}`,
+            price + coachPrice !== b.price + b.coach_price ? ` К оплате теперь ${((newTotal) / 100).toLocaleString('ru-RU')} ₽.` : ''}`,
           { bookingId: b.id, by: req.admin.name });
       }
       return { id: Number(b.id), price };
@@ -3074,8 +3092,10 @@ export class AdminController {
       throw new BadRequestException('Игра не помещается до закрытия клуба');
     }
 
-    // Закрытая площадка не должна принимать записи и через админку тоже
-    if (court.closed_until && court.closed_until > new Date()) {
+    // Закрытая площадка не должна принимать записи и через админку тоже.
+    // Сравниваем с началом игры, как приложение: корт, закрытый до
+    // понедельника, на вторник записывать можно (аудит 15.10.2026)
+    if (court.closed_until && court.closed_until > clubHour(body.date, body.hour)) {
       throw new BadRequestException(court.closed_reason ?? 'Площадка закрыта');
     }
 

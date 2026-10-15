@@ -191,15 +191,19 @@ export class ClubService {
       where: { status: 'pending', hold_until: { lt: new Date() }, payments: { none: {} } },
       select: { id: true },
     });
-    let r = { count: 0 };
-    if (dying.length) {
-      const ids = dying.map(b => b.id);
-      r = await this.db.bookings.updateMany({
-        where: { id: { in: ids }, status: 'pending' },
+    // По одной и с тем же условием: заявку могли подтвердить или оплатить,
+    // пока мы её искали. Раньше товар возвращался и строки счёта стирались
+    // по всем найденным — в том числе у уже подтверждённой брони (аудит 15.10.2026)
+    const gone: bigint[] = [];
+    for (const { id } of dying) {
+      const one = await this.db.bookings.updateMany({
+        where: { id, status: 'pending', hold_until: { lt: new Date() }, payments: { none: {} } },
         data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
       });
-      await this.returnAppGoods(ids);
+      if (one.count === 1) gone.push(id);
     }
+    const r = { count: gone.length };
+    if (gone.length) await this.returnAppGoods(gone);
     // Заявки на турниры держат место так же и так же его отпускают
     const t = await this.db.tournament_entries.updateMany({
       where: { status: 'pending', hold_until: { lt: new Date() } },

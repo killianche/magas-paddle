@@ -30,6 +30,8 @@ import { normalizePhone } from '../phone';
 import { ClientAuthService, checkClientPassword } from './client-auth.service';
 import { ClubService } from '../club';
 import { CallChecks, SmsRuCallCheck, LIMIT_TEXT, type CallCheckProvider } from './callcheck';
+import { cancelByClient } from '../bookings/cancel';
+import { TelegramService, tgMsg, phoneLink, whenLine, esc } from '../telegram/telegram.service';
 
 /** Подтверждение номера звонком. Ключа нет — способ выключен, и служба
  *  честно отвечает, что он недоступен. */
@@ -123,6 +125,7 @@ export class ClientsController {
     private readonly db: PrismaService,
     private readonly auth: ClientAuthService,
     private readonly club: ClubService,
+    private readonly tg: TelegramService,
   ) {}
 
   /** Есть ли такой номер и защищён ли он паролем.
@@ -380,27 +383,66 @@ export class ClientsController {
       throw new ForbiddenException('Неверный пароль');
     }
     const now = new Date();
-    await this.db.$transaction([
-      this.db.bookings.updateMany({
-        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, starts_at: { gt: now } },
-        data: { status: 'cancelled', status_at: now, status_by: 'клиент удалил аккаунт' },
-      }),
-      this.db.tournament_entries.updateMany({
-        where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, tournaments: { starts_at: { gt: now } } },
+    // Будущие брони снимаем той же процедурой, что и кнопка «Отменить»:
+    // товар из приложения — на склад, правило поздней отмены — как обычно
+    const set = await this.club.get();
+    const future = await this.db.bookings.findMany({
+      where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, starts_at: { gt: now } },
+      include: { courts: { select: { name: true } } } });
+    const paidBy = new Map((await this.db.payments.groupBy({ by: ['booking_id'],
+      where: { booking_id: { in: future.map(b => b.id) } }, _sum: { amount: true } }))
+      .map(p => [String(p.booking_id), p._sum.amount ?? 0]));
+    const entries = await this.db.tournament_entries.findMany({
+      where: { client_id: c.id, status: { in: ['pending', 'confirmed'] }, tournaments: { starts_at: { gt: now } } },
+      include: { tournaments: { select: { name: true } } } });
+
+    const cancelled: { b: typeof future[number]; paid: number; kept: boolean }[] = [];
+    await this.db.$transaction(async tx => {
+      for (const b of future) {
+        const paid = paidBy.get(String(b.id)) ?? 0;
+        const late = +b.starts_at - Date.now() < set.cancelHours * 3600_000;
+        const ok = await cancelByClient(tx, b, {
+          statusBy: late ? 'клиент удалил аккаунт, поздняя отмена' : 'клиент удалил аккаунт',
+          keptPrepay: late && paid > 0, countCancel: false,
+          note: `бронь №${Number(b.id)}: клиент удалил аккаунт`,
+        });
+        if (ok) cancelled.push({ b, paid, kept: late && paid > 0 });
+      }
+      await tx.tournament_entries.updateMany({
+        where: { id: { in: entries.map(e => e.id) }, status: { in: ['pending', 'confirmed'] } },
         data: { status: 'cancelled', hold_until: null, status_at: now, status_by: 'клиент удалил аккаунт' },
-      }),
-      this.db.notifications.deleteMany({ where: { client_id: c.id } }),
-      this.db.client_sessions.deleteMany({ where: { client_id: c.id } }),
-      this.db.clients.update({ where: { id: c.id }, data: {
+      });
+      await tx.notifications.deleteMany({ where: { client_id: c.id } });
+      await tx.client_sessions.deleteMany({ where: { client_id: c.id } });
+      await tx.clients.update({ where: { id: c.id }, data: {
         name: 'Удалённый аккаунт', surname: null,
         // Номер должен остаться неповторимым, но узнать по нему человека уже нельзя
         phone: `удалён-${c.id}`, whatsapp: null, pass_hash: null, pass_at: null, note: null,
-      }}),
-      this.db.admin_log.create({ data: {
+      }});
+      await tx.admin_log.create({ data: {
         admin_name: 'приложение', action: 'клиент удалил аккаунт',
         details: `ID ${Number(c.id)}, будущие записи сняты`,
-      }}),
-    ]);
+      }});
+    });
+
+    // Менеджеру — что снято и кому вернуть деньги. Номер берём из анкеты,
+    // прочитанной до удаления: в базе его уже нет, а связаться по возврату надо
+    const refund = cancelled.filter(x => x.paid > 0 && !x.kept).reduce((n, x) => n + x.paid, 0)
+      + entries.reduce((n, e) => n + (e.paid_amount ?? 0), 0);
+    if (cancelled.length || entries.length) {
+      this.tg.notify('cancel', tgMsg({
+        icon: '🗑', title: 'Клиент удалил аккаунт',
+        head: [`${esc([c.name, c.surname].filter(Boolean).join(' ') || 'Без имени')} · ${phoneLink(c.phone)}`],
+        rows: [
+          ...cancelled.map(x => `🎾 ${esc(x.b.courts?.name ?? x.b.court_id)} · ${whenLine(x.b.starts_at, x.b.ends_at)} — снята`),
+          ...entries.map(e => `🏆 ${esc(e.tournaments?.name ?? 'Турнир')} — запись снята`),
+          refund > 0 ? `↩️ Внесено ${(refund / 100).toLocaleString('ru-RU')} ₽ — нужно вернуть`
+            : cancelled.some(x => x.kept) ? '💰 Предоплата остаётся клубу — поздняя отмена'
+            : '💰 Денег по снятым записям не было',
+        ],
+        foot: 'номер выше — последний способ связаться, в базе он стёрт',
+      }));
+    }
     return { ok: true };
   }
 

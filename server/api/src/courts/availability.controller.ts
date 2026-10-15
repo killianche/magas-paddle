@@ -2,7 +2,7 @@ import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubService, hoursOn } from '../club';
 import { colorOf } from './look';
-import { clubHour, clubToday, hourOf, isValidDate, weekdayOf } from '../time';
+import { clubHour, clubToday, isValidDate, weekdayOf } from '../time';
 
 @Controller('availability')
 export class AvailabilityController {
@@ -35,7 +35,8 @@ export class AvailabilityController {
       this.db.bookings.findMany({
         where: {
           status: { notIn: ['cancelled', 'expired'] },
-          starts_at: { gte: clubHour(day, 0), lt: clubHour(day, 24) },
+          // Все брони, задевающие этот день, — и начатые накануне до полуночи
+          starts_at: { lt: clubHour(day, 24) }, ends_at: { gt: clubHour(day, 0) },
         },
         select: { court_id: true, starts_at: true, ends_at: true },
       }),
@@ -57,8 +58,11 @@ export class AvailabilityController {
       const busy = new Set<number>();
       for (const b of bookings) {
         if (b.court_id !== c.id) continue;
-        for (let h = hourOf(b.starts_at); h < hourOf(b.ends_at) || (hourOf(b.ends_at) === 0 && h < 24); h++) {
-          busy.add(h);
+        // Час занят, если бронь с ним пересекается. Раньше шли по номерам
+        // часов, и бронь 22:00 + 3 часа (конец в 01:00) не занимала ни
+        // одного: часы выглядели свободными (аудит 15.10.2026)
+        for (let h = 0; h < 24; h++) {
+          if (b.starts_at < clubHour(day, h + 1) && b.ends_at > clubHour(day, h)) busy.add(h);
         }
       }
       // Закрытие корта действует до своей даты: «до завтра» не должно
