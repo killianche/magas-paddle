@@ -12,6 +12,7 @@ import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } f
 import { api, rub, mediaUrl, getToken, ApiError, type ApiCoach, type ApiSlot } from '../src/api';
 import { useApi } from '../src/useApi';
 import { useClub } from '../src/club';
+import { loadProfile } from '../src/profile';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
 import { CoachFace, weekText, ClassRow } from '../src/components/coach';
@@ -69,6 +70,9 @@ export default function Coach() {
 
   const book = async () => {
     if (!pick || sending) return;
+    // Сохранённый вход грузит главная. Открыли тренера напрямую (ссылка,
+    // перезагрузка веб-версии) — его ещё нет, и вошедшего отправляло на вход
+    await loadProfile();
     if (!getToken()) {
       router.push({ pathname: '/account', params: {
         next: `/coach?id=${c.id}&d=${date}&hrs=${hours}&h=${pick.hour}` } });
