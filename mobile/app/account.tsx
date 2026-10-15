@@ -8,7 +8,7 @@
 // по телефону. Кода по SMS нет: нужен провайдер рассылки (вопрос Q57).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  Alert, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -51,7 +51,11 @@ export default function Account() {
       why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
       onDone={async (p, token) => {
         await saveToken(token ?? null); await save(p);
+        // Экран входа при запуске открыт вместо главной, и «назад» с него
+        // идти некуда. Без этого человек после входа застревал на карточке
+        // аккаунта без единой кнопки на главную (15.10.2026)
         if (next) router.replace(next as never);
+        else if (gate === '1' || !router.canGoBack()) router.replace('/');
       }} />;
   }
   if (mode === 'edit') {
@@ -169,15 +173,25 @@ function Enter({ onDone, why, prefill, gate }: {
     setBusy(false);
   };
 
-  // Ждём звонок: спрашиваем сервер раз в три секунды, пока открыт этот шаг
+  // Ждём звонок: спрашиваем сервер раз в три секунды, пока открыт этот шаг.
+  //
+  // Пока человек звонит, приложение свёрнуто, и iPhone обрывает его запросы.
+  // Раньше первый же такой обрыв считался концом: экран писал «Нет связи
+  // с клубом» и возвращал к номеру — звонок шёл впустую (15.10.2026, у
+  // владельца). Теперь обрыв связи (status 0) просто пропускаем и спрашиваем
+  // снова, а прекращаем только по ответу сервера — например, «время вышло».
+  // Вернулся в приложение — спрашиваем сразу, не дожидаясь трёх секунд.
   useEffect(() => {
     if (step !== 'call' || !call || !clean) return;
-    let alive = true;
-    const t = setInterval(async () => {
+    let alive = true, asking = false;
+    const ask = async () => {
+      if (!alive || asking) return;
+      asking = true;
       try {
         const r = await api.callStatus(clean, call.secret);
         if (!alive) return;
         if (r.confirmed) {
+          alive = false;
           clearInterval(t);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setToken(r.verificationToken);
@@ -185,12 +199,18 @@ function Enter({ onDone, why, prefill, gate }: {
         }
       } catch (e) {
         if (!alive) return;
+        if (e instanceof ApiError && e.status === 0) return;   // нет связи — спросим ещё
+        alive = false;
         clearInterval(t);
         setProblem(e instanceof ApiError ? e.message : 'Время вышло — начните заново.');
         setStep('phone'); setCall(null);
+      } finally {
+        asking = false;
       }
-    }, 3000);
-    return () => { alive = false; clearInterval(t) };
+    };
+    const t = setInterval(ask, 3000);
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') ask() });
+    return () => { alive = false; clearInterval(t); sub.remove() };
   }, [step, call, clean, callFor]);
 
   const ok = step === 'password' || step === 'reset' ? password.length >= 6
@@ -699,7 +719,14 @@ function Card({ profile, onEdit, onPassword, onDelete, onForget, onId }: {
 
   return (
     <View style={s.root}>
-      <Stack.Screen options={{ title: 'Аккаунт' }} />
+      {/* Открыли аккаунт вместо главной (вход при запуске) — стрелки «назад»
+          нет, и без этой кнопки с экрана было не уйти */}
+      <Stack.Screen options={{ title: 'Аккаунт', headerLeft: router.canGoBack() ? undefined : () => (
+        <Pressable onPress={() => router.replace('/')} hitSlop={10} accessibilityRole="button"
+          accessibilityLabel="На главную" style={({ pressed }) => pressed && { opacity: 0.6 }}>
+          <Text style={s.homeT}>Главная</Text>
+        </Pressable>
+      ) }} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={s.head}>
           <Eyebrow>Аккаунт</Eyebrow>
@@ -886,6 +913,7 @@ const s = sheet(() => ({
   moreBtn: { marginHorizontal: S.xl, marginTop: 12, minHeight: 36, justifyContent: 'center' },
   moreT: { fontFamily: DISP_MED, color: C.accent, fontSize: 13 },
   opt: { fontFamily: BODY, color: C.dim2, fontSize: 11, letterSpacing: 0, textTransform: 'none' },
+  homeT: { fontFamily: BODY, color: C.text, fontSize: 16 },
   delRow: { marginTop: 12, minHeight: HIT, justifyContent: 'center' },
   delT: { color: C.red, fontFamily: DISP_MED, fontSize: 11, letterSpacing: 1.2,
     textTransform: 'uppercase' },
