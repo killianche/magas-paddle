@@ -20,6 +20,10 @@ from play import call, app, PKG
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GO = '--go' in sys.argv
 AAB = pathlib.Path(sys.argv[sys.argv.index('--aab') + 1]) if '--aab' in sys.argv else None
+# draft — черновик, нужный для самого первого выпуска (его отправляет
+# владелец кнопкой). completed — выпуск сразу на выход: так заменяем сборку
+# в выпуске, уже отправленном на проверку, — черновик откатил бы его назад
+STATUS = sys.argv[sys.argv.index('--status') + 1] if '--status' in sys.argv else 'draft'
 LANG = 'ru-RU'
 VERSION_NAME = '1.0.5'
 
@@ -45,6 +49,8 @@ FULL = '''Запись на корт в падел-центре Padel Magas — 
 Шесть падел-кортов и мини-футбольное поле в Магасе.'''
 NOTES = ('Первый выпуск Padel Magas для Android: запись на корт и мини-футбольное поле, '
          'цены по часам, турниры, вход по номеру телефона, отмена записи прямо в приложении.')
+if STATUS not in ('draft', 'completed'):
+    print(f'✗ --status: draft или completed, а не {STATUS}'); sys.exit(1)
 WEBSITE = 'https://padelmagas.ru'
 # Контакт на странице магазина. Без него Google не применяет правку
 # («This app does not have a contact email address set»). Владелец велел
@@ -82,6 +88,7 @@ print(f'  сборка: {AAB} ({AAB.stat().st_size // 1048576} МБ)' if AAB and
 print(f'  название: {TITLE} ({len(TITLE)}/30)')
 print(f'  краткое описание: {len(SHORT)}/80 · полное: {len(FULL)}/4000 · что нового: {len(NOTES)}/500')
 print(f'  иконка, баннер, скриншотов: {len(SHOTS)}')
+print(f'  выпуск: {STATUS}')
 if problems:
     print('\n✗ Нельзя: ' + '; '.join(problems))
     sys.exit(1)
@@ -103,10 +110,10 @@ print(f'    номер сборки у Google: {vc}')
 must(*call('PUT', E + '/tracks/production', {
     'track': 'production',
     'releases': [{
-        'name': VERSION_NAME, 'versionCodes': [str(vc)], 'status': 'draft',
+        'name': VERSION_NAME, 'versionCodes': [str(vc)], 'status': STATUS,
         'releaseNotes': [{'language': LANG, 'text': NOTES}],
     }],
-}), 'черновик выпуска в production')
+}), f'выпуск в production ({STATUS})')
 
 must(*call('PUT', E + f'/listings/{LANG}', {
     'language': LANG, 'title': TITLE, 'shortDescription': SHORT, 'fullDescription': FULL,
@@ -129,4 +136,5 @@ if st != 200 and 'changesNotSentForReview' in str(out):
     # ровно то, что нам и нужно: отправит владелец кнопкой
     st, out = call('POST', E + ':commit?changesNotSentForReview=true')
 must(st, out, 'правка применена')
-print(f'\n✓ Готово. Черновик выпуска {VERSION_NAME} ждёт кнопки «Send for review» в Play Console.')
+print(f'\n✓ Готово. ' + (f'Черновик выпуска {VERSION_NAME} ждёт кнопки «Send for review» в Play Console.'
+      if STATUS == 'draft' else f'Выпуск {VERSION_NAME} со сборкой {vc} ушёл на выход.'))
