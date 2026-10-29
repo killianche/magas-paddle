@@ -11,6 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { normalizePhone } from './profile';
 
 const KEY = 'magas.club.v1';
 
@@ -99,15 +100,17 @@ export function weekLines(c: ClubInfoData): { days: string; hours: string }[] {
   return out;
 }
 
-/** Слова заказчика: в бронь входит только корт, ракетки и мячи — отдельно.
- *  Менеджер может переписать строку в админке. */
+/** Слова заказчика: в цену брони входят корт и ракетка для игры, мячи —
+ *  отдельно (решение 08.10.2026). Менеджер может переписать строку в админке. */
 export const BOOKING_NOTE = 'В цену входят корт и ракетки. Мячи — отдельно.';
 
 /** Пока сервер не ответил. Ничего выдуманного: только часы по умолчанию,
  *  которые всё равно приходят с первым же ответом. */
 const EMPTY: ClubInfoData = {
   phone: null, whatsapp: null, address: null, mapUrl: null, instagram: null,
-  openHour: 9, closeHour: 24, cancelHours: 4,
+  // Срок отмены — решение заказчика D13 (2 часа), а не случайное число:
+  // до первого ответа сервера экран отмены не должен называть другой срок
+  openHour: 9, closeHour: 24, cancelHours: 2,
   prepayPercent: 50, lateMinutes: 15, rentalsText: null,
   showTournaments: true, showFootball: true, coachesOn: true, familyOn: true,
   phoneGate: true, phoneVerifyOn: false, callResetOn: false, waTemplate: null,
@@ -158,20 +161,33 @@ function publish(next: ClubInfoData) {
   listeners.forEach(l => l());
 }
 
-/** Читаем сохранённое и идём за свежим. Зовётся один раз при запуске. */
-export async function loadClub(): Promise<void> {
-  if (!loaded) {
-    loaded = true;
+/** Свежие настройки не перезапрашиваем чаще раза в минуту. Раньше каждый из
+ *  двух десятков компонентов с useClub ходил за ними сам — при запуске
+ *  уходило по 15 одинаковых запросов, на медленной связи это тормозило всё. */
+const FRESH_MS = 60_000;
+let fetchedAt = 0;
+let inflight: Promise<void> | null = null;
+
+/** Читаем сохранённое и идём за свежим. Одновременные вызовы ждут один запрос. */
+export function loadClub(): Promise<void> {
+  if (inflight) return inflight;
+  if (Date.now() - fetchedAt < FRESH_MS) return Promise.resolve();
+  inflight = (async () => {
+    if (!loaded) {
+      loaded = true;
+      try {
+        const raw = await AsyncStorage.getItem(KEY);
+        if (raw) publish({ ...EMPTY, ...JSON.parse(raw) });
+      } catch {}
+    }
     try {
-      const raw = await AsyncStorage.getItem(KEY);
-      if (raw) publish({ ...EMPTY, ...JSON.parse(raw) });
+      const fresh = await api.club();
+      fetchedAt = Date.now();
+      publish({ ...EMPTY, ...fresh });
+      AsyncStorage.setItem(KEY, JSON.stringify(fresh)).catch(() => {});
     } catch {}
-  }
-  try {
-    const fresh = await api.club();
-    publish({ ...EMPTY, ...fresh });
-    AsyncStorage.setItem(KEY, JSON.stringify(fresh)).catch(() => {});
-  } catch {}
+  })().finally(() => { inflight = null });
+  return inflight;
 }
 
 /** Перерисовать экран, когда контакты приедут. */
@@ -194,6 +210,13 @@ export function telegramUrl(): string | null {
 /** Ссылка на WhatsApp по номеру. null, пока номер не задан в админке. */
 export function whatsappUrl(): string | null {
   return cache.whatsapp ? `https://wa.me/${cache.whatsapp.replace(/\D/g, '')}` : null;
+}
+
+/** Ссылка для звонка. Клуб хранит номер цифрами без «+» («79282999972»):
+ *  набор «tel:7928…» телефон понимает как местный номер и не дозванивается,
+ *  поэтому приводим к +7… тем же правилом, что и номера клиентов. */
+export function telUrl(phone: string): string {
+  return `tel:${normalizePhone(phone) ?? phone.replace(/[^\d+]/g, '')}`;
 }
 
 /** Координаты человеку — на случай, если карты не открылись. */

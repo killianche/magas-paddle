@@ -7,9 +7,9 @@ import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError, type ApiBooking } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import { fullName, useProfile, type Profile } from '../src/profile';
-import { whatsappUrl, useClub } from '../src/club';
+import { BOOKING_NOTE, whatsappUrl, useClub } from '../src/club';
 import { openLink } from '../src/components/contacts';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
@@ -33,7 +33,7 @@ export default function BookingScreen() {
     // и экран одной брони на нём спотыкался
   }, [phone, id], phone ? `bk.${phone}.${id}` : undefined);
 
-  useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone, id]));
+  useRefocus(() => { if (phone) q.refresh() });
 
   const screen = <Stack.Screen options={{ title: 'Запись' }} />;
   if (q.loading) return <>{screen}<Loading note="Открываю запись" /></>;
@@ -137,7 +137,10 @@ export default function BookingScreen() {
         <Text style={s.sec}>Деньги</Text>
         <View style={s.card}>
           {!!b.coachPrice && <Row k="Тренировка" v={rub(b.coachPrice)} />}
-          {(!b.coachPrice || !!b.price) && <Row k="Корт" v={b.price ? rub(b.price) : 'входит в тренировку'} />}
+          {/* Раньше строка с «входит в тренировку» не показывалась вовсе
+              (условие её скрывало), зато бронь за 0 ₽ без тренера получала
+              эту подпись */}
+          <Row k="Корт" v={b.price ? rub(b.price) : b.coachPrice ? 'входит в тренировку' : rub(0)} />
           {!!b.discount && <Row k="Скидка клуба" v={`−${rub(b.discount)}`} accent />}
           {(b.extras ?? []).map((x, i) => (
             <Row key={i} k={`${x.item}${x.qty > 1 ? ` × ${x.qty}` : ''}`} v={rub(x.amount)} />
@@ -157,7 +160,9 @@ export default function BookingScreen() {
 
         {!st.dim && (
           <Text style={s.hint}>
-            {club.bookingNote?.trim() || 'Входит только корт. Ракетки и мячи — отдельно.'}
+            {/* Тот же текст, что в панели записи. Прежний запасной «входит только
+                корт, ракетки отдельно» противоречил решению заказчика 08.10.2026 */}
+            {club.bookingNote?.trim() || BOOKING_NOTE}
           </Text>
         )}
 

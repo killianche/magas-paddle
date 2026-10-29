@@ -19,8 +19,8 @@ import { IconCheck } from '../src/components/icons';
 import { ScreenSkeleton, NotFound } from '../src/components/state';
 import { useHydrated } from '../src/hydrated';
 import { prettyPhone } from '../src/profile';
-import { hh, longDate, plural } from '../src/dates';
-import { useClub } from '../src/club';
+import { hh, longDate, plural, timeOfIso } from '../src/dates';
+import { telUrl, useClub } from '../src/club';
 
 export default function Sent() {
   useTheme();
@@ -44,9 +44,10 @@ export default function Sent() {
   // человек видел «место задержано», не знал срока, закрывал приложение — и
   // через час заявка тихо становилась «не состоялась», без единого слова.
   // Время клубное, московское: иначе часы на телефоне в другом поясе соврут.
+  // Считаем сами, без toLocaleTimeString с timeZone: такой вызов зависит
+  // от поддержки Intl в движке телефона
   const holdAt = p.holdUntil && !Number.isNaN(+new Date(String(p.holdUntil)))
-    ? new Date(String(p.holdUntil)).toLocaleTimeString('ru-RU',
-        { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })
+    ? timeOfIso(String(p.holdUntil))
     : null;
 
   if (!hydrated) return <ScreenSkeleton />;
@@ -57,7 +58,7 @@ export default function Sent() {
 
   const call = async () => {
     if (!phone) return;
-    const url = `tel:${phone.replace(/[^\d+]/g, '')}`;
+    const url = telUrl(phone);
     // Сразу openURL, без canOpenURL: на Android 11+ тот отвечает «нельзя»
     // для tel:, не объявленного в манифесте, и звонилка не открывалась
     try {
@@ -106,8 +107,10 @@ export default function Sent() {
         </View>
         {(tournament || lesson) && (
           <Text style={s.next}>
+            {/* Тренировка с тренером — это бронь корта: после подтверждения
+                в «Моих записях» у неё «Забронировано», а не «Вы записаны» */}
             Администратор проверит заявку. Когда подтвердит, придёт уведомление,
-            а в «Моих записях» появится «Вы записаны».
+            а в «Моих записях» появится «{lesson ? 'Забронировано' : 'Вы записаны'}».
           </Text>
         )}
         {!tournament && !lesson && !!holdAt && (

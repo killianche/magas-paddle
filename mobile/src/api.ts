@@ -35,11 +35,14 @@ export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn 
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  let text: string;
+  const ctrl = new AbortController();
+  // 25 секунд, а не 15: в сетях Магаса ответы иногда идут долго,
+  // и на 15 секундах экран зря показывал «нет связи с клубом».
+  // Срок держим и на чтение тела ответа: обрыв посреди ответа раньше
+  // вылетал необработанной ошибкой мимо понятного «нет связи»
+  const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const ctrl = new AbortController();
-    // 25 секунд, а не 15: в сетях Магаса ответы иногда идут долго,
-    // и на 15 секундах экран зря показывал «нет связи с клубом»
-    const timer = setTimeout(() => ctrl.abort(), 25000);
     res = await fetch(BASE + path, {
       ...init,
       signal: ctrl.signal,
@@ -49,12 +52,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.headers ?? {}),
       },
     });
-    clearTimeout(timer);
+    text = await res.text();
   } catch {
     throw new ApiError(NO_NETWORK, 0);
+  } finally {
+    clearTimeout(timer);
   }
 
-  const text = await res.text();
   const body = text ? safeJson(text) : null;
 
   if (!res.ok) {

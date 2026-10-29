@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const B = process.env.APP_URL || 'https://padel.217-114-8-196.sslip.io/v1';
+const B = process.env.APP_URL || 'https://padelmagas.ru/v1';
 const V={viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true};
 
 const routes = ['/', '/schedule', '/tournaments', '/bookings', '/court?id=c1&hour=18', '/court', '/club',

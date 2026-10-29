@@ -5,8 +5,8 @@
 // уже сейчас — иначе подтверждение брони человек узнаёт, только заглянув
 // в «Мои записи». Когда пуши подключат, сюда же будет вести нажатие на пуш.
 import { useCallback } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { api } from '../src/api';
 import { useApi } from '../src/useApi';
@@ -28,8 +28,10 @@ function whenText(iso: string): string {
 
 export default function Notifications() {
   useTheme();
-  const { profile, ready } = useProfile();
-  const phone = profile?.phone ?? '';
+  const { profile, ready, signedIn } = useProfile();
+  // Уведомления сервер отдаёт только вошедшему. Имя и номер с прошлых версий
+  // без входа давали «сообщений пока нет», хотя сообщения могли быть
+  const phone = signedIn ? (profile?.phone ?? '') : '';
 
   const q = useApi(
     () => phone ? api.notifications(phone) : Promise.resolve({ items: [], unread: 0 }),
@@ -51,8 +53,14 @@ export default function Notifications() {
         <Text style={s.h1} allowFontScaling={false}>ПОКА{'\n'}ПУСТО</Text>
         <Text style={s.lede}>
           Здесь появятся сообщения клуба: подтверждение брони, отмена, новости
-          и турниры. Заведите аккаунт, чтобы клуб знал, кому писать.
+          и турниры. Войдите или заведите аккаунт, чтобы клуб знал, кому писать.
         </Text>
+        {/* Без кнопки экран был тупиком: «заведите аккаунт» — а где? */}
+        <Pressable onPress={() => router.push({ pathname: '/account', params: { next: '/notifications' } })}
+          accessibilityRole="button"
+          style={({ pressed }) => [s.btn, pressed && { opacity: 0.9 }]}>
+          <Text style={s.btnT}>Войти в аккаунт</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -114,4 +122,7 @@ const s = sheet(() => ({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent },
   body: { fontFamily: BODY, color: C.dim, fontSize: 14, lineHeight: 20, marginTop: 7 },
   when: { ...EYEBROW, color: C.dim2, marginTop: 9 },
+  btn: { marginTop: 20, alignSelf: 'flex-start', paddingHorizontal: 22, paddingVertical: 14,
+    borderRadius: R.lg, backgroundColor: C.lime, minHeight: HIT, justifyContent: 'center' },
+  btnT: { color: C.onLime, fontFamily: DISP, fontSize: 14, letterSpacing: 0.6, textTransform: 'uppercase' },
 }));

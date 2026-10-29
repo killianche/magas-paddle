@@ -15,7 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, BOLD, MEDIUM, EYEBROW, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, mediaUrl, type ApiBooking, type ApiCoach, type ApiTournament } from '../../src/api';
-import { useApi } from '../../src/useApi';
+import { useApi, useRefocus } from '../../src/useApi';
 import { useProfile, initials, isSignedIn, loadProfile } from '../../src/profile';
 import { loadGuest } from '../../src/guest';
 import { CLUB, loadClub, useClub } from '../../src/club';
@@ -108,7 +108,7 @@ export default function Home() {
     return { grid: next.grid, tomorrow: next.tomorrow, tournaments, bookings, prices, coaches };
   }, [phone], `home.${today()}.${phone ?? 'гость'}`);
 
-  useFocusEffect(useCallback(() => { q.refresh(); notes.refresh() }, [phone]));
+  useRefocus(() => { q.refresh(); notes.refresh() });
 
   // Экран рисуется сразу, не дожидаясь сети: фотография и кнопки никаких
   // данных не требуют.
@@ -154,6 +154,7 @@ export default function Home() {
     (n, c) => n + c.hours.filter(h => h.status === 'free').length, 0);
   const freeText = waiting ? 'смотрю, что свободно'
     : q.error ? 'нет связи с клубом'
+    : grid?.dayOff ? `${Day} клуб не работает — посмотрите другие дни`
     : soonest == null ? `${Day} всё занято — посмотрите другие дни`
     : `${freeHours} ${plural(freeHours, 'свободный час', 'свободных часа', 'свободных часов')}`
       + ` ${day} · ближайшее в ${hh(soonest)}`;
@@ -173,7 +174,10 @@ export default function Home() {
     const d = dateOfIso(b.startsAt);
     return d === today() ? 'сегодня' : dayMonth(d);
   })();
-  const tourn = tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
+  // Клуб выключил турниры в админке — вкладки нет, и на главной о них молчим:
+  // иначе ссылка «все турниры» вела на спрятанную вкладку
+  const tourn = !club.showTournaments ? undefined
+    : tournaments.find(t => t.state === 'open') ?? tournaments.find(t => t.state === 'soon');
   // Только то, что ещё впереди: просроченную заявку показывать «ждёт
   // подтверждения» нельзя — внутри она значится как несостоявшаяся
   const mine = bookings.filter(isUpcoming)
@@ -303,7 +307,7 @@ export default function Home() {
       )}
 
       {(mine.length > 0 || entered.length > 0) && (
-        <Pressable onPress={() => go('/bookings')}
+        <Pressable onPress={() => go('/bookings')} accessibilityRole="button"
           style={({ pressed }) => [st.mine,
             mineState && { borderLeftColor: mineState.key === 'pending' ? C.amber : C.lime },
             pressed && { opacity: 0.8 }]}>
@@ -350,7 +354,8 @@ export default function Home() {
             <Pressable key={c.courtId}
               onPress={() => go('/court', { id: c.courtId })}
               accessibilityRole="button"
-              accessibilityLabel={`${c.name}, ${c.closed ? 'закрыт' : free ? `${day} свободно с ${hh(free.hour)}` : `${day} занят`}`}
+              accessibilityLabel={`${c.name}, ${c.closed ? 'закрыт' : grid?.dayOff ? `${day} не работаем`
+                : free ? `${day} свободно с ${hh(free.hour)}` : `${day} занят`}`}
               style={({ pressed }) => [st.tile, { width: tileW }, pressed && { opacity: 0.85 }]}>
               <View style={{ height: Math.round(tileW * 0.8) }}>
                 <Image source={c.photo ? { uri: mediaUrl(c.photo) } : (IMG[c.courtId] ?? IMG.c1)}
@@ -419,6 +424,7 @@ export default function Home() {
             </Pressable>
           </View>
           <Pressable onPress={() => go('/tournament', { id: String(tourn.id) })}
+            accessibilityRole="button" accessibilityLabel={`Турнир «${tourn.name}»`}
             style={({ pressed }) => [st.tourn, { height: bigCardH }, pressed && { opacity: 0.88 }]}>
             <Image source={coverOf(tourn.coverUrl)}
               style={st.fillImg} resizeMode="cover" />

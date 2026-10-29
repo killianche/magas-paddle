@@ -6,7 +6,7 @@ import { Stack, router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, mediaUrl, type ApiCoach } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import { useClub } from '../src/club';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
@@ -17,7 +17,7 @@ export default function Coaches() {
   useTheme();
   const club = useClub();
   const q = useApi(() => api.coaches(), [], 'coaches');
-  useFocusEffect(useCallback(() => { q.refresh() }, []));
+  useRefocus(() => { q.refresh() });
 
   const screen = <Stack.Screen options={{ title: 'Тренеры' }} />;
   if (q.loading) return <>{screen}<Loading note="Загружаю тренеров" /></>;

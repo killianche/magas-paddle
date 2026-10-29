@@ -257,8 +257,14 @@ export class ClientsController {
 
     // Номер должен быть подтверждён звонком. Иначе тот, кто знает чужой
     // номер, задавал бы по нему пароль и видел чужие записи.
+    //
+    // Требуем ровно то, что объявили приложению в /club: phoneVerifyOn
+    // там отдаётся только вместе с ключом SMS.ru. Раньше при включённом
+    // выключателе и пустом SMSRU_API_ID приложение не рисовало шаг звонка
+    // (подтверждать нечем), а сервер отказывал с 428 — регистрация вставала
+    // целиком, и выйти из этого человек не мог никак.
     const set = await this.club.get();
-    if (set.phoneVerifyOn) {
+    if (set.phoneVerifyOn && callProvider) {
       if (!calls.tokenValid(dto.verificationToken, key)) {
         throw new HttpException({ code: 'phone_verification_required',
           message: 'Подтвердите номер звонком ещё раз.' }, 428);
@@ -295,6 +301,15 @@ export class ClientsController {
     });
     calls.consume(dto.verificationToken);
     return { token: await this.auth.startSession(c.id), profile: card(c) };
+  }
+
+  /** Заперто ли после череды неверных паролей — ответ как у входа. */
+  private lockCheck(keys: string[]) {
+    const left = this.auth.lockedFor(keys);
+    if (left > 0) {
+      throw new HttpException(
+        `Слишком много попыток. Попробуйте через ${Math.ceil(left / 60)} мин`, 429);
+    }
   }
 
   @Post('login')
@@ -377,10 +392,18 @@ export class ClientsController {
   async removeMe(@Body() body: { password?: string }, @Headers('authorization') header?: string) {
     const c = await this.auth.whoIs(this.auth.tokenOf(header));
     if (!c) throw new UnauthorizedException('Нужно войти');
-    if (c.pass_hash && !(await this.auth.verify(String(body?.password ?? ''), c.pass_hash))) {
-      // 403, а не 401: вход действует, просто пароль не тот — приложение не должно
-      // от этого выкидывать из аккаунта
-      throw new ForbiddenException('Неверный пароль');
+    if (c.pass_hash) {
+      // Тот же счётчик неудач, что у входа: без него взятый в руки телефон
+      // с открытым приложением позволял подбирать пароль без ограничений
+      const keys = [`p:${c.phone}`];
+      this.lockCheck(keys);
+      if (!(await this.auth.verify(String(body?.password ?? ''), c.pass_hash))) {
+        this.auth.noteFail(keys);
+        // 403, а не 401: вход действует, просто пароль не тот — приложение не должно
+        // от этого выкидывать из аккаунта
+        throw new ForbiddenException('Неверный пароль');
+      }
+      this.auth.clearFails(keys);
     }
     const now = new Date();
     // Будущие брони снимаем той же процедурой, что и кнопка «Отменить»:
@@ -413,6 +436,18 @@ export class ClientsController {
         data: { status: 'cancelled', hold_until: null, status_at: now, status_by: 'клиент удалил аккаунт' },
       });
       await tx.notifications.deleteMany({ where: { client_id: c.id } });
+      // Политика и страница удаления обещают: в прошлых записях клуба
+      // не остаётся ни имени, ни номера. Раньше они оставались в журнале
+      // админки («Имя, 7928…» — сброс и восстановление пароля, «завёл
+      // клиента», сообщения клиенту) и в комментариях, которые человек сам
+      // писал к заявкам в приложении. Номер в журнале меняем на ID аккаунта:
+      // запись остаётся читаемой, но связать её с человеком уже нельзя.
+      const anon = `ID ${Number(c.id)}`;
+      await tx.$executeRaw`UPDATE admin_log
+        SET details = replace(replace(details, ${`${c.name}, ${c.phone}`}, ${anon}), ${c.phone}, ${anon})
+        WHERE details LIKE ${'%' + c.phone + '%'}`;
+      await tx.bookings.updateMany({ where: { client_id: c.id, source: 'app', comment: { not: null } },
+        data: { comment: null } });
       await tx.client_sessions.deleteMany({ where: { client_id: c.id } });
       await tx.clients.update({ where: { id: c.id }, data: {
         name: 'Удалённый аккаунт', surname: null,
@@ -480,8 +515,15 @@ export class ClientsController {
       try { password = checkClientPassword(dto.password) }
       catch (e) { throw new BadRequestException((e as Error).message) }
       // Старый пароль обязателен, если он был: телефон могли оставить на столе
-      if (c.pass_hash && !(await this.auth.verify(dto.oldPassword ?? '', c.pass_hash))) {
-        throw new ForbiddenException('Неверный текущий пароль');
+      if (c.pass_hash) {
+        // Счётчик неудач общий со входом — подбор старого пароля тоже перебор
+        const keys = [`p:${c.phone}`];
+        this.lockCheck(keys);
+        if (!(await this.auth.verify(dto.oldPassword ?? '', c.pass_hash))) {
+          this.auth.noteFail(keys);
+          throw new ForbiddenException('Неверный текущий пароль');
+        }
+        this.auth.clearFails(keys);
       }
       data.pass_hash = await this.auth.hash(password);
       data.pass_at = new Date();

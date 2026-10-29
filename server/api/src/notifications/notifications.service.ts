@@ -67,20 +67,22 @@ export class NotificationsService {
   /** Пометить прочитанным всё, что человек видит. */
   async markRead(clientId: bigint) {
     const now = new Date();
-    const all = await this.db.notifications.findMany({
-      where: { client_id: null }, select: { id: true },
+    // Только рассылки, которые этот человек ещё не отмечал. Раньше на каждое
+    // открытие ящика шёл отдельный upsert на каждую рассылку за всё время:
+    // сотня рассылок — сотня запросов в одной транзакции
+    const unread = await this.db.notifications.findMany({
+      where: { client_id: null, reads: { none: { client_id: clientId } } },
+      select: { id: true },
     });
     await this.db.$transaction([
       this.db.notifications.updateMany({
         where: { client_id: clientId, read_at: null }, data: { read_at: now },
       }),
-      ...all.map(n => this.db.notification_reads.upsert({
-        where: {
-          notification_id_client_id: { notification_id: n.id, client_id: clientId },
-        },
-        update: {},
-        create: { notification_id: n.id, client_id: clientId, read_at: now },
-      })),
+      this.db.notification_reads.createMany({
+        data: unread.map(n => ({ notification_id: n.id, client_id: clientId, read_at: now })),
+        // Два одновременных «прочитано» не должны падать на повторе
+        skipDuplicates: true,
+      }),
     ]);
   }
 }

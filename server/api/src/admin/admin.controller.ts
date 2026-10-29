@@ -765,19 +765,28 @@ export class AdminController {
     // Деньги приняты — заявка считается подтверждённой: раньше оплаченная
     // заявка сгорала через час, если менеджер не нажал ещё и «Подтвердить»
     const confirmNow = kind === 'payment' && b.status === 'pending';
-    await this.db.$transaction([
-      this.db.payments.create({ data: {
+    await this.db.$transaction(async tx => {
+      await tx.payments.create({ data: {
         booking_id: b.id, amount, method, kind,
         receipt: body.receipt ? String(body.receipt).trim().slice(0, 40) : null,
         note: body.note ? String(body.note).trim().slice(0, 200) : null,
         admin_id: BigInt(req.admin.id), admin_name: req.admin.name,
-      }}),
-      ...(confirmNow ? [this.db.bookings.update({ where: { id: b.id }, data: {
-        status: 'confirmed', status_at: new Date(), status_by: req.admin.login, hold_until: null } })] : []),
+      }});
+      if (confirmNow) {
+        // Подтверждаем, только если заявка всё ещё ждёт. Раньше статус
+        // перезаписывался без условия: заявку, которую в эту же секунду
+        // отменил клиент или сняло сгорание, оплата «оживляла» — время
+        // снова занято, а клиент считает запись отменённой. Не ждёт —
+        // откатываем и платёж: менеджер увидит новое состояние брони.
+        const r = await tx.bookings.updateMany({ where: { id: b.id, status: 'pending' }, data: {
+          status: 'confirmed', status_at: new Date(), status_by: req.admin.login, hold_until: null } });
+        if (r.count !== 1) throw new ConflictException('Заявку только что изменили — обновите экран');
+      }
       // Вернули всё — удерживать больше нечего
-      ...(kind === 'refund' && paid + amount === 0 && b.kept_prepay
-        ? [this.db.bookings.update({ where: { id: b.id }, data: { kept_prepay: false } })] : []),
-    ]);
+      if (kind === 'refund' && paid + amount === 0 && b.kept_prepay) {
+        await tx.bookings.update({ where: { id: b.id }, data: { kept_prepay: false } });
+      }
+    });
     await this.auth.log(req.admin, KIND_WORD[kind],
       `бронь №${Number(b.id)}, ${(Math.abs(amount) / 100).toLocaleString('ru-RU')} ₽, ${PAY_WORD[method]}${confirmNow ? ', бронь подтверждена' : ''}`);
 
@@ -1118,6 +1127,11 @@ export class AdminController {
       throw new ConflictException('Переносят только ждущую или подтверждённую бронь');
     }
     if (b.ends_at <= new Date()) throw new ConflictException('Игра уже прошла — переносить нечего');
+    // Час и длительность — целые числа. NaN проходил все сравнения ниже
+    // (любое сравнение с NaN ложно), доезжал до базы и отдавал 500
+    if (!Number.isInteger(body.hour) || (body.hours != null && !Number.isInteger(body.hours))) {
+      throw new BadRequestException('Час и длительность — целые числа');
+    }
     const target = clubHour(body.date, Number(body.hour));
     if (target < new Date()) throw new BadRequestException('Нельзя перенести на прошедшее время');
 
@@ -2164,6 +2178,10 @@ export class AdminController {
     const unitCost = kind === 'receipt' && body.unitCost != null && body.unitCost !== ('' as any)
       ? rubToKop(Math.max(0, Number(body.unitCost))) : null;
     const res = await this.db.$transaction(async tx => {
+      // Строку товара блокируем до конца транзакции: остаток читается и
+      // записывается целым числом, и продажа из кассы или приложения,
+      // прошедшая между чтением и записью, иначе пропадала из остатка
+      await tx.$queryRaw`SELECT id FROM products WHERE id = ${bigId(id)} FOR UPDATE`;
       const p = await tx.products.findUnique({ where: { id: bigId(id) } });
       if (!p) throw new NotFoundException('Товар не найден');
       const cur = p.stock ?? 0;
@@ -2387,9 +2405,13 @@ export class AdminController {
     }
     const total = already + amount;
 
-    await this.db.tournament_entries.update({ where: { id: e.id }, data: {
+    // С условием на прежнюю сумму: два менеджера, принявшие доплату в одну
+    // секунду, иначе затирали друг друга, и одна из сумм пропадала
+    const upd = await this.db.tournament_entries.updateMany({
+      where: { id: e.id, paid_amount: already }, data: {
       paid_amount: total, paid_method: method, paid_at: total > 0 ? new Date() : null,
     }});
+    if (upd.count !== 1) throw new ConflictException('Взнос только что изменили — обновите экран');
     await this.auth.log(req.admin, 'принял взнос за турнир',
       `${e.clients.name}, ${(amount / 100).toLocaleString('ru-RU')} ₽`
       + (already > 0 ? ` (всего ${(total / 100).toLocaleString('ru-RU')} ₽)` : ''));
@@ -2461,10 +2483,10 @@ export class AdminController {
       week_hours: week,
       open_hour: Math.min(...working.map(d => d.open)),
       close_hour: Math.max(...working.map(d => d.close)),
-      morning_until: int(body.morningUntil, cur.morningUntil, 0, 24),
-      max_hours: int(body.maxHours, cur.maxHours, 1, 12),
-      cancel_hours: int(body.cancelHours, cur.cancelHours, 0, 48),
-      hold_minutes: int(body.holdMinutes, cur.holdMinutes, 5, 1440),
+      morning_until: intOr400(body.morningUntil, cur.morningUntil, 0, 24, 'Утренний тариф до'),
+      max_hours: intOr400(body.maxHours, cur.maxHours, 1, 12, 'Часов подряд'),
+      cancel_hours: intOr400(body.cancelHours, cur.cancelHours, 0, 48, 'Бесплатная отмена, часов'),
+      hold_minutes: intOr400(body.holdMinutes, cur.holdMinutes, 5, 1440, 'Держим заявку, минут'),
       // Контакты: пустая строка означает «убрать», не заданное поле не трогаем
       phone: body.phone === undefined ? cur.phone : phoneOrNull(body.phone),
       whatsapp: body.whatsapp === undefined ? cur.whatsapp : phoneOrNull(body.whatsapp),
@@ -2472,8 +2494,8 @@ export class AdminController {
       map_url: body.mapUrl === undefined ? cur.mapUrl : linkOrNull(body.mapUrl),
       instagram: body.instagram === undefined ? cur.instagram : linkOrNull(body.instagram),
       telegram: body.telegram === undefined ? cur.telegram : telegramOrNull(body.telegram),
-      prepay_percent: int(body.prepayPercent, cur.prepayPercent, 0, 100),
-      late_minutes: int(body.lateMinutes, cur.lateMinutes, 0, 120),
+      prepay_percent: intOr400(body.prepayPercent, cur.prepayPercent, 0, 100, 'Предоплата, %'),
+      late_minutes: intOr400(body.lateMinutes, cur.lateMinutes, 0, 120, 'Держим корт за опоздавшим, минут'),
       rentals_text: body.rentalsText === undefined
         ? cur.rentalsText : (body.rentalsText.trim().slice(0, 800) || null),
       show_tournaments: body.showTournaments === undefined
@@ -2797,17 +2819,21 @@ export class AdminController {
       throw new ConflictException('Турнир уже прошёл или отменён — подтверждать нечего');
     }
 
-    if (status === 'confirmed' && e.status !== 'confirmed') {
-      // Истёкшую или отменённую заявку можно вернуть, если есть место
-      if (!['pending', 'confirmed'].includes(e.status)) {
-        const taken = await this.db.tournament_entries.count({ where: {
+    // Места считаем и занимаем под той же блокировкой строки турнира, что и
+    // запись из приложения: иначе возвращённая менеджером заявка и новая
+    // из приложения одновременно занимали последнее место
+    await this.db.$transaction(async tx => {
+      if (status === 'confirmed' && !['pending', 'confirmed'].includes(e.status)) {
+        // Истёкшую или отменённую заявку можно вернуть, если есть место
+        await tx.$queryRaw`SELECT id FROM tournaments WHERE id = ${e.tournament_id} FOR UPDATE`;
+        const taken = await tx.tournament_entries.count({ where: {
           tournament_id: e.tournament_id, status: { in: ['pending', 'confirmed'] } } });
         if (taken >= e.tournaments.seats) throw new ConflictException('Мест больше нет');
       }
-    }
-    await this.db.tournament_entries.update({ where: { id: e.id }, data: {
-      status, hold_until: null, status_at: new Date(), status_by: req.admin.login,
-    }});
+      await tx.tournament_entries.update({ where: { id: e.id }, data: {
+        status, hold_until: null, status_at: new Date(), status_by: req.admin.login,
+      }});
+    });
 
     if (e.status !== status) {
       const when = e.tournaments.starts_at.toLocaleString('ru-RU', {
@@ -2854,12 +2880,12 @@ export class AdminController {
     }
     if (body.format != null) data.format = String(body.format).trim().slice(0, 80);
     if (body.fee != null) data.fee = rubToKop(body.fee);
-    if (body.seats != null) data.seats = int(body.seats, 16, 2, 200);
+    if (body.seats != null) data.seats = intOr400(body.seats, 16, 2, 200, 'Мест');
     if (body.state != null) {
       if (!STATES.includes(body.state)) throw new BadRequestException('Неизвестное состояние турнира');
       data.state = body.state;
     }
-    if (body.hours != null) data.hours = int(body.hours, 3, 1, 15);
+    if (body.hours != null) data.hours = intOr400(body.hours, 3, 1, 15, 'Идёт часов');
     if (body.courtIds != null) {
       const ids = Array.isArray(body.courtIds) ? body.courtIds.map(String) : [];
       const known = await this.db.courts.findMany({ where: { id: { in: ids } }, select: { id: true } });
@@ -3085,7 +3111,10 @@ export class AdminController {
     const hoursCount = Math.trunc(body.hours);
     const dh = hoursOn(set, body.date);
     if (dh.closed) throw new BadRequestException('В этот день клуб не работает — часы меняются в настройках');
-    if (!Number.isFinite(body.hour) || body.hour < dh.open || body.hour >= dh.close) {
+    // Без длительности Math.trunc давал NaN, проверки ниже его пропускали
+    // (сравнение с NaN ложно), и запрос падал в базе с 500
+    if (!Number.isInteger(hoursCount)) throw new BadRequestException('Укажите, на сколько часов');
+    if (!Number.isInteger(body.hour) || body.hour < dh.open || body.hour >= dh.close) {
       throw new BadRequestException(`Час должен быть от ${dh.open} до ${dh.close - 1}`);
     }
     if (hoursCount < 1 || body.hour + hoursCount > dh.close) {
@@ -3594,6 +3623,18 @@ function whenText(from: Date, to: Date): string {
 function int(v: unknown, fallback: number, min: number, max: number): number {
   const n = Math.trunc(Number(v));
   return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+}
+
+/** Целое число из формы. Не передали — прежнее значение; передали, но вне
+ *  границ — ошибка с названием поля. Раньше «мест 300» молча становилось 16,
+ *  а «держим заявку 2 минуты» не сохранялось, хотя админка писала «Сохранено». */
+function intOr400(v: unknown, fallback: number, min: number, max: number, label: string): number {
+  if (v === undefined || v === null) return fallback;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < min || n > max) {
+    throw new BadRequestException(`${label}: целое число от ${min} до ${max}`);
+  }
+  return n;
 }
 
 /** Рубли от менеджера в копейки для базы. Дробные рубли не принимаем:

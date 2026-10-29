@@ -173,6 +173,9 @@ export class BookingsController {
     let coachPrice = 0;
     if (dto.coachId) {
       if (!set.coachesOn) throw new BadRequestException('Запись к тренеру сейчас недоступна');
+      // То же правило, что в /coaches/free: падел-тренировок на футбольном
+      // поле не бывает, и в приложении тренер там не предлагается
+      if (court.is_football) throw new BadRequestException('На мини-футбольном поле тренировок с тренером нет');
       const c = await this.db.coaches.findUnique({ where: { id: BigInt(dto.coachId) } });
       if (!c || !c.is_active || !c.in_app) throw new NotFoundException('Тренер не найден');
       const wh = coachHours(c, set, dto.date);

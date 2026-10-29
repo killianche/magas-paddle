@@ -15,14 +15,14 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme, R } from '../src/theme';
 import { api, rub, ApiError, getToken, type ApiBooking } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import {
   useProfile, normalizePhone, prettyPhone, plainPhone, fullName, saveToken, type Profile,
 } from '../src/profile';
 import { Eyebrow } from '../src/components/velocity';
 import { ClubInfo } from '../src/components/clubinfo';
 import { openLink } from '../src/components/contacts';
-import { useClub, whatsappUrl } from '../src/club';
+import { telUrl, useClub, whatsappUrl } from '../src/club';
 import { ThemePicker } from '../src/components/themepicker';
 import { setGuest } from '../src/guest';
 import { dateOfIso, hourOfIso, longDate, hh, plural } from '../src/dates';
@@ -64,7 +64,11 @@ export default function Account() {
   // регистрации, и экран показывал карточку, а сервер отвечал «войдите».
   if (!profile || !signedIn) {
     return <Enter prefill={profile} gate={gate === '1'}
-      why={next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
+      why={next === '/bookings'
+        ? 'Чтобы увидеть свои записи, войдите или заведите аккаунт — это 30 секунд.'
+        : next === '/notifications'
+        ? 'Чтобы видеть сообщения клуба, войдите или заведите аккаунт — это 30 секунд.'
+        : next ? 'Чтобы записаться, войдите или заведите аккаунт — это 30 секунд.' : null}
       onDone={async (p, token) => {
         await saveToken(token ?? null); await save(p);
         // Экран входа при запуске открыт вместо главной, и «назад» с него
@@ -250,10 +254,16 @@ function Enter({ onDone, why, prefill, gate }: {
       setStep('phone'); setCall(null); setPassword('');
       return;
     }
+    // Неверный второй номер раньше молча отбрасывался: человек думал, что
+    // WhatsApp сохранён, а менеджер писал на основной
+    const cleanWa = normalizePhone(wa);
+    if (step === 'signup' && wa.trim() && !cleanWa) {
+      setProblem('Проверьте номер WhatsApp или оставьте поле пустым.');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusy(true); setProblem(null);
     try {
-      const cleanWa = normalizePhone(wa);
       const res = step === 'password'
         ? await api.login(clean, password)
         : step === 'reset'
@@ -344,8 +354,8 @@ function Enter({ onDone, why, prefill, gate }: {
         {step === 'call' && !!call && (
           <View style={s.callBox}>
             <Text style={s.callNum} allowFontScaling={false}>{call.pretty}</Text>
-            <Pressable onPress={() => openLink(`tel:+${call.phone}`, 'Наберите номер вручную.')}
-              accessibilityRole="button"
+            <Pressable onPress={() => openLink(telUrl(call.phone), 'Наберите номер вручную.')}
+              accessibilityRole="button" accessibilityLabel={`Позвонить на ${call.pretty}`}
               style={({ pressed }) => [s.callBtn, pressed && { opacity: 0.9 }]}>
               <Text style={s.callBtnT}>Позвонить</Text>
             </Pressable>
@@ -470,13 +480,19 @@ function EditForm({ profile, onDone, onCancel }: {
 
   const submit = async () => {
     if (!ok || busy) return;
+    // Неверный номер раньше уходил как «не трогать», и экран говорил
+    // «сохранено», хотя WhatsApp оставался прежним
+    if (wa.trim() && !normalizePhone(wa)) {
+      setProblem('Проверьте номер WhatsApp или оставьте поле пустым.');
+      return;
+    }
     setBusy(true); setProblem(null);
     try {
       const res = await api.updateMe({
         name: name.trim(), surname: surname.trim(),
         // Пустое поле — стереть номер: сервер стирает его только по null,
         // а undefined значит «не трогать», и старый номер возвращался
-        whatsapp: wa.trim() ? normalizePhone(wa) ?? undefined : null,
+        whatsapp: wa.trim() ? normalizePhone(wa) : null,
       });
       onDone({
         id: res.profile.id, name: res.profile.name, surname: res.profile.surname ?? undefined,
@@ -699,7 +715,7 @@ function Card({ profile, onEdit, onPassword, onDelete, onForget, onId }: {
 
   const q = useApi(() => api.myBookings(profile.phone), [profile.phone],
     `account.${profile.phone}`);
-  useFocusEffect(useCallback(() => { q.refresh() }, [profile.phone]));
+  useRefocus(() => { q.refresh() });
 
   const all = q.data ?? [];
   const past = all

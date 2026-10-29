@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const B = process.env.APP_URL || 'https://padel.217-114-8-196.sslip.io/v1';
+const B = process.env.APP_URL || 'https://padelmagas.ru/v1';
 let fails=0;
 const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
 

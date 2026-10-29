@@ -5,7 +5,7 @@
 // записаться можно было по-старому, звонком.
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, BODY, sheet } from '../theme';
-import { useClub, whatsappUrl } from '../club';
+import { telUrl, useClub, whatsappUrl } from '../club';
 import { prettyPhone } from '../profile';
 import { openLink } from './contacts';
 import { IconPhone, IconWhatsApp } from './icons';
@@ -37,7 +37,7 @@ export function Failed({ message, onRetry }: { message: string; onRetry: () => v
           <Text style={s.helpT}>Пока связи нет, запишитесь напрямую:</Text>
           <View style={s.helpRow}>
             {!!phone && (
-              <Pressable onPress={() => openLink(`tel:+${phone.replace(/\D/g, '')}`,
+              <Pressable onPress={() => openLink(telUrl(phone),
                 `Телефон клуба: ${prettyPhone(phone)}`)}
                 accessibilityRole="button" accessibilityLabel={`Позвонить в клуб, ${prettyPhone(phone)}`}
                 style={({ pressed }) => [s.helpBtn, pressed && { opacity: 0.8 }]}>

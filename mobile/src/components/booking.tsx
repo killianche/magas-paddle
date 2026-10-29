@@ -17,7 +17,7 @@ import { useApi } from '../useApi';
 import { IMG, COURT_PHOTOS } from '../images';
 import { IconWhatsApp, IconCheck } from './icons';
 import { Gallery } from './gallery';
-import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../dates';
+import { today, addDays, weekdayShort, weekday, dayNumber, dayMonth, hh, plural } from '../dates';
 import { BOOKING_NOTE, useClub } from '../club';
 import Svg, { Circle, Path } from 'react-native-svg';
 import {
@@ -67,6 +67,7 @@ export function DateStrip({ date, onPick }: { date: string; onPick: (d: string) 
         return (
           <Pressable key={d} onPress={() => onPick(d)}
             accessibilityRole="button" accessibilityState={{ selected: on }}
+            accessibilityLabel={d === today() ? `Сегодня, ${dayMonth(d)}` : `${weekday(d)}, ${dayMonth(d)}`}
             style={[b.day, on && b.dayOn]}>
             <Text style={[b.dayW, on && { color: C.dayOnW }]}>{weekdayShort(d)}</Text>
             <Text style={[b.dayD, on && { color: C.ink }]}>{dayNumber(d)}</Text>
@@ -203,6 +204,9 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   const club = useClub();
   const { profile, save } = useProfile();
   const [sending, setSending] = useState(false);
+  // Состояние «отправляем» доходит до кнопки только со следующей отрисовкой:
+  // два быстрых нажатия успевали отправить две заявки. Замок — сразу
+  const sendingNow = useRef(false);
   const [problem, setProblem] = useState<string | null>(null);
   // Тренер, выбранный галочкой «Играть с тренером» под выбранным временем
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
@@ -277,10 +281,13 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   const toForm = () => {
     if (!sel || !court) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Прокат и мячи из корзины идут с заявкой: раньше на этом пути они
+    // молча терялись, и в заявку уходил один корт
+    const it = [...picked].map(([id, n]) => `${id}:${n}`).join(',');
     router.push({ pathname: '/book', params: {
       courtId: sel.courtId, name: court.name, date,
       hour: String(sel.hour), hours: String(hours), price: String(courtPrice),
-      family: family ? '1' : '' } });
+      family: family ? '1' : '', it } });
   };
 
   // На случай, если номер WhatsApp в админке сотрут: кнопка не мёртвая, а
@@ -313,13 +320,14 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
   };
 
   const bookInWhatsApp = async (who: Profile | null = profile) => {
-    if (!sel || !court || sending) return;
+    if (!sel || !court || sending || sendingNow.current) return;
     if (!who || !getToken()) {
       router.push({ pathname: '/account', params: { next: backHere() } });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setProblem(null);
+    sendingNow.current = true;
     setSending(true);
     try {
       const res = await api.book({
@@ -347,6 +355,7 @@ export function useBooking({ date, hours, sel, court, onTaken, picked0 }: {
         setProblem(e instanceof ApiError ? e.message : 'Не получилось отправить заявку.');
       }
     } finally {
+      sendingNow.current = false;
       setSending(false);
     }
   };

@@ -1,7 +1,7 @@
 // Подтверждение записи. Здесь человек первый раз называет себя: входа в приложении
 // нет, и сервер узнаёт его по номеру телефона. Имя и номер сохраняются
 // на устройстве, чтобы в следующий раз не вводить заново.
-import { useEffect, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ScrollView, Text, View, Pressable, StyleSheet, Modal, Image,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -10,6 +10,7 @@ import { Redirect, router, useLocalSearchParams, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, getToken, rub, ApiError, type Alternatives, type ApiFreeCoach } from '../src/api';
+import { useApi } from '../src/useApi';
 import { useProfile, normalizePhone, prettyPhone } from '../src/profile';
 import { useClub } from '../src/club';
 import { IMG } from '../src/images';
@@ -25,7 +26,7 @@ export default function Book() {
   const club = useClub();
   const p = useLocalSearchParams<{
     courtId: string; name: string; date: string; hour: string; hours: string; price: string;
-    family?: string }>();
+    family?: string; it?: string }>();
   const hydrated = useHydrated();
   const { profile, ready } = useProfile();
 
@@ -35,16 +36,24 @@ export default function Book() {
   // в сохранённом профиле — при том что «Мои данные» честно пишут,
   // что номер менять нельзя.
   const [sending, setSending] = useState(false);
+  // Замок от двойного нажатия: состояние доходит до кнопки только
+  // со следующей отрисовкой
+  const sendingNow = useRef(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [taken, setTaken] = useState<Alternatives | null>(null);
   // Тренер, выбранный галочкой «играть с тренером»
   const [coach, setCoach] = useState<ApiFreeCoach | null>(null);
 
-  useEffect(() => {
-    if (profile) {
-
-    }
-  }, [profile]);
+  // Прокат и мячи, отмеченные на экране корта: «id:сколько,…». Раньше этот
+  // путь их не принимал, и заявка уходила без них
+  const itemsParam = String(p.it ?? '');
+  const items = useMemo(() => itemsParam.split(',').map(part => {
+    const [productId, qty] = part.split(':').map(Number);
+    return { productId, qty };
+  }).filter(x => Number.isFinite(x.productId) && Number.isFinite(x.qty) && x.qty > 0), [itemsParam]);
+  const goodsList = useApi(() => api.goods(), [], 'goods').data ?? [];
+  const goodsSum = items.reduce((acc, x) =>
+    acc + (goodsList.find(g => g.id === x.productId)?.price ?? 0) * x.qty, 0);
 
   const courtId = String(p.courtId ?? '');
   const courtName = String(p.name ?? '');
@@ -56,8 +65,10 @@ export default function Book() {
   if (!hydrated || !ready) return <ScreenSkeleton />;
   // Заявку оставляет только вошедший — иначе бронь не привязать к аккаунту
   if (!getToken()) {
+    // «Семейный» и корзина возвращаются вместе с остальным выбором
     const back = `/book?courtId=${encodeURIComponent(courtId)}&name=${encodeURIComponent(courtName)}`
-      + `&date=${date}&hour=${hour}&hours=${hours}&price=${price}`;
+      + `&date=${date}&hour=${hour}&hours=${hours}&price=${price}`
+      + (p.family === '1' ? '&family=1' : '') + (itemsParam ? `&it=${encodeURIComponent(itemsParam)}` : '');
     return <Redirect href={{ pathname: '/account', params: { next: back } } as never} />;
   }
   if (!courtId || !date || !p.hour) return (
@@ -68,13 +79,14 @@ export default function Book() {
   // С тренером, у которого корт входит в цену, за корт отдельно не берут —
   // так же это считает и сервер
   const courtDue = coach && !coach.courtExtra ? 0 : price;
-  const total = courtDue + (coach ? coach.total : 0);
+  const total = courtDue + (coach ? coach.total : 0) + goodsSum;
 
   const cleanPhone = profile ? normalizePhone(profile.phone) : null;
   const canSend = cleanPhone != null && !sending;
 
   const submit = async () => {
-    if (!canSend || !cleanPhone) return;
+    if (!canSend || !cleanPhone || sendingNow.current) return;
+    sendingNow.current = true;
     setProblem(null);
     setSending(true);
     try {
@@ -82,7 +94,7 @@ export default function Book() {
         courtId, date, hour, hours,
         name: profile?.name ?? '', surname: profile?.surname || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
-        coachId: coach?.id, family: p.family === '1',
+        coachId: coach?.id, family: p.family === '1', items,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: '/sent', params: {
@@ -102,13 +114,15 @@ export default function Book() {
         setProblem(e instanceof ApiError ? e.message : 'Не получилось отправить заявку.');
       }
     } finally {
+      sendingNow.current = false;
       setSending(false);
     }
   };
 
   /** Выбрали замену — записываемся на неё сразу, повторно спрашивать нечего. */
   const takeAlternative = async (altCourtId: string, altName: string, altHour: number) => {
-    if (!cleanPhone) return;
+    if (!cleanPhone || sendingNow.current) return;
+    sendingNow.current = true;
     setTaken(null); setSending(true);
     try {
       const booking = await api.book({
@@ -116,14 +130,19 @@ export default function Book() {
         name: profile?.name ?? '', surname: profile?.surname || undefined, phone: cleanPhone,
         whatsapp: profile?.whatsapp ?? undefined,
         // На другое время тренер может быть занят — замену берём без него,
-        // менеджер предложит тренера сам
+        // менеджер предложит тренера сам. Прокат и мячи — те же
+        items,
       });
+      // Срок удержания — как у обычной заявки: без него экран «отправлено»
+      // не говорил, до какого времени держат место
       router.replace({ pathname: '/sent', params: {
         id: String(booking.id), name: booking.courtName, date,
-        hour: String(altHour), hours: String(hours), price: String(booking.price) } });
+        hour: String(altHour), hours: String(hours), price: String(booking.price),
+        holdUntil: booking.holdUntil ?? '' } });
     } catch (e) {
       setProblem(e instanceof ApiError ? e.message : 'Не получилось записаться.');
     } finally {
+      sendingNow.current = false;
       setSending(false);
     }
   };
@@ -143,6 +162,7 @@ export default function Book() {
           {!!coach && <Row k="Тренер" v={[coach.name, coach.surname].filter(Boolean).join(' ')} />}
           {!!coach && <Row k="Корт" v={courtDue ? rub(courtDue) : 'входит в тренировку'} />}
           {!!coach && <Row k="Тренировка" v={rub(coach.total)} />}
+          {goodsSum > 0 && <Row k="Ракетки и мячи" v={rub(goodsSum)} />}
           <Row k="Стоимость" v={rub(total)} total />
         </View>
 
@@ -176,8 +196,10 @@ export default function Book() {
             ? <ActivityIndicator color={C.onLime} />
             : <Text style={[s.ctaT, !canSend && { color: C.dim2 }]}>Отправить заявку</Text>}
         </Pressable>
-        {!canSend && !sending && (
-          <Text style={s.barSub}>Заполните имя и телефон</Text>
+        {/* Полей имени и телефона здесь давно нет — заявка берёт их из
+            аккаунта. Кнопка мертва, только если в аккаунте нет номера */}
+        {!cleanPhone && !sending && (
+          <Text style={s.barSub}>В аккаунте не найден номер телефона. Выйдите и войдите снова.</Text>
         )}
       </View>
 
@@ -224,6 +246,8 @@ function TakenSheet({ alternatives, date, hours, onPick, onClose }: {
               <Text style={s.group}>В то же время</Text>
               {a.sameTime.map(alt => (
                 <Pressable key={alt.courtId} onPress={() => onPick(alt.courtId, alt.courtName, alt.hour)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${alt.courtName}, ${hh(alt.hour)} – ${hh(alt.hour + hours)}. Записаться`}
                   style={({ pressed }) => [s.alt, pressed && { opacity: 0.8 }]}>
                   <Image source={IMG[alt.courtId] ?? IMG.c1} style={s.altPh} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
@@ -240,6 +264,8 @@ function TakenSheet({ alternatives, date, hours, onPick, onClose }: {
             <>
               <Text style={s.group}>На той же площадке</Text>
               <Pressable onPress={() => onPick(a.later!.courtId, a.later!.courtName, a.later!.hour)}
+                accessibilityRole="button"
+                accessibilityLabel={`${a.later.courtName}, ${hh(a.later.hour)} – ${hh(a.later.hour + hours)}. Записаться`}
                 style={({ pressed }) => [s.alt, pressed && { opacity: 0.8 }]}>
                 <Image source={IMG[a.later.courtId] ?? IMG.c1} style={s.altPh} resizeMode="cover" />
                 <View style={{ flex: 1 }}>
@@ -259,7 +285,8 @@ function TakenSheet({ alternatives, date, hours, onPick, onClose }: {
             </View>
           )}
 
-          <Pressable onPress={onClose} style={({ pressed }) => [s.ghost, pressed && { opacity: 0.7 }]}>
+          <Pressable onPress={onClose} accessibilityRole="button"
+            style={({ pressed }) => [s.ghost, pressed && { opacity: 0.7 }]}>
             <Text style={s.ghostT}>Выбрать другое время самому</Text>
           </Pressable>
         </View>

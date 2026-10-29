@@ -25,7 +25,7 @@ AAB = pathlib.Path(sys.argv[sys.argv.index('--aab') + 1]) if '--aab' in sys.argv
 # в выпуске, уже отправленном на проверку, — черновик откатил бы его назад
 STATUS = sys.argv[sys.argv.index('--status') + 1] if '--status' in sys.argv else 'draft'
 LANG = 'ru-RU'
-VERSION_NAME = '1.0.5'
+VERSION_NAME = '1.0.7'
 
 TITLE = 'Padel Magas'
 SHORT = 'Запись на корт в Магасе: свободное время, цены и турниры — в два нажатия'

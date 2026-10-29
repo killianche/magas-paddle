@@ -1,10 +1,13 @@
 const { chromium } = require('playwright');
-const B = process.env.APP_URL || 'https://padel.217-114-8-196.sslip.io/v1';
+const B = process.env.APP_URL || 'https://padelmagas.ru/v1';
+// С 14.10 первым открывается экран входа. Проверяем как гость: «Посмотреть без входа».
+const guest = async p => { const g = p.getByText('Посмотреть без входа');
+  if (await g.count()) { await g.first().click(); await p.waitForTimeout(2000); } };
 let fails=0; const ok=(c,m)=>{ console.log((c?'  ✓ ':'  ✗ ')+m); if(!c) fails++; };
 (async () => {
   const b = await chromium.launch();
   const p = await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1700);
+  await p.goto(`${B}/`,{waitUntil:'networkidle'}); await p.waitForTimeout(1700); await guest(p);
 
   console.log('\nДОСТУПНОСТЬ: ГЛАВНАЯ');
   const h = await p.evaluate(() => {

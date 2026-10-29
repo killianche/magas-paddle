@@ -4902,7 +4902,8 @@ async function loadExpenses(){
 
 function monthName(m){
   const [y, mo] = m.split('-').map(Number);
-  return MONTHS[mo-1].replace(/я$/,'ь').replace(/а$/,'') + ' ' + y;
+  // Готовые названия: правило «я → ь» давало «маь 2026» вместо «май 2026»
+  return MONTH_NOM[mo-1].toLowerCase() + ' ' + y;
 }
 
 let expEdit = null;
@@ -5886,7 +5887,7 @@ async function loadStats(){
       <div class="card"><b>${rub(d.shop.rental.revenue)}</b><span>прокат · ${d.shop.rental.qty} раз</span></div>
       ${(() => { const pr = d.shop.products.filter(x => x.category !== 'rental' && x.qty);
         const known = pr.filter(x => x.profit != null);
-        return known.length ? `<div class="card"><b>${rub(known.reduce((n, x) => n + x.profit, 0))}</b><span>прибыль на товарах${known.length < pr.length ? ' · без товаров без закупки' : ''}</span></div>` : '' })()}
+        return known.length ? `<div class="card"><b>${rub(known.reduce((n, x) => n + x.profit, 0))}</b><span>прибыль на товарах${known.length < pr.length ? ' · не считая товаров без закупочной цены' : ''}</span></div>` : '' })()}
       <div class="card"><b>${rub(d.shop.stockValue)}</b><span>на складе по закупке</span></div>
     </div>
     ${d.shop.products.some(x => x.qty) ? `<table class="hist" style="margin-bottom:8px"><thead><tr><th>Товар</th><th class="money">Продано</th>
@@ -6065,7 +6066,7 @@ function makePassword(){
   const w = ['kort','padel','magas','raketka','setka','match','podacha','gejm','myach','sport','turnir','pobeda',
     'final','liga','kubok','zal','steklo','smesh','lob','volley','bandeja','vibora','chiquita','globo',
     'dvor','gora','reka','sad','les','more','veter','solnce','luna','zvezda','ogon','kamen','gorod','doroga',
-    'orel','bars','volk','tigr','lev','sokol','konь','medved','yastreb','kit','zima','leto','vesna','osen',
+    'orel','bars','volk','tigr','lev','sokol','kon','medved','yastreb','kit','zima','leto','vesna','osen',
     'utro','vecher','noch','den','chas','minuta','start','finish','temp','ritm','sila','udar'];
   const r = new Uint32Array(8); crypto.getRandomValues(r);
   const words = [0,1,2,3].map(i => w[r[i] % w.length].replace(/[^a-z]/g, ''));

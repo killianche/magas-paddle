@@ -14,7 +14,7 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, S, DISP, DISP_MED, TITLE, BODY, MEDIUM, sheet, useTheme, R } from '../src/theme';
 import { api, rub } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import { Loading, Failed } from '../src/components/status';
 import { Eyebrow } from '../src/components/velocity';
 import { CourtPlan, isSingle, isWide } from '../src/components/courtlook';
@@ -34,7 +34,7 @@ export default function Courts() {
     const [courts, next] = await Promise.all([api.courts(), upcomingGrid()]);
     return { courts, grid: next.grid };
   }, [], `courts.list.${today()}`);
-  useFocusEffect(useCallback(() => { q.refresh() }, []));
+  useRefocus(() => { q.refresh() });
 
   const screen = <Stack.Screen options={{ title: 'Бронирование' }} />;
   if (q.loading && !q.data) return (<>{screen}<Loading note="Смотрю корты" /></>);

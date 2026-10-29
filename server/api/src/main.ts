@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import { PrismaErrorsFilter } from './prisma/errors.filter';
 import { BadRequestException, ValidationPipe, Logger, type ValidationError } from '@nestjs/common';
 import { AppModule } from './app.module';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -33,6 +34,8 @@ async function bootstrap() {
         message: ru ?? 'Проверьте введённые данные и попробуйте ещё раз.' });
     },
   }));
+  // «Записи уже нет» и «такая уже есть» — 404 и 409, а не 500
+  app.useGlobalFilters(new PrismaErrorsFilter(app.get(HttpAdapterHost).httpAdapter));
   const port = Number(process.env.PORT ?? 3001);
   await app.listen(port, '0.0.0.0');
   new Logger('API').log(`Слушаю порт ${port}`);

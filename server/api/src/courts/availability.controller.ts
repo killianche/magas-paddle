@@ -71,7 +71,10 @@ export class AvailabilityController {
 
       const hours = [];
       for (let h = open; h < close; h++) {
-        const started = day === clubToday() && clubHour(day, h) <= now;
+        // Сравниваем с «сейчас» для любого дня. Раньше проверялся только
+        // сегодняшний: вчерашние часы приходили «свободными» (с maxRun 0),
+        // а запись на них сервер всё равно отклонял
+        const started = clubHour(day, h) <= now;
         const closed = closedUntil != null && closedUntil > clubHour(day, h);
         const status = closed ? 'closed'
           : started ? 'past'

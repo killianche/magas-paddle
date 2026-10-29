@@ -3,7 +3,7 @@
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, BODY, sheet } from '../theme';
-import { CLUB, pointText, telegramUrl, useClub, whatsappUrl } from '../club';
+import { CLUB, pointText, telUrl, telegramUrl, useClub, whatsappUrl } from '../club';
 import { IconPin, IconChevron, IconWhatsApp, IconInstagram, IconPhone, IconTelegram } from './icons';
 
 /** Открывает ссылку, а если открыть нечем — говорит человеку, что делать руками. */
@@ -46,7 +46,8 @@ export function WhereWeAre() {
 /** Связь с клубом: четыре одинаковые кнопки — WhatsApp, звонок, Telegram,
  *  Instagram. Раньше WhatsApp был широкой кнопкой, а остальные квадратиками;
  *  заказчик попросил сделать их одинаковыми и убрать блок вниз главной.
- *  Кнопки без ссылки видны, но честно неактивны — выдуманных контактов нет. */
+ *  Кнопку без ссылки не показываем: серая неактивная плитка у живых клиентов
+ *  выглядела сломанной. Клуб заполнит контакт в админке — кнопка появится. */
 export function SocialButtons({ style }: { style?: any }) {
   const club = useClub();
   const { width } = useWindowDimensions();
@@ -54,35 +55,35 @@ export function SocialButtons({ style }: { style?: any }) {
   const labelSize = width < 360 ? 9.5 : 11.5;
   const wa = whatsappUrl();
   const tg = telegramUrl();
-  const tel = club.phone ? `tel:${club.phone.replace(/[^\d+]/g, '')}` : null;
+  const tel = club.phone ? telUrl(club.phone) : null;
 
   const items = [
     { key: 'wa', url: wa, label: 'WhatsApp', icon: IconWhatsApp,
-      a11y: wa ? 'Написать в WhatsApp' : 'WhatsApp: номер клуб ещё не сообщил',
+      a11y: 'Написать в WhatsApp',
       fallback: 'Напишите менеджеру в WhatsApp вручную.' },
     { key: 'tel', url: tel, label: 'Позвонить', icon: IconPhone,
-      a11y: tel ? `Позвонить в клуб, ${club.phone}` : 'Телефон: номер клуб ещё не сообщил',
+      a11y: `Позвонить в клуб, ${club.phone}`,
       fallback: `Телефон клуба: ${club.phone}` },
     { key: 'tg', url: tg, label: 'Telegram', icon: IconTelegram,
-      a11y: tg ? 'Открыть Telegram клуба' : 'Telegram: клуб ещё не указал',
+      a11y: 'Открыть Telegram клуба',
       fallback: 'Найдите клуб в Telegram вручную.' },
     { key: 'ig', url: club.instagram, label: 'Instagram', icon: IconInstagram,
-      a11y: club.instagram ? 'Открыть Instagram клуба' : 'Instagram: клуб ещё не указал',
+      a11y: 'Открыть Instagram клуба',
       fallback: 'Найдите клуб в Instagram вручную.' },
-  ];
+  ].filter(it => !!it.url);
+  if (!items.length) return null;
 
   return (
     <View style={[s.row, style]}>
       {items.map(it => {
         const Icon = it.icon;
-        const on = !!it.url;
         return (
-          <Pressable key={it.key} disabled={!on}
+          <Pressable key={it.key}
             onPress={() => it.url && open(it.url, it.fallback)}
             accessibilityRole="button" accessibilityLabel={it.a11y}
-            style={({ pressed }) => [s.tile, pressed && on && { opacity: 0.8 }]}>
-            <Icon size={22} color={on ? C.accent : C.dim2} />
-            <Text style={[s.tileT, { fontSize: labelSize }, !on && { color: C.dim2 }]}
+            style={({ pressed }) => [s.tile, pressed && { opacity: 0.8 }]}>
+            <Icon size={22} color={C.accent} />
+            <Text style={[s.tileT, { fontSize: labelSize }]}
               numberOfLines={1} allowFontScaling={false}>{it.label}</Text>
           </Pressable>
         );

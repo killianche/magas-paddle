@@ -11,11 +11,15 @@ import { Loading, Failed } from '../src/components/status';
 import { IconChevron } from '../src/components/icons';
 import { hh, plural } from '../src/dates';
 import { useHydrated } from '../src/hydrated';
+import { useClub } from '../src/club';
 
 
 export default function Prices() {
   useTheme();
   const hydrated = useHydrated();
+  // Доля предоплаты задаётся в админке — раньше здесь было вписано «50 %»
+  // и «половины стоимости», и после смены в админке экран бы врал
+  const club = useClub();
   const q = useApi(() => api.prices(), [], 'prices');
 
   if (!hydrated || q.loading) return <Loading note="Смотрю цены" />;
@@ -39,7 +43,7 @@ export default function Prices() {
           <Text style={s.eyebrow}>ЦЕНЫ</Text>
         </View>
         <Text style={s.h1} allowFontScaling={false}>ПРАЙС-ЛИСТ</Text>
-        <Text style={s.lede}>Аренда корта целиком, на любое число игроков. Бронь — по предоплате 50 %.</Text>
+        <Text style={s.lede}>Аренда корта целиком, на любое число игроков. Бронь — по предоплате {club.prepayPercent} %.</Text>
       </View>
 
       <Pressable onPress={go} accessibilityRole="button"
@@ -61,7 +65,7 @@ export default function Prices() {
             <Band
               from={open} to={until} price={padel.priceMorning}
               share={morningHours / dayHours} badge={off > 0 ? `−${off}%` : undefined}
-              note={`Дешевле обычного на ${off}% — утро свободнее`}
+              note={off > 0 ? `Дешевле обычного на ${off}% — утро свободнее` : 'Утренние часы'}
               onBook={go} best />
 
             <Band
@@ -121,7 +125,7 @@ export default function Prices() {
 
       <Text style={s.foot}>
         Цены показаны за аренду площадки целиком. Бронь подтверждается после
-        предоплаты половины стоимости — менеджер подскажет, как её внести;
+        предоплаты {club.prepayPercent} % стоимости — менеджер подскажет, как её внести;
         остальное платится на месте.
         Отменить запись можно не позже чем за {cancelHours} {plural(cancelHours, 'час', 'часа', 'часов')} до игры.
         {' '}Позже отменить тоже можно, но предоплата сгорает.

@@ -94,9 +94,20 @@ export function CourtPage({ courtId, football }: { courtId?: string; football?: 
     advanced.current = true;
     // …или клуб сегодня не работает по расписанию
     if (grid?.dayOff || (!row.closed && row.hours.length > 0 && row.hours.every(h => h.status === 'past'))) {
+      // Час, возвращённый после входа, относился к сегодня — на завтра его
+      // не переносим, иначе панель предлагала бы не тот день
+      setSel(null);
       setDate(addDays(today(), 1));
     }
   }, [row, date]);
+
+  // Час, возвращённый после входа, мог за это время уйти: его заняли или он
+  // прошёл. Раньше панель всё равно открывалась с ценой и кнопкой записи
+  useEffect(() => {
+    if (!sel || !row || row.courtId !== sel.courtId) return;
+    const h = row.hours.find(x => x.hour === sel.hour);
+    if (!h || !canStart(h, hours)) setSel(null);
+  }, [row, sel, hours]);
 
   const pickDate = (d: string) => {
     Haptics.selectionAsync();

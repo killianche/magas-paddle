@@ -60,7 +60,7 @@ export default function TournamentEntry() {
   if (q.error) return (<>{screen}<Failed message={q.error} onRetry={q.reload} /></>);
   const t = q.data;
   if (!t) return (<>{screen}
-    <NotFound title={cls ? 'Тренировка не найдена' : 'Турнир не найден'} note={cls ? 'Все тренировки — в разделе «Тренировки».' : 'Все турниры — во вкладке «Турниры».'} /></>);
+    <NotFound title={cls ? 'Тренировка не найдена' : 'Турнир не найден'} note={cls ? 'Все групповые тренировки — во вкладке «Турниры».' : 'Все турниры — во вкладке «Турниры».'} /></>);
 
   const date = dateOfIso(t.startsAt);
   const left = Math.max(0, t.seats - t.taken);

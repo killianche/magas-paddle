@@ -6,6 +6,7 @@
 // рисуется сразу, а свежее подтягивается фоном и молча заменяет старое.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from './api';
 
@@ -130,4 +131,18 @@ export function useApi<T>(
     refresh: () => run(true),
     pull,
   };
+}
+
+/** Тихо обновить данные, когда человек вернулся на экран. Первый показ
+ *  пропускаем: его уже грузит useApi. Раньше обновление «при фокусе» срабатывало
+ *  и при открытии, и при каждой смене даты — экран ходил на сервер дважды,
+ *  а главная после экрана входа трижды. */
+export function useRefocus(fn: () => void) {
+  const latest = useRef(fn);
+  latest.current = fn;
+  const seen = useRef(false);
+  useFocusEffect(useCallback(() => {
+    if (seen.current) latest.current();
+    seen.current = true;
+  }, []));
 }

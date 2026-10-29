@@ -62,6 +62,13 @@ export function hourOfIso(iso: string): number {
   return new Date(new Date(iso).getTime() + TZ_OFFSET * 3600_000).getUTCHours();
 }
 
+/** Из отметки времени сервера — «14:30» по времени клуба. Без Intl и
+ *  часового пояса телефона: в другом поясе часы на телефоне соврут. */
+export function timeOfIso(iso: string): string {
+  const d = new Date(new Date(iso).getTime() + TZ_OFFSET * 3600_000);
+  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+
 /** Из отметки времени сервера — дата ГГГГ-ММ-ДД по времени клуба. */
 export function dateOfIso(iso: string): string {
   return new Date(new Date(iso).getTime() + TZ_OFFSET * 3600_000).toISOString().slice(0, 10);

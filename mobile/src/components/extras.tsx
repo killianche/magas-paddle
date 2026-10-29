@@ -106,19 +106,20 @@ export function GoodsPick({ picked, onChange }: {
             {n > 0 ? (
               <View style={s.step}>
                 <Pressable onPress={() => set(g, n - 1)} accessibilityRole="button"
-                  accessibilityLabel={`Убрать ${g.name}`}
+                  accessibilityLabel={`Убрать ${g.name}`} hitSlop={6}
                   style={({ pressed }) => [s.stepB, pressed && { opacity: 0.7 }]}>
                   <Text style={s.stepT}>−</Text>
                 </Pressable>
                 <Text style={s.stepN}>{n}</Text>
                 <Pressable onPress={() => set(g, n + 1)} accessibilityRole="button"
-                  accessibilityLabel={`Ещё ${g.name}`}
+                  accessibilityLabel={`Ещё ${g.name}`} hitSlop={6}
                   style={({ pressed }) => [s.stepB, pressed && { opacity: 0.7 }]}>
                   <Text style={s.stepT}>+</Text>
                 </Pressable>
               </View>
             ) : (
               <Pressable onPress={() => set(g, 1)} accessibilityRole="button"
+                accessibilityLabel={`Добавить: ${g.name}, ${rub(g.price)}`} hitSlop={6}
                 style={({ pressed }) => [s.add, pressed && { opacity: 0.85 }]}>
                 <Text style={s.addT}>Добавить</Text>
               </Pressable>

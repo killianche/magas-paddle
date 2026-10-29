@@ -22,7 +22,7 @@ export function NotFound({ title, note }: { title: string; note: string }) {
     <View style={s.nf}>
       <Text style={s.nfT}>{title}</Text>
       <Text style={s.nfS}>{note}</Text>
-      <Pressable onPress={() => router.replace('/')}
+      <Pressable onPress={() => router.replace('/')} accessibilityRole="button"
         style={({ pressed }) => [s.btn, pressed && { opacity: 0.85 }]}>
         <Text style={s.btnT}>На главную</Text>
       </Pressable>

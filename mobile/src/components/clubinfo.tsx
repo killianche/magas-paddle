@@ -9,7 +9,8 @@
 import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { C, S, HIT, DISP, DISP_MED, BODY, sheet, R } from '../theme';
-import { CLUB, hoursOnDate, sameEveryDay, useClub, weekLines, whatsappUrl } from '../club';
+import { CLUB, hoursOnDate, sameEveryDay, telUrl, useClub, weekLines, whatsappUrl } from '../club';
+import { prettyPhone } from '../profile';
 import { hh, today } from '../dates';
 import { Section, Line } from './section';
 import { WhereWeAre } from './contacts';
@@ -17,13 +18,9 @@ import { IconChevron } from './icons';
 import { RentalsList } from './extras';
 import { parseRentals } from '../rentals';
 
-/** Номер в базе лежит цифрами — человеку показываем привычно. */
-const pretty = (digits: string) => {
-  const d = digits.replace(/\D/g, '');
-  return d.length === 11
-    ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}`
-    : '+' + d;
-};
+/** Номер в базе лежит цифрами — человеку показываем привычно. Общим
+ *  prettyPhone: свой вариант показывал «8 928…» как «+8 928…». */
+const pretty = (digits: string) => prettyPhone(digits);
 export function ClubInfo() {
   const club = useClub();
   const open = async (url: string, fallback: string) => {
@@ -40,18 +37,20 @@ export function ClubInfo() {
 
   return (
     <>
-      {/* Номера клуб ещё не дал. Показывать выдуманный нельзя: человек
-          позвонит незнакомому. Кнопки видны, но честно неактивны. */}
+      {/* Номера клуб ещё не дал. Выдуманный показывать нельзя: человек
+          позвонит незнакомому. А серая «номер скоро появится» у живых
+          клиентов выглядела сломанной — без номера кнопки нет совсем. */}
       <View style={s.actions}>
-        <Pressable disabled={!club.phone}
-          onPress={() => club.phone && open(`tel:${club.phone.replace(/[^\d+]/g, '')}`,
-            `Телефон клуба: ${club.phone}`)}
-          accessibilityRole="button"
-          accessibilityLabel={club.phone ? `Позвонить в клуб, ${club.phone}` : 'Телефон клуба ещё не известен'}
-          style={({ pressed }) => [s.act, !club.phone && s.actOff, pressed && { opacity: 0.85 }]}>
-          <Text style={[s.actT, !club.phone && { color: C.dim }]}>Позвонить</Text>
-          <Text style={s.actS}>{club.phone ? pretty(club.phone) : 'номер скоро появится'}</Text>
-        </Pressable>
+        {club.phone && (
+          <Pressable
+            onPress={() => open(telUrl(club.phone!), `Телефон клуба: ${club.phone}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Позвонить в клуб, ${club.phone}`}
+            style={({ pressed }) => [s.act, pressed && { opacity: 0.85 }]}>
+            <Text style={s.actT}>Позвонить</Text>
+            <Text style={s.actS}>{pretty(club.phone)}</Text>
+          </Pressable>
+        )}
         <Pressable disabled={!whatsappUrl()}
           onPress={() => open(whatsappUrl()!, 'Напишите менеджеру в WhatsApp вручную.')}
           accessibilityRole="button" accessibilityLabel="Написать в WhatsApp"

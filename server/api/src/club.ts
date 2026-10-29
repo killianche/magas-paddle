@@ -204,9 +204,12 @@ export class ClubService {
     }
     const r = { count: gone.length };
     if (gone.length) await this.returnAppGoods(gone);
-    // Заявки на турниры держат место так же и так же его отпускают
+    // Заявки на турниры держат место так же и так же его отпускают.
+    // Кроме тех, по которым уже принят взнос: как и у брони (D18), оплаченная
+    // заявка не сгорает. Раньше место такого человека уходило другому,
+    // а его деньги оставались на сгоревшей заявке
     const t = await this.db.tournament_entries.updateMany({
-      where: { status: 'pending', hold_until: { lt: new Date() } },
+      where: { status: 'pending', hold_until: { lt: new Date() }, paid_amount: { lte: 0 } },
       data: { status: 'expired', status_at: new Date(), status_by: 'срок вышел' },
     });
     return r.count + t.count;

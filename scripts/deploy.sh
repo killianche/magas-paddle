@@ -37,7 +37,11 @@ PY
 }
 wrap "$ROOT/design/demo.html"       "$STAGE/demo.html"       "width=device-width,initial-scale=1,viewport-fit=cover"
 wrap "$ROOT/design/admin-demo.html" "$STAGE/admin-demo.html" "width=device-width,initial-scale=1"
+# Главная — страница для игроков: магазины, часы, контакты. Адрес указан
+# в App Store как сайт поддержки и стоит на визитке с QR-кодами.
 wrap "$ROOT/design/index-src.html"  "$STAGE/index.html"      "width=device-width,initial-scale=1"
+# Презентация проекта для заказчика, бывшая главная.
+wrap "$ROOT/design/project-src.html" "$STAGE/project.html"  "width=device-width,initial-scale=1"
 wrap "$ROOT/design/manager-src.html" "$STAGE/manager.html"   "width=device-width,initial-scale=1"
 # Политика конфиденциальности. Адрес /privacy.html выдан Apple при подаче
 # приложения — менять его нельзя, а без страницы по нему ревью отклоняют
@@ -64,6 +68,7 @@ fi
 [ -d "$ROOT/assets/img" ] && cp "$ROOT/assets/img/"*.webp "$STAGE/img/" 2>/dev/null || true
 
 cp "$ROOT/design/manager-favicon.png" "$STAGE/favicon.png"
+cp "$ROOT/mobile/assets/icon.png" "$STAGE/logo.png"
 printf 'User-agent: *\nDisallow: /\n' > "$STAGE/robots.txt"
 
 # ---------- 3. Сервер ----------

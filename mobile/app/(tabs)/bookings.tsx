@@ -11,7 +11,7 @@ import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, type ApiBooking, type ApiTournament } from '../../src/api';
-import { useApi } from '../../src/useApi';
+import { useApi, useRefocus } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
 import { IconRacket, IconChevron } from '../../src/components/icons';
@@ -42,7 +42,7 @@ export default function Bookings() {
       t.entry ? t.entry.status !== 'cancelled' || !!t.entry.byClub : t.entered) };
   }, [phone], phone ? `mine.${phone}` : undefined);
 
-  useFocusEffect(useCallback(() => { if (phone) q.refresh() }, [phone]));
+  useRefocus(() => { if (phone) q.refresh() });
 
   if (!ready) return <Loading />;
   if (!signedIn) return (
@@ -180,7 +180,7 @@ function Empty() {
       <View style={s.emptyIcon}><IconRacket size={30} color={C.accent} /></View>
       <Text style={s.emptyT}>Записей пока нет</Text>
       <Text style={s.emptyS}>Запишитесь на корт — запись появится здесь.</Text>
-      <Pressable onPress={() => router.push('/courts')}
+      <Pressable onPress={() => router.push('/courts')} accessibilityRole="button"
         style={({ pressed }) => [s.emptyBtn, pressed && { opacity: 0.85 }]}>
         <Text style={s.emptyBtnT}>Забронировать корт</Text>
       </Pressable>

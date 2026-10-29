@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, ApiError } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import { useProfile } from '../src/profile';
 
 import { IconCheck, IconClock } from '../src/components/icons';
@@ -34,7 +34,7 @@ export default function TournamentScreen() {
     const all = await api.tournaments(phone, cls ? 'class' : 'tournament');
     return all.find(t => String(t.id) === String(id)) ?? null;
   }, [id, phone]);
-  useFocusEffect(useCallback(() => { q.refresh() }, [id, phone]));
+  useRefocus(() => { q.refresh() });
 
   if (q.loading) return (<><Stack.Screen options={{ title: W.one }} /><Loading /></>);
   if (q.error) return (<><Stack.Screen options={{ title: W.one }} />
@@ -120,7 +120,9 @@ export default function TournamentScreen() {
           <View style={s.whenBlock}>
             <Text style={s.whenK}>Начало</Text>
             <Text style={s.whenV}>{hh(hourOfIso(t.startsAt))}</Text>
-            <Text style={s.whenS}>{done ? W.gone : live ? 'идёт сейчас' : 'сбор за 20 минут'}</Text>
+            {/* «Сбор за 20 минут» убран: цифру придумали мы, клуб её не
+                называл (вопрос Q38 открыт) */}
+            {(done || live) && <Text style={s.whenS}>{done ? W.gone : 'идёт сейчас'}</Text>}
           </View>
         </View>
 
@@ -150,13 +152,14 @@ export default function TournamentScreen() {
 
         {t.entered && !started && (
           <View style={s.enteredNote}>
+            {/* «Пары составят на месте» убрано: верно только для Americano,
+                а формат и запись парами клуб не подтверждал (вопрос Q37 открыт) */}
             <Text style={s.enteredT}>
-              {cls ? '' : 'Пары составят на месте — партнёра искать заранее не нужно. '}
               Если передумаете, отмените запись, чтобы место досталось другому.
             </Text>
-            <Pressable onPress={leave} disabled={busy}
+            <Pressable onPress={leave} disabled={busy} accessibilityRole="button"
               style={({ pressed }) => [s.leave, pressed && { opacity: 0.7 }]}>
-              <Text style={s.leaveT}>Отменить запись</Text>
+              <Text style={s.leaveT}>{busy ? 'Отменяю…' : 'Отменить запись'}</Text>
             </Pressable>
           </View>
         )}

@@ -1,7 +1,7 @@
 // Карточка тренера: кто он, сколько стоит занятие и когда свободен.
 // Человек выбирает день и час — клуб сам подбирает свободный корт,
 // поэтому выбирать площадку отдельно не нужно.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView, Text, View, Pressable, Image, ActivityIndicator, RefreshControl, Platform, Alert,
 } from 'react-native';
@@ -10,13 +10,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, HIT, DISP, DISP_MED, TITLE, EYEBROW, BODY, sheet, useTheme } from '../src/theme';
 import { api, rub, mediaUrl, getToken, ApiError, type ApiCoach, type ApiSlot } from '../src/api';
-import { useApi } from '../src/useApi';
+import { useApi, useRefocus } from '../src/useApi';
 import { useClub } from '../src/club';
 import { loadProfile } from '../src/profile';
 import { Loading, Failed } from '../src/components/status';
 import { NotFound } from '../src/components/state';
 import { CoachFace, weekText, ClassRow } from '../src/components/coach';
-import { today, addDays, weekdayShort, dayNumber, dayMonth, hh, plural } from '../src/dates';
+import { today, addDays, weekdayShort, weekday, dayNumber, dayMonth, hh, plural } from '../src/dates';
 
 const DAYS_AHEAD = 14;
 
@@ -37,6 +37,9 @@ export default function Coach() {
   const [wantHour, setWantHour] = useState<number | null>(() =>
     h != null && Number.isFinite(Number(h)) ? Number(h) : null);
   const [sending, setSending] = useState(false);
+  // Замок от двойного нажатия: до setSending идёт ожидание loadProfile,
+  // и второе нажатие успевало пройти проверку и отправить вторую заявку
+  const sendingNow = useRef(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   const who = useApi(async () => {
@@ -47,7 +50,7 @@ export default function Coach() {
   const slots = useApi(() => api.coachSlots(Number(id), date, hours),
     [id, date, hours], `slots.${id}.${date}.${hours}`);
 
-  useFocusEffect(useCallback(() => { who.refresh(); slots.refresh() }, [id, date, hours]));
+  useRefocus(() => { who.refresh(); slots.refresh() });
   useEffect(() => {
     if (wantHour == null || slots.loading || !slots.data) return;
     const sl = slots.data.slots.find(x => x.hour === wantHour);
@@ -69,11 +72,13 @@ export default function Coach() {
   const total = pick ? pick.price : 0;
 
   const book = async () => {
-    if (!pick || sending) return;
+    if (!pick || sending || sendingNow.current) return;
+    sendingNow.current = true;
     // Сохранённый вход грузит главная. Открыли тренера напрямую (ссылка,
     // перезагрузка веб-версии) — его ещё нет, и вошедшего отправляло на вход
     await loadProfile();
     if (!getToken()) {
+      sendingNow.current = false;
       router.push({ pathname: '/account', params: {
         next: `/coach?id=${c.id}&d=${date}&hrs=${hours}&h=${pick.hour}` } });
       return;
@@ -94,7 +99,7 @@ export default function Coach() {
       setProblem(msg);
       setPick(null);
       slots.reload();
-    } finally { setSending(false) }
+    } finally { sendingNow.current = false; setSending(false) }
   };
 
   return (
@@ -147,6 +152,7 @@ export default function Coach() {
             return (
               <Pressable key={d} onPress={() => { Haptics.selectionAsync(); setDate(d); setPick(null) }}
                 accessibilityRole="button" accessibilityState={{ selected: on }}
+                accessibilityLabel={d === today() ? `Сегодня, ${dayMonth(d)}` : `${weekday(d)}, ${dayMonth(d)}`}
                 style={({ pressed }) => [s.day, on && s.dayOn, pressed && { opacity: 0.85 }]}>
                 <Text style={[s.dayW, on && s.dayOnT]}>{weekdayShort(d)}</Text>
                 <Text style={[s.dayN, on && s.dayOnT]}>{dayNumber(d)}</Text>
@@ -211,7 +217,8 @@ export default function Coach() {
             {pick.courtPrice ? `Тренер ${rub(pick.coachPrice)} + корт ${rub(pick.courtPrice)}` : 'Корт входит в стоимость тренировки'}
           </Text>
           <Pressable onPress={book} disabled={sending} accessibilityRole="button"
-            style={({ pressed }) => [s.cta, pressed && { opacity: 0.9 }]}>
+            accessibilityLabel="Записаться на тренировку" accessibilityState={{ busy: sending }}
+            style={({ pressed }) => [s.cta, (pressed || sending) && { opacity: 0.9 }]}>
             {sending ? <ActivityIndicator color={C.onLime} />
               : <Text style={s.ctaT}>Записаться на тренировку</Text>}
           </Pressable>

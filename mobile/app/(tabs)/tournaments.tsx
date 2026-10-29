@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { C, R, S, DISP, DISP_MED, TITLE, EYEBROW, BODY, TAB_SPACE, sheet, useTheme } from '../../src/theme';
 import { api, rub, type ApiTournament } from '../../src/api';
-import { useApi } from '../../src/useApi';
+import { useApi, useRefocus } from '../../src/useApi';
 import { useProfile } from '../../src/profile';
 import { Loading, Failed } from '../../src/components/status';
 import { Pill, SectionTitle } from '../../src/components/ui';
@@ -28,7 +28,7 @@ export default function Tournaments() {
   const classes = useApi(
     () => club.coachesOn ? api.tournaments(phone, 'class') : Promise.resolve([] as ApiTournament[]),
     [phone, club.coachesOn], club.coachesOn ? `classes.${phone ?? 'гость'}` : undefined);
-  useFocusEffect(useCallback(() => { q.refresh(); if (club.coachesOn) classes.refresh() }, [phone, club.coachesOn]));
+  useRefocus(() => { q.refresh(); if (club.coachesOn) classes.refresh() });
 
   if (q.loading) return <Loading note="Загружаю турниры" />;
   if (q.error) return <Failed message={q.error} onRetry={q.reload} />;
