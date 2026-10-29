@@ -1,13 +1,11 @@
 """Выпуск новой версии в App Store: новая карточка версии, сборка, заявка.
 
-    python3 scripts/asc/store-105.py          # только план, ничего не меняет
-    python3 scripts/asc/store-105.py --go     # выполнить
+    python3 scripts/asc/store.py --version 1.0.6 --build 77 --notes notes.txt        # план
+    python3 scripts/asc/store.py --version 1.0.6 --build 77 --notes notes.txt --go   # выполнить
 
-Отличие от release.py: тот переделывал уже существующую карточку 1.0.4,
-стоявшую в очереди. Здесь 1.0.4 давно в продаже, и для 1.0.5 карточку
-нужно создать заново. Тексты страницы (описание, ключевые слова, снимки)
-Apple сам переносит с прошлой версии — меняем только «Что нового»
-и адрес поддержки (у 1.0.4 там остался временный sslip.io).
+Карточку версии создаём заново (прошлая уже в продаже). Тексты страницы
+(описание, ключевые слова, снимки) Apple сам переносит с прошлой версии —
+меняем только «Что нового» (из файла --notes) и адрес поддержки.
 
 Вызовы сверены с документацией Apple (App Store Connect API):
   POST  /v1/appStoreVersions               platform, versionString + app, build
@@ -19,25 +17,15 @@ Apple сам переносит с прошлой версии — меняем 
 import importlib.util, pathlib, sys, time
 
 APP       = '6808335944'
-TARGET    = '1.0.5'
-BUILD_NUM = sys.argv[sys.argv.index('--build') + 1] if '--build' in sys.argv else '74'
+def arg(name):
+    if name not in sys.argv: sys.exit(f'нужен {name}')
+    return sys.argv[sys.argv.index(name) + 1]
+
+TARGET    = arg('--version')
+BUILD_NUM = arg('--build')
 SUPPORT   = 'https://padelmagas.ru'
 
-WHATS_NEW = '''Что нового:
-
-• Подтверждение номера звонком больше не сбивается. Пока вы звоните, приложение ждёт, а вернувшись, сразу продолжает — без «Нет связи с клубом».
-
-• После входа открывается главная, а не карточка аккаунта.
-
-• Отмена записи — прямо в приложении: время сразу освобождается, клуб получает уведомление.
-
-• Выбранные день, время и прокат сохраняются, даже если по дороге пришлось войти или завести аккаунт.
-
-• Видно, до какого времени за вами держат место.
-
-• Живая главная: фото клуба оживает при открытии и плавно движется.
-
-• Удаление аккаунта — на отдельном экране с паролем.'''
+WHATS_NEW = pathlib.Path(arg('--notes')).read_text(encoding='utf-8').strip()
 
 spec = importlib.util.spec_from_file_location('asc', pathlib.Path(__file__).parent / 'asc.py')
 asc = importlib.util.module_from_spec(spec); spec.loader.exec_module(asc)
@@ -67,7 +55,7 @@ if state != 'VALID':
     print('  ✗ Apple ещё обрабатывает сборку — запустите позже'); sys.exit(1)
 BUILD_ID = build['id']
 
-# Карточка 1.0.5: могла остаться от прошлого запуска
+# Карточка версии: могла остаться от прошлого запуска
 st, out = asc.call('GET', f'/v1/apps/{APP}/appStoreVersions?filter[versionString]={TARGET}')
 ver = (out.get('data') or [None])[0]
 print(f'  карточка {TARGET}: {ver["attributes"]["appStoreState"] if ver else "нет, будет создана"}')
